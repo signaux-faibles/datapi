@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 
+	dalib "./lib"
+
 	"github.com/gin-gonic/gin"
-	dalib "github.com/signaux-faibles/datapi-lib"
 	"github.com/spf13/viper"
 )
 
@@ -19,29 +20,31 @@ func main() {
 
 	router := gin.Default()
 	router.GET("/data/:bucket/:id", get)
-	router.PUT("/data/:bucket", put)
+	router.POST("/data/:bucket", put)
 	bind := viper.GetString("bind")
 	router.Run(bind)
 }
 
 func put(c *gin.Context) {
-	var o dalib.Object
-	a := "success"
-	o.Key = dalib.Map{
-		"test": &a,
+	var objects []dalib.Object
+	err := c.Bind(&objects)
+	if err != nil {
+		c.JSON(400, "Bad request: "+err.Error())
+		return
 	}
 
-	o.Value = dalib.PropertyMap{
-		"test":  "coucou",
-		"test2": "recoucou",
+	err = dalib.Insert(objects)
+	if err != nil {
+		c.JSON(500, "Server error: "+err.Error())
+		return
 	}
+	c.JSON(200, "ok")
 
-	id, err := dalib.Insert(o)
-	fmt.Println(id, err)
 }
 
 func get(c *gin.Context) {
-	r, err := dalib.Query(map[string]*string{})
+
+	r, err := dalib.Query(dalib.Map{}, dalib.Tags{})
 	fmt.Println(err)
 	c.JSON(200, r)
 }
