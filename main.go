@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 
+	"golang.org/x/crypto/bcrypt"
+
 	dalib "./lib"
 
 	"github.com/gin-gonic/gin"
@@ -19,8 +21,16 @@ func main() {
 	}
 
 	router := gin.Default()
-	router.GET("/data/:bucket/:id", get)
-	router.POST("/data/:bucket", put)
+
+	router.POST("/login", authMiddleware.LoginHandler)
+
+	data := router.Group("data")
+	data.Use(authMiddleware.MiddlewareFunc())
+
+	data.POST("/get", get)
+	router.POST("/put", put)
+	router.GET("/hash/:password", hash)
+	router.GET("/jwt", readJwt)
 	bind := viper.GetString("bind")
 	router.Run(bind)
 }
@@ -43,8 +53,20 @@ func put(c *gin.Context) {
 }
 
 func get(c *gin.Context) {
-
 	r, err := dalib.Query(dalib.Map{}, dalib.Tags{})
 	fmt.Println(err)
 	c.JSON(200, r)
+}
+
+func hash(c *gin.Context) {
+	password := c.Params.ByName("password")
+	hash, err := bcrypt.GenerateFromPassword([]byte(password), 12)
+	if err != nil {
+		c.JSON(500, err.Error())
+	}
+	c.JSON(200, string(hash[:]))
+}
+
+func readJwt(c *gin.Context) {
+	fmt.Println(identityHandler(c))
 }

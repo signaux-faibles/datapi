@@ -32,12 +32,74 @@ type Object struct {
 // Map is equivalent to hstore in a nice json fashion.
 type Map map[string]*string
 
+// Set writes a value to a Map
+func (m *Map) Set(key string, value string) {
+	if *m == nil {
+		*m = make(map[string]*string)
+	}
+	(*m)[key] = &value
+}
+
+// Get reads a value from a Map
+func (m *Map) Get(key string) (string, error) {
+	if *m == nil {
+		return "", errors.New("key " + key + " not set")
+	}
+	if _, ok := (*m)[key]; !ok {
+		return "", errors.New("key " + key + " not set")
+	}
+	return *(*m)[key], nil
+}
+
 // Tags is a string slice with a validation method.
 type Tags []*string
 
+// fromHstore writes Hstore values to Map
+func (m *Map) fromHstore(h hstore.Hstore) {
+	if *m == nil {
+		*m = make(map[string]*string)
+	}
+	for k, v := range h.Map {
+		if v.Valid {
+			s := v.String
+			(*m)[k] = &s
+		} else {
+			(*m)[k] = nil
+		}
+	}
+}
+
+// FromNullStringArray converts []*string to []sql.NullString
+func (t *Tags) FromNullStringArray(array []sql.NullString) {
+	*t = make(Tags, 0)
+	for _, v := range array {
+		if v.Valid {
+			s := v.String
+			*t = append(*t, &s)
+		} else {
+			*t = append(*t, nil)
+		}
+	}
+}
+
 // Hstore returns an hstore with data of Map
 func (m Map) Hstore() hstore.Hstore {
-	return MapToHstore(m)
+	var h hstore.Hstore
+	h.Map = make(map[string]sql.NullString)
+	for k, v := range m {
+		if v != nil {
+			h.Map[k] = sql.NullString{
+				String: *v,
+				Valid:  true,
+			}
+		} else {
+			h.Map[k] = sql.NullString{
+				String: "",
+				Valid:  false,
+			}
+		}
+	}
+	return h
 }
 
 // Bucket contains informations needed to process queries and apply some permissions
@@ -71,9 +133,12 @@ func (p *PropertyMap) Scan(src interface{}) error {
 }
 
 var db *sql.DB
+var adminScope Tags
 
 func init() {
 	initDB()
+	a := "admin"
+	adminScope = []*string{&a}
 }
 
 // Value transform propertyMap type to a database driver compatible type

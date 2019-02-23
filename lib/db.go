@@ -35,54 +35,7 @@ func initDB() {
 	}
 }
 
-// MapToHstore converts map[string]*string to hstore
-func MapToHstore(m map[string]*string) hstore.Hstore {
-	var h hstore.Hstore
-	h.Map = make(map[string]sql.NullString)
-	for k, v := range m {
-		if v != nil {
-			h.Map[k] = sql.NullString{
-				String: *v,
-				Valid:  true,
-			}
-		} else {
-			h.Map[k] = sql.NullString{
-				String: "",
-				Valid:  false,
-			}
-		}
-	}
-	return h
-}
-
-// HstoreToMap converts hstore to map[string]string
-func HstoreToMap(h hstore.Hstore) map[string]*string {
-	m := make(map[string]*string)
-	for k, v := range h.Map {
-		if v.Valid {
-			s := v.String
-			m[k] = &s
-		} else {
-			m[k] = nil
-		}
-	}
-	return m
-}
-
-// SliceToArray converts []*string to []sql.NullString
-func (t *Tags) setArray(array []sql.NullString) {
-	*t = make(Tags, 0)
-	for _, v := range array {
-		if v.Valid {
-			s := v.String
-			*t = append(*t, &s)
-		} else {
-			*t = append(*t, nil)
-		}
-	}
-}
-
-// Query get objets that fits the key
+// Query get objets that fits the key and the scope
 func Query(key Map, scope Tags) ([]Object, error) {
 	var objects []Object
 
@@ -91,12 +44,13 @@ func Query(key Map, scope Tags) ([]Object, error) {
 		FROM bucket
 		WHERE key @> $1
 		and scope <@ $2
-		ORDER BY id`, key.Hstore(), scope)
+		ORDER BY id`, key.Hstore(), pq.Array(scope))
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
-	for {
+	for rows.Next() {
 		o := Object{}
 		var hkey hstore.Hstore
 		rows.Next()
@@ -108,8 +62,8 @@ func Query(key Map, scope Tags) ([]Object, error) {
 			fmt.Println(err)
 			break
 		} else {
-			o.Scope.setArray(scope)
-			o.Key = HstoreToMap(hkey)
+			o.Scope.FromNullStringArray(scope)
+			o.Key.fromHstore(hkey)
 			objects = append(objects, o)
 		}
 	}
