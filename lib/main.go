@@ -5,9 +5,11 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 
 	_ "github.com/lib/pq" // postgresql driver
 	hstore "github.com/lib/pq/hstore"
+	"github.com/spf13/viper"
 )
 
 type attribution string
@@ -104,7 +106,6 @@ func (m Map) Hstore() hstore.Hstore {
 
 // Bucket contains informations needed to process queries and apply some permissions
 type Bucket struct {
-	Table string
 	Scope map[string]attribution
 }
 
@@ -136,6 +137,17 @@ var db *sql.DB
 var adminScope Tags
 
 func init() {
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(".")
+
+	err := viper.ReadInConfig()
+	fmt.Println(viper.GetString("postgres"))
+
+	if err != nil {
+		panic(err)
+	}
+
 	initDB()
 	a := "admin"
 	adminScope = []*string{&a}

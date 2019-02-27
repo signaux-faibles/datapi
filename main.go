@@ -12,13 +12,6 @@ import (
 )
 
 func main() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
 
 	router := gin.Default()
 
@@ -27,8 +20,9 @@ func main() {
 	data := router.Group("data")
 	data.Use(authMiddleware.MiddlewareFunc())
 
-	data.POST("/get", get)
-	router.POST("/put", put)
+	router.POST("/get/:bucket", get)
+	router.POST("/put/:bucket", put)
+
 	router.GET("/hash/:password", hash)
 	router.GET("/jwt", readJwt)
 	bind := viper.GetString("bind")
@@ -36,14 +30,17 @@ func main() {
 }
 
 func put(c *gin.Context) {
+	bucket := c.Params.ByName("bucket")
+
 	var objects []dalib.Object
 	err := c.Bind(&objects)
+
 	if err != nil {
 		c.JSON(400, "Bad request: "+err.Error())
 		return
 	}
 
-	err = dalib.Insert(objects)
+	err = dalib.Insert(objects, bucket)
 	if err != nil {
 		c.JSON(500, "Server error: "+err.Error())
 		return

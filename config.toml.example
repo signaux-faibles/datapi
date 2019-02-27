@@ -1,3 +1,2 @@
 bind = ":3000"
-dbName = "datAPI"
-# dbURL = "localhost:27017"
+postgres = "user=postgres dbname=datapi"

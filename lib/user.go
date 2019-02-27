@@ -34,6 +34,7 @@ func Login(email string, password string) (User, error) {
 	return User{}, nil
 }
 
+// Load loads user object
 func Load(email string) (User, error) {
 	var key Map
 	key.Set("type", "user")
