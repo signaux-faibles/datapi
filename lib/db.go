@@ -43,11 +43,16 @@ func Query(key Map, scope Tags) ([]Object, error) {
 	var objects []Object
 
 	rows, err := db.Query(`
-		SELECT id, key, scope, value
-		FROM bucket
-		WHERE key @> $1
-		and scope <@ $2
-		ORDER BY id`, key.Hstore(), pq.Array(scope))
+	with pairs as (
+		select b.key, v.key as vkey, last(v.value) as vvalue
+		from bucket b,
+		lateral jsonb_each(value) v
+		where b.key = $1
+		and $2 @> scope
+		group by b.key, v.key)
+	select key, jsonb_object_agg(vkey, vvalue) from pairs
+	group by key
+	`, key.Hstore(), pq.Array(scope))
 	if err != nil {
 		return nil, err
 	}
@@ -56,12 +61,13 @@ func Query(key Map, scope Tags) ([]Object, error) {
 	for rows.Next() {
 		o := Object{}
 		var hkey hstore.Hstore
-		rows.Next()
+
 		scope := make([]sql.NullString, 0)
 
-		err = rows.Scan(&o.ID, &hkey, pq.Array(&scope), &o.Value)
+		err = rows.Scan(&hkey, &o.Value)
 
 		if err != nil {
+			fmt.Println("wtf")
 			fmt.Println(err)
 			break
 		} else {
@@ -70,7 +76,7 @@ func Query(key Map, scope Tags) ([]Object, error) {
 			objects = append(objects, o)
 		}
 	}
-	return objects, nil
+	return objects, err
 }
 
 // Insert manage to insert objects in the specified bucket
@@ -83,7 +89,7 @@ func Insert(objects []Object, bucket string) error {
 	}
 
 	for _, o := range objects {
-		o.Key["bucket"] = &bucket
+		o.Key["bucket"] = bucket
 		_, err = stmt.Exec(o.Key.Hstore(), pq.Array(o.Scope), o.Value)
 	}
 

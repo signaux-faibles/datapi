@@ -57,9 +57,20 @@ func authenticatorHandler(c *gin.Context) (interface{}, error) {
 		return "", jwt.ErrMissingLoginValues
 	}
 
-	if credentials.Email == "test@test.com" && credentials.Password == "test" {
-		return dalib.Login(credentials.Email, credentials.Password)
+	if credentials.Email == "admin" && credentials.Password == "admin" {
+		return dalib.User{
+			Email: "admin@test.com",
+			Scope: dalib.Tags{"admin"},
+		}, nil
 	}
+
+	if credentials.Email == "user" && credentials.Password == "user" {
+		return dalib.User{
+			Email: "user@test.com",
+			Scope: dalib.Tags{"user"},
+		}, nil
+	}
+
 	return dalib.User{}, jwt.ErrFailedAuthentication
 }
 

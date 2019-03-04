@@ -18,7 +18,7 @@ func Login(email string, password string) (User, error) {
 	var key Map
 	key.Set("type", "user")
 	key.Set("email", email)
-	o, err := Query(key, adminScope)
+	o, err := Query(key, Tags{"admin"})
 	if err != nil {
 		return User{}, err
 	}
@@ -30,7 +30,7 @@ func Login(email string, password string) (User, error) {
 	var u User
 	u.Email, _ = o[0].Key.Get("email")
 	u.Scope = o[0].Scope
-	fmt.Println(*u.Scope[0])
+	fmt.Println(u.Scope[0])
 	return User{}, nil
 }
 
@@ -39,7 +39,7 @@ func Load(email string) (User, error) {
 	var key Map
 	key.Set("type", "user")
 	key.Set("email", email)
-	o, err := Query(key, adminScope)
+	o, err := Query(key, Tags{"admin"})
 	if err != nil {
 		return User{}, err
 	}

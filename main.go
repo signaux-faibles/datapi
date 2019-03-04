@@ -7,6 +7,8 @@ import (
 
 	dalib "./lib"
 
+	jwt "github.com/appleboy/gin-jwt"
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -14,6 +16,12 @@ import (
 func main() {
 
 	router := gin.Default()
+
+	config := cors.DefaultConfig()
+	config.AllowOrigins = []string{"*"}
+	config.AddAllowHeaders("Authorization")
+	config.AddAllowMethods("GET", "POST")
+	router.Use(cors.New(config))
 
 	router.POST("/login", authMiddleware.LoginHandler)
 
@@ -46,12 +54,25 @@ func put(c *gin.Context) {
 		return
 	}
 	c.JSON(200, "ok")
-
 }
 
 func get(c *gin.Context) {
-	r, err := dalib.Query(dalib.Map{}, dalib.Tags{})
-	fmt.Println(err)
+	bucket := c.Params.ByName("bucket")
+	fmt.Println(bucket)
+	claims := jwt.ExtractClaims(c)
+	fmt.Println(claims)
+	scope := dalib.Tags{"admin", "user"}
+	key := dalib.Map{
+		"type":   "testObject",
+		"bucket": bucket,
+	}
+
+	fmt.Println(key)
+	r, err := dalib.Query(key, scope)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
 	c.JSON(200, r)
 }
 

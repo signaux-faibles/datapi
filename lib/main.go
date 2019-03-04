@@ -25,21 +25,21 @@ const Delete = attribution("delete")
 
 // Object is the smallest data thing in API
 type Object struct {
-	ID    int         `json:"id" bson:"_id"`
-	Key   Map         `json:"key" bson:"key"`
-	Scope Tags        `json:"scope" bson:"scope"`
-	Value PropertyMap `json:"value" bson:"value"`
+	ID    int         `json:"id,omitempty"`
+	Key   Map         `json:"key"`
+	Scope Tags        `json:"scope,omitempty"`
+	Value PropertyMap `json:"value"`
 }
 
 // Map is equivalent to hstore in a nice json fashion.
-type Map map[string]*string
+type Map map[string]string
 
 // Set writes a value to a Map
 func (m *Map) Set(key string, value string) {
 	if *m == nil {
-		*m = make(map[string]*string)
+		*m = make(map[string]string)
 	}
-	(*m)[key] = &value
+	(*m)[key] = value
 }
 
 // Get reads a value from a Map
@@ -50,36 +50,33 @@ func (m *Map) Get(key string) (string, error) {
 	if _, ok := (*m)[key]; !ok {
 		return "", errors.New("key " + key + " not set")
 	}
-	return *(*m)[key], nil
+	return (*m)[key], nil
 }
 
 // Tags is a string slice with a validation method.
-type Tags []*string
+type Tags []string
 
 // fromHstore writes Hstore values to Map
 func (m *Map) fromHstore(h hstore.Hstore) {
 	if *m == nil {
-		*m = make(map[string]*string)
+		*m = make(map[string]string)
 	}
 	for k, v := range h.Map {
 		if v.Valid {
 			s := v.String
-			(*m)[k] = &s
-		} else {
-			(*m)[k] = nil
+			(*m)[k] = s
 		}
 	}
 }
 
 // FromNullStringArray converts []*string to []sql.NullString
+// replaces original Tags object
 func (t *Tags) FromNullStringArray(array []sql.NullString) {
 	*t = make(Tags, 0)
 	for _, v := range array {
 		if v.Valid {
 			s := v.String
-			*t = append(*t, &s)
-		} else {
-			*t = append(*t, nil)
+			*t = append(*t, s)
 		}
 	}
 }
@@ -89,16 +86,9 @@ func (m Map) Hstore() hstore.Hstore {
 	var h hstore.Hstore
 	h.Map = make(map[string]sql.NullString)
 	for k, v := range m {
-		if v != nil {
-			h.Map[k] = sql.NullString{
-				String: *v,
-				Valid:  true,
-			}
-		} else {
-			h.Map[k] = sql.NullString{
-				String: "",
-				Valid:  false,
-			}
+		h.Map[k] = sql.NullString{
+			String: v,
+			Valid:  true,
 		}
 	}
 	return h
@@ -134,7 +124,6 @@ func (p *PropertyMap) Scan(src interface{}) error {
 }
 
 var db *sql.DB
-var adminScope Tags
 
 func init() {
 	viper.SetConfigName("config")
@@ -149,8 +138,7 @@ func init() {
 	}
 
 	initDB()
-	a := "admin"
-	adminScope = []*string{&a}
+
 }
 
 // Value transform propertyMap type to a database driver compatible type
