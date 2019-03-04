@@ -3,8 +3,8 @@ package main
 import (
 	"time"
 
-	dalib "./lib"
 	"github.com/gin-gonic/gin"
+	dalib "github.com/signaux-faibles/datapi/lib"
 
 	jwt "github.com/appleboy/gin-jwt"
 	"github.com/spf13/viper"
