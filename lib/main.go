@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"time"
 
 	_ "github.com/lib/pq" // postgresql driver
 	hstore "github.com/lib/pq/hstore"
@@ -25,10 +26,12 @@ const Delete = attribution("delete")
 
 // Object is the smallest data thing in API
 type Object struct {
-	ID    int         `json:"id,omitempty"`
-	Key   Map         `json:"key"`
-	Scope Tags        `json:"scope,omitempty"`
-	Value PropertyMap `json:"value"`
+	ID          int         `json:"id,omitempty"`
+	Key         Map         `json:"key"`
+	Scope       Tags        `json:"scope,omitempty"`
+	AddDate     *time.Time  `json:"addDate,omitempty"`
+	ReleaseDate *time.Time  `json:"releaseDate,omitempty"`
+	Value       PropertyMap `json:"value"`
 }
 
 // Map is equivalent to hstore in a nice json fashion.
@@ -55,6 +58,20 @@ func (m *Map) Get(key string) (string, error) {
 
 // Tags is a string slice with a validation method.
 type Tags []string
+
+// Contains tests if a Tag collection is contained in another Tag collection
+func (t Tags) Contains(t2 Tags) bool {
+	mt := make(map[string]struct{})
+	for _, tag := range t {
+		mt[tag] = struct{}{}
+	}
+	for _, tag := range t2 {
+		if _, ok := mt[tag]; !ok {
+			return false
+		}
+	}
+	return true
+}
 
 // fromHstore writes Hstore values to Map
 func (m *Map) fromHstore(h hstore.Hstore) {
@@ -92,6 +109,34 @@ func (m Map) Hstore() hstore.Hstore {
 		}
 	}
 	return h
+}
+
+// ToScope dirty way to convert data from DB to Tags #TODO: clean that
+func ToScope(claim []interface{}) Tags {
+	t := make([]string, 0)
+	for _, s := range claim {
+		t = append(t, s.(string))
+	}
+	return t
+}
+
+// ToMap dirty way to convert data from DB to Maps #TODO: clean that
+func ToMap(value interface{}) (Map, error) {
+	var m Map
+	j, err := json.Marshal(value)
+	if err != nil {
+		return m, err
+	}
+	err = json.Unmarshal(j, &m)
+	if err != nil {
+		return m, err
+	}
+
+	// if the map is empty, we want {}, not null
+	if m == nil {
+		m = make(Map)
+	}
+	return m, nil
 }
 
 // Bucket contains informations needed to process queries and apply some permissions
@@ -138,7 +183,7 @@ func init() {
 	}
 
 	initDB()
-
+	CurrentBucketPolicies = LoadPolicies(time.Now())
 }
 
 // Value transform propertyMap type to a database driver compatible type

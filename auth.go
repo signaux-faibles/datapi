@@ -16,7 +16,7 @@ var authMiddleware, err = jwt.New(&jwt.GinJWTMiddleware{
 	SendCookie:      false,
 	Timeout:         time.Hour,
 	MaxRefresh:      time.Hour,
-	IdentityKey:     "email",
+	IdentityKey:     "id",
 	PayloadFunc:     payloadHandler,
 	IdentityHandler: identityHandler,
 	Authenticator:   authenticatorHandler,
@@ -39,11 +39,16 @@ func payloadHandler(data interface{}) jwt.MapClaims {
 
 func identityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
-	email := claims["email"].(string)
-	user, err := dalib.Load(email)
-	if err != nil {
-		c.JSON(500, "Erreur d'identification")
+	var scope []interface{}
+	if claims["scope"] != nil {
+		scope = claims["scope"].([]interface{})
 	}
+	email := claims["email"].(string)
+	user := dalib.User{
+		Email: email,
+		Scope: dalib.ToScope(scope),
+	}
+
 	return &user
 }
 
@@ -57,21 +62,25 @@ func authenticatorHandler(c *gin.Context) (interface{}, error) {
 		return "", jwt.ErrMissingLoginValues
 	}
 
-	if credentials.Email == "admin" && credentials.Password == "admin" {
-		return dalib.User{
-			Email: "admin@test.com",
-			Scope: dalib.Tags{"admin"},
-		}, nil
+	user, err := dalib.Login(credentials.Email, credentials.Password)
+	// if credentials.Email == "admin" && credentials.Password == "admin" {
+	// 	return dalib.User{
+	// 		Email: "admin@test.com",
+	// 		Scope: dalib.Tags{"admin"},
+	// 	}, nil
+	// }
+
+	// if credentials.Email == "user" && credentials.Password == "user" {
+	// 	return dalib.User{
+	// 		Email: "user@test.com",
+	// 		Scope: dalib.Tags{"user"},
+	// 	}, nil
+	// }
+	if err != nil {
+		return dalib.User{}, jwt.ErrFailedAuthentication
 	}
 
-	if credentials.Email == "user" && credentials.Password == "user" {
-		return dalib.User{
-			Email: "user@test.com",
-			Scope: dalib.Tags{"user"},
-		}, nil
-	}
-
-	return dalib.User{}, jwt.ErrFailedAuthentication
+	return user, nil
 }
 
 func authorizatorHandler(data interface{}, c *gin.Context) bool {
