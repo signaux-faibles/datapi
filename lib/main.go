@@ -183,7 +183,7 @@ func init() {
 	}
 
 	initDB()
-	CurrentBucketPolicies = LoadPolicies(time.Now())
+	CurrentBucketPolicies = LoadPolicies(nil)
 }
 
 // Value transform propertyMap type to a database driver compatible type

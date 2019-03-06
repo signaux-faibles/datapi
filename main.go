@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"time"
 
 	dalib "github.com/signaux-faibles/datapi/lib"
 
@@ -34,7 +33,7 @@ func main() {
 }
 
 func debug(c *gin.Context) {
-	dalib.CurrentBucketPolicies = dalib.LoadPolicies(time.Now())
+	dalib.CurrentBucketPolicies = dalib.LoadPolicies(nil)
 
 	fmt.Println(dalib.CurrentBucketPolicies)
 }
@@ -65,8 +64,10 @@ func put(c *gin.Context) {
 }
 
 func get(c *gin.Context) {
-	var key = make(map[string]string)
-	err := c.ShouldBind(&key)
+	var params dalib.QueryParams
+
+	err := c.ShouldBind(&params)
+
 	if err != nil {
 		c.JSON(400, err.Error())
 	}
@@ -75,12 +76,9 @@ func get(c *gin.Context) {
 
 	u, _ := c.Get("id")
 	user := u.(*dalib.User)
-
 	scope := user.Scope
 
-	dateQuery := time.Now()
-
-	data, err := dalib.Query(bucket, key, scope, dateQuery)
+	data, err := dalib.Query(bucket, params, scope)
 
 	if err != nil {
 		c.JSON(500, err.Error())

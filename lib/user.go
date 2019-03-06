@@ -19,11 +19,12 @@ type User struct {
 // Login tests credentials and returns a User object
 // Password is stored with bcrypt method
 func Login(email string, password string) (User, error) {
-	var key = make(Map)
-	key["email"] = email
-	key["type"] = "credentials"
+	var params QueryParams
+	params.Key = make(Map)
+	params.Key["email"] = email
+	params.Key["type"] = "credentials"
 
-	data, err := Query("auth", key, Tags{"auth"}, time.Now())
+	data, err := Query("auth", params, Tags{"auth"})
 	if err != nil {
 		return User{}, err
 	}
@@ -63,11 +64,14 @@ type BucketPolicies []BucketPolicy
 var CurrentBucketPolicies BucketPolicies
 
 // LoadPolicies returns bucket policies at a given time
-func LoadPolicies(date time.Time) BucketPolicies {
-	key := Map{
+func LoadPolicies(date *time.Time) BucketPolicies {
+	var params QueryParams
+	params.Key = Map{
 		"type": "policy",
 	}
-	policies, err := Query("auth", key, Tags{"auth", "admin"}, date)
+	params.Date = date
+
+	policies, err := Query("auth", params, Tags{"auth", "admin"})
 	if err != nil {
 		fmt.Println(err)
 	}

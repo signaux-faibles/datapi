@@ -47,11 +47,19 @@ func initDB() {
 	}
 }
 
+// QueryParams contains informations needed to perform a read query
+type QueryParams struct {
+	Key    Map        `json:"key"`
+	Limit  *int       `json:"limit"`
+	Offset *int       `json:"offset"`
+	Date   *time.Time `json:"date"`
+}
+
 // Query get objets that fits the key and the scope
-func Query(bucket string, key Map, userScope Tags, dateQuery time.Time) ([]Object, error) {
+func Query(bucket string, params QueryParams, userScope Tags) ([]Object, error) {
 	var objects []Object
 
-	if _, ok := key["bucket"]; ok {
+	if _, ok := params.Key["bucket"]; ok {
 		return nil, errors.New("illegal bucket in key")
 	}
 
@@ -59,11 +67,12 @@ func Query(bucket string, key Map, userScope Tags, dateQuery time.Time) ([]Objec
 		return nil, errors.New("empty bucket name is not allowed")
 	}
 
-	key["bucket"] = bucket
+	bucketReadScope := ApplyReadPolicies(CurrentBucketPolicies, bucket, params.Key)
+	if params.Key == nil {
+		params.Key = make(Map)
+	}
+	params.Key["bucket"] = bucket
 
-	bucketReadScope := ApplyReadPolicies(CurrentBucketPolicies, bucket, key)
-	fmt.Println(key, bucket)
-	fmt.Println(bucketReadScope)
 	rows, err := db.Query(`
 	with pairs as (
 		select b.key, v.key as vkey, last(v.value) as vvalue, max(add_date) as add_date
@@ -77,7 +86,7 @@ func Query(bucket string, key Map, userScope Tags, dateQuery time.Time) ([]Objec
 	from pairs
 	where vvalue is not null
 	group by key
-	`, key.Hstore(), pq.Array(userScope), dateQuery, pq.Array(bucketReadScope))
+	`, params.Key.Hstore(), pq.Array(userScope), params.Date, pq.Array(bucketReadScope))
 	if err != nil {
 		return nil, err
 	}
@@ -104,6 +113,7 @@ func Query(bucket string, key Map, userScope Tags, dateQuery time.Time) ([]Objec
 	return objects, err
 }
 
+// ErrInvalidScope is returned when a query looks for an unauthorized scope
 var ErrInvalidScope = errors.New("invalid scope")
 
 // Insert manage to insert objects in the specified bucket
