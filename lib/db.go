@@ -80,7 +80,7 @@ func Query(bucket string, params QueryParams, userScope Tags) ([]Object, error) 
 		lateral jsonb_each(value) v
 		where b.key @> $1
 		and $2 @> (coalesce(scope, '{}') || $4)
-		and release_date <= greatest($3, current_timestamp) 
+		and release_date <= least($3, current_timestamp) 
 		group by b.key, v.key)
 	select key, jsonb_object_agg(vkey, vvalue), max(pairs.add_date) add_date 
 	from pairs
@@ -119,7 +119,11 @@ var ErrInvalidScope = errors.New("invalid scope")
 // Insert manage to insert objects in the specified bucket
 func Insert(objects []Object, bucket string, user User) error {
 	tx, _ := db.Begin()
-
+	var refreshPolicy = false
+	policyKey := Map{
+		"type":   "policy",
+		"bucket": "auth",
+	}
 	stmt, err := tx.Prepare(`insert into bucket (key, scope, value) values ($1, $2, $3)`)
 	if err != nil {
 		return err
@@ -130,6 +134,9 @@ func Insert(objects []Object, bucket string, user User) error {
 
 		if user.Scope.Contains(scope) {
 			o.Key["bucket"] = bucket
+			if o.Key.contains(policyKey) {
+				refreshPolicy = true
+			}
 			_, err = stmt.Exec(o.Key.Hstore(), pq.Array(o.Scope), o.Value)
 		} else {
 			tx.Rollback()
@@ -139,5 +146,8 @@ func Insert(objects []Object, bucket string, user User) error {
 
 	tx.Commit()
 
+	if refreshPolicy {
+		CurrentBucketPolicies = LoadPolicies(nil)
+	}
 	return err
 }

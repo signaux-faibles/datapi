@@ -1,53 +1,57 @@
 <template>
   <div>
-    <b-navbar toggleable="lg" type="dark" variant="info">
-    <b-navbar-brand href="#">datAPI</b-navbar-brand>
-
+    <b-navbar toggleable="lg" type="dark" variant="primary">
+    <b-navbar-brand class="title" href="#">datapi</b-navbar-brand>
     <b-navbar-toggle target="nav_collapse" />
-
-     <!-- Right aligned nav items -->
       <b-navbar-nav class="ml-auto">
-        <b-form-input 
-          type="text" 
-          v-model="email"
-        />
-        <b-form-input
-          type="password"
-          v-model="password"
-        />
-        <b-nav-item-dropdown right>
-          <!-- Using button-content slot -->
-          <template slot="button-content"><em>User</em></template>
-          <b-dropdown-item href="#">Profile</b-dropdown-item>
-          <b-dropdown-item href="#">Signout</b-dropdown-item>
-        </b-nav-item-dropdown>
+        <div v-if="token==null">
+          <b-button v-b-modal.modal1 variant="light">Sign in</b-button>
+          <b-modal hide-footer id="modal1"  title="Login">
+            <b-form-input id="inputEmail" type="text" v-model="email" placeholder="Email Address"/>
+            <b-form-input id="inputPassword" type="password" v-model="password" placeholder="Password"/>
+            <b-button  class="btn btn-lg btn-primary btn-block"  v-on:click="login()">sign in</b-button>
+          </b-modal>
+        </div>
+        <div v-if="token!=null">
+          <b-button variant="light" v-on:click="logout()">Logout</b-button>
+        </div>
       </b-navbar-nav>
-  </b-navbar>
-    <div class="header">
- 
-      <b-button variant="success">Button</b-button>
-    <button v-on:click="login()">
-      login
-    </button>
-    <br/>
-      <span class="small">Authorization: Bearer {{ token?token.slice(0,15) + "....":"anonymous" }}</span>
-    <br/>
-      {{ readToken }}
-    </div>
+    </b-navbar>
+    <p/>
     <div>
-      bucket: <input type="text" v-model="bucket"/>
+      bucket <input type="text" v-model="bucket"/>
     </div>  
-    <div class="query inner">
-      <textarea v-model="queryBuffer"/><br/>
-      <button class="send" v-on:click="sendQuery()" :disabled="bucket==''">execute query</button>
+    <div class="container">
+      <div class="row">
+        <div class="col-6">
+
+          <div class="query inner">
+            <b-form-textarea rows="5" v-model="queryBuffer"/><br/>
+            <b-button v-on:click="sendQuery()" :disabled="bucket==''">execute query</b-button>
+          </div>
+          <div class="putBuffer inner">
+            <b-form-textarea rows="15" v-model="putBuffer"/><br/>
+            <b-button v-on:click="putQuery()" :disabled="bucket==''">send data</b-button>
+          </div>
+        </div>
+        <div class="col-6">
+          Server output
+          <div class="data inner">
+            <b-form-textarea width="100%" rows="25" readonly v-model="readResponseBuffer"/>
+          </div>
+        </div>
       </div>
-    <div class="data inner">
-      <textarea readonly v-model="readResponseBuffer"/>
     </div>
-    <div class="putBuffer inner">
-      <textarea v-model="putBuffer"/><br/>
-      <button class="send" v-on:click="putQuery()" :disabled="bucket==''">send data</button>
-    </div>
+
+    <br/>
+    <span class="small">{{ token?"signed in":"please sign in" }}</span>
+    <br/>
+    {{ readToken.email }}
+    <br/>
+    {{ readToken.scope }}
+    
+
+
   </div>
 </template>
 
@@ -66,7 +70,6 @@ export default {
   name: 'Main',
   data () {
     return {
-      test: 'test',
       email: null,
       password: null,
       token: null,
@@ -91,7 +94,7 @@ export default {
         var base64 = base64Url.replace('-', '+').replace('_', '/');
         return JSON.parse(window.atob(base64));
       } else {
-        return ""
+        return {}
       }
     },
     readResponseBuffer () {
@@ -112,6 +115,11 @@ export default {
         self.token = null 
         client.defaults.headers.common['Authorization'] = null
       })
+    },
+    logout () {
+      this.token = null 
+      client.defaults.headers.common['Authorization'] = null
+      this.responseBuffer = ""
     },
     sendQuery () {
       client.post("http://localhost:3000/data/get/" + this.bucket, this.queryBuffer).then(response => {
@@ -144,15 +152,18 @@ export default {
 .small {
   font-size: 15px;
 }
-
+.title {
+  font-family: "Good Times";
+}
 div.inner {
   padding: 10px;
 }
 button.send{
   width: 80%;
 }
-textarea {
-  height: 100px;
-  width: 80%;
+textarea  
+{  
+   font-family:"monospace";  
+   font-size: 10px;   
 }
 </style>

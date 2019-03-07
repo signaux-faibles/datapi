@@ -23,4 +23,8 @@ export default {
   text-align: center;
   color: #2c3e50; 
 }
+@font-face {
+ font-family: "Good Times";
+ src: url("./assets/gt.ttf") format("truetype");
+}
 </style> 
