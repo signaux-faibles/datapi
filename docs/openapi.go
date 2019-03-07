@@ -11,6 +11,9 @@ const doc = `
           },
           "password": {
             "type": "string"
+          },
+          "browserToken": {
+            "type": "string"
           }
         }
       },
@@ -27,6 +30,17 @@ const doc = `
           }
         }
       },
+      "LoginFail": {
+        "properties": {
+          "code": {
+            "type": "integer"
+          },
+          "message": {
+            "type": "string"
+          }
+        }
+      }
+    },
     "securitySchemes": {
       "BearerAuth": {
         "type": "http",
@@ -39,7 +53,7 @@ const doc = `
       "name": "contact support",
       "email": "contact@signaux-faibles.beta.gouv.fr"
     },
-    "description": "This API controls datapi solution.",
+    "description": "datapi is a REST database manager. More information on https://github.com/  ",
     "license": {
       "name": "Licence MIT",
       "url": "https://raw.githubusercontent.com/entrepreneur-interet-general/opensignauxfaibles/master/LICENSE"
@@ -101,7 +115,7 @@ const doc = `
     "/api/refreshToken": {
       "get": {
         "summary": "renouveler le jeton de session",
-        "description": "Fournit un nouveau jeton temporaire de session en échange d'un jeton encore valide.  \nCe service demande d'être authentifié mais ne nécessite aucun paramètre.  \nL'authentification est réalisée avec l'entête HTTP Authorization.  \nExemple:  \n` + "```Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…```" + `",
+        "description": "Fournit un nouveau jeton temporaire de session en échange d'un jeton encore valide.  \nCe service demande d'être authentifié mais ne nécessite aucun paramètre.  \nL'authentification est réalisée avec l'entête HTTP Authorization.  \nExemple:  \n ` + "```Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…```" + `",
         "responses": {
           "200": {
             "description": "Renouvellement autorisé",
