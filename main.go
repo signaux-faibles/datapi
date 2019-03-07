@@ -3,11 +3,15 @@ package main
 import (
 	"fmt"
 
+	_ "github.com/signaux-faibles/datapi/docs"
 	dalib "github.com/signaux-faibles/datapi/lib"
 
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+
+	ginSwagger "github.com/swaggo/gin-swagger"
+	"github.com/swaggo/gin-swagger/swaggerFiles"
 )
 
 func main() {
@@ -21,7 +25,9 @@ func main() {
 	router.Use(cors.New(config))
 
 	router.POST("/login", authMiddleware.LoginHandler)
-	router.GET("/policies", debug)
+
+	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/refresh", authMiddleware.MiddlewareFunc(), authMiddleware.RefreshHandler)
 	data := router.Group("data")
 	data.Use(authMiddleware.MiddlewareFunc())
 
