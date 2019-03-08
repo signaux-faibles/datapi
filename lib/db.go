@@ -67,7 +67,7 @@ func Query(bucket string, params QueryParams, userScope Tags) ([]Object, error) 
 		return nil, errors.New("empty bucket name is not allowed")
 	}
 
-	bucketReadScope := ApplyReadPolicies(CurrentBucketPolicies, bucket, params.Key)
+	bucketReadScope := ApplyReadPolicies(CurrentBucketPolicies.safeRead(), bucket, params.Key)
 	if params.Key == nil {
 		params.Key = make(Map)
 	}
@@ -130,7 +130,7 @@ func Insert(objects []Object, bucket string, user User) error {
 	}
 
 	for _, o := range objects {
-		scope := ApplyWritePolicies(CurrentBucketPolicies, bucket, o.Key)
+		scope := ApplyWritePolicies(CurrentBucketPolicies.safeRead(), bucket, o.Key)
 
 		if user.Scope.Contains(scope) {
 			o.Key["bucket"] = bucket
@@ -147,7 +147,10 @@ func Insert(objects []Object, bucket string, user User) error {
 	tx.Commit()
 
 	if refreshPolicy {
-		CurrentBucketPolicies = LoadPolicies(nil)
+		cbp, err := LoadPolicies(nil)
+		if err != nil {
+			CurrentBucketPolicies.safeUpdate(cbp)
+		}
 	}
 	return err
 }

@@ -100,7 +100,7 @@ const doc = `
                 },
                 "example": {
                   "code": 401,
-                  "message": "Please provide good credentials sir."
+                  "message": "Please provide good credentials."
                 }
               }
             }

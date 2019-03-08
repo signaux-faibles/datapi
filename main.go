@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	_ "github.com/signaux-faibles/datapi/docs"
 	dalib "github.com/signaux-faibles/datapi/lib"
 
@@ -36,12 +34,6 @@ func main() {
 
 	bind := viper.GetString("bind")
 	router.Run(bind)
-}
-
-func debug(c *gin.Context) {
-	dalib.CurrentBucketPolicies = dalib.LoadPolicies(nil)
-
-	fmt.Println(dalib.CurrentBucketPolicies)
 }
 
 func put(c *gin.Context) {

@@ -73,7 +73,7 @@ func (t Tags) Contains(t2 Tags) bool {
 	return true
 }
 
-// fromHstore writes Hstore values to Map
+// fromHstore converts hstore to Map
 func (m *Map) fromHstore(h hstore.Hstore) {
 	if *m == nil {
 		*m = make(map[string]string)
@@ -111,16 +111,22 @@ func (m Map) Hstore() hstore.Hstore {
 	return h
 }
 
-// ToScope dirty way to convert data from DB to Tags #TODO: clean that
-func ToScope(claim []interface{}) Tags {
-	t := make([]string, 0)
-	for _, s := range claim {
-		t = append(t, s.(string))
+// ToScope dirty (but secure) way to convert data from DB to Tags #TODO: clean that
+func ToScope(scope []interface{}) (Tags, error) {
+	var s Tags
+	j, err := json.Marshal(scope)
+	if err != nil {
+		return nil, err
 	}
-	return t
+	err = json.Unmarshal(j, &s)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
 }
 
-// ToMap dirty way to convert data from DB to Maps #TODO: clean that
+// ToMap dirty (but secure) way to convert data from DB to Maps #TODO: clean that
 func ToMap(value interface{}) (Map, error) {
 	var m Map
 	j, err := json.Marshal(value)
@@ -183,7 +189,10 @@ func init() {
 	}
 
 	initDB()
-	CurrentBucketPolicies = LoadPolicies(nil)
+	cbp, err := LoadPolicies(nil)
+	if err != nil {
+		CurrentBucketPolicies.safeUpdate(cbp)
+	}
 }
 
 // Value transform propertyMap type to a database driver compatible type

@@ -63,19 +63,7 @@ func authenticatorHandler(c *gin.Context) (interface{}, error) {
 	}
 
 	user, err := dalib.Login(credentials.Email, credentials.Password)
-	// if credentials.Email == "admin" && credentials.Password == "admin" {
-	// 	return dalib.User{
-	// 		Email: "admin@test.com",
-	// 		Scope: dalib.Tags{"admin"},
-	// 	}, nil
-	// }
 
-	// if credentials.Email == "user" && credentials.Password == "user" {
-	// 	return dalib.User{
-	// 		Email: "user@test.com",
-	// 		Scope: dalib.Tags{"user"},
-	// 	}, nil
-	// }
 	if err != nil {
 		return dalib.User{}, jwt.ErrFailedAuthentication
 	}

@@ -3,9 +3,6 @@ package dalib
 import (
 	"errors"
 	"fmt"
-	"regexp"
-	"sort"
-	"time"
 
 	"golang.org/x/crypto/bcrypt"
 )
@@ -36,11 +33,12 @@ func Login(email string, password string) (User, error) {
 
 	user := data[0]
 	hash := []byte(user.Value["password"].(string))
+	scope, err := ToScope(user.Value["scope"].([]interface{}))
 
 	if bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
 		return User{
 			Email: email,
-			Scope: ToScope(user.Value["scope"].([]interface{})),
+			Scope: scope,
 		}, nil
 	}
 	return User{}, errors.New("invalid email or password")
@@ -55,52 +53,6 @@ type BucketPolicy struct {
 	Key   Map
 	Read  Tags
 	Write Tags
-}
-
-// BucketPolicies is a slice of policies with apply method
-type BucketPolicies []BucketPolicy
-
-// CurrentBucketPolicies is a cache object
-var CurrentBucketPolicies BucketPolicies
-
-// LoadPolicies returns bucket policies at a given time
-func LoadPolicies(date *time.Time) BucketPolicies {
-	var params QueryParams
-	params.Key = Map{
-		"type": "policy",
-	}
-	params.Date = date
-
-	policies, err := Query("auth", params, Tags{"auth", "admin"})
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	var bucketPolicies BucketPolicies
-
-	for _, bp := range policies {
-		match := bp.Key["match"]
-		read := ToScope(bp.Value["read"].([]interface{}))
-		write := ToScope(bp.Value["write"].([]interface{}))
-		key, err := ToMap(bp.Value["key"])
-		if err != nil {
-			fmt.Println(err)
-		}
-
-		matchre := regexp.MustCompilePOSIX(match)
-
-		bucketPolicies = append(bucketPolicies, BucketPolicy{
-			Name:  bp.Key["name"],
-			Match: matchre.MatchString,
-			Read:  read,
-			Key:   key,
-			Write: write,
-		})
-
-		sort.Slice(bucketPolicies, func(i, j int) bool { return bucketPolicies[i].Name < bucketPolicies[j].Name })
-	}
-
-	return BucketPolicies(bucketPolicies)
 }
 
 func (m Map) contains(m2 Map) bool {
