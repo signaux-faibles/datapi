@@ -56,26 +56,47 @@ type QueryParams struct {
 }
 
 // Query get objets that fits the key and the scope
-func Query(bucket string, params QueryParams, userScope Tags) ([]Object, error) {
+// when tx is nil, a new transaction is started and commited.
+func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool, tx *sql.Tx) ([]Object, error) {
+	if tx == nil {
+		var err error
+		tx, err = db.Begin()
+		if err != nil {
+			return nil, err
+		}
+		defer tx.Commit()
+	}
 	var objects []Object
 
 	if _, ok := params.Key["bucket"]; ok {
-		return nil, errors.New("illegal bucket in key")
+		return nil, errors.New("'bucket' subkey is reserved by datapi")
 	}
 
 	if bucket == "" {
-		return nil, errors.New("empty bucket name is not allowed")
+		return nil, errors.New("illegal empty bucket name")
+	}
+	var read, promote Tags
+	if applyPolicies {
+		read, _, promote = ApplyPolicies(CurrentBucketPolicies.safeRead(), bucket, params.Key, userScope)
+	}
+	fmt.Println(applyPolicies)
+	fmt.Println(read, promote)
+	fmt.Println(userScope)
+
+	userScope = userScope.Union(promote)
+
+	if userScope == nil {
+		userScope = make([]string, 0)
 	}
 
-	bucketReadScope := ApplyReadPolicies(CurrentBucketPolicies.safeRead(), bucket, params.Key)
 	if params.Key == nil {
 		params.Key = make(Map)
 	}
 	params.Key["bucket"] = bucket
 
-	rows, err := db.Query(`
+	rows, err := tx.Query(`
 	with pairs as (
-		select b.key, v.key as vkey, last(v.value) as vvalue, max(add_date) as add_date
+		select b.key, v.key as vkey, last(v.value order by id) as vvalue, max(add_date) as add_date
 		from bucket b,
 		lateral jsonb_each(value) v
 		where b.key @> $1
@@ -86,7 +107,7 @@ func Query(bucket string, params QueryParams, userScope Tags) ([]Object, error) 
 	from pairs
 	where vvalue is not null
 	group by key
-	`, params.Key.Hstore(), pq.Array(userScope), params.Date, pq.Array(bucketReadScope))
+	`, params.Key.Hstore(), pq.Array(userScope), params.Date, pq.Array(read))
 	if err != nil {
 		return nil, err
 	}
@@ -97,18 +118,14 @@ func Query(bucket string, params QueryParams, userScope Tags) ([]Object, error) 
 		var hkey hstore.Hstore
 
 		scope := make([]sql.NullString, 0)
-
 		err = rows.Scan(&hkey, &o.Value, &o.AddDate)
-
 		if err != nil {
-			fmt.Println("wtf")
-			fmt.Println(err)
-			break
-		} else {
-			o.Scope.FromNullStringArray(scope)
-			o.Key.fromHstore(hkey)
-			objects = append(objects, o)
+			return nil, errors.New("critical: unreadable data from database")
 		}
+		o.Scope.FromNullStringArray(scope)
+		o.Key.fromHstore(hkey)
+		objects = append(objects, o)
+
 	}
 	return objects, err
 }
@@ -116,41 +133,60 @@ func Query(bucket string, params QueryParams, userScope Tags) ([]Object, error) 
 // ErrInvalidScope is returned when a query looks for an unauthorized scope
 var ErrInvalidScope = errors.New("invalid scope")
 
+// ErrInvalidPolicy is throwed when an object aiming to be a policy can't be build
+var ErrInvalidPolicy = errors.New("invalid policy object")
+
+// ErrInvalidUser is throwed when an object aiming to be an user doesn't conform
+var ErrInvalidUser = errors.New("invalid user object")
+
 // Insert manage to insert objects in the specified bucket
-func Insert(objects []Object, bucket string, user User) error {
+func Insert(objects []Object, bucket string, userScope Tags, author string) error {
 	tx, _ := db.Begin()
 	var refreshPolicy = false
 	policyKey := Map{
 		"type":   "policy",
-		"bucket": "auth",
+		"bucket": "system",
 	}
-	stmt, err := tx.Prepare(`insert into bucket (key, scope, value) values ($1, $2, $3)`)
+
+	stmt, err := tx.Prepare(`insert into bucket (key, scope, value, author) values ($1, $2, $3, $4)`)
 	if err != nil {
 		return err
 	}
 
 	for _, o := range objects {
-		scope := ApplyWritePolicies(CurrentBucketPolicies.safeRead(), bucket, o.Key)
-
-		if user.Scope.Contains(scope) {
+		_, write, promote := ApplyPolicies(CurrentBucketPolicies.safeRead(), bucket, o.Key, userScope)
+		fmt.Println(write, promote)
+		if userScope.Union(promote).Contains(write) {
 			o.Key["bucket"] = bucket
+
 			if o.Key.contains(policyKey) {
+				_, err := BuildPolicy(o)
+				if err != nil {
+					return ErrInvalidPolicy
+				}
 				refreshPolicy = true
 			}
-			_, err = stmt.Exec(o.Key.Hstore(), pq.Array(o.Scope), o.Value)
+			_, err = stmt.Exec(o.Key.Hstore(), pq.Array(o.Scope), o.Value, author)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
 		} else {
 			tx.Rollback()
 			return ErrInvalidScope
 		}
 	}
 
+	if refreshPolicy {
+		cbp, err := LoadPolicies(nil, tx)
+		if err != nil {
+			tx.Rollback()
+			return err
+		}
+		CurrentBucketPolicies.safeUpdate(cbp)
+	}
+
 	tx.Commit()
 
-	if refreshPolicy {
-		cbp, err := LoadPolicies(nil)
-		if err != nil {
-			CurrentBucketPolicies.safeUpdate(cbp)
-		}
-	}
-	return err
+	return nil
 }

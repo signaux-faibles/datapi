@@ -111,22 +111,7 @@ func (m Map) Hstore() hstore.Hstore {
 	return h
 }
 
-// ToScope dirty (but secure) way to convert data from DB to Tags #TODO: clean that
-func ToScope(scope []interface{}) (Tags, error) {
-	var s Tags
-	j, err := json.Marshal(scope)
-	if err != nil {
-		return nil, err
-	}
-	err = json.Unmarshal(j, &s)
-	if err != nil {
-		return nil, err
-	}
-
-	return s, nil
-}
-
-// ToMap dirty (but secure) way to convert data from DB to Maps #TODO: clean that
+// ToMap secure way to cast untrusted object to Map
 func ToMap(value interface{}) (Map, error) {
 	var m Map
 	j, err := json.Marshal(value)
@@ -189,7 +174,7 @@ func init() {
 	}
 
 	initDB()
-	cbp, err := LoadPolicies(nil)
+	cbp, err := LoadPolicies(nil, nil)
 	if err != nil {
 		CurrentBucketPolicies.safeUpdate(cbp)
 	}
@@ -201,6 +186,34 @@ func (p PropertyMap) Value() (driver.Value, error) {
 	return j, err
 }
 
-func createDB() {
+// ToScope secure way to cast untrusted object to Tags
+func ToScope(scope interface{}) (Tags, error) {
+	j, err := json.Marshal(scope)
+	if err != nil {
+		return nil, err
+	}
 
+	var s Tags
+	err = json.Unmarshal(j, &s)
+	if err != nil {
+		return nil, err
+	}
+
+	return s, nil
+}
+
+// Union of two Tags produces a new Tags containing all tags.
+func (t Tags) Union(t2 Tags) (newTags Tags) {
+	m := make(map[string]struct{})
+
+	for _, v := range t {
+		m[v] = struct{}{}
+	}
+	for _, v := range t2 {
+		m[v] = struct{}{}
+	}
+	for k := range m {
+		newTags = append(newTags, k)
+	}
+	return newTags
 }

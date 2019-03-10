@@ -42,14 +42,21 @@ func put(c *gin.Context) {
 	var objects []dalib.Object
 	err := c.Bind(&objects)
 	if err != nil {
-		c.JSON(400, "Bad request: "+err.Error())
+		c.JSON(400, "bad request: "+err.Error())
 		return
 	}
 
-	u, _ := c.Get("id")
-	user := u.(*dalib.User)
+	u, ok := c.Get("id")
+	if !ok {
+		c.JSON(400, "malformed token")
+	}
 
-	err = dalib.Insert(objects, bucket, *user)
+	user, ok := u.(*dalib.User)
+	if !ok {
+		c.JSON(400, "malformed token")
+	}
+
+	err = dalib.Insert(objects, bucket, user.Scope, user.Email)
 	if err == dalib.ErrInvalidScope {
 		c.JSON(403, err.Error())
 		return
@@ -65,7 +72,6 @@ func get(c *gin.Context) {
 	var params dalib.QueryParams
 
 	err := c.ShouldBind(&params)
-
 	if err != nil {
 		c.JSON(400, err.Error())
 	}
@@ -76,7 +82,7 @@ func get(c *gin.Context) {
 	user := u.(*dalib.User)
 	scope := user.Scope
 
-	data, err := dalib.Query(bucket, params, scope)
+	data, err := dalib.Query(bucket, params, scope, true, nil)
 
 	if err != nil {
 		c.JSON(500, err.Error())

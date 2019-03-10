@@ -39,14 +39,19 @@ func payloadHandler(data interface{}) jwt.MapClaims {
 
 func identityHandler(c *gin.Context) interface{} {
 	claims := jwt.ExtractClaims(c)
-	var scope []interface{}
-	if claims["scope"] != nil {
-		scope = claims["scope"].([]interface{})
+	email, ok := claims["email"].(string)
+	if !ok {
+		return nil
 	}
-	email := claims["email"].(string)
+
+	scope, err := dalib.ToScope(claims["scope"])
+	if err != nil {
+		return nil
+	}
+
 	user := dalib.User{
 		Email: email,
-		Scope: dalib.ToScope(scope),
+		Scope: scope,
 	}
 
 	return &user
