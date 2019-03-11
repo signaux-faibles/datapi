@@ -15,25 +15,27 @@ var policiesLock sync.Mutex
 // A policy sets a minimal scope for all objects that fits in the key.
 // This scope is automatically added to objects when they come in and out.
 type BucketPolicy struct {
-	Name    string
-	Match   func(s string) bool // apply the policy if Match(bucket's name) == true
-	Scope   Tags                // user needs this scope to apply policy
-	Key     Map                 // apply this policy for objects with this subkey
-	Read    Tags                // user needs this scope to read objects
-	Write   Tags                // user needs this scope to write objects
-	Promote Tags                // user inherits this scope from policy
+	Name    string              `json:"name"`
+	Match   func(s string) bool `json:"-"`                 // apply the policy if Match(bucket's name) == true
+	Key     Map                 `json:"key,omitempty"`     // policy apply only to subkey
+	Scope   Tags                `json:"scope,omitempty"`   // user needs this scope to apply policy
+	Read    Tags                `json:"read,omitempty"`    // user needs this scope to read objects
+	Write   Tags                `json:"write,omitempty"`   // user needs this scope to write objects
+	Promote Tags                `json:"promote,omitempty"` // user inherits this scope from policy
 }
 
 // BucketPolicies is a slice of policies with apply method
 type BucketPolicies []BucketPolicy
 
-func (p BucketPolicies) safeRead() BucketPolicies {
+// SafeRead prevents reading policies when they're not ready
+func (p BucketPolicies) SafeRead() BucketPolicies {
 	policiesLock.Lock()
 	defer policiesLock.Unlock()
 	return p
 }
 
-func (p *BucketPolicies) safeUpdate(np BucketPolicies) {
+// SafeUpdate prevents writing policies when they're read
+func (p *BucketPolicies) SafeUpdate(np BucketPolicies) {
 	policiesLock.Lock()
 	defer policiesLock.Unlock()
 	*p = np
@@ -45,10 +47,20 @@ var CurrentBucketPolicies BucketPolicies
 // BuildPolicy translates Object to BucketPolicy
 func BuildPolicy(o Object) (BucketPolicy, error) {
 	name, ok := o.Key["name"]
-	if !ok {
+	if !ok || name == "" {
 		return BucketPolicy{}, errors.New("name subkey is mandatory for policies")
 	}
+	if len(o.Scope) != 0 {
+		return BucketPolicy{}, errors.New("rejected policy, scope must be empty")
+	}
+
 	match := o.Value["match"].(string)
+	matchre := regexp.MustCompile(match)
+
+	key, err := ToMap(o.Value["key"])
+	if err != nil {
+		return BucketPolicy{}, err
+	}
 	read, err := ToScope(o.Value["read"])
 	if err != nil {
 		return BucketPolicy{}, err
@@ -57,19 +69,24 @@ func BuildPolicy(o Object) (BucketPolicy, error) {
 	if err != nil {
 		return BucketPolicy{}, err
 	}
-	key, err := ToMap(o.Value["key"])
+	promote, err := ToScope(o.Value["promote"])
 	if err != nil {
 		return BucketPolicy{}, err
 	}
 
-	matchre := regexp.MustCompile(match)
+	scope, err := ToScope(o.Value["scope"])
+	if err != nil {
+		return BucketPolicy{}, ErrInvalidPolicy
+	}
 
 	bp := BucketPolicy{
-		Name:  name,
-		Match: matchre.MatchString,
-		Read:  read,
-		Key:   key,
-		Write: write,
+		Name:    name,
+		Match:   matchre.MatchString,
+		Key:     key,
+		Read:    read,
+		Write:   write,
+		Promote: promote,
+		Scope:   scope,
 	}
 
 	return bp, nil
@@ -108,36 +125,11 @@ func LoadPolicies(date *time.Time, tx *sql.Tx) (BucketPolicies, error) {
 // - read : scope to add to objects you want to read
 // - write : scope a user must have to write this object
 // - promote : scope a user inherits for this bucket/key
-func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (read Tags, write Tags, promote Tags) {
-	readtags := make(map[string]struct{})
-	promotetags := make(map[string]struct{})
-	writetags := make(map[string]struct{})
-
+func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (bp BucketPolicies) {
 	for _, p := range policies {
-		if scope.Contains(p.Scope) {
-			if p.Match(bucket) && key.contains(p.Key) {
-				for _, tag := range p.Read {
-					readtags[tag] = struct{}{}
-				}
-				for _, tag := range p.Write {
-					writetags[tag] = struct{}{}
-				}
-				for _, tag := range p.Promote {
-					promotetags[tag] = struct{}{}
-				}
-			}
+		if (p.Key.Contains(key) || key.Contains(p.Key)) && scope.Contains(p.Scope) {
+			bp = append(bp, p)
 		}
 	}
-
-	for tag := range readtags {
-		read = append(read, tag)
-	}
-	for tag := range writetags {
-		write = append(read, tag)
-	}
-	for tag := range promotetags {
-		promote = append(read, tag)
-	}
-
-	return read, write, promote
+	return bp
 }

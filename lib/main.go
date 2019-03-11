@@ -167,7 +167,6 @@ func init() {
 	viper.AddConfigPath(".")
 
 	err := viper.ReadInConfig()
-	fmt.Println(viper.GetString("postgres"))
 
 	if err != nil {
 		panic(err)
@@ -176,8 +175,27 @@ func init() {
 	initDB()
 	cbp, err := LoadPolicies(nil, nil)
 	if err != nil {
-		CurrentBucketPolicies.safeUpdate(cbp)
+		panic(err)
 	}
+	CurrentBucketPolicies.SafeUpdate(cbp)
+}
+
+func Debug(bp BucketPolicies) (result []interface{}) {
+	p, err := json.Marshal(bp)
+	fmt.Println(err)
+	r, err := db.Query(`select * from jsonb_array_elements($1::jsonb) b
+	lateral jsonb_each(b)
+	`, p)
+	if err != nil {
+		fmt.Println(err.Error())
+		return nil
+	}
+	for r.Next() {
+		var b interface{}
+		r.Scan(&b)
+		result = append(result, &b)
+	}
+	return result
 }
 
 // Value transform propertyMap type to a database driver compatible type

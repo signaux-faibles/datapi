@@ -23,7 +23,7 @@ func main() {
 	router.Use(cors.New(config))
 
 	router.POST("/login", authMiddleware.LoginHandler)
-
+	router.GET("/debug", debug)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/refresh", authMiddleware.MiddlewareFunc(), authMiddleware.RefreshHandler)
 	data := router.Group("data")
@@ -36,6 +36,10 @@ func main() {
 	router.Run(bind)
 }
 
+func debug(c *gin.Context) {
+
+	c.JSON(200, dalib.Debug(dalib.CurrentBucketPolicies.SafeRead()))
+}
 func put(c *gin.Context) {
 	bucket := c.Params.ByName("bucket")
 

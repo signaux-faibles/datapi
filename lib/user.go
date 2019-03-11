@@ -42,7 +42,8 @@ func Login(email string, password string) (User, error) {
 	return User{}, errors.New("invalid email or password")
 }
 
-func (m Map) contains(m2 Map) bool {
+// Contains checks if all elements of another Map are present in the Map
+func (m Map) Contains(m2 Map) bool {
 	for k, v := range m2 {
 		if m[k] != v {
 			return false
