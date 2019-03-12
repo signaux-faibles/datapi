@@ -1,9 +1,9 @@
 <template>
   <div>
     <b-navbar toggleable="lg" type="dark" variant="primary">
-    <b-navbar-brand class="title" href="#">datapi</b-navbar-brand>
+    <b-navbar-brand class="title" href="#">datapi-admin</b-navbar-brand>
     <b-navbar-toggle target="nav_collapse" />
-      <b-navbar-nav class="ml-auto">
+      <b-navbar-nav class="ml-auto" >
         <div v-if="token==null">
           <b-button v-b-modal.modal1 variant="light">Sign in</b-button>
           <b-modal hide-footer id="modal1"  title="Login">
@@ -12,8 +12,10 @@
             <b-button  class="btn btn-lg btn-primary btn-block"  v-on:click="login()">sign in</b-button>
           </b-modal>
         </div>
-        <div v-if="token!=null">
-          <b-button variant="light" v-on:click="logout()">Logout</b-button>
+        <User v-if="token!=null"/>
+        <Policy v-if="token!=null"/>
+        <div class="ml-auto" v-if="token!=null">
+           <b-button variant="light" v-on:click="logout()">Logout</b-button>
         </div>
       </b-navbar-nav>
     </b-navbar>
@@ -56,7 +58,9 @@
 </template>
 
 <script>
-import axios from 'axios';
+import axios from 'axios'
+import Policy from '@/components/Policy'
+import User from '@/components/User'
 
 var client = axios.create(
   {
@@ -68,6 +72,7 @@ var client = axios.create(
 
 export default {
   name: 'Main',
+  components: {Policy, User},
   data () {
     return {
       email: null,

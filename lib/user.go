@@ -32,6 +32,7 @@ func Login(email string, password string) (User, error) {
 	user := data[0]
 	hash := []byte(user.Value["password"].(string))
 	scope, err := ToScope(user.Value["scope"])
+	scope = append(scope, user.Key["email"])
 
 	if bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
 		return User{

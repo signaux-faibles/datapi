@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -130,7 +131,7 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 
 	var bp BucketPolicies
 	if applyPolicies {
-		bp = RelevantPolicies(CurrentBucketPolicies.SafeRead(), bucket, params.Key, userScope)
+		bp = RelevantPolicies(CurrentBucketPolicies.SafeRead(), bucket, userScope)
 	}
 
 	if bp == nil {
@@ -235,7 +236,8 @@ func Insert(objects []Object, bucket string, userScope Tags, author string) erro
 			return ErrInvalidObject
 		}
 
-		_, write, promote := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope)
+		read, write, promote := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope)
+		fmt.Println(userScope, read, promote, write)
 		if userScope.Union(promote).Contains(write) {
 			o.Key["bucket"] = bucket
 
