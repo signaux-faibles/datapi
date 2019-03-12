@@ -5,7 +5,6 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"time"
 
 	_ "github.com/lib/pq" // postgresql driver
@@ -180,24 +179,6 @@ func init() {
 	CurrentBucketPolicies.SafeUpdate(cbp)
 }
 
-func Debug(bp BucketPolicies) (result []interface{}) {
-	p, err := json.Marshal(bp)
-	fmt.Println(err)
-	r, err := db.Query(`select * from jsonb_array_elements($1::jsonb) b
-	lateral jsonb_each(b)
-	`, p)
-	if err != nil {
-		fmt.Println(err.Error())
-		return nil
-	}
-	for r.Next() {
-		var b interface{}
-		r.Scan(&b)
-		result = append(result, &b)
-	}
-	return result
-}
-
 // Value transform propertyMap type to a database driver compatible type
 func (p PropertyMap) Value() (driver.Value, error) {
 	j, err := json.Marshal(p)
@@ -235,3 +216,28 @@ func (t Tags) Union(t2 Tags) (newTags Tags) {
 	}
 	return newTags
 }
+
+// DAError carries error message and http code
+type DAError struct {
+	Message string
+	Code    int
+}
+
+func (e DAError) Error() string {
+	return e.Message
+}
+
+// ErrInvalidScope is returned when a query looks for an unauthorized scope
+var ErrInvalidScope = DAError{"invalid scope", 403}
+
+// ErrInvalidPolicy is throwed when an object aiming to be a policy can't be build
+var ErrInvalidPolicy = DAError{"invalid policy object", 400}
+
+// ErrInvalidBucket is throwed when the specified bucket is illegal
+var ErrInvalidBucket = DAError{"invalid bucket name", 400}
+
+// ErrInvalidUser is throwed when an object aiming to be an user doesn't conform
+var ErrInvalidUser = DAError{"invalid user object", 400}
+
+// ErrInvalidObject is throwed when an object can't be processed by main insert process or trigger
+var ErrInvalidObject = DAError{"invalid data object", 400}

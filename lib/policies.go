@@ -120,16 +120,48 @@ func LoadPolicies(date *time.Time, tx *sql.Tx) (BucketPolicies, error) {
 	return bucketPolicies, nil
 }
 
-// ApplyPolicies resolves Tags for a given bucket and key.
-// 3 Tags are returned:
-// - read : scope to add to objects you want to read
-// - write : scope a user must have to write this object
-// - promote : scope a user inherits for this bucket/key
-func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (bp BucketPolicies) {
+// RelevantPolicies filters BucketPolicies with bucket and scope
+func RelevantPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (bp BucketPolicies) {
 	for _, p := range policies {
-		if (p.Key.Contains(key) || key.Contains(p.Key)) && scope.Contains(p.Scope) {
+		if scope.Contains(p.Scope) && p.Match(bucket) {
 			bp = append(bp, p)
 		}
 	}
 	return bp
+}
+
+// ApplyPolicies computes tags that must be applied for a given object, a bucket and a user scope
+// 3 Tags are returned:
+// - read : scope to add to objects you want to read
+// - write : scope a user must have to write this object
+// - promote : scope a user inherits for this bucket/key
+func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (read Tags, write Tags, promote Tags) {
+	relevantPolicies := RelevantPolicies(policies, bucket, key, scope)
+	mread := make(map[string]struct{})
+	mwrite := make(map[string]struct{})
+	mpromote := make(map[string]struct{})
+
+	for _, policy := range relevantPolicies {
+		for _, tag := range policy.Read {
+			mread[tag] = struct{}{}
+		}
+		for _, tag := range policy.Write {
+			mwrite[tag] = struct{}{}
+		}
+		for _, tag := range policy.Promote {
+			mpromote[tag] = struct{}{}
+		}
+	}
+
+	for tag := range mread {
+		read = append(read, tag)
+	}
+	for tag := range mwrite {
+		write = append(write, tag)
+	}
+	for tag := range mpromote {
+		promote = append(promote, tag)
+	}
+
+	return read, write, promote
 }

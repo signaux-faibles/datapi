@@ -23,7 +23,6 @@ func main() {
 	router.Use(cors.New(config))
 
 	router.POST("/login", authMiddleware.LoginHandler)
-	router.GET("/debug", debug)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/refresh", authMiddleware.MiddlewareFunc(), authMiddleware.RefreshHandler)
 	data := router.Group("data")
@@ -36,10 +35,6 @@ func main() {
 	router.Run(bind)
 }
 
-func debug(c *gin.Context) {
-
-	c.JSON(200, dalib.Debug(dalib.CurrentBucketPolicies.SafeRead()))
-}
 func put(c *gin.Context) {
 	bucket := c.Params.ByName("bucket")
 
@@ -52,22 +47,24 @@ func put(c *gin.Context) {
 
 	u, ok := c.Get("id")
 	if !ok {
-		c.JSON(400, "malformed token")
+		c.JSON(401, "malformed token")
 	}
 
 	user, ok := u.(*dalib.User)
 	if !ok {
-		c.JSON(400, "malformed token")
+		c.JSON(401, "malformed token")
 	}
 
 	err = dalib.Insert(objects, bucket, user.Scope, user.Email)
-	if err == dalib.ErrInvalidScope {
-		c.JSON(403, err.Error())
-		return
-	} else if err != nil {
+	if err != nil {
+		if daerror, ok := err.(dalib.DAError); ok {
+			c.JSON(daerror.Code, daerror.Message)
+			return
+		}
 		c.JSON(500, "Server error: "+err.Error())
 		return
 	}
+
 	c.JSON(200, "ok")
 
 }
@@ -89,6 +86,10 @@ func get(c *gin.Context) {
 	data, err := dalib.Query(bucket, params, scope, true, nil)
 
 	if err != nil {
+		if daerror, ok := err.(dalib.DAError); ok {
+			c.JSON(daerror.Code, daerror.Message)
+			return
+		}
 		c.JSON(500, err.Error())
 		return
 	}

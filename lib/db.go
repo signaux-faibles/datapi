@@ -30,9 +30,49 @@ func initDB() {
 		log.Fatal("pgcrypto installation: " + err.Error())
 	}
 
+	_, err = db.Query(`	CREATE OR REPLACE FUNCTION public.last_agg(
+    anyelement,
+    anyelement)
+  RETURNS anyelement AS
+	$BODY$
+    SELECT $2;
+	$BODY$
+  LANGUAGE sql IMMUTABLE STRICT
+	COST 100;`)
+	if err != nil {
+		log.Fatal("last_agg creation: " + err.Error())
+	}
+
+	_, err = db.Query(`DROP AGGREGATE IF EXISTS last(anyelement)`)
+	if err != nil {
+		log.Fatal("last_agg creation: " + err.Error())
+	}
+	_, err = db.Query(`CREATE AGGREGATE last(anyelement) (
+		SFUNC=last_agg,
+		STYPE=anyelement
+	)`)
+	if err != nil {
+		log.Fatal("last_agg creation: " + err.Error())
+	}
+
+	_, err = db.Query(`DROP AGGREGATE IF EXISTS array_cat_agg(anyarray)`)
+	if err != nil {
+		log.Fatal("array_cat_agg creation: " + err.Error())
+	}
+	_, err = db.Query(`CREATE AGGREGATE array_cat_agg(anyarray) (
+		SFUNC=array_cat,
+		STYPE=anyarray
+	)`)
+	if err != nil {
+		log.Fatal("array_cat_agg creation: " + err.Error())
+	}
+
 	_, err = db.Query(`create sequence if not exists bucket_id`)
 	if err != nil {
 		log.Fatal("sequence creation: " + err.Error())
+	}
+	if err != nil {
+		log.Fatal("bucket sequence creation: " + err.Error())
 	}
 
 	_, err = db.Query(`create table if not exists bucket ( 
@@ -45,6 +85,22 @@ func initDB() {
 	if err != nil {
 		log.Fatal("schema configuration: " + err.Error())
 	}
+
+	_, err = db.Query(`create sequence if not exists logs_id`)
+	if err != nil {
+		log.Fatal("logs_id sequence creation: " + err.Error())
+	}
+
+	_, err = db.Query(`create table if not exists logs (
+		id bigint primary key default nextval('logs_id'),
+		reader text,
+		read_date timestamp,
+		query jsonb
+	)`)
+	if err != nil {
+		log.Fatal("logs table creation: " + err.Error())
+	}
+
 }
 
 // QueryParams contains informations needed to perform a read query
@@ -68,19 +124,16 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 	}
 	var objects []Object
 
-	if _, ok := params.Key["bucket"]; ok {
-		return nil, errors.New("'bucket' subkey is not allowed")
-	}
-
-	if bucket == "" {
-		return nil, errors.New("illegal empty bucket name")
+	if _, ok := params.Key["bucket"]; ok || bucket == "" {
+		return nil, ErrInvalidBucket
 	}
 
 	var bp BucketPolicies
-
 	if applyPolicies {
-		bp = ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, params.Key, userScope)
-	} else {
+		bp = RelevantPolicies(CurrentBucketPolicies.SafeRead(), bucket, params.Key, userScope)
+	}
+
+	if bp == nil {
 		bp = make(BucketPolicies, 0)
 	}
 
@@ -158,19 +211,10 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		o.Scope.FromNullStringArray(scope)
 		o.Key.fromHstore(hkey)
 		objects = append(objects, o)
-
 	}
+
 	return objects, err
 }
-
-// ErrInvalidScope is returned when a query looks for an unauthorized scope
-var ErrInvalidScope = errors.New("invalid scope")
-
-// ErrInvalidPolicy is throwed when an object aiming to be a policy can't be build
-var ErrInvalidPolicy = errors.New("invalid policy object")
-
-// ErrInvalidUser is throwed when an object aiming to be an user doesn't conform
-var ErrInvalidUser = errors.New("invalid user object")
 
 // Insert manage to insert objects in the specified bucket
 func Insert(objects []Object, bucket string, userScope Tags, author string) error {
@@ -187,36 +231,40 @@ func Insert(objects []Object, bucket string, userScope Tags, author string) erro
 	}
 
 	for _, o := range objects {
-		// _, write, promote := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope)
-		// if userScope.Union(promote).Contains(write) {
-		o.Key["bucket"] = bucket
-
-		if o.Key.Contains(policyKey) {
-			_, err := BuildPolicy(o)
-			if err != nil {
-				return ErrInvalidPolicy
-			}
-			refreshPolicy = true
+		if o.Value == nil {
+			return ErrInvalidObject
 		}
 
-		for _, t := range triggers {
-			if o.Key.Contains(t.Key) {
-				o, err = t.Function(o)
+		_, write, promote := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope)
+		if userScope.Union(promote).Contains(write) {
+			o.Key["bucket"] = bucket
+
+			if o.Key.Contains(policyKey) {
+				_, err := BuildPolicy(o)
 				if err != nil {
-					return err
+					return ErrInvalidPolicy
+				}
+				refreshPolicy = true
+			}
+
+			for _, t := range triggers {
+				if o.Key.Contains(t.Key) {
+					o, err = t.Function(o)
+					if err != nil {
+						return err
+					}
 				}
 			}
-		}
 
-		_, err = stmt.Exec(o.Key.Hstore(), pq.Array(o.Scope), o.Value, author)
-		if err != nil {
+			_, err = stmt.Exec(o.Key.Hstore(), pq.Array(o.Scope), o.Value, author)
+			if err != nil {
+				tx.Rollback()
+				return err
+			}
+		} else {
 			tx.Rollback()
-			return err
+			return ErrInvalidScope
 		}
-		//} // else {
-		// tx.Rollback()
-		// return ErrInvalidScope
-		//		}
 	}
 
 	if refreshPolicy {
