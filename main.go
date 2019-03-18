@@ -1,8 +1,6 @@
 package main
 
 import (
-	"fmt"
-
 	_ "github.com/signaux-faibles/datapi/docs"
 	dalib "github.com/signaux-faibles/datapi/lib"
 

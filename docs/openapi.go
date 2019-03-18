@@ -64,7 +64,7 @@ const doc = `
   "paths": {
     "/login": {
       "post": {
-        "description": "L'authentification se base sur la fourniture de 3 champs\n- email\n- mot de passe \n- jeton du navigateur\n\nLe service retourne un jeton temporaire valide pour une durée déterminée.  \nCette validité peut être prolongée avec le service /api/refreshToken  \n\nCe token doit être utilisé dans l'entête ` + "`Authorization`" + `",
+        "description": "L'authentification se base sur la fourniture de 3 champs\n- email\n- mot de passe \n- jeton du navigateur\n\nLe service retourne un jeton temporaire valide pour une durée déterminée.  \nCette validité peut être prolongée avec le service /refresh \n\nCe token doit être utilisé dans l'entête ` + "`Authorization`" + `",
         "requestBody": {
           "description": "Les informations d'identification",
           "content": {
@@ -112,7 +112,7 @@ const doc = `
         ]
       }
     },
-    "/api/refreshToken": {
+    "/refresh": {
       "get": {
         "summary": "renouveler le jeton de session",
         "description": "Fournit un nouveau jeton temporaire de session en échange d'un jeton encore valide.  \nCe service demande d'être authentifié mais ne nécessite aucun paramètre.  \nL'authentification est réalisée avec l'entête HTTP Authorization.  \nExemple:  \n ` + "```Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9…```" + `",

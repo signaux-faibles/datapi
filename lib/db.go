@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -236,8 +235,12 @@ func Insert(objects []Object, bucket string, userScope Tags, author string) erro
 			return ErrInvalidObject
 		}
 
-		read, write, promote := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope)
-		fmt.Println(userScope, read, promote, write)
+		_, write, promote, writable := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope)
+		for k := range o.Value {
+			if writable != nil && !writable.Contains(Tags{k}) {
+				return ErrForbiddenValue
+			}
+		}
 		if userScope.Union(promote).Contains(write) {
 			o.Key["bucket"] = bucket
 

@@ -10,6 +10,7 @@ import (
 type User struct {
 	Email string
 	Scope Tags
+	Value map[string]interface{}
 }
 
 // Login tests credentials and returns a User object
@@ -33,11 +34,15 @@ func Login(email string, password string) (User, error) {
 	hash := []byte(user.Value["password"].(string))
 	scope, err := ToScope(user.Value["scope"])
 	scope = append(scope, user.Key["email"])
+	value := user.Value
+	delete(value, "scope")
+	delete(value, "password")
 
 	if bcrypt.CompareHashAndPassword(hash, []byte(password)) == nil {
 		return User{
 			Email: email,
 			Scope: scope,
+			Value: value,
 		}, nil
 	}
 	return User{}, errors.New("invalid email or password")

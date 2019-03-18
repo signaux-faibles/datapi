@@ -15,13 +15,14 @@ var policiesLock sync.Mutex
 // A policy sets a minimal scope for all objects that fits in the key.
 // This scope is automatically added to objects when they come in and out.
 type BucketPolicy struct {
-	Name    string              `json:"name"`
-	Match   func(s string) bool `json:"-"`                 // apply the policy if Match(bucket's name) == true
-	Key     Map                 `json:"key,omitempty"`     // policy apply only to subkey
-	Scope   Tags                `json:"scope,omitempty"`   // user needs this scope to apply policy
-	Read    Tags                `json:"read,omitempty"`    // user needs this scope to read objects
-	Write   Tags                `json:"write,omitempty"`   // user needs this scope to write objects
-	Promote Tags                `json:"promote,omitempty"` // user inherits this scope from policy
+	Name     string              `json:"name"`
+	Match    func(s string) bool `json:"-"`                  // apply the policy if Match(bucket's name) == true
+	Key      Map                 `json:"key,omitempty"`      // policy apply only to subkey
+	Scope    Tags                `json:"scope,omitempty"`    // user needs this scope to apply policy
+	Read     Tags                `json:"read,omitempty"`     // user needs this scope to read objects
+	Write    Tags                `json:"write,omitempty"`    // user needs this scope to write objects
+	Promote  Tags                `json:"promote,omitempty"`  // user inherits this scope from policy
+	Writable Tags                `json:"writable,omitempty"` // user can write only these keys in Object.Value
 }
 
 // BucketPolicies is a slice of policies with apply method
@@ -73,20 +74,24 @@ func BuildPolicy(o Object) (BucketPolicy, error) {
 	if err != nil {
 		return BucketPolicy{}, err
 	}
-
+	writable, err := ToScope(o.Value["writable"])
+	if err != nil {
+		return BucketPolicy{}, err
+	}
 	scope, err := ToScope(o.Value["scope"])
 	if err != nil {
 		return BucketPolicy{}, ErrInvalidPolicy
 	}
 
 	bp := BucketPolicy{
-		Name:    name,
-		Match:   matchre.MatchString,
-		Key:     key,
-		Read:    read,
-		Write:   write,
-		Promote: promote,
-		Scope:   scope,
+		Name:     name,
+		Match:    matchre.MatchString,
+		Key:      key,
+		Read:     read,
+		Write:    write,
+		Writable: writable,
+		Promote:  promote,
+		Scope:    scope,
 	}
 
 	return bp, nil
@@ -135,11 +140,12 @@ func RelevantPolicies(policies BucketPolicies, bucket string, scope Tags) (bp Bu
 // - read : scope to add to objects you want to read
 // - write : scope a user must have to write this object
 // - promote : scope a user inherits for this bucket/key
-func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (read Tags, write Tags, promote Tags) {
+func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (read Tags, write Tags, promote Tags, writable Tags) {
 	relevantPolicies := RelevantPolicies(policies, bucket, scope)
 	mread := make(map[string]struct{})
 	mwrite := make(map[string]struct{})
 	mpromote := make(map[string]struct{})
+	mwritable := make(map[string]struct{})
 
 	for _, policy := range relevantPolicies {
 		if key.Contains(policy.Key) {
@@ -151,6 +157,9 @@ func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) 
 			}
 			for _, tag := range policy.Promote {
 				mpromote[tag] = struct{}{}
+			}
+			for _, tag := range policy.Writable {
+				mwritable[tag] = struct{}{}
 			}
 		}
 	}
@@ -164,6 +173,9 @@ func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) 
 	for tag := range mpromote {
 		promote = append(promote, tag)
 	}
+	for tag := range mwritable {
+		writable = append(writable, tag)
+	}
 
-	return read, write, promote
+	return read, write, promote, writable
 }

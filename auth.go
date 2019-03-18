@@ -32,6 +32,7 @@ func payloadHandler(data interface{}) jwt.MapClaims {
 		return jwt.MapClaims{
 			"email": v.Email,
 			"scope": v.Scope,
+			"value": v.Value,
 		}
 	}
 	return jwt.MapClaims{}

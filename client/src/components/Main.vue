@@ -33,7 +33,7 @@
           </div>
           <div class="putBuffer inner">
             <b-form-textarea rows="15" v-model="putBuffer"/><br/>
-            <b-button v-on:click="putQuery()" :disabled="bucket==''">send data</b-button>
+            <b-button v-on:click="putQuery()" :disabled="bucket==''">send objects</b-button>
           </div>
         </div>
         <div class="col-6">

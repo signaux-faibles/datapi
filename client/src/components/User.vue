@@ -6,7 +6,7 @@
     <b-modal hide-footer id="user" title="Build an user object">
       <b-form-input id="inputEmail" type="text" v-model="email" placeholder="Email Address"/>
       <b-form-input id="inputPassword" type="password" v-model="password" placeholder="Password"/>
-      <b-form-input id="scope" type="text" v-model="scope" placeholder="scopes separated by comas"/>
+      <b-form-input id="scope" type="text" v-model="scope" placeholder="scope (coma separated tags)"/>
       <b-form-textarea id="object" rows=11 v-model="display"/>
     </b-modal>
   </div>
@@ -25,16 +25,16 @@ export default {
   },
   computed: {
     display () {
-      var user = [{
+      var user = {
         "key": {
           "type": "credentials",
           "email": this.email
         },
         "value": {
           "password": this.password,
-          "scope": (this.scope.trim() == "")?[]:this.scope.split(',').map(s => s.trim())
+          "scope": (this.scope.trim() == "")?undefined:this.scope.split(',').map(s => s.trim())
         }
-      }]
+      }
       return JSON.stringify(user, null, 5)
     }
   },

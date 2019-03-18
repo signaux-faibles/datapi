@@ -13,6 +13,11 @@ type Trigger struct {
 }
 
 func cipherPassword(o Object) (Object, error) {
+	email := o.Key["email"]
+	if len(email) > 254 || !rxEmail.MatchString(email) {
+		return Object{}, ErrInvalidEmail
+	}
+
 	password, ok := o.Value["password"].(string)
 	if !ok {
 		return Object{}, errors.New("couldn't apply trigger, object lost")

@@ -5,6 +5,7 @@ import (
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"regexp"
 	"time"
 
 	_ "github.com/lib/pq" // postgresql driver
@@ -230,6 +231,9 @@ func (e DAError) Error() string {
 // ErrInvalidScope is returned when a query looks for an unauthorized scope
 var ErrInvalidScope = DAError{"invalid scope", 403}
 
+// ErrForbiddenValue is throwed when an object contains keys an user is'nt allowed to put
+var ErrForbiddenValue = DAError{"forbidden value", 403}
+
 // ErrInvalidPolicy is throwed when an object aiming to be a policy can't be build
 var ErrInvalidPolicy = DAError{"invalid policy object", 400}
 
@@ -241,3 +245,8 @@ var ErrInvalidUser = DAError{"invalid user object", 400}
 
 // ErrInvalidObject is throwed when an object can't be processed by main insert process or trigger
 var ErrInvalidObject = DAError{"invalid data object", 400}
+
+// ErrInvalidEmail is throwed when a user object is invalid
+var ErrInvalidEmail = DAError{"invalid email adress", 400}
+
+var rxEmail = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+\\/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
