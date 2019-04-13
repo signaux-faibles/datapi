@@ -161,7 +161,7 @@ func (p *PropertyMap) Scan(src interface{}) error {
 
 var db *sql.DB
 
-func init() {
+func Warmup() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(".")
