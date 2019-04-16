@@ -66,6 +66,7 @@ func put(c *gin.Context) {
 
 	var objects []dalib.Object
 	err := c.Bind(&objects)
+
 	if err != nil {
 		c.JSON(400, "bad request: "+err.Error())
 		return

@@ -3,6 +3,7 @@ package daclient
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -36,43 +37,38 @@ type QueryParams struct {
 	Date   *int              `json:"date"`
 }
 
-// PropertyMap are datas
-type PropertyMap map[string]interface{}
-
 // Object is a proxy type to dalib.Object to avoid loading dalib when using client
 type Object struct {
-	ID          int               `json:"id,omitempty"`
-	Key         map[string]string `json:"key"`
-	Scope       []string          `json:"scope,omitempty"`
-	AddDate     *time.Time        `json:"addDate,omitempty"`
-	ReleaseDate *time.Time        `json:"releaseDate,omitempty"`
-	Value       PropertyMap       `json:"value"`
+	ID          int                    `json:"id,omitempty"`
+	Key         map[string]string      `json:"key"`
+	Scope       []string               `json:"scope"`
+	AddDate     *time.Time             `json:"addDate,omitempty"`
+	ReleaseDate *time.Time             `json:"releaseDate,omitempty"`
+	Value       map[string]interface{} `json:"value"`
 }
 
 // Put sends objects to Datapi Server
 func (ds *DatapiServer) Put(bucket string, objects []Object) error {
-	return nil
-}
+	postData, err := json.Marshal(objects)
 
-// Get retrieves objects from Datapi Server according to Query
-func (ds *DatapiServer) Get(bucket string, query QueryParams) ([]dalib.Object, error) {
-	queryBody, err := json.Marshal(query)
-	client := &http.Client{
-		Timeout: 10 * time.Second,
-	}
+	buf := bytes.NewBuffer(postData)
 
-	req, err := http.NewRequest("POST", ds.URL+"data/get/"+bucket, bytes.NewBuffer(queryBody))
+	req, err := http.NewRequest("POST", ds.URL+"data/put/"+bucket, buf)
 	req.Header.Add("Authorization", "Bearer "+ds.token)
-	data, err := client.Do(req)
+	req.Header.Add("Content-Type", "application/json")
+	client := &http.Client{
+		Timeout: 50 * time.Second,
+	}
+	res, err := client.Do(req)
 
-	buf := new(bytes.Buffer)
-	_, err = buf.ReadFrom(data.Body)
-
-	var response []dalib.Object
-	fmt.Println(string(buf.Bytes()))
-	err = json.Unmarshal(buf.Bytes(), &response)
-
-	return response, err
+	if res.StatusCode != 200 {
+		msg, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		return errors.New("Erreur HTTP datapi: " + res.Status + " " + string(msg))
+	}
+	return err
 }
 
 // Connect returns a datapi client with a token
@@ -109,4 +105,25 @@ func (ds *DatapiServer) Connect(user string, password string) error {
 	ds.token = result["token"]
 
 	return err
+}
+
+// Get retrieves objects from Datapi Server according to Query
+func (ds *DatapiServer) Get(bucket string, query QueryParams) ([]dalib.Object, error) {
+	queryBody, err := json.Marshal(query)
+	client := &http.Client{
+		Timeout: 10 * time.Second,
+	}
+
+	req, err := http.NewRequest("POST", ds.URL+"data/get/"+bucket, bytes.NewBuffer(queryBody))
+	req.Header.Add("Authorization", "Bearer "+ds.token)
+	data, err := client.Do(req)
+
+	buf := new(bytes.Buffer)
+	_, err = buf.ReadFrom(data.Body)
+
+	var response []dalib.Object
+	fmt.Println(string(buf.Bytes()))
+	err = json.Unmarshal(buf.Bytes(), &response)
+
+	return response, err
 }

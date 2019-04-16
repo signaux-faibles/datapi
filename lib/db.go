@@ -242,6 +242,9 @@ func Insert(objects []Object, bucket string, userScope Tags, author string) erro
 			}
 		}
 		if userScope.Union(promote).Contains(write) {
+			if o.Key == nil {
+				o.Key = make(Map)
+			}
 			o.Key["bucket"] = bucket
 
 			if o.Key.Contains(policyKey) {
