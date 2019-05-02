@@ -10,8 +10,17 @@ import (
 
 	_ "github.com/lib/pq" // postgresql driver
 	hstore "github.com/lib/pq/hstore"
-	"github.com/spf13/viper"
 )
+
+// Warmup initialize dalib
+func Warmup(connStr string) {
+	initDB(connStr)
+	cbp, err := LoadPolicies(nil, nil)
+	if err != nil {
+		panic(err)
+	}
+	CurrentBucketPolicies.SafeUpdate(cbp)
+}
 
 type attribution string
 
@@ -160,25 +169,6 @@ func (p *PropertyMap) Scan(src interface{}) error {
 }
 
 var db *sql.DB
-
-func Warmup() {
-	viper.SetConfigName("config")
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
-
-	err := viper.ReadInConfig()
-
-	if err != nil {
-		panic(err)
-	}
-
-	initDB()
-	cbp, err := LoadPolicies(nil, nil)
-	if err != nil {
-		panic(err)
-	}
-	CurrentBucketPolicies.SafeUpdate(cbp)
-}
 
 // Value transform propertyMap type to a database driver compatible type
 func (p PropertyMap) Value() (driver.Value, error) {

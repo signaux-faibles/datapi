@@ -4,33 +4,98 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
 	"github.com/lib/pq"
 	hstore "github.com/lib/pq/hstore"
-	"github.com/spf13/viper"
 )
 
-func initDB() {
+// CreateUser creates a datapi user (when there's no one)
+func CreateUser(connStr, user, password string) error {
+	Warmup(connStr)
+	cursor := db.QueryRow("select case when count(*)=0 then true else false end from bucket")
+	var empty bool
+	cursor.Scan(&empty)
+
+	if empty {
+		log.Print("database is empty: creating user is allowed")
+		user := Object{
+			Key: Map{
+				"email": user,
+				"type":  "credentials",
+			},
+			Value: PropertyMap{
+				"password": password,
+				"scope":    Tags{"system-reader", "system-writer"},
+			},
+		}
+		systemPolicy := Object{
+			Key: Map{
+				"type": "policy",
+				"name": "system",
+			},
+			Value: PropertyMap{
+				"match": "system",
+				"key":   Map{},
+				"scope": Tags{},
+				"read":  Tags{"system-reader"},
+				"write": Tags{"system-writer"},
+			},
+		}
+
+		err := Insert([]Object{user, systemPolicy}, "system", nil, "system")
+		if err != nil {
+			log.Fatal("Error creating user: " + err.Error())
+		}
+	} else {
+		log.Fatal("Database is not empty, creating such user is not allowed")
+	}
+	log.Printf("user '%s' created with password '%s'", user, password)
+	return nil
+}
+
+// CreateDB creates a brand new (and empty) database
+func CreateDB(dbname, connStr string) {
 	var err error
-	connStr := viper.GetString("postgres")
-	db, err = sql.Open("postgres", connStr)
+
+	pgConnStr := connStr + " dbname='postgres'"
+	db, err = sql.Open("postgres", pgConnStr)
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
 	}
+	log.Print("Connected to postgres database")
+
+	_, err = db.Query(fmt.Sprintf(`create database %s`, dbname))
+	if err != nil {
+		log.Fatal("database creation: " + err.Error())
+	}
+	log.Printf("%s database created", dbname)
+
+	db.Close()
+
+	dbConnStr := connStr + fmt.Sprintf(" dbname='%s'", dbname)
+	db, err = sql.Open("postgres", dbConnStr)
+	if err != nil {
+		log.Fatal("database switch: " + err.Error())
+	}
+
+	log.Printf("switched to new database: %s", dbname)
 
 	_, err = db.Query(`create extension if not exists hstore`)
 	if err != nil {
 		log.Fatal("hstore installation: " + err.Error())
 	}
+	log.Print("hstore extension installed")
 
 	_, err = db.Query(`create extension if not exists pgcrypto;`)
 	if err != nil {
 		log.Fatal("pgcrypto installation: " + err.Error())
 	}
+	log.Print("pgcrypto extension installed")
 
-	_, err = db.Query(`	CREATE OR REPLACE FUNCTION public.last_agg(
+	_, err = db.Query(`CREATE OR REPLACE FUNCTION public.last_agg(
     anyelement,
     anyelement)
   RETURNS anyelement AS
@@ -42,18 +107,16 @@ func initDB() {
 	if err != nil {
 		log.Fatal("last_agg creation: " + err.Error())
 	}
+	log.Print("last_agg function created")
 
-	_, err = db.Query(`DROP AGGREGATE IF EXISTS last(anyelement)`)
-	if err != nil {
-		log.Fatal("last_agg creation: " + err.Error())
-	}
 	_, err = db.Query(`CREATE AGGREGATE last(anyelement) (
 		SFUNC=last_agg,
 		STYPE=anyelement
 	)`)
 	if err != nil {
-		log.Fatal("last_agg creation: " + err.Error())
+		log.Fatal("last creation: " + err.Error())
 	}
+	log.Print("last aggregate created")
 
 	_, err = db.Query(`DROP AGGREGATE IF EXISTS array_cat_agg(anyarray)`)
 	if err != nil {
@@ -66,18 +129,18 @@ func initDB() {
 	if err != nil {
 		log.Fatal("array_cat_agg creation: " + err.Error())
 	}
+	log.Print("array_cat_agg aggregate created")
 
 	_, err = db.Query(`create sequence if not exists bucket_id`)
 	if err != nil {
-		log.Fatal("sequence creation: " + err.Error())
-	}
-	if err != nil {
 		log.Fatal("bucket sequence creation: " + err.Error())
 	}
+	log.Print("bucket_id sequence created")
 
 	_, err = db.Query(`create table if not exists bucket ( 
 		id bigint primary key default nextval('bucket_id'),
 		key hstore,
+		author text,
 		add_date timestamp default current_timestamp,
 		release_date timestamp default current_timestamp,
 		scope text[],
@@ -85,11 +148,13 @@ func initDB() {
 	if err != nil {
 		log.Fatal("schema configuration: " + err.Error())
 	}
+	log.Print("bucket table created")
 
 	_, err = db.Query(`create sequence if not exists logs_id`)
 	if err != nil {
 		log.Fatal("logs_id sequence creation: " + err.Error())
 	}
+	log.Print("logs sequence created")
 
 	_, err = db.Query(`create table if not exists logs (
 		id bigint primary key default nextval('logs_id'),
@@ -100,7 +165,17 @@ func initDB() {
 	if err != nil {
 		log.Fatal("logs table creation: " + err.Error())
 	}
+	log.Print("logs table sequence created")
+	log.Print("database successfully created")
+	db.Close()
+}
 
+func initDB(connStr string) {
+	var err error
+	db, err = sql.Open("postgres", connStr)
+	if err != nil {
+		log.Fatal("database connexion:" + err.Error())
+	}
 }
 
 // QueryParams contains informations needed to perform a read query
@@ -150,7 +225,7 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 	}
 	params.Key["bucket"] = bucket
 
-	rows, err := tx.Query(`
+	query := `
 	with policy_data as (
 		select b.value->'name' as name,
 					 b.value->'key' as key, 
@@ -180,20 +255,30 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 	bucket_with_policy as (
 		select b.*, array_cat_agg(p.read) as policy_read, array_cat_agg(p.write) as policy_write, array_cat_agg(p.promote) as policy_promote from bucket b
 		left join policy p on p.key <@ b.key
+		where b.key @> $1
 		group by b.id),
 	pairs as (
 		select b.key, v.key as vkey, last(v.value order by id) as vvalue, max(add_date) as add_date
 		from bucket_with_policy b,
 		lateral jsonb_each(value) v
-		where b.key @> ''::hstore 
-		and $2 || coalesce(b.policy_promote, '{}') @> (coalesce(b.scope, '{}') || (coalesce(b.policy_read, '{}')) )
+		where $2 || coalesce(b.policy_promote, '{}') @> (coalesce(b.scope, '{}') || (coalesce(b.policy_read, '{}')) )
 		and release_date <= least($3, current_timestamp) 
 		group by b.key, v.key)
 	select key, jsonb_object_agg(vkey, vvalue), max(pairs.add_date) add_date 
 	from pairs 
-	where vvalue is not null and pairs.key @> $1
+	where vvalue is not null
 	group by key
-	`, params.Key.Hstore(), pq.Array(userScope), params.Date, jsonbp)
+	`
+
+	if params.Limit != nil && *params.Limit > 0 {
+		query = query + fmt.Sprintf(" limit %d", *params.Limit)
+	}
+
+	if params.Offset != nil {
+		query = query + fmt.Sprintf(" offset %d", *params.Offset)
+	}
+
+	rows, err := tx.Query(query, params.Key.Hstore(), pq.Array(userScope), params.Date, jsonbp)
 	if err != nil {
 		return nil, err
 	}

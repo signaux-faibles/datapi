@@ -1,31 +1,11 @@
 package main
 
 import (
-	"time"
-
 	"github.com/gin-gonic/gin"
 	dalib "github.com/signaux-faibles/datapi/lib"
 
 	jwt "github.com/appleboy/gin-jwt"
-	"github.com/spf13/viper"
 )
-
-var authMiddleware, err = jwt.New(&jwt.GinJWTMiddleware{
-	Realm:           "Signaux-Faibles",
-	Key:             []byte(viper.GetString("jwtSecret")),
-	SendCookie:      false,
-	Timeout:         time.Hour,
-	MaxRefresh:      time.Hour,
-	IdentityKey:     "id",
-	PayloadFunc:     payloadHandler,
-	IdentityHandler: identityHandler,
-	Authenticator:   authenticatorHandler,
-	Authorizator:    authorizatorHandler,
-	Unauthorized:    unauthorizedHandler,
-	TokenLookup:     "header: Authorization, query: token",
-	TokenHeadName:   "Bearer",
-	TimeFunc:        time.Now,
-})
 
 func payloadHandler(data interface{}) jwt.MapClaims {
 	if v, ok := data.(dalib.User); ok {
