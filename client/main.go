@@ -84,7 +84,6 @@ func (ds *DatapiServer) Connect(user string, password string) error {
 	client := &http.Client{
 		Timeout: 30 * time.Second,
 	}
-
 	loginRequest, err := client.Post(
 		ds.URL+"login",
 		"application/json",
@@ -95,14 +94,15 @@ func (ds *DatapiServer) Connect(user string, password string) error {
 		return err
 	}
 	body, err := ioutil.ReadAll(loginRequest.Body)
-	var result map[string]string
+	var result struct {
+		Token string `json:"token"`
+	}
 	err = json.Unmarshal(body, &result)
-
-	if _, ok := result["token"]; err != nil && !ok {
+	if result.Token == "" || err != nil {
 		return err
 	}
 
-	ds.token = result["token"]
+	ds.token = result.Token
 
 	return err
 }

@@ -2,94 +2,63 @@ package main
 
 import (
 	"flag"
-	"fmt"
-	"log"
-	"os"
 	"strings"
-	"time"
 
-	jwt "github.com/appleboy/gin-jwt"
-	_ "github.com/signaux-faibles/datapi/docs"
-
+	"github.com/Nerzal/gocloak"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-
+	_ "github.com/signaux-faibles/datapi/docs"
 	dalib "github.com/signaux-faibles/datapi/lib"
+	"github.com/spf13/viper"
 
 	ginSwagger "github.com/swaggo/gin-swagger"
 	"github.com/swaggo/gin-swagger/swaggerFiles"
 )
 
+var keycloak gocloak.GoCloak
+
 func main() {
-	api := flag.String("api", "", "Runs API on TCP adresse (e.g. -api :3000)")
+	api := flag.Bool("api", false, "Runs API")
 	createdb := flag.String("createdb", "", "Initialize postgres Database with provided pgsql credentials.")
-	connstr := flag.String("pg", "", "Postgres connection string")
-	jwtsecret := flag.String("jwt", "", "Secret key for JWT signature")
-	createuser := flag.String("createuser", "", "Create the first datapi user with user:password syntax")
+	forge := flag.String("forge", "", "Forge Long Term JWT for auth")
+	// connstr := flag.String("pg", "", "Postgres connection string")
+	// jwtsecret := flag.String("jwt", "", "Secret key for JWT signature")
+	// createuser := flag.String("createuser", "", "Create the first datapi user with user:password syntax")
 
 	flag.Parse()
 
-	if *connstr == "" {
-		panic("abort: empty connection string")
-	}
+	viper.SetConfigName("config")
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(".")
+	viper.ReadInConfig()
 
-	if *createuser != "" {
-		credentials := strings.Split(*createuser, ":")
-		user := credentials[0]
-		password := credentials[1]
-		if user == "" || password == "" {
-			panic("CreateUser failed: user or pasword empty")
-		}
-
-		err := dalib.CreateUser(*connstr, user, password)
-		if err != nil {
-			log.Fatal("CreateDB failed: " + err.Error())
-		}
-		return
-	}
+	postgres := viper.GetString("postgres")
+	jwtSecret := viper.GetString("jwtSecret")
+	bind := viper.GetString("bind")
 
 	if *createdb != "" {
-		dalib.CreateDB(*createdb, *connstr)
+		dalib.CreateDB(*createdb, postgres)
 		return
 	}
 
-	if *jwtsecret == "" {
-		panic("empty JWT secret not allowed")
-	}
-
-	if *api != "" {
-		runAPI(*api, *jwtsecret, *connstr)
+	if *forge != "" {
 		return
 	}
 
-	fmt.Fprintf(os.Stderr, "Usage of %s:\n", os.Args[0])
-	flag.PrintDefaults()
+	if *api {
+		keycloak = gocloak.NewClient("http://localhost:8080/")
+
+		runAPI(bind, jwtSecret, postgres, &keycloak)
+		return
+	}
 
 }
 
-func runAPI(bind, jwtsecret, connstr string) {
-	dalib.Warmup(connstr)
+func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 
-	var authMiddleware, err = jwt.New(&jwt.GinJWTMiddleware{
-		Realm:           "Signaux-Faibles",
-		Key:             []byte(jwtsecret),
-		SendCookie:      false,
-		Timeout:         time.Hour,
-		MaxRefresh:      time.Hour,
-		IdentityKey:     "id",
-		PayloadFunc:     payloadHandler,
-		IdentityHandler: identityHandler,
-		Authenticator:   authenticatorHandler,
-		Authorizator:    authorizatorHandler,
-		Unauthorized:    unauthorizedHandler,
-		TokenLookup:     "header: Authorization, query: token",
-		TokenHeadName:   "Bearer",
-		TimeFunc:        time.Now,
-	})
+	dalib.Warmup(postgres)
 
-	if err != nil {
-		panic("authMiddleWare can't be instanciated: " + err.Error())
-	}
 	router := gin.Default()
 
 	config := cors.DefaultConfig()
@@ -98,16 +67,48 @@ func runAPI(bind, jwtsecret, connstr string) {
 	config.AddAllowMethods("GET", "POST")
 	router.Use(cors.New(config))
 
-	router.POST("/login", authMiddleware.LoginHandler)
+	router.POST("/login", loginHandler)
+	router.POST("/refreshToken", refreshTokenHandler)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	router.GET("/refresh", authMiddleware.MiddlewareFunc(), authMiddleware.RefreshHandler)
-	router.GET("/ws/:token", wsTokenMiddleWare, authMiddleware.MiddlewareFunc(), wsHandler)
+	router.GET("/refresh")
+	// router.GET("/ws/:token", wsTokenMiddleWare, authMiddleware.MiddlewareFunc(), wsHandler)
 
 	data := router.Group("data")
 
-	data.Use(authMiddleware.MiddlewareFunc())
+	data.Use(keycloakMiddleware)
 	data.POST("/get/:bucket", get)
 	data.POST("/put/:bucket", put)
 
 	router.Run(bind)
+}
+
+func keycloakMiddleware(c *gin.Context) {
+	header := c.Request.Header["Authorization"][0]
+	rawToken := strings.Split(header, " ")[1]
+
+	token, claims, err := keycloak.DecodeAccessToken(rawToken, "master")
+	if errValid := claims.Valid(); err != nil && errValid != nil {
+		c.AbortWithStatus(401)
+	}
+	// spew.Dump(token)
+	user := dalib.User{
+		Email:     (*claims)["email"].(string),
+		Name:      (*claims)["family_name"].(string),
+		FirstName: (*claims)["given_name"].(string),
+		Scope:     scopeFromClaims(claims),
+	}
+	c.Set("token", token)
+	c.Set("claims", claims)
+	c.Set("user", &user)
+
+	c.Next()
+}
+
+func scopeFromClaims(claims *jwt.MapClaims) dalib.Tags {
+	scope := (*claims)["datapiScope"].([]interface{})
+	var tags dalib.Tags
+	for _, tag := range scope {
+		tags = append(tags, tag.(string))
+	}
+	return tags
 }

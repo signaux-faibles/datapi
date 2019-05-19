@@ -1,13 +1,13 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"net/http"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	dalib "github.com/signaux-faibles/datapi/lib"
+	"github.com/spf13/viper"
 )
 
 var wsChannel chan dalib.Object
@@ -22,44 +22,96 @@ func check(request *http.Request) bool {
 	return true
 }
 
-func wsTokenMiddleWare(c *gin.Context) {
-	token := c.Request.URL.RequestURI()[4:]
-	c.Request.Header["Authorization"] = []string{"Bearer " + token}
-	c.Next()
-}
+func loginHandler(c *gin.Context) {
+	keycloakClientID := viper.GetString("keycloakClientID")
+	keycloakClientSecret := viper.GetString("keycloakClientSecret")
+	keycloakRealm := viper.GetString("keycloakRealm")
 
-func wsHandler(c *gin.Context) {
-	conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
+	vals := struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}{}
+
+	c.Bind(&vals)
+	token, err := keycloak.Login(
+		keycloakClientID,
+		keycloakClientSecret,
+		keycloakRealm,
+		vals.Email,
+		vals.Password)
+
 	if err != nil {
-		fmt.Printf("Failed to set websocket upgrade: %+v", err)
-		return
+		message := map[string]string{
+			"message": "not ok",
+			"error":   err.Error(),
+		}
+		c.JSON(401, message)
 	}
 
-	// go func() {
-	// 	for {
-	// 		err := conn.WriteJSON([]byte("coucou"))
-	// 		if err != nil {
-	// 			return
-	// 		}
-	// 		time.Sleep(time.Second)
-	// 	}
-	// }()
-
-	for {
-		t, msg, err := conn.ReadMessage()
-		fmt.Println(string(msg))
-		if err != nil {
-			break
-		}
-		myMsg := map[string]string{
-			"test": "test",
-		}
-		jsonMsg, _ := json.Marshal(myMsg)
-		conn.WriteMessage(t, jsonMsg)
-	}
-
-	fmt.Println("ended")
+	c.JSON(200, token)
 }
+
+func refreshTokenHandler(c *gin.Context) {
+	var request struct {
+		RefreshToken string `json:"refresh_token"`
+	}
+	c.Bind(&request)
+	keycloakClientID := viper.GetString("keycloakClientID")
+	keycloakClientSecret := viper.GetString("keycloakClientSecret")
+	keycloakRealm := viper.GetString("keycloakRealm")
+
+	token, err := keycloak.RefreshToken(request.RefreshToken, keycloakClientID, keycloakClientSecret, keycloakRealm)
+
+	if err != nil {
+		message := map[string]string{
+			"message": "not ok",
+			"error":   err.Error(),
+		}
+		c.JSON(401, message)
+	}
+
+	c.JSON(200, token)
+}
+
+// For use in next release supporting websockets
+// func wsTokenMiddleWare(c *gin.Context) {
+// 	token := c.Request.URL.RequestURI()[4:]
+// 	c.Request.Header["Authorization"] = []string{"Bearer " + token}
+// 	c.Next()
+// }
+
+// func wsHandler(c *gin.Context) {
+// 	conn, err := wsupgrader.Upgrade(c.Writer, c.Request, nil)
+// 	if err != nil {
+// 		fmt.Printf("Failed to set websocket upgrade: %+v", err)
+// 		return
+// 	}
+
+// 	// go func() {
+// 	// 	for {
+// 	// 		err := conn.WriteJSON([]byte("coucou"))
+// 	// 		if err != nil {
+// 	// 			return
+// 	// 		}
+// 	// 		time.Sleep(time.Second)
+// 	// 	}
+// 	// }()
+
+// 	for {
+// 		t, msg, err := conn.ReadMessage()
+// 		fmt.Println(string(msg))
+// 		if err != nil {
+// 			break
+// 		}
+// 		myMsg := map[string]string{
+// 			"test": "test",
+// 		}
+// 		jsonMsg, _ := json.Marshal(myMsg)
+// 		conn.WriteMessage(t, jsonMsg)
+// 	}
+
+// 	fmt.Println("ended")
+// }
 
 func put(c *gin.Context) {
 	bucket := c.Params.ByName("bucket")
@@ -72,12 +124,8 @@ func put(c *gin.Context) {
 		return
 	}
 
-	u, ok := c.Get("id")
-	if !ok {
-		c.JSON(401, "malformed token")
-	}
-
-	user, ok := u.(*dalib.User)
+	u, ok := c.Get("user")
+	user := u.(*dalib.User)
 	if !ok {
 		c.JSON(401, "malformed token")
 	}
@@ -103,11 +151,11 @@ func get(c *gin.Context) {
 	if err != nil {
 		c.JSON(400, err.Error())
 	}
-
 	bucket := c.Params.ByName("bucket")
 
-	u, _ := c.Get("id")
+	u, _ := c.Get("user")
 	user := u.(*dalib.User)
+	spew.Dump(user)
 	scope := user.Scope
 
 	data, err := dalib.Query(bucket, params, scope, true, nil)

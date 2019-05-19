@@ -256,7 +256,8 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		select b.*, array_cat_agg(p.read) as policy_read, array_cat_agg(p.write) as policy_write, array_cat_agg(p.promote) as policy_promote from bucket b
 		left join policy p on p.key <@ b.key
 		where b.key @> $1
-		group by b.id),
+		group by b.id
+	),
 	pairs as (
 		select b.key, v.key as vkey, last(v.value order by id) as vvalue, max(add_date) as add_date
 		from bucket_with_policy b,
