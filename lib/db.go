@@ -8,6 +8,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
 	hstore "github.com/lib/pq/hstore"
 )
@@ -219,7 +220,8 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 	if userScope == nil {
 		userScope = make([]string, 0)
 	}
-
+	spew.Dump(userScope)
+	spew.Dump(bp)
 	if params.Key == nil {
 		params.Key = make(Map)
 	}
@@ -235,10 +237,13 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		from jsonb_array_elements($4::jsonb) b
 		),
 	policy_jsonb as (
-		SELECT p.name, hstore(array_agg(b.key), array_agg(b.value)) as key, p.read, p.write, p.promote
-		FROM policy_data p,
-		lateral jsonb_each_text(p.key) b
-		group by p.name, p.read, p.write, p.promote),
+		SELECT p.name, hstore(
+			array_remove(array_agg(b.key),null), 
+			array_remove(array_agg(b.value),null)
+		) as key, p.read, p.write, p.promote
+		FROM policy_data p
+		left join lateral jsonb_each_text(p.key) b on true
+		group by p.name, p.read, p.write, p.promote),  
 	policy as (select p.name, p.key, read.read, write.write, promote.promote  from policy_jsonb p
 		cross join lateral (
 			select array_agg(d.value) AS read
@@ -266,7 +271,7 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		and release_date <= least($3, current_timestamp) 
 		group by b.key, v.key)
 	select key, jsonb_object_agg(vkey, vvalue), max(pairs.add_date) add_date 
-	from pairs 
+	from pairs
 	where vvalue is not null
 	group by key
 	`

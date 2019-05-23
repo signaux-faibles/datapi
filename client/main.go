@@ -95,9 +95,10 @@ func (ds *DatapiServer) Connect(user string, password string) error {
 	}
 	body, err := ioutil.ReadAll(loginRequest.Body)
 	var result struct {
-		Token string `json:"token"`
+		Token string `json:"access_token"`
 	}
 	err = json.Unmarshal(body, &result)
+
 	if result.Token == "" || err != nil {
 		return err
 	}

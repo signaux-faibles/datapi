@@ -50,7 +50,7 @@
     <br/>
     {{ readToken.email }}
     <br/>
-    {{ readToken.scope }}
+    {{ readToken.resource_access ? readToken.resource_access.signauxfaibles.roles : '' }}
     
 
 
@@ -114,7 +114,7 @@ export default {
         password: this.password
       }
       client.post("http://localhost:3000/login", payload).then(r => {
-        self.token = r.data.token
+        self.token = r.data.access_token
         client.defaults.headers.common['Authorization'] = `Bearer ` + this.token
       }).catch(function() { 
         self.token = null 

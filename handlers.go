@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	dalib "github.com/signaux-faibles/datapi/lib"
@@ -68,6 +67,7 @@ func refreshTokenHandler(c *gin.Context) {
 			"error":   err.Error(),
 		}
 		c.JSON(401, message)
+		return
 	}
 
 	c.JSON(200, token)
@@ -155,7 +155,6 @@ func get(c *gin.Context) {
 
 	u, _ := c.Get("user")
 	user := u.(*dalib.User)
-	spew.Dump(user)
 	scope := user.Scope
 
 	data, err := dalib.Query(bucket, params, scope, true, nil)

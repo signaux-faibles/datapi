@@ -84,13 +84,13 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 
 func keycloakMiddleware(c *gin.Context) {
 	header := c.Request.Header["Authorization"][0]
+
 	rawToken := strings.Split(header, " ")[1]
 
 	token, claims, err := keycloak.DecodeAccessToken(rawToken, "master")
 	if errValid := claims.Valid(); err != nil && errValid != nil {
 		c.AbortWithStatus(401)
 	}
-	// spew.Dump(token)
 	user := dalib.User{
 		Email:     (*claims)["email"].(string),
 		Name:      (*claims)["family_name"].(string),
@@ -105,7 +105,10 @@ func keycloakMiddleware(c *gin.Context) {
 }
 
 func scopeFromClaims(claims *jwt.MapClaims) dalib.Tags {
-	scope := (*claims)["datapiScope"].([]interface{})
+	resourceAccess := (*claims)["resource_access"].(map[string]interface{})
+	client := (resourceAccess)["signauxfaibles"].(map[string]interface{})
+	scope := (client)["roles"].([]interface{})
+
 	var tags dalib.Tags
 	for _, tag := range scope {
 		tags = append(tags, tag.(string))
