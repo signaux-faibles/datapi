@@ -22,9 +22,6 @@ func main() {
 	api := flag.Bool("api", false, "Runs API")
 	createdb := flag.String("createdb", "", "Initialize postgres Database with provided pgsql credentials.")
 	forge := flag.String("forge", "", "Forge Long Term JWT for auth")
-	// connstr := flag.String("pg", "", "Postgres connection string")
-	// jwtsecret := flag.String("jwt", "", "Secret key for JWT signature")
-	// createuser := flag.String("createuser", "", "Create the first datapi user with user:password syntax")
 
 	flag.Parse()
 
@@ -47,7 +44,7 @@ func main() {
 	}
 
 	if *api {
-		keycloak = gocloak.NewClient("http://localhost:8080/")
+		keycloak = gocloak.NewClient(viper.GetString("keycloakHostname"))
 
 		runAPI(bind, jwtSecret, postgres, &keycloak)
 		return
@@ -87,7 +84,7 @@ func keycloakMiddleware(c *gin.Context) {
 
 	rawToken := strings.Split(header, " ")[1]
 
-	token, claims, err := keycloak.DecodeAccessToken(rawToken, "master")
+	token, claims, err := keycloak.DecodeAccessToken(rawToken, viper.GetString("keycloakRealm"))
 	if errValid := claims.Valid(); err != nil && errValid != nil {
 		c.AbortWithStatus(401)
 	}
