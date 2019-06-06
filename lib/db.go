@@ -8,7 +8,6 @@ import (
 	"log"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/lib/pq"
 	hstore "github.com/lib/pq/hstore"
 )
@@ -189,7 +188,7 @@ type QueryParams struct {
 
 // Query get objets that fits the key and the scope
 // when tx is nil, a new transaction is started and commited.
-func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool, tx *sql.Tx) ([]Object, error) {
+func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool, tx *sql.Tx, reader string) ([]Object, error) {
 	if tx == nil {
 		var err error
 		tx, err = db.Begin()
@@ -198,6 +197,7 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		}
 		defer tx.Commit()
 	}
+
 	var objects []Object
 
 	if _, ok := params.Key["bucket"]; ok || bucket == "" {
@@ -220,12 +220,16 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 	if userScope == nil {
 		userScope = make([]string, 0)
 	}
-	spew.Dump(userScope)
-	spew.Dump(bp)
+	// spew.Dump(userScope)
+	// spew.Dump(bp)
 	if params.Key == nil {
 		params.Key = make(Map)
 	}
 	params.Key["bucket"] = bucket
+
+	// logging query
+	_, err = tx.Exec("insert into logs (reader, read_date, query) values ($1, current_timestamp, $2);", reader, params)
+	fmt.Println(err)
 
 	query := `
 	with policy_data as (

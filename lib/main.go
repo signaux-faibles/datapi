@@ -12,6 +12,25 @@ import (
 	hstore "github.com/lib/pq/hstore"
 )
 
+// User describes a user with minimal informations for auth.
+type User struct {
+	Email     string
+	Scope     Tags
+	Name      string
+	FirstName string
+	Value     map[string]interface{}
+}
+
+// Contains checks if all elements of another Map are present in the Map
+func (m Map) Contains(m2 Map) bool {
+	for k, v := range m2 {
+		if m[k] != v {
+			return false
+		}
+	}
+	return true
+}
+
 // Warmup initialize dalib
 func Warmup(connStr string) {
 	initDB(connStr)
@@ -172,6 +191,12 @@ var db *sql.DB
 
 // Value transform propertyMap type to a database driver compatible type
 func (p PropertyMap) Value() (driver.Value, error) {
+	j, err := json.Marshal(p)
+	return j, err
+}
+
+// Value transform propertyMap type to a database driver compatible type
+func (p QueryParams) Value() (driver.Value, error) {
 	j, err := json.Marshal(p)
 	return j, err
 }

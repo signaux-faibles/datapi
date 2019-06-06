@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
 	dalib "github.com/signaux-faibles/datapi/lib"
@@ -153,11 +154,30 @@ func get(c *gin.Context) {
 	}
 	bucket := c.Params.ByName("bucket")
 
-	u, _ := c.Get("user")
-	user := u.(*dalib.User)
+	u, ok := c.Get("user")
+	if !ok {
+		c.JSON(500, "No user information in gin context, interrupting")
+		return
+	}
+	user, ok := u.(*dalib.User)
+	if !ok {
+		c.JSON(500, "Erroneous user information in gin context, interrupting")
+		return
+	}
+	rawToken, ok := c.Get("token")
+	if !ok {
+		c.JSON(500, "No JWT object in gin context, interrupting")
+		return
+	}
+	token, ok := rawToken.(*jwt.Token)
+	if !ok {
+		c.JSON(500, "JWT object is not a string, interrupting")
+		return
+	}
+
 	scope := user.Scope
 
-	data, err := dalib.Query(bucket, params, scope, true, nil)
+	data, err := dalib.Query(bucket, params, scope, true, nil, token.Raw)
 
 	if err != nil {
 		if daerror, ok := err.(dalib.DAError); ok {

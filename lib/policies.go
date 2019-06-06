@@ -105,7 +105,7 @@ func LoadPolicies(date *time.Time, tx *sql.Tx) (BucketPolicies, error) {
 	}
 	params.Date = date
 
-	policies, err := Query("system", params, nil, false, tx)
+	policies, err := Query("system", params, nil, false, tx, "system")
 	if err != nil {
 		return nil, err
 	}

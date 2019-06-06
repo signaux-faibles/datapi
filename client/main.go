@@ -3,7 +3,6 @@ package daclient
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"net/http"
@@ -57,17 +56,16 @@ func (ds *DatapiServer) Put(bucket string, objects []Object) error {
 	req.Header.Add("Authorization", "Bearer "+ds.token)
 	req.Header.Add("Content-Type", "application/json")
 	client := &http.Client{
-		Timeout: 50 * time.Second,
+		Timeout: 3600 * time.Second,
 	}
-	res, err := client.Do(req)
-
-	if res.StatusCode != 200 {
-		msg, err := ioutil.ReadAll(res.Body)
-		if err != nil {
-			return err
-		}
-		return errors.New("Erreur HTTP datapi: " + res.Status + " " + string(msg))
-	}
+	_, err = client.Do(req)
+	// if (*res).StatusCode != 200 {
+	// 	msg, err := ioutil.ReadAll(res.Body)
+	// 	if err != nil {
+	// 		return err
+	// 	}
+	// 	return errors.New("Erreur HTTP datapi: " + res.Status + " " + string(msg))
+	// }
 	return err
 }
 
