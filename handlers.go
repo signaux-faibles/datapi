@@ -3,6 +3,7 @@ package main
 import (
 	"net/http"
 
+	"github.com/Nerzal/gocloak"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -49,6 +50,50 @@ func loginHandler(c *gin.Context) {
 	}
 
 	c.JSON(200, token)
+}
+
+func connectionEmailHandler(c *gin.Context) {
+	var request struct {
+		Email string `json:"email"`
+	}
+
+	err := c.Bind(&request)
+	if err != nil {
+		return
+	}
+
+	keycloakRealm := viper.GetString("keycloakRealm")
+	keycloakClientID := viper.GetString("keycloakClientID")
+	keycloakAdmin := viper.GetString("keycloakAdmin")
+	keycloakAdminRealm := viper.GetString("keycloakAdminRealm")
+	keycloakPassword := viper.GetString("keycloakPassword")
+	jwt, err := keycloak.LoginAdmin(
+		keycloakAdmin,
+		keycloakPassword,
+		keycloakAdminRealm)
+	if err != nil {
+		c.JSON(500, "Problème de communication avec le système d'authentification: "+err.Error())
+		return
+	}
+
+	user, err := keycloak.GetUsers(jwt.AccessToken, keycloakAdminRealm, gocloak.GetUsersParams{
+		Email: request.Email,
+	})
+
+	if err != nil {
+		c.JSON(500, "problème de communication avec le système d'authentification: "+err.Error())
+	}
+
+	if len(user) != 1 {
+		return
+	}
+
+	keycloak.ExecuteActionsEmail(jwt.AccessToken, keycloakRealm, gocloak.ExecuteActionsEmail{
+		UserID:   user[0].ID,
+		ClientID: keycloakClientID,
+		Lifespan: 60 * 15,
+		Actions:  []string{"UPDATE_PASSWORD"},
+	})
 }
 
 func refreshTokenHandler(c *gin.Context) {

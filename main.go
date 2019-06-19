@@ -65,6 +65,7 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 	router.Use(cors.New(config))
 
 	router.POST("/login", loginHandler)
+	router.POST("/connectionEmail", connectionEmailHandler)
 	router.POST("/refreshToken", refreshTokenHandler)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 	router.GET("/refresh")
