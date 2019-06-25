@@ -3,7 +3,6 @@ package daclient
 import (
 	"bytes"
 	"encoding/json"
-	"fmt"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -121,7 +120,6 @@ func (ds *DatapiServer) Get(bucket string, query QueryParams) ([]dalib.Object, e
 	_, err = buf.ReadFrom(data.Body)
 
 	var response []dalib.Object
-	fmt.Println(string(buf.Bytes()))
 	err = json.Unmarshal(buf.Bytes(), &response)
 
 	return response, err

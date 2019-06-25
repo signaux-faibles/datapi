@@ -56,6 +56,7 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 
 	dalib.Warmup(postgres)
 
+	gin.SetMode(gin.ReleaseMode)
 	router := gin.Default()
 
 	config := cors.DefaultConfig()

@@ -229,7 +229,6 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 
 	// logging query
 	_, err = tx.Exec("insert into logs (reader, read_date, query) values ($1, current_timestamp, $2);", reader, params)
-	fmt.Println(err)
 
 	query := `
 	with policy_data as (
