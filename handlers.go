@@ -47,6 +47,7 @@ func loginHandler(c *gin.Context) {
 			"error":   err.Error(),
 		}
 		c.JSON(401, message)
+		return
 	}
 
 	c.JSON(200, token)
