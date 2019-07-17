@@ -12,50 +12,6 @@ import (
 	hstore "github.com/lib/pq/hstore"
 )
 
-// CreateUser creates a datapi user (when there's no one)
-func CreateUser(connStr, user, password string) error {
-	Warmup(connStr)
-	cursor := db.QueryRow("select case when count(*)=0 then true else false end from bucket")
-	var empty bool
-	cursor.Scan(&empty)
-
-	if empty {
-		log.Print("database is empty: creating user is allowed")
-		user := Object{
-			Key: Map{
-				"email": user,
-				"type":  "credentials",
-			},
-			Value: PropertyMap{
-				"password": password,
-				"scope":    Tags{"system-reader", "system-writer"},
-			},
-		}
-		systemPolicy := Object{
-			Key: Map{
-				"type": "policy",
-				"name": "system",
-			},
-			Value: PropertyMap{
-				"match": "system",
-				"key":   Map{},
-				"scope": Tags{},
-				"read":  Tags{"system-reader"},
-				"write": Tags{"system-writer"},
-			},
-		}
-
-		err := Insert([]Object{user, systemPolicy}, "system", nil, "system")
-		if err != nil {
-			log.Fatal("Error creating user: " + err.Error())
-		}
-	} else {
-		log.Fatal("Database is not empty, creating such user is not allowed")
-	}
-	log.Printf("user '%s' created with password '%s'", user, password)
-	return nil
-}
-
 // CreateDB creates a brand new (and empty) database
 func CreateDB(dbname, connStr string) {
 	var err error
@@ -180,10 +136,22 @@ func initDB(connStr string) {
 
 // QueryParams contains informations needed to perform a read query
 type QueryParams struct {
-	Key    Map        `json:"key"`
-	Limit  *int       `json:"limit"`
-	Offset *int       `json:"offset"`
-	Date   *time.Time `json:"date"`
+	Key    Map            `json:"key"`
+	Limit  *int           `json:"limit"`
+	Offset *int           `json:"offset"`
+	Filter []FilterParams `json:"filter"`
+	Sort   []struct {
+		Field string `json:"field"`
+		Order int    `json:"order"`
+	} `json:"sort"`
+	Date *time.Time `json:"date"`
+}
+
+// FilterParams handles line filtering parameters
+type FilterParams struct {
+	Field    string      `json:"field"`
+	Operator string      `json:"operator"`
+	Value    interface{} `json:"value"`
 }
 
 // Query get objets that fits the key and the scope
@@ -215,13 +183,12 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 
 	jsonbp, err := json.Marshal(bp)
 	if err != nil {
-		return nil, errors.New("shit in the fan")
+		return nil, errors.New("bucket policy error, something bad is happening")
 	}
 	if userScope == nil {
 		userScope = make([]string, 0)
 	}
-	// spew.Dump(userScope)
-	// spew.Dump(bp)
+
 	if params.Key == nil {
 		params.Key = make(Map)
 	}
@@ -229,6 +196,9 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 
 	// logging query
 	_, err = tx.Exec("insert into logs (reader, read_date, query) values ($1, current_timestamp, $2);", reader, params)
+	if err != nil {
+		return nil, errors.New("Couldn't log the query, contact support")
+	}
 
 	query := `
 	with policy_data as (
@@ -273,18 +243,19 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		where $2 || coalesce(b.policy_promote, '{}') @> (coalesce(b.scope, '{}') || (coalesce(b.policy_read, '{}')) )
 		and release_date <= least($3, current_timestamp) 
 		group by b.key, v.key)
-	select key, jsonb_object_agg(vkey, vvalue), max(pairs.add_date) add_date 
+	select key, jsonb_object_agg(vkey, vvalue) as object, max(pairs.add_date) add_date 
 	from pairs
 	where vvalue is not null
 	group by key
 	`
 
-	if params.Limit != nil && *params.Limit > 0 {
-		query = query + fmt.Sprintf(" limit %d", *params.Limit)
-	}
-
-	if params.Offset != nil {
-		query = query + fmt.Sprintf(" offset %d", *params.Offset)
+	if len(params.Sort) == 1 {
+		if params.Sort[0].Field == "score" {
+			query = query + "	order by jsonb_object_agg(vkey, vvalue)->>'score'"
+			if params.Sort[0].Order == -1 {
+				query = query + "	desc"
+			}
+		}
 	}
 
 	rows, err := tx.Query(query, params.Key.Hstore(), pq.Array(userScope), params.Date, jsonbp)
@@ -293,21 +264,54 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 	}
 	defer rows.Close()
 
+	var offset, limit int
+	if params.Offset != nil {
+		offset = *params.Offset
+	}
+	if params.Limit != nil {
+		limit = *params.Limit
+	}
 	for rows.Next() {
-		o := Object{}
-		var hkey hstore.Hstore
-
-		scope := make([]sql.NullString, 0)
-		err = rows.Scan(&hkey, &o.Value, &o.AddDate)
-		if err != nil {
-			return nil, errors.New("critical: unreadable data from database")
+		if offset > 0 {
+			offset--
+			continue
 		}
-		o.Scope.FromNullStringArray(scope)
-		o.Key.fromHstore(hkey)
-		objects = append(objects, o)
+
+		if params.Limit == nil || limit > 0 {
+
+			o := Object{}
+			var hkey hstore.Hstore
+
+			scope := make([]sql.NullString, 0)
+			err = rows.Scan(&hkey, &o.Value, &o.AddDate)
+			if err != nil {
+				return nil, errors.New("critical: unreadable data from database")
+			}
+
+			o.Scope.FromNullStringArray(scope)
+			o.Key.fromHstore(hkey)
+			if filter(o, params.Filter) {
+				limit--
+				objects = append(objects, o)
+			}
+		}
 	}
 
 	return objects, err
+}
+
+func filter(o Object, params []FilterParams) bool {
+	for _, p := range params {
+		f, ok := filters[p.Field]
+		if !ok {
+			return false
+		}
+		r := f(o, p.Operator, p.Value)
+		if !r {
+			return false
+		}
+	}
+	return true
 }
 
 // Insert manage to insert objects in the specified bucket
