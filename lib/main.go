@@ -34,6 +34,7 @@ func (m Map) Contains(m2 Map) bool {
 // Warmup initialize dalib
 func Warmup(connStr string) {
 	initDB(connStr)
+	loadNaf()
 	cbp, err := LoadPolicies(nil, nil)
 	if err != nil {
 		panic(err)

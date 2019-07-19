@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"regexp"
 	"time"
 
 	"github.com/lib/pq"
@@ -154,6 +155,120 @@ type FilterParams struct {
 	Value    interface{} `json:"value"`
 }
 
+// Prepare caches a query in a faster temporary table (poor optimization, but efficient)
+func Prepare(bucket string, userScope Tags, tx *sql.Tx, owner string) error {
+	testOwner, err := regexp.Compile("[,(); ]")
+	if err != nil {
+		return err
+	}
+	if testOwner.MatchString(owner) {
+		return errors.New("unallowed characters in owner string, aborting")
+	}
+
+	if tx == nil {
+		var err error
+		tx, err = db.Begin()
+		if err != nil {
+			return err
+		}
+		defer tx.Commit()
+	}
+
+	if bucket == "" {
+		return ErrInvalidBucket
+	}
+
+	bp := RelevantPolicies(CurrentBucketPolicies.SafeRead(), bucket, userScope)
+	jsonbp, err := json.Marshal(bp)
+	if err != nil {
+		return errors.New("bucket policy error, something bad is happening")
+	}
+	if userScope == nil {
+		userScope = make([]string, 0)
+	}
+
+	query := `
+	create table if not exists "cache_` + owner + `" as
+	with policy_data as (
+		select b.value->'name' as name,
+					 b.value->'key' as key, 
+					 b.value->'read' as read, 
+					 b.value->'write' as write, 
+					 b.value->'promote' as promote 
+		from jsonb_array_elements($4::jsonb) b
+		),
+	policy_jsonb as (
+		SELECT p.name, hstore(
+			array_remove(array_agg(b.key),null), 
+			array_remove(array_agg(b.value),null)
+		) as key, p.read, p.write, p.promote
+		FROM policy_data p
+		left join lateral jsonb_each_text(p.key) b on true
+		group by p.name, p.read, p.write, p.promote),  
+	policy as (select p.name, p.key, read.read, write.write, promote.promote  from policy_jsonb p
+		cross join lateral (
+			select array_agg(d.value) AS read
+			from jsonb_array_elements_text(p.read) d
+		) read
+		cross join lateral (
+			select array_agg(d.value) AS write
+			from jsonb_array_elements_text(p.write) d
+		) write
+		cross join lateral (
+			select array_agg(d.value) AS promote
+			from jsonb_array_elements_text(p.promote) d
+		) promote),
+	bucket_with_policy as (
+		select b.*, array_cat_agg(p.read) as policy_read, array_cat_agg(p.write) as policy_write, array_cat_agg(p.promote) as policy_promote from bucket b
+		left join policy p on p.key <@ b.key
+		where b.key @> $1
+		group by b.id
+	),
+	pairs as (
+		select b.key, v.key as vkey, last(v.value order by id) as vvalue, max(add_date) as add_date
+		from bucket_with_policy b,
+		lateral jsonb_each(value) v
+		where $2 || coalesce(b.policy_promote, '{}') @> (coalesce(b.scope, '{}') || (coalesce(b.policy_read, '{}')) )
+		and release_date <= least($3, current_timestamp) 
+		group by b.key, v.key),
+	values as (
+		select key, jsonb_object_agg(vkey, vvalue) as values, max(pairs.add_date) add_date 
+	  from pairs
+	  where vvalue is not null
+		group by key)
+	select key, values, add_date from values;`
+
+	query2 := `create index if not exists "x_` + owner + `"  ON "cache_` + owner + `" (
+		(values->>'score')
+	);`
+
+	query3 := `create index if not exists "x_` + owner + `" ON "cache_` + owner + `" 
+	using gist(key);
+  `
+
+	key := Map{
+		"bucket": bucket,
+		"type":   "detection",
+	}
+	_, err = tx.Exec(query, key.Hstore(), pq.Array(userScope), time.Now(), jsonbp)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec(query2)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	_, err = tx.Exec(query3)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+
+	return err
+}
+
 // Query get objets that fits the key and the scope
 // when tx is nil, a new transaction is started and commited.
 func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool, tx *sql.Tx, reader string) ([]Object, error) {
@@ -172,13 +287,9 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		return nil, ErrInvalidBucket
 	}
 
-	var bp BucketPolicies
+	var bp = make(BucketPolicies, 0)
 	if applyPolicies {
 		bp = RelevantPolicies(CurrentBucketPolicies.SafeRead(), bucket, userScope)
-	}
-
-	if bp == nil {
-		bp = make(BucketPolicies, 0)
 	}
 
 	jsonbp, err := json.Marshal(bp)
@@ -199,7 +310,6 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 	if err != nil {
 		return nil, errors.New("Couldn't log the query, contact support")
 	}
-
 	query := `
 	with policy_data as (
 		select b.value->'name' as name,
@@ -242,22 +352,22 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		lateral jsonb_each(value) v
 		where $2 || coalesce(b.policy_promote, '{}') @> (coalesce(b.scope, '{}') || (coalesce(b.policy_read, '{}')) )
 		and release_date <= least($3, current_timestamp) 
-		group by b.key, v.key)
-	select key, jsonb_object_agg(vkey, vvalue) as object, max(pairs.add_date) add_date 
-	from pairs
-	where vvalue is not null
-	group by key
-	`
+		group by b.key, v.key),
+	values as (
+		select key, jsonb_object_agg(vkey, vvalue) as values, max(pairs.add_date) add_date 
+	  from pairs
+	  where vvalue is not null
+		group by key)
+	select key, values, add_date from values`
 
 	if len(params.Sort) == 1 {
 		if params.Sort[0].Field == "score" {
-			query = query + "	order by jsonb_object_agg(vkey, vvalue)->>'score'"
+			query = query + "	order by (values->>'score')::float8"
 			if params.Sort[0].Order == -1 {
 				query = query + "	desc"
 			}
 		}
 	}
-
 	rows, err := tx.Query(query, params.Key.Hstore(), pq.Array(userScope), params.Date, jsonbp)
 	if err != nil {
 		return nil, err
@@ -291,7 +401,9 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 			o.Scope.FromNullStringArray(scope)
 			o.Key.fromHstore(hkey)
 			if filter(o, params.Filter) {
-				limit--
+				if filterGreen(o) {
+					limit--
+				}
 				objects = append(objects, o)
 			}
 		}
@@ -385,4 +497,97 @@ func Insert(objects []Object, bucket string, userScope Tags, author string) erro
 	tx.Commit()
 
 	return nil
+}
+
+// Cache get objets that fits the key and the scope from the prepared cache
+// when tx is nil, a new transaction is started and commited.
+func Cache(bucket string, params QueryParams, userScope Tags, applyPolicies bool, tx *sql.Tx, token string, reader string) ([]Object, error) {
+	testOwner, err := regexp.Compile("[,(); ]")
+	if err != nil {
+		return nil, err
+	}
+	if testOwner.MatchString(reader) {
+		return nil, errors.New("unallowed characters in owner string, aborting")
+	}
+	if tx == nil {
+		var err error
+		tx, err = db.Begin()
+		if err != nil {
+			return nil, err
+		}
+		defer tx.Commit()
+	}
+
+	err = Prepare(bucket, userScope, tx, reader)
+	if err != nil {
+		return nil, err
+	}
+	var objects []Object
+
+	if _, ok := params.Key["bucket"]; ok || bucket == "" {
+		return nil, ErrInvalidBucket
+	}
+
+	if params.Key == nil {
+		params.Key = make(Map)
+	}
+	params.Key["bucket"] = bucket
+	// logging query
+	_, err = tx.Exec("insert into logs (reader, read_date, query) values ($1, current_timestamp, $2);", token, params)
+	if err != nil {
+		return nil, errors.New("Couldn't log the query, contact support")
+	}
+	query := `select * from "cache_` + reader + `"
+	where key @> $1`
+
+	if len(params.Sort) == 1 {
+		if params.Sort[0].Field == "score" {
+			query = query + "	order by values->>'score'"
+			if params.Sort[0].Order == -1 {
+				query = query + "	desc"
+			}
+		}
+	}
+	rows, err := tx.Query(query, params.Key.Hstore())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var offset, limit int
+	if params.Offset != nil {
+		offset = *params.Offset
+	}
+	if params.Limit != nil {
+		limit = *params.Limit
+	}
+	for rows.Next() {
+		if offset > 0 {
+			offset--
+			continue
+		}
+
+		if params.Limit == nil || limit > 0 {
+
+			o := Object{}
+			var hkey hstore.Hstore
+
+			scope := make([]sql.NullString, 0)
+			err = rows.Scan(&hkey, &o.Value, &o.AddDate)
+			if err != nil {
+				return nil, errors.New("critical: unreadable data from database")
+			}
+
+			o.Scope.FromNullStringArray(scope)
+			o.Key.fromHstore(hkey)
+			if filter(o, params.Filter) {
+				if filterGreen(o) {
+					limit--
+				}
+				objects = append(objects, o)
+			}
+		}
+	}
+
+	return objects, err
 }

@@ -77,6 +77,8 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 	data.Use(keycloakMiddleware)
 	data.POST("/get/:bucket", get)
 	data.POST("/put/:bucket", put)
+	// data.GET("/prepare/:bucket", prepare)
+	data.POST("/cache/:bucket", cache)
 
 	router.Run(bind)
 }

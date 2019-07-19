@@ -45,6 +45,21 @@ func filterZone(object Object, operator string, value interface{}) bool {
 	return false
 }
 
+func filterGreen(object Object) bool {
+	alerteVal, ok := object.Value["alert"]
+	if !ok {
+		return false
+	}
+	alerte, ok := alerteVal.(string)
+	if !ok {
+		return false
+	}
+	if alerte == "Pas d'alerte" {
+		return true
+	}
+	return false
+}
+
 func any(a []string, i string) bool {
 	for _, v := range a {
 		if i == v {

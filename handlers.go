@@ -160,6 +160,22 @@ func refreshTokenHandler(c *gin.Context) {
 // 	fmt.Println("ended")
 // }
 
+func prepare(c *gin.Context) {
+	bucket := c.Params.ByName("bucket")
+
+	u, ok := c.Get("user")
+	user := u.(*dalib.User)
+	if !ok {
+		c.JSON(401, "malformed token")
+	}
+
+	err := dalib.Prepare(bucket, user.Scope, nil, user.Email)
+
+	if err != nil {
+		c.JSON(400, "bad request: "+err.Error())
+	}
+}
+
 func put(c *gin.Context) {
 	bucket := c.Params.ByName("bucket")
 
@@ -224,6 +240,57 @@ func get(c *gin.Context) {
 	scope := user.Scope
 
 	data, err := dalib.Query(bucket, params, scope, true, nil, token.Raw)
+
+	if err != nil {
+		if daerror, ok := err.(dalib.DAError); ok {
+			c.JSON(daerror.Code, daerror.Message)
+			return
+		}
+		c.JSON(500, err.Error())
+		return
+	}
+
+	if len(data) == 0 {
+		c.JSON(404, "no data")
+		return
+	}
+
+	c.JSON(200, data)
+}
+
+func cache(c *gin.Context) {
+	var params dalib.QueryParams
+
+	err := c.ShouldBind(&params)
+	if err != nil {
+		c.JSON(400, err.Error())
+	}
+	bucket := c.Params.ByName("bucket")
+
+	u, ok := c.Get("user")
+	if !ok {
+		c.JSON(500, "No user information in gin context, interrupting")
+		return
+	}
+	user, ok := u.(*dalib.User)
+	if !ok {
+		c.JSON(500, "Erroneous user information in gin context, interrupting")
+		return
+	}
+	rawToken, ok := c.Get("token")
+	if !ok {
+		c.JSON(500, "No JWT object in gin context, interrupting")
+		return
+	}
+	token, ok := rawToken.(*jwt.Token)
+	if !ok {
+		c.JSON(500, "JWT object is not a string, interrupting")
+		return
+	}
+
+	scope := user.Scope
+
+	data, err := dalib.Cache(bucket, params, scope, true, nil, token.Raw, user.Email)
 
 	if err != nil {
 		if daerror, ok := err.(dalib.DAError); ok {

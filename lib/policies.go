@@ -126,7 +126,8 @@ func LoadPolicies(date *time.Time, tx *sql.Tx) (BucketPolicies, error) {
 }
 
 // RelevantPolicies filters BucketPolicies with bucket and scope
-func RelevantPolicies(policies BucketPolicies, bucket string, scope Tags) (bp BucketPolicies) {
+func RelevantPolicies(policies BucketPolicies, bucket string, scope Tags) BucketPolicies {
+	bp := make(BucketPolicies, 0)
 	for _, p := range policies {
 		if scope.Contains(p.Scope) && p.Match(bucket) {
 			bp = append(bp, p)
