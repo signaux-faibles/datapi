@@ -2,6 +2,7 @@ package main
 
 import (
 	"flag"
+	"fmt"
 	"strings"
 
 	"github.com/Nerzal/gocloak"
@@ -79,8 +80,10 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 	data.POST("/put/:bucket", put)
 	// data.GET("/prepare/:bucket", prepare)
 	data.POST("/cache/:bucket", cache)
-
-	router.Run(bind)
+	err := router.Run(bind)
+	if err != nil {
+		fmt.Println(err.Error())
+	}
 }
 
 func keycloakMiddleware(c *gin.Context) {
