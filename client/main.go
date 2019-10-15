@@ -3,6 +3,7 @@ package daclient
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"net/http"
 	"time"
@@ -90,6 +91,11 @@ func (ds *DatapiServer) Connect(user string, password string) error {
 	if err != nil {
 		return err
 	}
+
+	if loginRequest.StatusCode != 200 {
+		return errors.New("datapi login failed")
+	}
+
 	body, err := ioutil.ReadAll(loginRequest.Body)
 	var result struct {
 		Token string `json:"access_token"`

@@ -254,7 +254,7 @@ func get(c *gin.Context) {
 		c.JSON(404, "no data")
 		return
 	}
-
+	// time.Sleep(1 * time.Second)
 	c.JSON(200, data)
 }
 
