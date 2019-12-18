@@ -78,7 +78,7 @@ func connectionEmailHandler(c *gin.Context) {
 	}
 
 	user, err := keycloak.GetUsers(jwt.AccessToken, keycloakAdminRealm, gocloak.GetUsersParams{
-		Email: request.Email,
+		Email: &request.Email,
 	})
 
 	if err != nil {
@@ -89,10 +89,11 @@ func connectionEmailHandler(c *gin.Context) {
 		return
 	}
 
+	lifespan := 60 * 15
 	keycloak.ExecuteActionsEmail(jwt.AccessToken, keycloakRealm, gocloak.ExecuteActionsEmail{
 		UserID:   user[0].ID,
-		ClientID: keycloakClientID,
-		Lifespan: 60 * 15,
+		ClientID: &keycloakClientID,
+		Lifespan: &lifespan,
 		Actions:  []string{"UPDATE_PASSWORD"},
 	})
 }
@@ -161,18 +162,10 @@ func refreshTokenHandler(c *gin.Context) {
 // }
 
 func prepare(c *gin.Context) {
-	bucket := c.Params.ByName("bucket")
-
-	u, ok := c.Get("user")
-	user := u.(*dalib.User)
-	if !ok {
-		c.JSON(401, "malformed token")
-	}
-
-	err := dalib.Prepare(bucket, user.Scope, nil, user.Email)
+	err := dalib.CachePrepare()
 
 	if err != nil {
-		c.JSON(400, "bad request: "+err.Error())
+		c.JSON(500, "bad request: "+err.Error())
 	}
 }
 
@@ -193,7 +186,11 @@ func put(c *gin.Context) {
 		c.JSON(401, "malformed token")
 	}
 
-	err = dalib.Insert(objects, bucket, user.Scope, user.Email)
+	vars := map[string]string{
+		"$user.email": user.Email,
+	}
+
+	err = dalib.Insert(objects, bucket, user.Scope, user.Email, vars)
 	if err != nil {
 		if daerror, ok := err.(dalib.DAError); ok {
 			c.JSON(daerror.Code, daerror.Message)
@@ -254,7 +251,7 @@ func get(c *gin.Context) {
 		c.JSON(404, "no data")
 		return
 	}
-	// time.Sleep(1 * time.Second)
+
 	c.JSON(200, data)
 }
 
@@ -290,7 +287,7 @@ func cache(c *gin.Context) {
 
 	scope := user.Scope
 
-	data, err := dalib.Cache(bucket, params, scope, true, nil, token.Raw, user.Email)
+	data, err := dalib.Cache(bucket, params, scope, true, nil, token.Raw, scope.ToHash())
 
 	if err != nil {
 		if daerror, ok := err.(dalib.DAError); ok {

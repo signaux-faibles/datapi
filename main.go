@@ -70,6 +70,7 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 	router.POST("/connectionEmail", connectionEmailHandler)
 	router.POST("/refreshToken", refreshTokenHandler)
 	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
+	router.GET("/prepare", prepare)
 	router.GET("/refresh")
 	// router.GET("/ws/:token", wsTokenMiddleWare, authMiddleware.MiddlewareFunc(), wsHandler)
 
@@ -80,6 +81,7 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 	data.POST("/put/:bucket", put)
 	// data.GET("/prepare/:bucket", prepare)
 	data.POST("/cache/:bucket", cache)
+
 	err := router.Run(bind)
 	if err != nil {
 		fmt.Println(err.Error())
@@ -88,17 +90,31 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 
 func keycloakMiddleware(c *gin.Context) {
 	header := c.Request.Header["Authorization"][0]
-
 	rawToken := strings.Split(header, " ")[1]
 
 	token, claims, err := keycloak.DecodeAccessToken(rawToken, viper.GetString("keycloakRealm"))
 	if errValid := claims.Valid(); err != nil && errValid != nil {
 		c.AbortWithStatus(401)
 	}
+	var emailString, nameString, firstNameString string
+
+	email, ok := (*claims)["email"]
+	if ok {
+		emailString = email.(string)
+	}
+	name, ok := (*claims)["family_name"]
+	if ok {
+		nameString = name.(string)
+	}
+	firstName, ok := (*claims)["given_name"]
+	if ok {
+		firstNameString = firstName.(string)
+	}
+
 	user := dalib.User{
-		Email:     (*claims)["email"].(string),
-		Name:      (*claims)["family_name"].(string),
-		FirstName: (*claims)["given_name"].(string),
+		Email:     emailString,
+		Name:      nameString,
+		FirstName: firstNameString,
 		Scope:     scopeFromClaims(claims),
 	}
 	c.Set("token", token)
@@ -109,13 +125,29 @@ func keycloakMiddleware(c *gin.Context) {
 }
 
 func scopeFromClaims(claims *jwt.MapClaims) dalib.Tags {
-	resourceAccess := (*claims)["resource_access"].(map[string]interface{})
-	client := (resourceAccess)["signauxfaibles"].(map[string]interface{})
-	scope := (client)["roles"].([]interface{})
+	var resourceAccess = make(map[string]interface{})
+	var client = make(map[string]interface{})
+	var scope []interface{}
+
+	resourceAccessInterface, ok := (*claims)["resource_access"]
+	if ok {
+		resourceAccess, _ = resourceAccessInterface.(map[string]interface{})
+	}
+
+	clientInterface, ok := (resourceAccess)["signauxfaibles"]
+	if ok {
+		client, _ = clientInterface.(map[string]interface{})
+	}
+
+	scopeInterface, ok := (client)["roles"]
+	if ok {
+		scope, _ = scopeInterface.([]interface{})
+	}
 
 	var tags dalib.Tags
 	for _, tag := range scope {
 		tags = append(tags, tag.(string))
 	}
+
 	return tags
 }

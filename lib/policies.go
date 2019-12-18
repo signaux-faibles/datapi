@@ -3,6 +3,7 @@ package dalib
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"regexp"
 	"sort"
 	"sync"
@@ -32,7 +33,26 @@ type BucketPolicies []BucketPolicy
 func (p BucketPolicies) SafeRead() BucketPolicies {
 	policiesLock.Lock()
 	defer policiesLock.Unlock()
-	return p
+	var rp BucketPolicies
+	for _, v := range p {
+		rp = append(rp, v.Copy())
+	}
+	return rp
+}
+
+// Copy returns a safe writable copy
+func (p BucketPolicy) Copy() BucketPolicy {
+	var np = BucketPolicy{
+		Name:     p.Name,
+		Match:    p.Match,
+		Key:      p.Key.Copy(),
+		Scope:    p.Scope.Copy(),
+		Read:     p.Read.Copy(),
+		Write:    p.Write.Copy(),
+		Promote:  p.Promote.Copy(),
+		Writable: p.Writable.Copy(),
+	}
+	return np
 }
 
 // SafeUpdate prevents writing policies when they're read
@@ -130,7 +150,8 @@ func RelevantPolicies(policies BucketPolicies, bucket string, scope Tags) Bucket
 	bp := make(BucketPolicies, 0)
 	for _, p := range policies {
 		if scope.Contains(p.Scope) && p.Match(bucket) {
-			bp = append(bp, p)
+			np := p
+			bp = append(bp, np)
 		}
 	}
 	return bp
@@ -141,7 +162,7 @@ func RelevantPolicies(policies BucketPolicies, bucket string, scope Tags) Bucket
 // - read : scope to add to objects you want to read
 // - write : scope a user must have to write this object
 // - promote : scope a user inherits for this bucket/key
-func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) (read Tags, write Tags, promote Tags, writable Tags) {
+func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags, vars Map) (read Tags, write Tags, promote Tags, writable Tags) {
 	relevantPolicies := RelevantPolicies(policies, bucket, scope)
 	mread := make(map[string]struct{})
 	mwrite := make(map[string]struct{})
@@ -149,6 +170,13 @@ func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags) 
 	mwritable := make(map[string]struct{})
 
 	for _, policy := range relevantPolicies {
+		fmt.Println("before:", policy)
+		for k, v := range policy.Key {
+			if variable, ok := vars[v]; ok {
+				policy.Key[k] = variable
+			}
+		}
+		fmt.Println("after:", policy)
 		if key.Contains(policy.Key) {
 			for _, tag := range policy.Read {
 				mread[tag] = struct{}{}

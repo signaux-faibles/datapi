@@ -58,14 +58,14 @@ func (ds *DatapiServer) Put(bucket string, objects []Object) error {
 	client := &http.Client{
 		Timeout: 3600 * time.Second,
 	}
-	_, err = client.Do(req)
-	// if (*res).StatusCode != 200 {
-	// 	msg, err := ioutil.ReadAll(res.Body)
-	// 	if err != nil {
-	// 		return err
-	// 	}
-	// 	return errors.New("Erreur HTTP datapi: " + res.Status + " " + string(msg))
-	// }
+	res, err := client.Do(req)
+	if (*res).StatusCode != 200 {
+		msg, err := ioutil.ReadAll(res.Body)
+		if err != nil {
+			return err
+		}
+		return errors.New("Erreur HTTP datapi: " + res.Status + " " + string(msg))
+	}
 	return err
 }
 

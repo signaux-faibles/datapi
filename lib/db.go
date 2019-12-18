@@ -155,6 +155,34 @@ type FilterParams struct {
 	Value    interface{} `json:"value"`
 }
 
+// CachePrepare iterates over cache listing in order prepare cache tables
+func CachePrepare() error {
+	var hash string
+	var scope []string
+
+	rows, err := db.Query("select hash, scope from cache_listing")
+	if err != nil {
+		return err
+	}
+
+	for rows.Next() {
+		rows.Scan(&hash, pq.Array(&scope))
+		log.Println("Processing "+hash+":", scope)
+		var tags Tags
+		tags = append(tags, scope...)
+		tx, _ := db.Begin()
+		err = Prepare("public", tags, tx, hash)
+		if err != nil {
+			return err
+		}
+		err = tx.Commit()
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 // Prepare caches a query in a faster temporary table (poor optimization, but efficient)
 func Prepare(bucket string, userScope Tags, tx *sql.Tx, owner string) error {
 	testOwner, err := regexp.Compile("[,(); ]")
@@ -388,7 +416,6 @@ func Query(bucket string, params QueryParams, userScope Tags, applyPolicies bool
 		}
 
 		if params.Limit == nil || limit > 0 {
-
 			o := Object{}
 			var hkey hstore.Hstore
 
@@ -427,7 +454,7 @@ func filter(o Object, params []FilterParams) bool {
 }
 
 // Insert manage to insert objects in the specified bucket
-func Insert(objects []Object, bucket string, userScope Tags, author string) error {
+func Insert(objects []Object, bucket string, userScope Tags, author string, vars map[string]string) error {
 	tx, _ := db.Begin()
 	var refreshPolicy = false
 	policyKey := Map{
@@ -445,7 +472,7 @@ func Insert(objects []Object, bucket string, userScope Tags, author string) erro
 			return ErrInvalidObject
 		}
 
-		_, write, promote, writable := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope)
+		_, write, promote, writable := ApplyPolicies(CurrentBucketPolicies.SafeRead(), bucket, o.Key, userScope, vars)
 		for k := range o.Value {
 			if writable != nil && !writable.Contains(Tags{k}) {
 				return ErrForbiddenValue

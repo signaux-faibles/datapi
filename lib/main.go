@@ -1,11 +1,15 @@
 package dalib
 
 import (
+	"crypto/sha1"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"regexp"
+	"sort"
+	"strings"
 	"time"
 
 	_ "github.com/lib/pq" // postgresql driver
@@ -19,6 +23,17 @@ type User struct {
 	Name      string
 	FirstName string
 	Value     map[string]interface{}
+}
+
+// ToHash converts tagList to hash
+func (t Tags) ToHash() string {
+	sort.Strings(t)
+
+	h := sha1.New()
+	h.Write([]byte(strings.Join(t, "")))
+	bs := h.Sum(nil)
+
+	return fmt.Sprintf("%x", bs)
 }
 
 // Contains checks if all elements of another Map are present in the Map
@@ -66,6 +81,15 @@ type Object struct {
 // Map is equivalent to hstore in a nice json fashion.
 type Map map[string]string
 
+// Copy return a safe to write copy of the map
+func (m Map) Copy() Map {
+	var nms = make(Map)
+	for k, nm := range m {
+		nms[k] = nm
+	}
+	return nms
+}
+
 // Set writes a value to a Map
 func (m *Map) Set(key string, value string) {
 	if *m == nil {
@@ -87,6 +111,15 @@ func (m *Map) Get(key string) (string, error) {
 
 // Tags is a string slice with a validation method.
 type Tags []string
+
+// Copy returns a copy safe to write without breaking original
+func (t Tags) Copy() Tags {
+	var nts Tags
+	for _, nt := range t {
+		nts = append(nts, nt)
+	}
+	return nts
+}
 
 // Contains tests if a Tag collection is contained in another Tag collection
 func (t Tags) Contains(t2 Tags) bool {
