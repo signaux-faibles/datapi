@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/Nerzal/gocloak"
@@ -32,7 +33,7 @@ func main() {
 	viper.ReadInConfig()
 
 	postgres := viper.GetString("postgres")
-	jwtSecret := viper.GetString("jwtSecret")
+
 	bind := viper.GetString("bind")
 
 	if *createdb != "" {
@@ -45,15 +46,16 @@ func main() {
 	}
 
 	if *api {
+		log.Println("starting api, listening " + bind)
 		keycloak = gocloak.NewClient(viper.GetString("keycloakHostname"))
 
-		runAPI(bind, jwtSecret, postgres, &keycloak)
+		runAPI(bind, postgres, &keycloak)
 		return
 	}
 
 }
 
-func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
+func runAPI(bind, postgres string, keycloak *gocloak.GoCloak) {
 
 	dalib.Warmup(postgres)
 
@@ -79,7 +81,7 @@ func runAPI(bind, jwtsecret, postgres string, keycloak *gocloak.GoCloak) {
 	data.Use(keycloakMiddleware)
 	data.POST("/get/:bucket", get)
 	data.POST("/put/:bucket", put)
-	// data.GET("/prepare/:bucket", prepare)
+
 	data.POST("/cache/:bucket", cache)
 
 	err := router.Run(bind)

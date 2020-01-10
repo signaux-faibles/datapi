@@ -3,7 +3,6 @@ package dalib
 import (
 	"database/sql"
 	"errors"
-	"fmt"
 	"regexp"
 	"sort"
 	"sync"
@@ -170,13 +169,12 @@ func ApplyPolicies(policies BucketPolicies, bucket string, key Map, scope Tags, 
 	mwritable := make(map[string]struct{})
 
 	for _, policy := range relevantPolicies {
-		fmt.Println("before:", policy)
 		for k, v := range policy.Key {
 			if variable, ok := vars[v]; ok {
 				policy.Key[k] = variable
 			}
 		}
-		fmt.Println("after:", policy)
+
 		if key.Contains(policy.Key) {
 			for _, tag := range policy.Read {
 				mread[tag] = struct{}{}

@@ -22,7 +22,7 @@ type DatapiServer struct {
 	Bucket   string `json:"bucket"`
 	token    string
 	Scope    []string
-	SendSize int
+	SendSize int // 0 is unlimited
 	Timeout  time.Duration
 	Errors   int
 }
@@ -212,14 +212,14 @@ func (ds *DatapiServer) Worker() (chan Object, *sync.WaitGroup) {
 		var datas = []Object{}
 		for data := range input {
 			datas = append(datas, data)
-			if i > ds.SendSize {
+			i++
+			if i == ds.SendSize {
 				err := ds.SecureSend(datas)
 				if err != nil {
 					ds.Errors++
 				}
 				i, datas = 0, nil
 			}
-			i++
 		}
 		err := ds.SecureSend(datas)
 		if err != nil {
