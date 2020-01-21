@@ -70,10 +70,6 @@ func any(a []string, i string) bool {
 }
 
 func filterNAF1(object Object, operator string, value interface{}) bool {
-	naf1, ok := value.(string)
-	if !ok {
-		return false
-	}
 	activiteVal, ok := object.Value["activite"]
 	if !ok {
 		return false
@@ -82,11 +78,33 @@ func filterNAF1(object Object, operator string, value interface{}) bool {
 	if !ok {
 		return false
 	}
-	codes, ok := nafCodes[naf1]
-	if any(codes, activite) {
-		return true
+
+	if operator == "=" {
+		naf1, ok := value.(string)
+		if !ok {
+			return false
+		}
+
+		codes, _ := nafCodes[naf1]
+		if any(codes, activite) {
+			return true
+		}
+	} else if operator == "in" {
+		naf1s, ok := value.([]interface{})
+		if !ok {
+			return false
+		}
+
+		for _, naf1 := range naf1s {
+			naf := naf1.(string)
+			codes, _ := nafCodes[naf]
+			if any(codes, activite) {
+				return true
+			}
+		}
 	}
 	return false
+
 }
 
 func filterCRP(object Object, operator string, value interface{}) bool {
