@@ -50,6 +50,9 @@ In order to store administrative objects like users and policies, datAPI uses th
 
 
 ## Installation
+
+Note: You can find detailed instructions on how to install datAPI, its underlying services and the [signauxfaibles-web](https://github.com/signaux-faibles/signauxfaibles-web) UI in the following page of our documentation repository: [Prise en main](https://github.com/signaux-faibles/documentation/blob/master/prise-en-main.md).
+
 ### Dependencies
 At the time, I'm using go 1.10.4 and postgresql 10. No other versions have been tested.
 
