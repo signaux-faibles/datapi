@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"regexp"
 	"time"
@@ -14,116 +13,22 @@ import (
 )
 
 // CreateDB creates a brand new (and empty) database
-func CreateDB(dbname, connStr string) {
+func CreateDB(connStr string) {
 	var err error
 
-	pgConnStr := connStr + " dbname='postgres'"
+	pgConnStr := connStr
 	db, err = sql.Open("postgres", pgConnStr)
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
 	}
-	log.Print("Connected to postgres database")
+	log.Print("Connected to postgresql database")
 
-	_, err = db.Query(fmt.Sprintf(`create database %s`, dbname))
+	_, err = db.Query(schema)
+	
 	if err != nil {
-		log.Fatal("database creation: " + err.Error())
+		log.Fatal("schema creation failed: " + err.Error())
 	}
-	log.Printf("%s database created", dbname)
-
-	db.Close()
-
-	dbConnStr := connStr + fmt.Sprintf(" dbname='%s'", dbname)
-	db, err = sql.Open("postgres", dbConnStr)
-	if err != nil {
-		log.Fatal("database switch: " + err.Error())
-	}
-
-	log.Printf("switched to new database: %s", dbname)
-
-	_, err = db.Query(`create extension if not exists hstore`)
-	if err != nil {
-		log.Fatal("hstore installation: " + err.Error())
-	}
-	log.Print("hstore extension installed")
-
-	_, err = db.Query(`create extension if not exists pgcrypto;`)
-	if err != nil {
-		log.Fatal("pgcrypto installation: " + err.Error())
-	}
-	log.Print("pgcrypto extension installed")
-
-	_, err = db.Query(`CREATE OR REPLACE FUNCTION public.last_agg(
-    anyelement,
-    anyelement)
-  RETURNS anyelement AS
-	$BODY$
-    SELECT $2;
-	$BODY$
-  LANGUAGE sql IMMUTABLE STRICT
-	COST 100;`)
-	if err != nil {
-		log.Fatal("last_agg creation: " + err.Error())
-	}
-	log.Print("last_agg function created")
-
-	_, err = db.Query(`CREATE AGGREGATE last(anyelement) (
-		SFUNC=last_agg,
-		STYPE=anyelement
-	)`)
-	if err != nil {
-		log.Fatal("last creation: " + err.Error())
-	}
-	log.Print("last aggregate created")
-
-	_, err = db.Query(`DROP AGGREGATE IF EXISTS array_cat_agg(anyarray)`)
-	if err != nil {
-		log.Fatal("array_cat_agg creation: " + err.Error())
-	}
-	_, err = db.Query(`CREATE AGGREGATE array_cat_agg(anyarray) (
-		SFUNC=array_cat,
-		STYPE=anyarray
-	)`)
-	if err != nil {
-		log.Fatal("array_cat_agg creation: " + err.Error())
-	}
-	log.Print("array_cat_agg aggregate created")
-
-	_, err = db.Query(`create sequence if not exists bucket_id`)
-	if err != nil {
-		log.Fatal("bucket sequence creation: " + err.Error())
-	}
-	log.Print("bucket_id sequence created")
-
-	_, err = db.Query(`create table if not exists bucket ( 
-		id bigint primary key default nextval('bucket_id'),
-		key hstore,
-		author text,
-		add_date timestamp default current_timestamp,
-		release_date timestamp default current_timestamp,
-		scope text[],
-		value jsonb)`)
-	if err != nil {
-		log.Fatal("schema configuration: " + err.Error())
-	}
-	log.Print("bucket table created")
-
-	_, err = db.Query(`create sequence if not exists logs_id`)
-	if err != nil {
-		log.Fatal("logs_id sequence creation: " + err.Error())
-	}
-	log.Print("logs sequence created")
-
-	_, err = db.Query(`create table if not exists logs (
-		id bigint primary key default nextval('logs_id'),
-		reader text,
-		read_date timestamp,
-		query jsonb
-	)`)
-	if err != nil {
-		log.Fatal("logs table creation: " + err.Error())
-	}
-	log.Print("logs table sequence created")
-	log.Print("database successfully created")
+	log.Print("schema created")
 	db.Close()
 }
 

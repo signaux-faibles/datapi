@@ -1,4 +1,6 @@
--- Settings
+package dalib
+
+var schema = `-- Settings
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -32,8 +34,6 @@ CREATE FUNCTION public.last_agg(anyelement, anyelement) RETURNS anyelement
     SELECT $2;
 	$_$;
 
-ALTER FUNCTION public.last_agg(anyelement, anyelement) OWNER TO postgres;
-
 CREATE FUNCTION public.url_decode(data text) RETURNS bytea
     LANGUAGE sql
     AS $$
@@ -47,8 +47,6 @@ WITH t AS (SELECT translate(data, '-_', '+/') AS trans),
     'base64') FROM t, rem;
 $$;
 
-ALTER FUNCTION public.url_decode(data text) OWNER TO datapi;
-
 -- Aggregates
 
 CREATE AGGREGATE public.array_cat_agg(anyarray) (
@@ -56,16 +54,10 @@ CREATE AGGREGATE public.array_cat_agg(anyarray) (
     STYPE = anyarray
 );
 
-ALTER AGGREGATE public.array_cat_agg(anyarray) OWNER TO postgres;
-
 CREATE AGGREGATE public.last(anyelement) (
     SFUNC = public.last_agg,
     STYPE = anyelement
 );
-
-ALTER AGGREGATE public.last(anyelement) OWNER TO postgres;
-
--- Table: bucket
 
 CREATE SEQUENCE public.bucket_id
     START WITH 1
@@ -73,8 +65,6 @@ CREATE SEQUENCE public.bucket_id
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
-
-ALTER TABLE public.bucket_id OWNER TO postgres;
 
 CREATE TABLE public.bucket (
     id bigint DEFAULT nextval('public.bucket_id'::regclass) NOT NULL,
@@ -86,16 +76,12 @@ CREATE TABLE public.bucket (
     author text
 );
 
-ALTER TABLE public.bucket OWNER TO postgres;
-
 ALTER TABLE ONLY public.bucket
     ADD CONSTRAINT bucket_pkey PRIMARY KEY (id);
 
 CREATE INDEX bucket_key_btree ON public.bucket USING btree (key);
 
 CREATE INDEX bucket_key_gin ON public.bucket USING gin (key);
-
--- Table: logs
 
 CREATE SEQUENCE public.logs_id
     START WITH 1
@@ -104,8 +90,6 @@ CREATE SEQUENCE public.logs_id
     NO MAXVALUE
     CACHE 1;
 
-ALTER TABLE public.logs_id OWNER TO postgres;
-
 CREATE TABLE public.logs (
     id bigint DEFAULT nextval('public.logs_id'::regclass) NOT NULL,
     reader text,
@@ -113,12 +97,8 @@ CREATE TABLE public.logs (
     query jsonb
 );
 
-ALTER TABLE public.logs OWNER TO postgres;
-
 ALTER TABLE ONLY public.logs
     ADD CONSTRAINT logs_pkey PRIMARY KEY (id);
-
--- Table: cache_listing
 
 CREATE TABLE public.cache_listing (
     scope text[],
@@ -127,5 +107,4 @@ CREATE TABLE public.cache_listing (
 
 ALTER TABLE ONLY public.cache_listing
     ADD CONSTRAINT cache_listing_pkey PRIMARY KEY (hash);
-
-ALTER TABLE public.cache_listing OWNER TO datapi;
+`

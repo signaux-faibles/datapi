@@ -10,6 +10,7 @@ import (
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+
 	_ "github.com/signaux-faibles/datapi/docs"
 	dalib "github.com/signaux-faibles/datapi/lib"
 	"github.com/spf13/viper"
@@ -22,8 +23,7 @@ var keycloak gocloak.GoCloak
 
 func main() {
 	api := flag.Bool("api", false, "Runs API")
-	createdb := flag.String("createdb", "", "Initialize postgres Database with provided pgsql credentials.")
-	forge := flag.String("forge", "", "Forge Long Term JWT for auth")
+	createdb := flag.Bool("createschema", false, "Initialize postgres schema in a pre-existing database, role must have sufficient privileges")
 
 	flag.Parse()
 
@@ -36,12 +36,8 @@ func main() {
 
 	bind := viper.GetString("bind")
 
-	if *createdb != "" {
-		dalib.CreateDB(*createdb, postgres)
-		return
-	}
-
-	if *forge != "" {
+	if *createdb {
+		dalib.CreateDB(postgres)
 		return
 	}
 
@@ -52,6 +48,8 @@ func main() {
 		runAPI(bind, postgres, &keycloak)
 		return
 	}
+
+	fmt.Println(`use "datapi -help" for help`)
 
 }
 
