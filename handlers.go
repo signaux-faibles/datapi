@@ -3,7 +3,7 @@ package main
 import (
 	"net/http"
 
-	"github.com/Nerzal/gocloak"
+	"github.com/Nerzal/gocloak/v3"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
@@ -78,7 +78,7 @@ func connectionEmailHandler(c *gin.Context) {
 	}
 
 	user, err := keycloak.GetUsers(jwt.AccessToken, keycloakAdminRealm, gocloak.GetUsersParams{
-		Email: &request.Email,
+		Email: request.Email,
 	})
 
 	if err != nil {
@@ -92,8 +92,8 @@ func connectionEmailHandler(c *gin.Context) {
 	lifespan := 60 * 15
 	keycloak.ExecuteActionsEmail(jwt.AccessToken, keycloakRealm, gocloak.ExecuteActionsEmail{
 		UserID:   user[0].ID,
-		ClientID: &keycloakClientID,
-		Lifespan: &lifespan,
+		ClientID: keycloakClientID,
+		Lifespan: lifespan,
 		Actions:  []string{"UPDATE_PASSWORD"},
 	})
 }

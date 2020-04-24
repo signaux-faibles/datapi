@@ -6,7 +6,7 @@ import (
 	"log"
 	"strings"
 
-	"github.com/Nerzal/gocloak"
+	gocloak "github.com/Nerzal/gocloak/v3"
 	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
