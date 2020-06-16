@@ -17,8 +17,7 @@ mkdir workspace
 cd workspace
 curl -LOs "https://github.com/signaux-faibles/datapi/archive/$1.zip"
 
-echo 3be7b8b182ccd96e48989b4e57311193 $1.zip > "$1.zip.md5"
-if md5sum -c $1.zip.md5 --quiet; then
+if [ $(openssl dgst -md5 $1.zip |awk '{print $2}') = '3be7b8b182ccd96e48989b4e57311193' ]; then
    echo "sources manquantes, branche probablement inexistante"
    exit
 fi
@@ -35,4 +34,4 @@ docker build -t datapi --build-arg binary="./workspace/datapi-$1/datapi" .
 docker save datapi | gzip > datapi.tar.gz
 
 # Cleanup
-rm workspace -rf
+rm -rf workspace
