@@ -1,7 +1,8 @@
 FROM alpine
-ARG binary
-COPY ./$binary /app/datapi
+ARG datapiDir
+COPY ./$datapiDir/datapi /app/
+COPY ./$datapiDir/migrations/ /app/
 RUN chmod 555 /app/datapi
 WORKDIR /app
 EXPOSE 3000
-CMD ["/app/datapi", "-api"]
+CMD ["/app/datapi"]
