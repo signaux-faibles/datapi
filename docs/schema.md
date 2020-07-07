@@ -74,11 +74,11 @@ permettre l'inclusion d'évènements sur les entreprises dans un modèle relatio
 
 ## api
 ### entreprises/établissements
-#### GET /entreprise/{siren}
+#### GET /entreprise/get/siren}
 récupère les données d'une entreprise (et de l'établissement siège)
-#### GET /etablissement/{siret}
+#### GET /etablissement/get/{siret}
 récupère les données d'un établissement (et de l'entreprise parente)
-#### GET /etablissements/{siren}
+#### GET /etablissements/get/{siren}
 récupère les données de tous les établissements d'une entreprise
 
 ### suivi d'enterprise
