@@ -1,2 +1,15 @@
-bind = ":3000"
-postgres = "user=postgres dbname=datapi"
+bind = "1.2.3.4:5678"                                                         # network binding
+postgres = "user=postgres dbname=datapi"                                      # postgres connection string
+keycloakHostname = "http://foo.bar:8080/"                                     # where datapi gets realm certs
+keycloakClientID = "clientId"                                                 # application id
+keycloakClientSecret = "clientSecret"                                         # application secret
+keycloakRealm = "master"                                                      # likely master, see your keycloak instance for details
+keycloakAdmin = "admin"                                                       # keycloak admin username
+keycloakPassword = "password"                                                 # keycloak admin password
+keycloakAdminRealm = "master"                                                 # likely master, see your keycloak instance for details
+apiEntrepriseToken = "token"                                                  # API Entreprise token
+apiEntrepriseContext = "context"                                              # 3 mandatory paremeters for traceability
+apiEntrepriseRecipient = "recipient"
+apiEntrepriseObject = "object"
+apiEntrepriseBilansInpiUrl = "https://entreprise.api.gouv.fr/v2/bilans_inpi/" # API Entreprise URL
+fileCachePath = "/var/lib/filecache"                                          # path where datapi stores cached files
