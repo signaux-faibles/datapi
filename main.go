@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-
 	gocloak "github.com/Nerzal/gocloak/v5"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -18,7 +17,6 @@ func main() {
 	loadConfig()
 	db := connectDB()
 	keycloak := connectKC()
-
 	runAPI(db, keycloak)
 }
 
@@ -40,23 +38,26 @@ func runAPI(db *sql.DB, keycloak *gocloak.GoCloak) {
 	config.AddAllowMethods("GET", "POST")
 	router.Use(cors.New(config))
 
-	router.Use(keycloakMiddleware)
+	router.Use(dbMiddleware(db))
+	//router.Use(keycloakMiddleware)
 
-	router.GET("/entreprise/get/:siren", dummy)
-	router.GET("/etablissement/get/:siret", dummy)
-	router.GET("/etablissements/get/:siren", dummy)
+	router.GET("/entreprise/get/:siren", getEntreprise)
+	router.GET("/etablissement/get/:siret", getEtablissement)
+	router.GET("/etablissements/get/:siren", getEntrepriseEtablissements)
 
-	router.GET("/follow", dummy)
-	router.POST("/follow/:siren", dummy)
+	router.GET("/follow", getEntreprisesFollowedByUser)
+	router.POST("/follow/:siren", followEntreprise)
 
-	router.GET("/entreprise/comments/:siren", dummy)
-	router.POST("/entreprise/comments/:siren", dummy)
+	router.GET("/entreprise/comments/:siren", getEntrepriseComments)
+	router.POST("/entreprise/comments/:siren", addEntrepriseComment)
 
-	router.GET("/listes", dummy)
-	router.POST("/scores", dummy)
-	router.POST("/scores/:liste", dummy)
+	router.GET("/listes", getListes)
+	router.GET("/scores", getLastListeScores)
+	router.GET("/scores/:liste", getListeScores)
 
-	router.POST("/reference", dummy)
+	router.GET("/reference/naf", getCodesNaf)
+	router.GET("/reference/departements", getDepartements)
+	router.GET("/reference/regions", getRegions)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
@@ -66,5 +67,13 @@ func runAPI(db *sql.DB, keycloak *gocloak.GoCloak) {
 }
 
 func dummy(c *gin.Context) {
+	log.Println("dummy")
+	c.JSON(200, "dummy")
+}
 
+func dbMiddleware(db *sql.DB) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		c.Set("DB", db)
+		c.Next()
+	}
 }
