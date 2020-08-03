@@ -6,9 +6,12 @@ permettre l'inclusion d'évènements sur les entreprises dans un modèle relatio
 ## Modèle
 ### entreprise
 - siren
-- scope
 - siret_siege
 - business_data…
+
+### entreprise_scope
+- siren
+- scope
 
 ### entreprise_archive
 - siren
@@ -23,11 +26,8 @@ permettre l'inclusion d'évènements sur les entreprises dans un modèle relatio
 ### etablissement_archive
 - siret
 - date_archive
-- business_data…
-
-### etablissement_scope
-- siret
 - scope
+- business_data…
 
 ### etablissement_scope_archive
 - siret

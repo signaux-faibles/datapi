@@ -3,7 +3,7 @@ package main
 import (
 	"crypto/sha1"
 	"database/sql"
-	"encoding/base64"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"sort"
@@ -94,12 +94,15 @@ func listDirMigrations() []migrationScript {
 		if err != nil {
 			panic("error reading migration files: " + err.Error())
 		}
+		hasher.Write(content)
+
 		m := migrationScript{
 			fileName: f.Name(),
 			content:  content,
-			hash:     base64.URLEncoding.EncodeToString(hasher.Sum(content)),
+			hash:     fmt.Sprintf("%x", hasher.Sum(nil)),
 		}
 		dirMigrations = append(dirMigrations, m)
+
 	}
 	sort.Slice(dirMigrations, func(i, j int) bool {
 		return dirMigrations[i].fileName < dirMigrations[j].fileName
@@ -124,7 +127,7 @@ func runMigrations(migrationScripts []migrationScript, db *sql.DB) {
 			tx.Rollback()
 			panic("error inserting " + m.fileName + " in migration table, no changes commited. see details:\n" + err.Error())
 		}
-		log.Printf("%s migrated, registered with hash %s", m.fileName, m.hash)
+		log.Printf("%s rolled, registered with hash %s", m.fileName, m.hash)
 	}
 
 	tx.Commit()
