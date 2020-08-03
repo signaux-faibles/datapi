@@ -5,35 +5,42 @@ import (
 	"errors"
 )
 
+// Entreprise type entreprise pour l'API
 type Entreprise struct {
 	Siren string `json:"siren"`
 }
 
+// Etablissement type établissement pour l'API
 type Etablissement struct {
 	Siren string `json:"siren"`
 	Siret string `json:"siret"`
 }
 
+// Follow type follow pour l'API
 type Follow struct {
-	Siren string `json:"siren"`
+	Siren  string `json:"siren"`
 	UserID string `json:"userId"`
 }
 
+// Comment commentaire sur une enterprise
 type Comment struct {
-	Siren string `json:"siren"`
-	UserID string `json:"userId"`
+	Siren   string `json:"siren"`
+	UserID  string `json:"userId"`
 	Message string `json:"message"`
 }
 
+// Liste de détection
 type Liste struct {
-	ID string `json:"id"`
+	ID     string  `json:"id"`
+	Scores []Score `json:"scores"`
 }
 
+// Score d'une liste de détection
 type Score struct {
-	Siren string `json:"siren"`
-	Siret string `json:"siret"`
-	ListeID string `json:"listeId"`
-	ScoreValue string `json:"scoreValue"`
+	Siren      string  `json:"siren"`
+	Siret      string  `json:"siret"`
+	ListeID    string  `json:"listeId"`
+	ScoreValue float64 `json:"scoreValue"`
 }
 
 func findAllEntreprises(db *sql.DB) ([]Entreprise, error) {

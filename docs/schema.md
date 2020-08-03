@@ -15,10 +15,6 @@ permettre l'inclusion d'évènements sur les entreprises dans un modèle relatio
 - date_archive
 - business_data…
 
-### entreprise_scope
-- siren
-- scope
-
 ### etablissement
 - siren
 - siret

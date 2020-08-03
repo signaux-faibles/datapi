@@ -2,8 +2,9 @@ package main
 
 import (
 	"database/sql"
-	"github.com/gin-gonic/gin"
 	"log"
+
+	"github.com/gin-gonic/gin"
 )
 
 func getAllEntreprises(c *gin.Context) {
@@ -74,19 +75,19 @@ func getEntrepriseEtablissements(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, etablissements)	
+	c.JSON(200, etablissements)
 }
 
 func getEntreprisesFollowedByUser(c *gin.Context) {
 	log.Println("getEntreprisesFollowedByUser")
 	db := c.MustGet("DB").(*sql.DB)
-	userId := ""
-	follow := Follow{UserID: userId}
+	userID := ""
+	follow := Follow{UserID: userID}
 	entreprises, err := follow.findEntreprisesFollowedByUser(db)
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, entreprises)	
+	c.JSON(200, entreprises)
 }
 
 func followEntreprise(c *gin.Context) {
@@ -98,8 +99,8 @@ func followEntreprise(c *gin.Context) {
 		c.JSON(400, "SIREN obligatoire")
 		return
 	}
-	userId := ""
-	follow := Follow{UserID: userId, Siren: siren}
+	userID := ""
+	follow := Follow{UserID: userID, Siren: siren}
 	err := follow.createEntrepriseFollow(db)
 	if err != nil {
 		c.JSON(500, err.Error())
@@ -121,7 +122,7 @@ func getEntrepriseComments(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, comments)	
+	c.JSON(200, comments)
 }
 
 func addEntrepriseComment(c *gin.Context) {
@@ -138,13 +139,13 @@ func addEntrepriseComment(c *gin.Context) {
 		c.JSON(400, "Message obligatoire")
 		return
 	}
-	userId := ""
-	comment := Comment{Siren: siren, UserID: userId, Message: message}
+	userID := ""
+	comment := Comment{Siren: siren, UserID: userID, Message: message}
 	err := comment.createEntrepriseComment(db)
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, comment)	
+	c.JSON(200, comment)
 }
 
 func getListes(c *gin.Context) {
@@ -154,7 +155,7 @@ func getListes(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, listes)	
+	c.JSON(200, listes)
 }
 
 func getLastListeScores(c *gin.Context) {
@@ -164,36 +165,36 @@ func getLastListeScores(c *gin.Context) {
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, scores)	
+	c.JSON(200, scores)
 }
 
 func getListeScores(c *gin.Context) {
 	log.Println("getListeScores")
 	db := c.MustGet("DB").(*sql.DB)
-	listeId := c.Param("listeId")
-	if listeId == "" {
+	listeID := c.Param("listeId")
+	if listeID == "" {
 		c.JSON(400, "Identifiant de liste obligatoire")
 		return
 	}
-	liste := Liste{ID: listeId}
+	liste := Liste{ID: listeID}
 	scores, err := liste.findListeScores(db)
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, scores)	
+	c.JSON(200, scores)
 }
 
 func getCodesNaf(c *gin.Context) {
 	log.Println("getCodesNaf")
-	c.JSON(200, "getCodesNaf")	
+	c.JSON(200, "getCodesNaf")
 }
 
 func getDepartements(c *gin.Context) {
 	log.Println("getDepartements")
-	c.JSON(200, "getDepartements")	
+	c.JSON(200, "getDepartements")
 }
 
 func getRegions(c *gin.Context) {
 	log.Println("getRegions")
-	c.JSON(200, "getRegions")	
+	c.JSON(200, "getRegions")
 }

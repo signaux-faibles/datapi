@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+
 	gocloak "github.com/Nerzal/gocloak/v5"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
@@ -39,7 +40,10 @@ func runAPI(db *sql.DB, keycloak *gocloak.GoCloak) {
 	router.Use(cors.New(config))
 
 	router.Use(dbMiddleware(db))
-	//router.Use(keycloakMiddleware)
+
+	if viper.GetBool("enableKeycloak") {
+		router.Use(keycloakMiddleware)
+	}
 
 	router.GET("/entreprise/get/:siren", getEntreprise)
 	router.GET("/etablissement/get/:siret", getEtablissement)
@@ -64,11 +68,6 @@ func runAPI(db *sql.DB, keycloak *gocloak.GoCloak) {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-}
-
-func dummy(c *gin.Context) {
-	log.Println("dummy")
-	c.JSON(200, "dummy")
 }
 
 func dbMiddleware(db *sql.DB) gin.HandlerFunc {
