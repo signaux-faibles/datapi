@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"database/sql"
 	"encoding/base64"
-	"fmt"
 	"io/ioutil"
 	"log"
 	"sort"
@@ -50,11 +49,7 @@ func listDatabaseMigrations(db *sql.DB) []migrationScript {
 	)
 	row.Scan(&exists)
 	if !exists {
-		fmt.Println("creating missing migrations table, assuming database is empty")
-		_, err := db.Exec("create table migrations (filename text primary key, hash text)")
-		if err != nil {
-			panic("can't create migration table:" + err.Error())
-		}
+		return nil
 	}
 	dbMigrationsCursor, err := db.Query(`
 		select filename, hash 
