@@ -1,3 +1,4 @@
 bind = ":3000"
 postgres = "user=postgres dbname=datapi"
 enableKeycloak = true
+prod = true

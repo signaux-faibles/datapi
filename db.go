@@ -25,7 +25,7 @@ func connectDB() *sql.DB {
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
 	}
-	log.Print("Connected to postgresql database")
+	log.Print("connected to postgresql database")
 	dbMigrations := listDatabaseMigrations(db)
 	dirMigrations := listDirMigrations()
 	updateMigrations := compareMigrations(dbMigrations, dirMigrations)

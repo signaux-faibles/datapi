@@ -30,7 +30,9 @@ func loadConfig() {
 }
 
 func runAPI(db *sql.DB, keycloak *gocloak.GoCloak) {
-	gin.SetMode(gin.ReleaseMode)
+	if viper.GetBool("prod") {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.Default()
 
 	config := cors.DefaultConfig()
@@ -62,6 +64,8 @@ func runAPI(db *sql.DB, keycloak *gocloak.GoCloak) {
 	router.GET("/reference/naf", getCodesNaf)
 	router.GET("/reference/departements", getDepartements)
 	router.GET("/reference/regions", getRegions)
+
+	router.GET("/import", importHandler)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
