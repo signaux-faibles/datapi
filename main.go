@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"log"
 
-	gocloak "github.com/Nerzal/gocloak/v5"
+	gocloak "github.com/Nerzal/gocloak/v6"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 
@@ -13,12 +13,13 @@ import (
 )
 
 var keycloak gocloak.GoCloak
+var db *sql.DB
 
 func main() {
 	loadConfig()
-	db := connectDB()
-	keycloak := connectKC()
-	runAPI(db, keycloak)
+	db = connectDB()
+	keycloak = connectKC()
+	runAPI()
 }
 
 func loadConfig() {
@@ -29,7 +30,7 @@ func loadConfig() {
 	viper.ReadInConfig()
 }
 
-func runAPI(db *sql.DB, keycloak *gocloak.GoCloak) {
+func runAPI() {
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}

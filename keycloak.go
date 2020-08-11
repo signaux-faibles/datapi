@@ -1,26 +1,51 @@
 package main
 
 import (
+	"context"
+	"log"
 	"strings"
 
-	gocloak "github.com/Nerzal/gocloak/v5"
+	gocloak "github.com/Nerzal/gocloak/v6"
 	jwt "github.com/appleboy/gin-jwt"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
-func connectKC() *gocloak.GoCloak {
+func connectKC() gocloak.GoCloak {
 	keycloak := gocloak.NewClient(viper.GetString("keycloakHostname"))
-	return &keycloak
+	if keycloak == nil {
+		panic("keycloak not available")
+	}
+	return keycloak
 }
 
 func keycloakMiddleware(c *gin.Context) {
-	header := c.Request.Header["Authorization"][0]
-	rawToken := strings.Split(header, " ")[1]
-
-	token, claims, err := keycloak.DecodeAccessToken(rawToken, viper.GetString("keycloakRealm"))
-	if errValid := claims.Valid(); err != nil && errValid != nil {
+	if len(c.Request.Header["Authorization"]) == 0 {
+		log.Println("no authorization header")
 		c.AbortWithStatus(401)
+		return
+	}
+	header := c.Request.Header["Authorization"][0]
+
+	rawToken := strings.Split(header, " ")
+	if len(rawToken) != 2 {
+		log.Println("malformed authorization header")
+		c.AbortWithStatus(401)
+		return
+	}
+
+	token, claims, err := keycloak.DecodeAccessToken(context.Background(), rawToken[1], viper.GetString("keycloakRealm"))
+
+	if err != nil {
+		log.Println("unable to decode token: " + err.Error())
+		c.AbortWithStatus(401)
+		return
+	}
+
+	if errValid := claims.Valid(); err != nil && errValid != nil {
+		log.Println("token is invalid: " + errValid.Error())
+		c.AbortWithStatus(401)
+		return
 	}
 
 	c.Set("token", token)

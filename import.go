@@ -1,17 +1,77 @@
 package main
 
 import (
-	"fmt"
+	"bufio"
+	"encoding/json"
+	"log"
+	"os"
 
-	"github.com/gin-gonic/gin"
+	"github.com/davecgh/go-spew/spew"
 )
 
-func importHandler(c *gin.Context) {
-	var params struct {
-		entreprise    string
-		etablissement string
-	}
-	c.Bind(&params)
+type importObject struct {
+	ID    string      `json:"_id"`
+	Value importValue `json:"value"`
+}
 
-	fmt.Println(params)
+type importValue struct {
+	Sirets   *[]string      `json:"sirets"`
+	Bdf      *[]interface{} `json:"bdf"`
+	Diane    *[]diane       `json:"diane"`
+	SireneUL *sireneUL      `json:"sirene_ul"`
+}
+
+func processEntreprise(fileName string) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Buffer([]byte{}, 10000000)
+
+	i := 0
+	for scanner.Scan() {
+		var e entreprise
+		if i > 0 {
+			break
+		}
+		json.Unmarshal(scanner.Bytes(), &e)
+		spew.Dump(e)
+		i++
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func processEtablissement(fileName string) {
+	file, err := os.Open(fileName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+
+	scanner := bufio.NewScanner(file)
+
+	scanner.Buffer([]byte{}, 1000000)
+
+	i := 0
+	for scanner.Scan() {
+		var e etablissement
+		if i > 10 {
+			break
+		}
+		json.Unmarshal(scanner.Bytes(), &e)
+		spew.Dump(e)
+		i++
+	}
+
+	if err := scanner.Err(); err != nil {
+		log.Fatal(err)
+	}
+
 }

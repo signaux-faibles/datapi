@@ -5,6 +5,7 @@ import (
 	"log"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 func getAllEntreprises(c *gin.Context) {
@@ -197,4 +198,14 @@ func getDepartements(c *gin.Context) {
 func getRegions(c *gin.Context) {
 	log.Println("getRegions")
 	c.JSON(200, "getRegions")
+}
+
+func importHandler(c *gin.Context) {
+	sourceEntreprise := viper.GetString("sourceEntreprise")
+	log.Printf("processing entreprise file %s", sourceEntreprise)
+
+	processEntreprise(sourceEntreprise)
+
+	sourceEtablissement := viper.GetString("sourceEtablissement")
+	log.Printf("processing etablisement file %s", sourceEtablissement)
 }
