@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"log"
 	"os"
@@ -21,7 +22,7 @@ type importValue struct {
 	SireneUL *sireneUL      `json:"sirene_ul"`
 }
 
-func processEntreprise(fileName string) {
+func processEntreprise(fileName string, tx *sql.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Fatal(err)
@@ -34,18 +35,27 @@ func processEntreprise(fileName string) {
 
 	i := 0
 	for scanner.Scan() {
-		var e entreprise
-		if i > 0 {
+		if i > 10000 {
 			break
 		}
+		var e entreprise
+
 		json.Unmarshal(scanner.Bytes(), &e)
-		spew.Dump(e)
+		if e.Value.SireneUL.Siren != "" {
+			err = e.insert(tx)
+		}
+		if err != nil {
+			return err
+		}
+
 		i++
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
+		return err
 	}
+
+	return nil
 }
 
 func processEtablissement(fileName string) {

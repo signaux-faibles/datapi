@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -51,10 +52,10 @@ type etablissement struct {
 type entreprise struct {
 	ID    map[string]string `json:"_id"`
 	Value struct {
-		Sirets   []string      `json:"sirets"`
-		Diane    []diane       `json:"diane"`
-		BDF      []interface{} `json:"bdf"`
-		SireneUL sireneUL      `json:"sirene_ul"`
+		Sirets   []string `json:"sirets"`
+		Diane    []diane  `json:"diane"`
+		BDF      []bdf    `json:"bdf"`
+		SireneUL sireneUL `json:"sirene_ul"`
 	} `bson:"value"`
 }
 
@@ -105,6 +106,16 @@ type apDemande struct {
 	Montant          float64 `json:"montant"`
 }
 
+type bdf struct {
+	Annee               int       `json:"annee_bdf"`
+	ArreteBilan         time.Time `json:"arrete_bilan_bdf"`
+	DelaiFournisseur    float64   `json:"delai_fournisseur"`
+	DetteFiscale        float64   `json:"dette_fiscale"`
+	FinancierCourtTerme float64   `json:"financier_court_terme"`
+	FraisFinancier      float64   `json:"FraisFinancier"`
+	PoidsFrng           float64   `json:"poids_frng"`
+	TauxMarge           int       `json:"taux_marge"`
+}
 type diane struct {
 	ChiffreAffaire                  float64   `json:"ca,omitempty"`
 	Exercice                        float64   `json:"exercice_diane,omitempty"`
@@ -175,7 +186,7 @@ type diane struct {
 	ExcedentBrutDExploitation       *float64  `json:"excedent_brut_d_exploitation,omitempty"`
 	AutresProduitsChargesReprises   *float64  `json:"autres_produits_charges_reprises,omitempty"`
 	DotationAmortissement           *float64  `json:"dotation_amortissement,omitempty"`
-	ResultatExploitation            float64   `json:"resultat_expl"`
+	ResultatExploitation            *float64  `json:"resultat_expl"`
 	OperationsCommun                *float64  `json:"operations_commun,omitempty"`
 	ProduitsFinanciers              *float64  `json:"produits_financiers,omitempty"`
 	ChargesFinancieres              *float64  `json:"charges_financieres,omitempty"`
@@ -205,4 +216,94 @@ type sirene struct {
 	Longitude       float64  `json:"longitude"`
 	Nic             string   `json:"nic"`
 	NicSiege        string   `json:"nic_siege"`
+}
+
+func (e entreprise) insert(tx *sql.Tx) error {
+	sqlEntreprise := `insert into entreprise 
+	(siren, version, date_add, raison_sociale, statut_juridique)
+	values ($1, -1, current_timestamp, $2, $3)`
+
+	_, err := tx.Exec(sqlEntreprise,
+		e.Value.SireneUL.Siren,
+		e.Value.SireneUL.RaisonSociale,
+		e.Value.SireneUL.StatutJuridique,
+	)
+	if err != nil {
+		return err
+	}
+
+	for _, b := range e.Value.BDF {
+		sqlEntrepriseBDF := `insert into entreprise_bdf
+			(siren, version, date_add, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme, 
+	 		poids_frng, dette_fiscale, frais_financier, taux_marge)
+			values ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9)`
+
+		_, err = tx.Exec(sqlEntrepriseBDF,
+			e.Value.SireneUL.Siren,
+			b.ArreteBilan,
+			b.Annee,
+			b.DelaiFournisseur,
+			b.FinancierCourtTerme,
+			b.PoidsFrng,
+			b.DetteFiscale,
+			b.FraisFinancier,
+			b.TauxMarge,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, d := range e.Value.Diane {
+		if d.ArreteBilan.IsZero() {
+			continue
+		}
+
+		sqlEntrepriseDiane := `insert into entreprise_diane
+			(siren, version, date_add, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises, 
+			 achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises, 
+			 ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel, 
+			 charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr, 
+			 credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement, 
+			 endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation, 
+			 financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets, 
+			 liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois, 
+			 operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries, 
+			 performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier, 
+			 productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers, 
+			 rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
+			 rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation, 
+			 taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca, 
+			 taux_valeur_ajoutee, valeur_ajoutee)
+			values ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
+			 $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
+			 $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
+			 $66, $67, $68, $69, $70, $71, $72, $73);`
+
+		_, err = tx.Exec(sqlEntrepriseDiane,
+			e.Value.SireneUL.Siren, d.ArreteBilan, d.ChiffreAffaire, d.CreditClient, d.ResultatExploitation, d.AchatMarchandises,
+			d.AchatMatieresPremieres, d.AutonomieFinanciere, d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises,
+			d.CAExportation, d.CapaciteAutofinancement, d.CapaciteRemboursement, d.ChargeExceptionnelle, d.ChargePersonnel,
+			d.ChargesFinancieres, d.ConcesBrevEtDroitsSim, d.Consommation, d.CouvertureCaBesoinFdr, d.CouvertureCaFdr,
+			d.CreditFournisseur, d.DegreImmoCorporelle, d.DetteFiscaleEtSociale, d.DotationAmortissement, d.Endettement,
+			d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
+			d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
+			d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
+			d.OperationsCommun, d.PartAutofinancement, d.PartEtat, d.PartPreteur, d.PartSalaries, d.ParticipationSalaries,
+			d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
+			d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
+			d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
+			d.RentabiliteNette, d.ResultatAvantImpot, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
+			d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
+			d.TauxValeurAjoutee, d.ValeurAjoutee,
+		)
+
+		if err != nil {
+			return err
+		}
+
+	}
+
+	return nil
 }
