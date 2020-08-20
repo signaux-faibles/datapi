@@ -2,3 +2,6 @@ bind = ":3000"
 postgres = "user=postgres dbname=datapi"
 enableKeycloak = true
 prod = true
+sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json"
+sourceEtablissement = "/foo/bar//Project/data-raw/dbmongo-data-export-etablissements.json"
+sourceListe = "/foo/bar//Project/data-raw/dbmongo-data-export-liste.json"
