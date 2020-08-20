@@ -39,13 +39,27 @@ type etablissement struct {
 			Numero  string    `json:"numero_compte"`
 			Periode time.Time `json:"periode"`
 		} `json:"compte"`
-		Effectif        []effectif    `json:"effectif"`
-		DernierEffectif effectif      `json:"dernier_effectif"`
-		Delai           []interface{} `json:"delai"`
-		Procol          []procol      `json:"procol"`
-		LastProcol      procol        `json:"last_procol"`
+		Effectif        []effectif `json:"effectif"`
+		DernierEffectif effectif   `json:"dernier_effectif"`
+		Delai           []delai    `json:"delai"`
+		Procol          []procol   `json:"procol"`
+		LastProcol      procol     `json:"last_procol"`
 	} `bson:"value"`
 	Scores []score `json:"scores"`
+}
+
+type delai struct {
+	Action            string    `json:"action"`
+	AnneeCreation     int       `json:"anne_creation"`
+	DateCreation      time.Time `json:"date_creation"`
+	DateEcheance      time.Time `json:"date_echeance"`
+	Denomination      string    `json:"denomination"`
+	DureeDelai        int       `json:"duree_delai"`
+	Indic6m           string    `json:"indic_6m"`
+	MontantEcheancier float64
+	NumeroCompte      string `json:"numero_compte"`
+	NumeroContentieux string `json:"numero_contentieux"`
+	Stade             string `json:"stade"`
 }
 
 // Entreprise object
@@ -67,9 +81,10 @@ type effectif struct {
 
 // Debit detail
 type debit struct {
-	PartOuvriere  float64   `json:"part_ouvriere"`
-	PartPatronale float64   `json:"part_patronale"`
-	Periode       time.Time `json:"periode"`
+	PartOuvriere       float64   `json:"part_ouvriere"`
+	PartPatronale      float64   `json:"part_patronale"`
+	MontantMajorations float64   `json:"montant_majorations"`
+	Periode            time.Time `json:"periode"`
 }
 
 // APConso detail
@@ -95,15 +110,16 @@ type apDemande struct {
 		Start time.Time `json:"start"`
 		End   time.Time `json:"end"`
 	} `json:"periode"`
-	EffectifAutorise int     `json:"effectif_autorise"`
-	EffectifConsomme int     `json:"effectif_consomme"`
-	IDDemande        string  `json:"id_conso"`
-	Effectif         int     `json:"int"`
-	MTA              float64 `json:"mta"`
-	HTA              float64 `json:"hta"`
-	MotifRecoursSE   int     `json:"motif_recours_se"`
-	HeureConsomme    float64 `json:"heure_consomme"`
-	Montant          float64 `json:"montant"`
+	EffectifEntreprise int     `json:"effectif_entreprise"`
+	Effectif           int     `json:"effectif"`
+	EffectifAutorise   int     `json:"effectif_autorise"`
+	EffectifConsomme   int     `json:"effectif_consomme"`
+	IDDemande          string  `json:"id_conso"`
+	MTA                float64 `json:"mta"`
+	HTA                float64 `json:"hta"`
+	MotifRecoursSE     int     `json:"motif_recours_se"`
+	HeureConsomme      float64 `json:"heure_consomme"`
+	MontantConsomme    float64 `json:"montant_consommee"`
 }
 
 type bdf struct {
@@ -305,5 +321,128 @@ func (e entreprise) insert(tx *sql.Tx) error {
 
 	}
 
+	return nil
+}
+
+func (e etablissement) insert(tx *sql.Tx) error {
+	sql := `insert into etablissement 
+	(siret, version, date_add, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique, 
+		numero_voie, region, type_voie)
+	value ($1, -1, current_timestamp, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
+
+	_, err := tx.Exec(sql,
+		e.Value.Key,
+		e.Value.Key[0:9],
+		e.Value.Sirene.Adresse,
+		e.Value.Sirene.Ape,
+		e.Value.Sirene.CodePostal,
+		e.Value.Sirene.Commune,
+		e.Value.Sirene.Departement,
+		e.Value.Sirene.Lattitude,
+		e.Value.Sirene.Longitude,
+		e.Value.Sirene.NatureJuridique,
+		e.Value.Sirene.NumeroVoie,
+		e.Value.Sirene.Region,
+		e.Value.Sirene.TypeVoie,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	for _, a := range e.Value.APConso {
+		sql = `insert into etablissement_apconso
+	(siret, version, date_add, id_conso, heure_consomme, montant, effectif, periode)
+	value ($1, -1, current_timestamp, $2, $3, $4, $5, $6)`
+
+		_, err = tx.Exec(sql,
+			e.Value.Key,
+			a.IDConso,
+			a.HeureConsomme,
+			a.Montant,
+			a.Effectif,
+			a.Periode,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, a := range e.Value.APDemande {
+		sql = `insert into etablissement_apdemande
+			(siret, version, date_add, id_demande, effectif_entreprise, effectif, date_statut, periode_start, period_end,
+			 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme)
+			value ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+
+		_, err = tx.Exec(sql,
+			e.Value.Key,
+			a.IDDemande,
+			a.EffectifEntreprise,
+			a.Effectif,
+			a.DateStatut,
+			a.Periode.Start,
+			a.Periode.End,
+			a.HTA,
+			a.MTA,
+			a.EffectifAutorise,
+			a.MotifRecoursSE,
+			a.HeureConsomme,
+			a.MontantConsomme,
+			a.EffectifConsomme,
+		)
+
+		if err != nil {
+			return err
+		}
+	}
+
+	for id, a := range e.Value.Debit {
+		sql = `insert into etablissement_periode_urssaf 
+			(siret, version, periode, cotisation, part_patronale, part_salariale, penalite, effectif, last_periode)
+			values ($1, -1, $2, $3, $4, $5, $6, $7, $8)`
+
+		_, err = tx.Exec(sql,
+			e.Value.Key,
+			a.Periode,
+			e.Value.Cotisation[id],
+			a.PartPatronale,
+			a.PartOuvriere,
+			a.MontantMajorations,
+			e.Value.Effectif[id].Effectif,
+			id == 23,
+		)
+
+		if err != nil {
+			return err
+		}
+
+	}
+
+	for _, a := range e.Value.Delai {
+		sql = `insert into etablissement_delai_id (siret, version, action, annee_creation, date_creation, date_echeance,
+			denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade)
+			values ($1, -1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+
+		_, err = tx.Exec(sql,
+			e.Value.Key,
+			a.Action,
+			a.AnneeCreation,
+			a.DateCreation,
+			a.DateEcheance,
+			a.Denomination,
+			a.DureeDelai,
+			a.Indic6m,
+			a.MontantEcheancier,
+			a.NumeroCompte,
+			a.NumeroContentieux,
+			a.Stade,
+		)
+
+		if err != nil {
+			return err
+		}
+
+	}
 	return nil
 }

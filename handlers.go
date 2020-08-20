@@ -217,6 +217,11 @@ func importHandler(c *gin.Context) {
 		c.AbortWithError(500, err)
 	}
 
-	// sourceEtablissement := viper.GetString("sourceEtablissement")
-	// log.Printf("processing etablisement file %s", sourceEtablissement)
+	sourceEtablissement := viper.GetString("sourceEtablissement")
+	log.Printf("processing etablissement file %s", sourceEtablissement)
+	err = processEtablissement(sourceEtablissement, tx)
+	if err != nil {
+		c.AbortWithError(500, err)
+	}
+
 }

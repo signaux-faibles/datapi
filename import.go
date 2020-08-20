@@ -4,10 +4,9 @@ import (
 	"bufio"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"log"
 	"os"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type importObject struct {
@@ -25,7 +24,7 @@ type importValue struct {
 func processEntreprise(fileName string, tx *sql.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Fatal(err)
+		log.Print("error opening file: " + err.Error())
 	}
 	defer file.Close()
 
@@ -35,7 +34,11 @@ func processEntreprise(fileName string, tx *sql.Tx) error {
 
 	i := 0
 	for scanner.Scan() {
-		if i > 10000 {
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+
+		if i >= 0 {
 			break
 		}
 		var e entreprise
@@ -51,37 +54,43 @@ func processEntreprise(fileName string, tx *sql.Tx) error {
 		i++
 	}
 
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
-func processEtablissement(fileName string) {
+func processEtablissement(fileName string, tx *sql.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Fatal(err)
+		log.Print("error opening file: " + err.Error())
 	}
 	defer file.Close()
 
 	scanner := bufio.NewScanner(file)
 
-	scanner.Buffer([]byte{}, 1000000)
+	scanner.Buffer([]byte{}, 10000000)
 
 	i := 0
 	for scanner.Scan() {
-		var e etablissement
-		if i > 10 {
+		if err := scanner.Err(); err != nil {
+			return err
+		}
+
+		if i <= 4000 {
+			var e etablissement
+			fmt.Println(string(scanner.Bytes()))
+			json.Unmarshal(scanner.Bytes(), &e)
+			if len(e.Value.Key) == 14 {
+				err = e.insert(tx)
+			}
+			if err != nil {
+				return err
+			}
+
+		} else {
 			break
 		}
-		json.Unmarshal(scanner.Bytes(), &e)
-		spew.Dump(e)
+
 		i++
 	}
 
-	if err := scanner.Err(); err != nil {
-		log.Fatal(err)
-	}
-
+	return nil
 }

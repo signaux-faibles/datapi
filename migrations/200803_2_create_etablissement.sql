@@ -1,75 +1,92 @@
+create sequence etablissement_id;
 create table etablissement (
-  id                integer primary key,
-  siret             varchar(14),
-  version           integer,
-  date_add          timestamp,
-  date_archive      timestamp,
-  siren             char(9),
-  adresse           text,
-  ape               text,
-  code_postal       text,
-  commune           text,
-  departement       text,
-  lattitude         text,
-  longitude         text,
-  nature_juridique  text,
-  numero_voie       text,
-  region            text,
-  type_voie         text
+  id               integer primary key default nextval('etablissement_id'),
+  siret            varchar(14),
+  version          integer,
+  date_add         timestamp,
+  siren            char(9),
+  adresse          text,
+  ape              text,
+  code_postal      text,
+  commune          text,
+  departement      text,
+  lattitude        text,
+  longitude        text,
+  nature_juridique text,
+  numero_voie      text,
+  region           text,
+  type_voie        text,
+  visite_fce       boolean
 );
 
+create sequence etablissement_apconso_id;
 create table etablissement_apconso (
-  id                integer primary key,
-  id_etablissement  integer references etablissement (id),  
-  date_statut       date,
-  heure_consomme    int,
-  hta               real,
-  id_conso          text,
-  int               text,
-  montant           real,
-  motif_recours_se  text,
-  mta               real
+  id               integer primary key default nextval('etablissement_apconso_id'),
+  siret            varchar(14),
+  version          integer,
+  id_conso         text,
+  heure_consomme   real,
+  montant          real,
+  effectif         integer,
+  periode          date
 );
 
+create sequence etablissement_apdemande_id;
 create table etablissement_apdemande (
-  id                integer primary key,
-  id_etablissement  integer references etablissement (id),
-  effectif_autorise int, 
-  effectif_consomme int,
-  periode_start     date,
-  periode_end       date
+  id                  integer primary key default nextval('etablissement_apdemande_id'),
+  siret               varchar(14),
+  version             integer,
+  id_demande          text,
+  effectif_entreprise integer,
+  effectif            integer,
+  date_statut         date,
+  periode_start       date,
+  periode_end         date,
+  hta                 real,
+  mta                 real,
+  effectif_autorise   integer,
+  motif_recours_se    integer,
+  heure_consomme      real,
+  montant_consomme    real,
+  effectif_consomme   integer
 );
 
+create sequence etablissement_periode_urssaf_id;
 create table etablissement_periode_urssaf (
-  id_etablissement integer references etablissement (id),
-  periode          date,
-  cotisation       real,
-  part_patronale   real,
-  part_salariale   real,
-  penalite         real,
-  effectif         real,
-  last_periode     boolean
+  id                  integer primary key default nextval('etablissement_periode_urssaf_id'),
+  siret               varchar(14),
+  version             integer,
+  periode             date,
+  cotisation          real,
+  part_patronale      real,
+  part_salariale      real,
+  montant_majorations real,
+  effectif            real,
+  last_periode        boolean
 );
 
+create sequence etablissement_delai_id;
 create table etablissement_delai (
-  id integer primary key,
-  id_etablissement integer references etablissement (id),
-  action text,
-  annee_creation int,
-  date_creation date,
-  date_echeance date,
-  denomination text,
-  duree_delai int,
-  indic_6m text,
-  montant_echeancier text,
-  numero_compte text,
+  id                 integer primary key default nextval('etablissement_delai_id'),
+  siret              varchar(14),
+  version            integer,
+  action             text,
+  annee_creation     int,
+  date_creation      date,
+  date_echeance      date,
+  denomination       text,
+  duree_delai        int,
+  indic_6m           text,
+  montant_echeancier real,
+  numero_compte      text,
   numero_contentieux text,
-  stade text
+  stade              text
 );
 
+create sequence etablissement_procol_id;
 create table etablissement_procol (
-  id integer primary key,
-  id_etablissement integer references etablissement (id),
+  id          integer primary key default nextval('etablissement_procol_id'),
+  siret       varchar(14),
   date_procol date,
-  etat date
+  etat        text
 );
