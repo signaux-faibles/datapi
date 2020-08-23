@@ -28,22 +28,26 @@ type procol struct {
 type etablissement struct {
 	ID    string `bson:"_id"`
 	Value struct {
-		Key        string      `json:"key"`
-		Sirene     sirene      `json:"sirene"`
-		Cotisation []float64   `json:"cotisation"`
-		Debit      []debit     `json:"debit"`
-		APDemande  []apDemande `json:"apdemande"`
-		APConso    []apConso   `json:"apconso"`
-		Compte     struct {
+		Key    string `json:"key"`
+		Sirene sirene `json:"sirene"`
+
+		Debit     []debit     `json:"debit"`
+		APDemande []apDemande `json:"apdemande"`
+		APConso   []apConso   `json:"apconso"`
+		Compte    struct {
 			Siret   string    `json:"siret"`
 			Numero  string    `json:"numero_compte"`
 			Periode time.Time `json:"periode"`
 		} `json:"compte"`
-		Effectif        []effectif `json:"effectif"`
-		DernierEffectif effectif   `json:"dernier_effectif"`
-		Delai           []delai    `json:"delai"`
-		Procol          []procol   `json:"procol"`
-		LastProcol      procol     `json:"last_procol"`
+		Periodes                []time.Time `json:"periodes"`
+		Effectif                []int       `json:"effectif"`
+		DebitPartPatronale      []float64   `json:"debit_part_patronale"`
+		DebitPartOuvriere       []float64   `json:"debit_part_ouvriere"`
+		DebitMontantMajorations []float64   `json:"debit_montant_majorations"`
+		Cotisation              []float64   `json:"cotisation"`
+		Delai                   []delai     `json:"delai"`
+		Procol                  []procol    `json:"procol"`
+		LastProcol              procol      `json:"last_procol"`
 	} `bson:"value"`
 	Scores []score `json:"scores"`
 }
@@ -397,20 +401,20 @@ func (e etablissement) insert(tx *sql.Tx) error {
 		}
 	}
 
-	for id, a := range e.Value.Debit {
+	for i, a := range e.Value.Periodes {
 		sql = `insert into etablissement_periode_urssaf 
-			(siret, version, periode, cotisation, part_patronale, part_salariale, penalite, effectif, last_periode)
+			(siret, version, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
 			values ($1, -1, $2, $3, $4, $5, $6, $7, $8)`
 
 		_, err = tx.Exec(sql,
 			e.Value.Key,
-			a.Periode,
-			e.Value.Cotisation[id],
-			a.PartPatronale,
-			a.PartOuvriere,
-			a.MontantMajorations,
-			e.Value.Effectif[id].Effectif,
-			id == 23,
+			a,
+			e.Value.Cotisation[i],
+			e.Value.DebitPartPatronale[i],
+			e.Value.DebitPartOuvriere[i],
+			e.Value.DebitMontantMajorations[i],
+			e.Value.Effectif[i],
+			i == len(e.Value.Periodes)-1,
 		)
 
 		if err != nil {

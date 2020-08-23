@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"compress/gzip"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -27,9 +28,11 @@ func processEntreprise(fileName string, tx *sql.Tx) error {
 		log.Print("error opening file: " + err.Error())
 	}
 	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
+	unzip, err := gzip.NewReader(file)
+	if err != nil {
+		log.Printf("gzip didn't make it: %s", err.Error())
+	}
+	scanner := bufio.NewScanner(unzip)
 	scanner.Buffer([]byte{}, 10000000)
 
 	i := 0
@@ -50,7 +53,6 @@ func processEntreprise(fileName string, tx *sql.Tx) error {
 		if err != nil {
 			return err
 		}
-
 		i++
 	}
 
@@ -60,12 +62,14 @@ func processEntreprise(fileName string, tx *sql.Tx) error {
 func processEtablissement(fileName string, tx *sql.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Print("error opening file: " + err.Error())
+		log.Printf("error opening file: %s", err.Error())
 	}
 	defer file.Close()
-
-	scanner := bufio.NewScanner(file)
-
+	unzip, err := gzip.NewReader(file)
+	if err != nil {
+		log.Printf("gzip didn't make it: %s", err.Error())
+	}
+	scanner := bufio.NewScanner(unzip)
 	scanner.Buffer([]byte{}, 10000000)
 
 	i := 0
@@ -84,7 +88,6 @@ func processEtablissement(fileName string, tx *sql.Tx) error {
 			if err != nil {
 				return err
 			}
-
 		} else {
 			break
 		}
