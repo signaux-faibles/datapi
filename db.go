@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"log"
 	"sort"
+	"sync"
 
 	pgx "github.com/jackc/pgx/v4"
 
@@ -23,7 +24,6 @@ type migrationScript struct {
 
 func connectDB() *pgx.Conn {
 	pgConnStr := viper.GetString("postgres")
-	// db, err := sql.Open("postgres", pgConnStr)
 	db, err := pgx.Connect(context.Background(), pgConnStr)
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
@@ -135,4 +135,16 @@ func runMigrations(migrationScripts []migrationScript, db *pgx.Conn) {
 	}
 
 	tx.Commit(context.Background())
+}
+
+func runBatches(tx *pgx.Tx, batches chan *pgx.Batch, wg *sync.WaitGroup) {
+	for batch := range batches {
+		r := (*tx).SendBatch(context.Background(), batch)
+		err := r.Close()
+		if err != nil {
+			// TODO: meilleur usage des contextes pour remonter l'erreur et annuler la transaction
+			fmt.Println("Error inserting some batch")
+		}
+	}
+	wg.Done()
 }

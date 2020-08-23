@@ -1,7 +1,7 @@
 package main
 
 import (
-	"context"
+	"strings"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -27,7 +27,7 @@ type procol struct {
 
 // Etablissement is an object
 type etablissement struct {
-	ID    string `bson:"_id"`
+	ID    string `json:"_id"`
 	Value struct {
 		Key    string `json:"key"`
 		Sirene sirene `json:"sirene"`
@@ -239,28 +239,27 @@ type sirene struct {
 	NicSiege        string   `json:"nic_siege"`
 }
 
-func (e entreprise) insert(tx *pgx.Tx) error {
+func (e entreprise) getBatch() *pgx.Batch {
+	var batch pgx.Batch
+
 	sqlEntreprise := `insert into entreprise 
 	(siren, version, date_add, raison_sociale, statut_juridique)
 	values ($1, -1, current_timestamp, $2, $3)`
 
-	_, err := (*tx).Exec(context.Background(),
+	batch.Queue(
 		sqlEntreprise,
 		e.Value.SireneUL.Siren,
 		e.Value.SireneUL.RaisonSociale,
 		e.Value.SireneUL.StatutJuridique,
 	)
-	if err != nil {
-		return err
-	}
 
 	for _, b := range e.Value.BDF {
 		sqlEntrepriseBDF := `insert into entreprise_bdf
-			(siren, version, date_add, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme, 
+			(siren, version, date_add, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme,
 	 		poids_frng, dette_fiscale, frais_financier, taux_marge)
 			values ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9)`
 
-		_, err = (*tx).Exec(context.Background(),
+		batch.Queue(
 			sqlEntrepriseBDF,
 			e.Value.SireneUL.Siren,
 			b.ArreteBilan,
@@ -272,10 +271,6 @@ func (e entreprise) insert(tx *pgx.Tx) error {
 			b.FraisFinancier,
 			b.TauxMarge,
 		)
-
-		if err != nil {
-			return err
-		}
 	}
 
 	for _, d := range e.Value.Diane {
@@ -284,27 +279,27 @@ func (e entreprise) insert(tx *pgx.Tx) error {
 		}
 
 		sqlEntrepriseDiane := `insert into entreprise_diane
-			(siren, version, date_add, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises, 
-			 achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises, 
-			 ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel, 
-			 charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr, 
-			 credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement, 
-			 endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation, 
-			 financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets, 
-			 liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois, 
-			 operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries, 
-			 performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier, 
-			 productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers, 
-			 rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
-			 rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation, 
-			 taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca, 
-			 taux_valeur_ajoutee, valeur_ajoutee)
-			values ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, 
-			 $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
-			 $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
-			 $66, $67, $68, $69, $70, $71, $72, $73);`
+				(siren, version, date_add, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
+				 achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,
+				 ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel,
+				 charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr,
+				 credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement,
+				 endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
+				 financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
+				 liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
+				 operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
+				 performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
+				 productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
+				 rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
+				 rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,
+				 taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
+				 taux_valeur_ajoutee, valeur_ajoutee)
+				values ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+				 $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
+				 $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
+				 $66, $67, $68, $69, $70, $71, $72, $73);`
 
-		_, err = (*tx).Exec(context.Background(),
+		batch.Queue(
 			sqlEntrepriseDiane,
 			e.Value.SireneUL.Siren, d.ArreteBilan, d.ChiffreAffaire, d.CreditClient, d.ResultatExploitation, d.AchatMarchandises,
 			d.AchatMatieresPremieres, d.AutonomieFinanciere, d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises,
@@ -322,27 +317,24 @@ func (e entreprise) insert(tx *pgx.Tx) error {
 			d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
 			d.TauxValeurAjoutee, d.ValeurAjoutee,
 		)
-
-		if err != nil {
-			return err
-		}
-
 	}
 
-	return nil
+	return &batch
 }
 
-func (e etablissement) insert(tx *pgx.Tx) error {
-	sql := `insert into etablissement
-	(siret, version, date_add, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-		numero_voie, region, type_voie)
-	value ($1, -1, current_timestamp, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
+func (e etablissement) getBatch() *pgx.Batch {
+	var batch pgx.Batch
 
-	_, err := (*tx).Exec(context.Background(),
-		sql,
+	sqlEtablissement := `insert into etablissement
+		(siret, version, date_add, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
+			numero_voie, region, type_voie)
+		values ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
+
+	batch.Queue(
+		sqlEtablissement,
 		e.Value.Key,
 		e.Value.Key[0:9],
-		e.Value.Sirene.Adresse,
+		strings.Join(e.Value.Sirene.Adresse, "\n"),
 		e.Value.Sirene.Ape,
 		e.Value.Sirene.CodePostal,
 		e.Value.Sirene.Commune,
@@ -355,17 +347,13 @@ func (e etablissement) insert(tx *pgx.Tx) error {
 		e.Value.Sirene.TypeVoie,
 	)
 
-	if err != nil {
-		return err
-	}
-
 	for _, a := range e.Value.APConso {
-		sql = `insert into etablissement_apconso
-	(siret, version, date_add, id_conso, heure_consomme, montant, effectif, periode)
-	value ($1, -1, current_timestamp, $2, $3, $4, $5, $6)`
+		sqlAPConso := `insert into etablissement_apconso
+		(siret, version, id_conso, heure_consomme, montant, effectif, periode)
+		values ($1, -1, $2, $3, $4, $5, $6)`
 
-		_, err = (*tx).Exec(context.Background(),
-			sql,
+		batch.Queue(
+			sqlAPConso,
 			e.Value.Key,
 			a.IDConso,
 			a.HeureConsomme,
@@ -373,20 +361,16 @@ func (e etablissement) insert(tx *pgx.Tx) error {
 			a.Effectif,
 			a.Periode,
 		)
-
-		if err != nil {
-			return err
-		}
 	}
 
 	for _, a := range e.Value.APDemande {
-		sql = `insert into etablissement_apdemande
-			(siret, version, date_add, id_demande, effectif_entreprise, effectif, date_statut, periode_start, period_end,
-			 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme)
-			value ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
+		sqlAPDemande := `insert into etablissement_apdemande
+				(siret, version, id_demande, effectif_entreprise, effectif, date_statut, periode_start, periode_end,
+				 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme)
+				values ($1, -1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
 
-		_, err = (*tx).Exec(context.Background(),
-			sql,
+		batch.Queue(
+			sqlAPDemande,
 			e.Value.Key,
 			a.IDDemande,
 			a.EffectifEntreprise,
@@ -402,19 +386,15 @@ func (e etablissement) insert(tx *pgx.Tx) error {
 			a.MontantConsomme,
 			a.EffectifConsomme,
 		)
-
-		if err != nil {
-			return err
-		}
 	}
 
 	for i, a := range e.Value.Periodes {
-		sql = `insert into etablissement_periode_urssaf
-			(siret, version, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
-			values ($1, -1, $2, $3, $4, $5, $6, $7, $8)`
+		sqlUrssaf := `insert into etablissement_periode_urssaf
+				(siret, version, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
+				values ($1, -1, $2, $3, $4, $5, $6, $7, $8)`
 
-		_, err = (*tx).Exec(context.Background(),
-			sql,
+		batch.Queue(
+			sqlUrssaf,
 			e.Value.Key,
 			a,
 			e.Value.Cotisation[i],
@@ -424,20 +404,15 @@ func (e etablissement) insert(tx *pgx.Tx) error {
 			e.Value.Effectif[i],
 			i == len(e.Value.Periodes)-1,
 		)
-
-		if err != nil {
-			return err
-		}
-
 	}
 
 	for _, a := range e.Value.Delai {
-		sql = `insert into etablissement_delai_id (siret, version, action, annee_creation, date_creation, date_echeance,
-			denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade)
-			values ($1, -1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+		sqlDelai := `insert into etablissement_delai (siret, version, action, annee_creation, date_creation, date_echeance,
+				denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade)
+				values ($1, -1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
 
-		_, err = (*tx).Exec(context.Background(),
-			sql,
+		batch.Queue(
+			sqlDelai,
 			e.Value.Key,
 			a.Action,
 			a.AnneeCreation,
@@ -451,11 +426,7 @@ func (e etablissement) insert(tx *pgx.Tx) error {
 			a.NumeroContentieux,
 			a.Stade,
 		)
-
-		if err != nil {
-			return err
-		}
-
 	}
-	return nil
+
+	return &batch
 }
