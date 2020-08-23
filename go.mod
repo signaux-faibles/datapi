@@ -14,10 +14,11 @@ require (
 	github.com/gin-gonic/gin v1.6.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/gorilla/websocket v1.4.2
+	github.com/jackc/pgx/v4 v4.8.1
 	github.com/lib/pq v1.4.0
 	github.com/spf13/viper v1.6.3
 	github.com/swaggo/gin-swagger v1.2.0
 	github.com/swaggo/swag v1.6.5
-	golang.org/x/crypto v0.0.0-20200423211502-4bdfaf469ed5
+	golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9
 	gopkg.in/dgrijalva/jwt-go.v3 v3.2.0 // indirect
 )

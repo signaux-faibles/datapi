@@ -3,11 +3,12 @@ package main
 import (
 	"bufio"
 	"compress/gzip"
-	"database/sql"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
+
+	pgx "github.com/jackc/pgx/v4"
 )
 
 type importObject struct {
@@ -22,7 +23,7 @@ type importValue struct {
 	SireneUL *sireneUL      `json:"sirene_ul"`
 }
 
-func processEntreprise(fileName string, tx *sql.Tx) error {
+func processEntreprise(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Print("error opening file: " + err.Error())
@@ -59,7 +60,7 @@ func processEntreprise(fileName string, tx *sql.Tx) error {
 	return nil
 }
 
-func processEtablissement(fileName string, tx *sql.Tx) error {
+func processEtablissement(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Printf("error opening file: %s", err.Error())

@@ -1,19 +1,19 @@
 package main
 
 import (
-	"database/sql"
 	"fmt"
 	"log"
 
 	gocloak "github.com/Nerzal/gocloak/v6"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	pgx "github.com/jackc/pgx/v4"
 
 	"github.com/spf13/viper"
 )
 
 var keycloak gocloak.GoCloak
-var db *sql.DB
+var db *pgx.Conn
 
 func main() {
 	loadConfig()
@@ -75,7 +75,7 @@ func runAPI() {
 	}
 }
 
-func dbMiddleware(db *sql.DB) gin.HandlerFunc {
+func dbMiddleware(db *pgx.Conn) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		c.Set("DB", db)
 		c.Next()

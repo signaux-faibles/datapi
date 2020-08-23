@@ -1,10 +1,11 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
+	pgx "github.com/jackc/pgx/v4"
 )
 
 type score struct {
@@ -238,12 +239,13 @@ type sirene struct {
 	NicSiege        string   `json:"nic_siege"`
 }
 
-func (e entreprise) insert(tx *sql.Tx) error {
+func (e entreprise) insert(tx *pgx.Tx) error {
 	sqlEntreprise := `insert into entreprise 
 	(siren, version, date_add, raison_sociale, statut_juridique)
 	values ($1, -1, current_timestamp, $2, $3)`
 
-	_, err := tx.Exec(sqlEntreprise,
+	_, err := (*tx).Exec(context.Background(),
+		sqlEntreprise,
 		e.Value.SireneUL.Siren,
 		e.Value.SireneUL.RaisonSociale,
 		e.Value.SireneUL.StatutJuridique,
@@ -258,7 +260,8 @@ func (e entreprise) insert(tx *sql.Tx) error {
 	 		poids_frng, dette_fiscale, frais_financier, taux_marge)
 			values ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9)`
 
-		_, err = tx.Exec(sqlEntrepriseBDF,
+		_, err = (*tx).Exec(context.Background(),
+			sqlEntrepriseBDF,
 			e.Value.SireneUL.Siren,
 			b.ArreteBilan,
 			b.Annee,
@@ -301,7 +304,8 @@ func (e entreprise) insert(tx *sql.Tx) error {
 			 $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
 			 $66, $67, $68, $69, $70, $71, $72, $73);`
 
-		_, err = tx.Exec(sqlEntrepriseDiane,
+		_, err = (*tx).Exec(context.Background(),
+			sqlEntrepriseDiane,
 			e.Value.SireneUL.Siren, d.ArreteBilan, d.ChiffreAffaire, d.CreditClient, d.ResultatExploitation, d.AchatMarchandises,
 			d.AchatMatieresPremieres, d.AutonomieFinanciere, d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises,
 			d.CAExportation, d.CapaciteAutofinancement, d.CapaciteRemboursement, d.ChargeExceptionnelle, d.ChargePersonnel,
@@ -328,13 +332,14 @@ func (e entreprise) insert(tx *sql.Tx) error {
 	return nil
 }
 
-func (e etablissement) insert(tx *sql.Tx) error {
-	sql := `insert into etablissement 
-	(siret, version, date_add, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique, 
+func (e etablissement) insert(tx *pgx.Tx) error {
+	sql := `insert into etablissement
+	(siret, version, date_add, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
 		numero_voie, region, type_voie)
 	value ($1, -1, current_timestamp, $2, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
 
-	_, err := tx.Exec(sql,
+	_, err := (*tx).Exec(context.Background(),
+		sql,
 		e.Value.Key,
 		e.Value.Key[0:9],
 		e.Value.Sirene.Adresse,
@@ -359,7 +364,8 @@ func (e etablissement) insert(tx *sql.Tx) error {
 	(siret, version, date_add, id_conso, heure_consomme, montant, effectif, periode)
 	value ($1, -1, current_timestamp, $2, $3, $4, $5, $6)`
 
-		_, err = tx.Exec(sql,
+		_, err = (*tx).Exec(context.Background(),
+			sql,
 			e.Value.Key,
 			a.IDConso,
 			a.HeureConsomme,
@@ -379,7 +385,8 @@ func (e etablissement) insert(tx *sql.Tx) error {
 			 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme)
 			value ($1, -1, current_timestamp, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
-		_, err = tx.Exec(sql,
+		_, err = (*tx).Exec(context.Background(),
+			sql,
 			e.Value.Key,
 			a.IDDemande,
 			a.EffectifEntreprise,
@@ -402,11 +409,12 @@ func (e etablissement) insert(tx *sql.Tx) error {
 	}
 
 	for i, a := range e.Value.Periodes {
-		sql = `insert into etablissement_periode_urssaf 
+		sql = `insert into etablissement_periode_urssaf
 			(siret, version, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
 			values ($1, -1, $2, $3, $4, $5, $6, $7, $8)`
 
-		_, err = tx.Exec(sql,
+		_, err = (*tx).Exec(context.Background(),
+			sql,
 			e.Value.Key,
 			a,
 			e.Value.Cotisation[i],
@@ -428,7 +436,8 @@ func (e etablissement) insert(tx *sql.Tx) error {
 			denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade)
 			values ($1, -1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
 
-		_, err = tx.Exec(sql,
+		_, err = (*tx).Exec(context.Background(),
+			sql,
 			e.Value.Key,
 			a.Action,
 			a.AnneeCreation,

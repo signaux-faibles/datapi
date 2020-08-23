@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"crypto/sha1"
-	"database/sql"
 	"fmt"
 	"io/ioutil"
 	"log"
 	"sort"
+
+	pgx "github.com/jackc/pgx/v4"
 
 	"github.com/spf13/viper"
 
@@ -19,9 +21,10 @@ type migrationScript struct {
 	hash     string
 }
 
-func connectDB() *sql.DB {
+func connectDB() *pgx.Conn {
 	pgConnStr := viper.GetString("postgres")
-	db, err := sql.Open("postgres", pgConnStr)
+	// db, err := sql.Open("postgres", pgConnStr)
+	db, err := pgx.Connect(context.Background(), pgConnStr)
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
 	}
@@ -38,21 +41,20 @@ func connectDB() *sql.DB {
 	return db
 }
 
-func listDatabaseMigrations(db *sql.DB) []migrationScript {
+func listDatabaseMigrations(db *pgx.Conn) []migrationScript {
 	var exists bool
-	row := db.QueryRow(
-		`SELECT EXISTS 
-		(SELECT 1
-		 FROM information_schema.tables 
-		 WHERE table_schema = 'public'
-	   AND table_name = 'migrations');`,
-	)
-	row.Scan(&exists)
+	err := db.QueryRow(context.Background(),
+		`select exists
+		(select 1
+		 from information_schema.tables 
+		 where table_schema = 'public'
+	   and table_name = 'migrations');`,
+	).Scan(&exists)
 	if !exists {
 		return nil
 	}
-	dbMigrationsCursor, err := db.Query(`
-		select filename, hash 
+	dbMigrationsCursor, err := db.Query(context.Background(),
+		`select filename, hash 
 		from migrations
 		order by filename`)
 	if err != nil {
@@ -110,25 +112,27 @@ func listDirMigrations() []migrationScript {
 	return dirMigrations
 }
 
-func runMigrations(migrationScripts []migrationScript, db *sql.DB) {
-	tx, err := db.Begin()
+func runMigrations(migrationScripts []migrationScript, db *pgx.Conn) {
+	tx, err := db.Begin(context.Background())
 
 	if err != nil {
 		panic("something bad is happening with database" + err.Error())
 	}
 	for _, m := range migrationScripts {
-		_, err = tx.Exec(string(m.content))
+		_, err = tx.Exec(context.Background(), string(m.content))
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback(context.Background())
 			panic("error migrating " + m.fileName + ", no changes commited. see details:\n" + err.Error())
 		}
-		_, err = tx.Exec("insert into migrations (filename, hash) values ($1, $2)", m.fileName, string(m.hash[:]))
+		_, err = tx.Exec(
+			context.Background(),
+			"insert into migrations (filename, hash) values ($1, $2)", m.fileName, string(m.hash[:]))
 		if err != nil {
-			tx.Rollback()
+			tx.Rollback(context.Background())
 			panic("error inserting " + m.fileName + " in migration table, no changes commited. see details:\n" + err.Error())
 		}
 		log.Printf("%s rolled, registered with hash %s", m.fileName, m.hash)
 	}
 
-	tx.Commit()
+	tx.Commit(context.Background())
 }

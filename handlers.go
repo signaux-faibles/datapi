@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	"log"
@@ -205,21 +206,21 @@ func importHandler(c *gin.Context) {
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
 
-	tx, err := db.Begin()
+	tx, err := db.Begin(context.Background())
 	if err != nil {
 		c.AbortWithError(500, fmt.Errorf("error processing entreprise: %s", err.Error()))
 		return
 	}
-	defer tx.Commit()
+	defer tx.Commit(context.Background())
 
-	err = processEntreprise(sourceEntreprise, tx)
+	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
 		c.AbortWithError(500, err)
 	}
 
 	sourceEtablissement := viper.GetString("sourceEtablissement")
 	log.Printf("processing etablissement file %s", sourceEtablissement)
-	err = processEtablissement(sourceEtablissement, tx)
+	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
 		c.AbortWithError(500, err)
 	}
