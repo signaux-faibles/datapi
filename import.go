@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"encoding/json"
 	"fmt"
+	"io"
 	"log"
 	"math"
 	"os"
@@ -32,20 +33,27 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 		return err
 	}
 	defer file.Close()
-	scanner, err := getFileScanner(file)
 
 	var batches = make(chan *pgx.Batch, 10)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go runBatches(tx, batches, &wg)
+	unzip, err := gzip.NewReader(file)
+	decoder := json.NewDecoder(unzip)
+
 	i := 0
-	for scanner.Scan() {
-		if err := scanner.Err(); err != nil {
+	for {
+		var e entreprise
+		err := decoder.Decode(&e)
+		if err != nil {
+			close(batches)
+			wg.Wait()
+			if err == io.EOF {
+				return nil
+			}
 			return err
 		}
 
-		var e entreprise
-		json.Unmarshal(scanner.Bytes(), &e)
 		if e.Value.SireneUL.Siren != "" {
 			batch := e.getBatch()
 			batches <- batch
@@ -54,11 +62,8 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
 			}
 		}
-
 	}
-	close(batches)
-	wg.Wait()
-	return nil
+
 }
 
 func processEtablissement(fileName string, tx *pgx.Tx) error {
@@ -68,7 +73,6 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 		return err
 	}
 	defer file.Close()
-	scanner, err := getFileScanner(file)
 	if err != nil {
 		return err
 	}
@@ -77,14 +81,22 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go runBatches(tx, batches, &wg)
+	unzip, err := gzip.NewReader(file)
+	decoder := json.NewDecoder(unzip)
 
 	i := 0
-	for scanner.Scan() {
-		if err := scanner.Err(); err != nil {
+	for {
+		var e etablissement
+		decoder.Decode(&e)
+		if err != nil {
+			close(batches)
+			wg.Wait()
+			if err == io.EOF {
+				return nil
+			}
 			return err
 		}
-		var e etablissement
-		json.Unmarshal(scanner.Bytes(), &e)
+
 		if len(e.ID) > 14 {
 			e.Value.Key = e.ID[len(e.ID)-14:]
 			batches <- e.getBatch()
@@ -94,9 +106,6 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 			}
 		}
 	}
-	close(batches)
-	wg.Wait()
-	return nil
 }
 
 func getFileScanner(file *os.File) (*bufio.Scanner, error) {

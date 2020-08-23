@@ -143,7 +143,7 @@ func runBatches(tx *pgx.Tx, batches chan *pgx.Batch, wg *sync.WaitGroup) {
 		err := r.Close()
 		if err != nil {
 			// TODO: meilleur usage des contextes pour remonter l'erreur et annuler la transaction
-			fmt.Println("Error inserting some batch")
+			fmt.Println("Error inserting some batch:" + err.Error())
 		}
 	}
 	wg.Done()

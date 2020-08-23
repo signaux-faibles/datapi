@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -204,16 +203,13 @@ func getRegions(c *gin.Context) {
 
 func importHandler(c *gin.Context) {
 	tx, err := db.Begin(context.Background())
+	if err != nil {
+		c.AbortWithError(500, err)
+	}
 	defer tx.Commit(context.Background())
 
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
-
-	if err != nil {
-		c.AbortWithError(500, fmt.Errorf("error processing entreprise: %s", err.Error()))
-		return
-	}
-
 	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
 		c.AbortWithError(500, err)

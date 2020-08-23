@@ -69,7 +69,7 @@ type delai struct {
 
 // Entreprise object
 type entreprise struct {
-	ID    map[string]string `json:"_id"`
+	ID    string `json:"_id"`
 	Value struct {
 		Sirets   []string `json:"sirets"`
 		Diane    []diane  `json:"diane"`
@@ -135,7 +135,7 @@ type bdf struct {
 	FinancierCourtTerme float64   `json:"financier_court_terme"`
 	FraisFinancier      float64   `json:"FraisFinancier"`
 	PoidsFrng           float64   `json:"poids_frng"`
-	TauxMarge           int       `json:"taux_marge"`
+	TauxMarge           float64   `json:"taux_marge"`
 }
 type diane struct {
 	ChiffreAffaire                  float64   `json:"ca,omitempty"`
