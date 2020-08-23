@@ -34,7 +34,7 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 	defer file.Close()
 	scanner, err := getFileScanner(file)
 
-	var batches = make(chan *pgx.Batch)
+	var batches = make(chan *pgx.Batch, 10)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go runBatches(tx, batches, &wg)
@@ -73,7 +73,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 		return err
 	}
 
-	var batches = make(chan *pgx.Batch)
+	var batches = make(chan *pgx.Batch, 10)
 	var wg sync.WaitGroup
 	wg.Add(1)
 	go runBatches(tx, batches, &wg)
@@ -88,7 +88,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 		if len(e.ID) > 14 {
 			e.Value.Key = e.ID[len(e.ID)-14:]
 			batches <- e.getBatch()
-
+			i++
 			if math.Mod(float64(i), 100) == 0 {
 				fmt.Printf("\033[2K\r%s: %d objects sent to postgres", fileName, i)
 			}
