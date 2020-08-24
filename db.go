@@ -137,14 +137,22 @@ func runMigrations(migrationScripts []migrationScript, db *pgx.Conn) {
 	tx.Commit(context.Background())
 }
 
-func runBatches(tx *pgx.Tx, batches chan *pgx.Batch, wg *sync.WaitGroup) {
-	for batch := range batches {
-		r := (*tx).SendBatch(context.Background(), batch)
-		err := r.Close()
-		if err != nil {
-			// TODO: meilleur usage des contextes pour remonter l'erreur et annuler la transaction
-			fmt.Println("Error inserting some batch:" + err.Error())
+func newBatchRunner(tx *pgx.Tx) (chan *pgx.Batch, *sync.WaitGroup) {
+	var batches = make(chan *pgx.Batch)
+	var wg sync.WaitGroup
+	wg.Add(1)
+
+	go func() {
+		for batch := range batches {
+			r := (*tx).SendBatch(context.Background(), batch)
+			err := r.Close()
+			if err != nil {
+				// TODO: meilleur usage des contextes pour remonter l'erreur et annuler la transaction
+				fmt.Println("Error inserting some batch:" + err.Error())
+			}
 		}
-	}
-	wg.Done()
+		wg.Done()
+	}()
+
+	return batches, &wg
 }

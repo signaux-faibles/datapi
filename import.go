@@ -9,7 +9,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"sync"
 
 	pgx "github.com/jackc/pgx/v4"
 )
@@ -34,10 +33,7 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 	}
 	defer file.Close()
 
-	var batches = make(chan *pgx.Batch, 10)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go runBatches(tx, batches, &wg)
+	batches, wg := newBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	decoder := json.NewDecoder(unzip)
 
@@ -48,7 +44,9 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 		if err != nil {
 			close(batches)
 			wg.Wait()
+			fmt.Println("wait")
 			if err == io.EOF {
+				fmt.Println("exite")
 				return nil
 			}
 			return err
@@ -56,7 +54,9 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 
 		if e.Value.SireneUL.Siren != "" {
 			batch := e.getBatch()
+			fmt.Print("coucou1\n")
 			batches <- batch
+			fmt.Print("coucou2\n")
 			i++
 			if math.Mod(float64(i), 100) == 0 {
 				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
@@ -77,10 +77,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 		return err
 	}
 
-	var batches = make(chan *pgx.Batch, 10)
-	var wg sync.WaitGroup
-	wg.Add(1)
-	go runBatches(tx, batches, &wg)
+	batches, wg := newBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	decoder := json.NewDecoder(unzip)
 
@@ -106,6 +103,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 			}
 		}
 	}
+
 }
 
 func getFileScanner(file *os.File) (*bufio.Scanner, error) {

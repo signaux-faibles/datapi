@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -206,7 +207,6 @@ func importHandler(c *gin.Context) {
 	if err != nil {
 		c.AbortWithError(500, err)
 	}
-	defer tx.Commit(context.Background())
 
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
@@ -222,4 +222,6 @@ func importHandler(c *gin.Context) {
 		c.AbortWithError(500, err)
 	}
 
+	fmt.Println("coucou")
+	tx.Commit(context.Background())
 }
