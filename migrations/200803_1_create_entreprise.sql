@@ -2,35 +2,20 @@ create sequence entreprise_id;
 create table entreprise (
   id integer primary key default nextval('entreprise_id'),
   siren char(9),
-  version integer,
-  date_add timestamp,
+  version integer default 0,
+  date_add timestamp default current_timestamp,
   siret_siege char(14),
   raison_sociale text,
-  statut_juridique text
-);
-
-create table entreprise_scope (
-  id integer primary key,
-  id_entreprise int references entreprise (id),
-  siren varchar(9),
-  scope text[]
-);
-
-create table entreprise_comments (
-  id int primary key,
-  id_parent int references entreprise_comments,
-  siren text,
-  id_keycloak text,
-  date_add timestamp,
-  comment text
+  statut_juridique text,
+  hash text
 );
 
 create sequence entreprise_bdf_id;
 create table entreprise_bdf (
   id integer primary key default nextval('entreprise_bdf_id'),
   siren text,
-  version int,
-  date_add timestamp,
+  version integer default 0,
+  date_add timestamp default current_timestamp,
   arrete_bilan_bdf date,
   annee_bdf int,
   delai_fournisseur real,
@@ -38,15 +23,16 @@ create table entreprise_bdf (
   poids_frng real,
   dette_fiscale real,
   frais_financier real,
-  taux_marge real
+  taux_marge real,
+  hash text
 );
 
 create sequence entreprise_diane_id;
 create table entreprise_diane (
   id integer primary key default nextval('entreprise_diane_id'),
   siren text,
-  version integer,
-  date_add timestamp,
+  version integer default 0,
+  date_add timestamp default current_timestamp,
   arrete_bilan_diane date,
   nombre_etab_secondaire int,
   nombre_filiale int,
@@ -118,7 +104,8 @@ create table entreprise_diane (
   taux_interet_financier real,
   taux_interet_sur_ca real,
   taux_valeur_ajoutee real,
-  valeur_ajoutee real
+  valeur_ajoutee real,
+  hash text
 );
 
 create table entreprise_followers (
@@ -128,4 +115,20 @@ create table entreprise_followers (
   date_add timestamp,
   status text,
   data jsonb
+);
+
+create table entreprise_scope (
+  id integer primary key,
+  id_entreprise int references entreprise (id),
+  siren varchar(9),
+  scope text[]
+);
+
+create table entreprise_comments (
+  id int primary key,
+  id_parent int references entreprise_comments,
+  siren text,
+  id_keycloak text,
+  date_add timestamp,
+  comment text
 );
