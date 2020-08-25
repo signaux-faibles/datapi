@@ -62,7 +62,7 @@ func runAPI(bind, postgres string, keycloak *gocloak.GoCloak) {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
-	config.AddAllowHeaders("Authorization")
+	config.AddAllowHeaders("Authorization", "Origin")
 	config.AddAllowMethods("GET", "POST")
 	router.Use(cors.New(config))
 
@@ -81,6 +81,10 @@ func runAPI(bind, postgres string, keycloak *gocloak.GoCloak) {
 	data.POST("/put/:bucket", put)
 
 	data.POST("/cache/:bucket", cache)
+
+	bilans := router.Group("bilans")
+	bilans.GET("/:siren/:exercice", bilansDocumentsHandler)
+	bilans.GET("/:siren", bilansExercicesHandler)
 
 	err := router.Run(bind)
 	if err != nil {
