@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -32,6 +33,7 @@ type etablissement struct {
 	Value struct {
 		Key       string      `json:"key"`
 		Sirene    sirene      `json:"sirene"`
+		Scores    []score     `json:"scores"`
 		Debit     []debit     `json:"debit"`
 		APDemande []apDemande `json:"apdemande"`
 		APConso   []apConso   `json:"apconso"`
@@ -440,5 +442,31 @@ func (e etablissement) getBatch() *pgx.Batch {
 			p.Stade,
 		)
 	}
+
+	for _, s := range e.Value.Scores {
+
+		sqlScore := `insert into score (libelle_liste, periode, siret, siren, score, alerte)
+		values ($1, $2, $3, $4, $5, $6)`
+
+		batch.Queue(sqlScore,
+			s.toLibelle(),
+			s.Periode,
+			e.Value.Key,
+			e.Value.Key[:9],
+			s.Score,
+			s.Alert,
+		)
+	}
 	return &batch
+}
+
+func (s score) toLibelle() string {
+	return s.Batch + s.Algo
+}
+
+func scoreToListe(tx *pgx.Tx) error {
+	sqlListe := `insert into liste select distinct libelle, batch, algo from score;`
+	_, err := (*tx).Query(context.Background(), sqlListe)
+
+	return err
 }
