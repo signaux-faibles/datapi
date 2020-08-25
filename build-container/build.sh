@@ -11,7 +11,7 @@ if [ -d workspace ]; then
     echo "supprimer le répertoire workspace avant de commencer"
     exit 1
 fi
-
+ 
 # Checkout git
 mkdir workspace
 cd workspace

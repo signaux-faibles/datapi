@@ -46,6 +46,8 @@ func runAPI() {
 
 	if viper.GetBool("enableKeycloak") {
 		router.Use(keycloakMiddleware)
+	} else {
+		router.Use(fakeCloakMiddleware)
 	}
 
 	router.GET("/entreprise/get/:siren", getEntreprise)

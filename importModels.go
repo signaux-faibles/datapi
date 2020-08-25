@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"strings"
 	"time"
 
@@ -445,14 +444,16 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	for _, s := range e.Value.Scores {
 
-		sqlScore := `insert into score (libelle_liste, periode, siret, siren, score, alerte)
-		values ($1, $2, $3, $4, $5, $6)`
+		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, alerte)
+		values ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 		batch.Queue(sqlScore,
-			s.toLibelle(),
-			s.Periode,
 			e.Value.Key,
 			e.Value.Key[:9],
+			s.toLibelle(),
+			s.Batch,
+			s.Algo,
+			s.Periode,
 			s.Score,
 			s.Alert,
 		)
@@ -464,9 +465,9 @@ func (s score) toLibelle() string {
 	return s.Batch + s.Algo
 }
 
-func scoreToListe(tx *pgx.Tx) error {
-	sqlListe := `insert into liste select distinct libelle, batch, algo from score;`
-	_, err := (*tx).Query(context.Background(), sqlListe)
-
-	return err
+func scoreToListe() *pgx.Batch {
+	var batch pgx.Batch
+	batch.Queue(`insert into liste (libelle, batch, algo) 
+	select distinct libelle_liste as libelle, batch, algo from score;`)
+	return &batch
 }

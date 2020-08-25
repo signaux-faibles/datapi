@@ -54,6 +54,11 @@ func keycloakMiddleware(c *gin.Context) {
 	c.Next()
 }
 
+func fakeCloakMiddleware(c *gin.Context) {
+	var claims jwt.MapClaims
+	c.Set("claims", claims)
+}
+
 func scopeFromClaims(claims *jwt.MapClaims) []string {
 	var resourceAccess = make(map[string]interface{})
 	var client = make(map[string]interface{})
@@ -64,7 +69,7 @@ func scopeFromClaims(claims *jwt.MapClaims) []string {
 		resourceAccess, _ = resourceAccessInterface.(map[string]interface{})
 	}
 
-	clientInterface, ok := (resourceAccess)["signauxfaibles"]
+	clientInterface, ok := (resourceAccess)[viper.GetString("")]
 	if ok {
 		client, _ = clientInterface.(map[string]interface{})
 	}

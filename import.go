@@ -83,11 +83,12 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 		var e etablissement
 		err := decoder.Decode(&e)
 		if err != nil {
+			batches <- scoreToListe()
 			close(batches)
 			wg.Wait()
 			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
 			if err == io.EOF {
-				return scoreToListe(tx)
+				return nil
 			}
 			return err
 		}
