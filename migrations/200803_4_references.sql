@@ -1,10 +1,10 @@
 create table regions (
   id integer primary key,
   code text,
-  libelle text,
+  libelle text
 );
 
-INSERT INTO `regions` 
+INSERT INTO regions
   (id, code, libelle)
 VALUES 
   (1,'01','Guadeloupe'),
