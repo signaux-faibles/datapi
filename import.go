@@ -87,7 +87,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 			wg.Wait()
 			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
 			if err == io.EOF {
-				return nil
+				return scoreToListe(tx)
 			}
 			return err
 		}
@@ -101,7 +101,6 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 			}
 		}
 	}
-
 }
 
 func prepareImport(tx *pgx.Tx) error {
@@ -116,6 +115,8 @@ func prepareImport(tx *pgx.Tx) error {
 		"etablissement_periode_urssaf",
 		"etablissement_delai",
 		"etablissement_procol",
+		"score",
+		"liste",
 	}
 	for _, table := range tables {
 		batch.Queue(fmt.Sprintf("update %s set version = version + 1", table))
@@ -137,6 +138,7 @@ func upgradeVersion(tx *pgx.Tx) error {
 		"etablissement_periode_urssaf": "siret, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode",
 		"etablissement_delai":          "siret, action, annee_creation, date_creation, date_echeance, denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade",
 		"etablissement_procol":         "siret, date_effet, action_procol, state_procol",
+		"score":                        "siret, siren, libelle_liste, periode, score, alerte",
 	}
 
 	for table, fields := range tables {
