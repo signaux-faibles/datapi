@@ -34,7 +34,7 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
-	token, claims, err := keycloak.DecodeAccessToken(context.Background(), rawToken[1], viper.GetString("keycloakRealm"))
+	_, claims, err := keycloak.DecodeAccessToken(context.Background(), rawToken[1], viper.GetString("keycloakRealm"))
 
 	if err != nil {
 		log.Println("unable to decode token: " + err.Error())
@@ -48,15 +48,21 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
-	c.Set("token", token)
 	c.Set("claims", claims)
-
 	c.Next()
 }
 
 func fakeCloakMiddleware(c *gin.Context) {
-	var claims jwt.MapClaims
+	var claims = jwt.MapClaims{
+		"ressource_access": map[string]interface{}{
+			viper.GetString("keycloakClient"): map[string]interface{}{
+				"roles": viper.GetStringSlice("fakeKeycloakRoles"),
+			},
+		},
+	}
+
 	c.Set("claims", claims)
+	c.Next()
 }
 
 func scopeFromClaims(claims *jwt.MapClaims) []string {
@@ -69,7 +75,7 @@ func scopeFromClaims(claims *jwt.MapClaims) []string {
 		resourceAccess, _ = resourceAccessInterface.(map[string]interface{})
 	}
 
-	clientInterface, ok := (resourceAccess)[viper.GetString("")]
+	clientInterface, ok := (resourceAccess)[viper.GetString("keycloakClient")]
 	if ok {
 		client, _ = clientInterface.(map[string]interface{})
 	}
