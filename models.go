@@ -3,6 +3,8 @@ package main
 import (
 	"database/sql"
 	"errors"
+
+	pgx "github.com/jackc/pgx/v4"
 )
 
 // Entreprise type entreprise pour l'API
@@ -47,7 +49,7 @@ func findAllEntreprises(db *sql.DB) ([]Entreprise, error) {
 	return nil, errors.New("Non implémenté")
 }
 
-func (entreprise *Entreprise) findEntrepriseBySiren(db *sql.DB) error {
+func (entreprise *Entreprise) findEntrepriseBySiren(db *pgx.Conn) error {
 	return errors.New("Non implémenté")
 }
 

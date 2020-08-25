@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -20,8 +21,9 @@ func getAllEntreprises(c *gin.Context) {
 }
 
 func getEntreprise(c *gin.Context) {
+	fmt.Println(scopeFromContext(c))
 	log.Println("getEntreprise")
-	db := c.MustGet("DB").(*sql.DB)
+
 	siren := c.Param("siren")
 	// TODO: valider SIREN
 	if siren == "" {

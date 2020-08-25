@@ -53,15 +53,20 @@ func keycloakMiddleware(c *gin.Context) {
 }
 
 func fakeCloakMiddleware(c *gin.Context) {
+	var fakeRoles []interface{}
+	for _, r := range viper.GetStringSlice("fakeKeycloakRoles") {
+		fakeRoles = append(fakeRoles, r)
+	}
+
 	var claims = jwt.MapClaims{
-		"ressource_access": map[string]interface{}{
+		"resource_access": map[string]interface{}{
 			viper.GetString("keycloakClient"): map[string]interface{}{
-				"roles": viper.GetStringSlice("fakeKeycloakRoles"),
+				"roles": fakeRoles,
 			},
 		},
 	}
 
-	c.Set("claims", claims)
+	c.Set("claims", &claims)
 	c.Next()
 }
 
@@ -91,4 +96,13 @@ func scopeFromClaims(claims *jwt.MapClaims) []string {
 	}
 
 	return tags
+}
+
+func scopeFromContext(c *gin.Context) []string {
+	claims, ok := c.Get("claims")
+	if !ok {
+		return nil
+	}
+	roles := scopeFromClaims(claims.(*jwt.MapClaims))
+	return roles
 }
