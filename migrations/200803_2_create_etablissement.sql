@@ -17,6 +17,7 @@ create table etablissement (
   region           text,
   type_voie        text,
   visite_fce       boolean,
+  statut_procol    text,
   hash             text
 );
 

@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+type scope []string
+
 func connectKC() gocloak.GoCloak {
 	keycloak := gocloak.NewClient(viper.GetString("keycloakHostname"))
 	if keycloak == nil {
@@ -70,7 +72,7 @@ func fakeCloakMiddleware(c *gin.Context) {
 	c.Next()
 }
 
-func scopeFromClaims(claims *jwt.MapClaims) []string {
+func scopeFromClaims(claims *jwt.MapClaims) scope {
 	var resourceAccess = make(map[string]interface{})
 	var client = make(map[string]interface{})
 	var scope []interface{}
@@ -98,11 +100,20 @@ func scopeFromClaims(claims *jwt.MapClaims) []string {
 	return tags
 }
 
-func scopeFromContext(c *gin.Context) []string {
+func scopeFromContext(c *gin.Context) scope {
 	claims, ok := c.Get("claims")
 	if !ok {
 		return nil
 	}
 	roles := scopeFromClaims(claims.(*jwt.MapClaims))
 	return roles
+}
+
+func (s scope) zoneGeo() []string {
+	var zone []string
+	for _, role := range s {
+		departements, _ := ref.zones[role]
+		zone = append(zone, departements...)
+	}
+	return zone
 }
