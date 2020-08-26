@@ -62,7 +62,7 @@ func runAPI() {
 	router.POST("/entreprise/comments/:siren", addEntrepriseComment)
 
 	router.GET("/listes", getListes)
-	router.GET("/scores", getLastListeScores)
+	router.POST("/scores", getLastListeScores)
 	router.POST("/scores/:id", getListeScores)
 
 	router.GET("/reference/naf", getCodesNaf)

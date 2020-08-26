@@ -159,13 +159,28 @@ func getListes(c *gin.Context) {
 }
 
 func getLastListeScores(c *gin.Context) {
-	log.Println("getLastListeScores")
-	db := c.MustGet("DB").(*sql.DB)
-	scores, err := findLastListeScores(db)
+	roles := scopeFromContext(c)
+	listes, err := findAllListes()
+
+	var params paramsListeScores
+	err = c.Bind(&params)
+
+	if err != nil || len(listes) == 0 {
+		c.AbortWithStatus(400)
+		return
+	}
+
+	liste := Liste{
+		ID:    listes[0].ID,
+		Query: params,
+	}
+
+	err = liste.getScores(roles)
 	if err != nil {
 		c.JSON(500, err.Error())
+		return
 	}
-	c.JSON(200, scores)
+	c.JSON(200, liste)
 }
 
 func getListeScores(c *gin.Context) {
