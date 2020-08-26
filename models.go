@@ -61,7 +61,7 @@ type Score struct {
 	Departement       *string  `json:"departement"`
 	DernierEffectif   *int     `json:"dernier_effectif"`
 	HausseUrssaf      *bool    `json:"urssaf"`
-	ActivitePartielle *bool    `json:"activitePartielle"`
+	ActivitePartielle *bool    `json:"activite_partielle"`
 	DernierCA         *int     `json:"ca"`
 	DernierREXP       *int     `json:"resultat_expl"`
 	EtatProcol        *string  `json:"etat_procol"`
@@ -143,8 +143,15 @@ func (liste *Liste) getScores(roles scope) error {
 			last(resultat_expl order by arrete_bilan_diane) as resultat_expl,
 			last(arrete_bilan_diane) as arrete_bilan_diane
 			from entreprise_diane group by siren),
-		procol as (select siret, last(action_procol order by date_effet) as last_procol from etablissement_procol where version = 0 group by siret)
-		apdemande as (select distinct siret, true as ap from etablissement_apdemand where periode_start > $5 and version = 0)
+		procol as (select siret, last(action_procol order by date_effet) as last_procol 
+			from etablissement_procol 
+			where version = 0 group by siret),
+		apdemande as (select distinct siret, true as ap 
+			from etablissement_apdemande
+			where periode_start + '1 year'::interval > $6 and version = 0),
+		urssaf as (select siret, (array_agg(part_patronale + part_salariale order by periode desc))[0:3] as dette
+			from etablissement_periode_urssaf 
+			group by siret)
 		select 
 			et.siret,
 			et.siren,
@@ -158,7 +165,9 @@ func (liste *Liste) getScores(roles scope) error {
 			ef.effectif,
 			n.libelle,
 			et.ape,
-			coalesce(ep.last_procol, 'in_bonis') as last_procol
+			coalesce(ep.last_procol, 'in_bonis') as last_procol,
+			ap.ap as activite_partielle,
+			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf
 		from score s
 		inner join roles r on r.roles && $1 and r.siren = s.siren
 		inner join etablissement et on et.siret = s.siret and et.version = 0
@@ -166,7 +175,8 @@ func (liste *Liste) getScores(roles scope) error {
 		inner join departements d on d.code = et.departement
 		inner join naf n on n.code = et.ape
 		inner join naf n1 on n.id_n1 = n1.id
-		left join apdemande ap
+		left join urssaf u on u.siret = s.siret
+		left join apdemande ap on ap.siret = s.siret
 		left join procol ep on ep.siret = s.siret
 		left join diane di on di.siren = s.siren
 		left join effectif ef on ef.siret = s.siret
@@ -176,7 +186,7 @@ func (liste *Liste) getScores(roles scope) error {
 			and (et.departement=any($4) or $4 is null)
 			and (n1.code=any($5) or $5 is null)`
 
-	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, liste.Query.Departements, liste.Query.Activites)
+	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, liste.Query.Departements, liste.Query.Activites, time.Now())
 	if err != nil {
 		return err
 	}
@@ -198,6 +208,8 @@ func (liste *Liste) getScores(roles scope) error {
 			&score.LibelleActivite,
 			&score.CodeActivite,
 			&score.EtatProcol,
+			&score.ActivitePartielle,
+			&score.HausseUrssaf,
 		)
 		if err != nil {
 			return err
