@@ -43,7 +43,7 @@ type Liste struct {
 	ID     string            `json:"id"`
 	Batch  string            `json:"batch"`
 	Algo   string            `json:"algo"`
-	Query  paramsListeScores `json:"query"`
+	Query  paramsListeScores `json:"-"`
 	Scores []Score           `json:"scores"`
 }
 
@@ -57,7 +57,6 @@ type Score struct {
 	Commune           *string  `json:"commune"`
 	Activite          *string  `json:"activite"`
 	Departement       *string  `json:"departement"`
-	Ville             *string  `json:"ville"`
 	DernierEffectif   *int     `json:"dernierEffectif"`
 	HausseUrssaf      *bool    `json:"hausseUrssaf"`
 	ActivitePartielle *bool    `json:"activitePartielle"`
@@ -110,7 +109,26 @@ func findLastListeScores(db *sql.DB) ([]Score, error) {
 	return nil, errors.New("Non implémenté")
 }
 
-func (liste *Liste) load(roles scope) error {
+func (liste *Liste) load() error {
+	sqlListe := `select batch, algo from liste where libelle=$1 and version=0`
+	row := db.QueryRow(context.Background(), sqlListe, liste.ID)
+	batch, algo := "", ""
+	err := row.Scan(&batch, &algo)
+	if err != nil {
+		return err
+	}
+	liste.Batch = batch
+	liste.Algo = algo
+	return nil
+}
+
+func (liste *Liste) getScores(roles scope) error {
+	if liste.Batch == "" {
+		err := liste.load()
+		if err != nil {
+			return err
+		}
+	}
 	sqlScores := `with roles as (select siren, array_agg(distinct departement) as roles
 			from etablissement
 			where version = 0

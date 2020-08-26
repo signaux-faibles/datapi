@@ -186,7 +186,7 @@ func getListeScores(c *gin.Context) {
 		return
 	}
 
-	err = liste.load(roles)
+	err = liste.getScores(roles)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
