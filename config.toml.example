@@ -1,7 +1,25 @@
+# Configuration générale
 bind = ":3000"
+prod = true # limite les logs
+
+# Base de données
 postgres = "user=postgres dbname=datapi"
+
+# Authentification
 enableKeycloak = true
-prod = true
+keycloakHostName = "localhost"
+keycloakClient = "signauxfaibles"
+keycloakRealm = "master"
+
+# enableKeycloak = false
+# keycloakClient = "signauxfaibles"
+# fakeKeycloakRole = [
+#   "Bourgogne-Franche-Comté",
+#   "urssaf",
+#   "dgefp",
+#   "bdf",
+# ]
+
+# Import des données
 sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json"
-sourceEtablissement = "/foo/bar//Project/data-raw/dbmongo-data-export-etablissements.json"
-sourceListe = "/foo/bar//Project/data-raw/dbmongo-data-export-liste.json"
+sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json"

@@ -21,7 +21,7 @@ func getAllEntreprises(c *gin.Context) {
 
 func getEntreprise(c *gin.Context) {
 	log.Println("getEntreprise")
-	db := c.MustGet("DB").(*sql.DB)
+
 	siren := c.Param("siren")
 	// TODO: valider SIREN
 	if siren == "" {
@@ -152,7 +152,7 @@ func addEntrepriseComment(c *gin.Context) {
 
 func getListes(c *gin.Context) {
 	log.Println("getListes")
-	db := c.MustGet("DB").(*sql.DB)
+
 	listes, err := findAllListes(db)
 	if err != nil {
 		c.JSON(500, err.Error())
@@ -171,19 +171,27 @@ func getLastListeScores(c *gin.Context) {
 }
 
 func getListeScores(c *gin.Context) {
-	log.Println("getListeScores")
-	db := c.MustGet("DB").(*sql.DB)
-	listeID := c.Param("listeId")
-	if listeID == "" {
-		c.JSON(400, "Identifiant de liste obligatoire")
+	roles := scopeFromContext(c)
+
+	var params paramsListeScores
+	err := c.Bind(&params)
+
+	liste := Liste{
+		ID:    c.Param("id"),
+		Query: params,
+	}
+
+	if err != nil || liste.ID == "" {
+		c.AbortWithStatus(400)
 		return
 	}
-	liste := Liste{ID: listeID}
-	scores, err := liste.findListeScores(db)
+
+	err = liste.getScores(roles)
 	if err != nil {
 		c.JSON(500, err.Error())
+		return
 	}
-	c.JSON(200, scores)
+	c.JSON(200, liste)
 }
 
 func getCodesNaf(c *gin.Context) {

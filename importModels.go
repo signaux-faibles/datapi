@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"strings"
 	"time"
 
@@ -33,7 +32,6 @@ type etablissement struct {
 	Value struct {
 		Key       string      `json:"key"`
 		Sirene    sirene      `json:"sirene"`
-		Scores    []score     `json:"scores"`
 		Debit     []debit     `json:"debit"`
 		APDemande []apDemande `json:"apdemande"`
 		APConso   []apConso   `json:"apconso"`
@@ -43,11 +41,11 @@ type etablissement struct {
 			Periode time.Time `json:"periode"`
 		} `json:"compte"`
 		Periodes                []time.Time       `json:"periodes"`
-		Effectif                []int             `json:"effectif"`
-		DebitPartPatronale      []float64         `json:"debit_part_patronale"`
-		DebitPartOuvriere       []float64         `json:"debit_part_ouvriere"`
-		DebitMontantMajorations []float64         `json:"debit_montant_majorations"`
-		Cotisation              []float64         `json:"cotisation"`
+		Effectif                []*int            `json:"effectif"`
+		DebitPartPatronale      []*float64        `json:"debit_part_patronale"`
+		DebitPartOuvriere       []*float64        `json:"debit_part_ouvriere"`
+		DebitMontantMajorations []*float64        `json:"debit_montant_majorations"`
+		Cotisation              []*float64        `json:"cotisation"`
 		Delai                   []delai           `json:"delai"`
 		Procol                  map[string]procol `json:"procol"`
 		LastProcol              procol            `json:"last_procol"`
@@ -329,8 +327,8 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	sqlEtablissement := `insert into etablissement
 		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
+			numero_voie, region, type_voie, statut_procol)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
 
 	batch.Queue(
 		sqlEtablissement,
@@ -347,6 +345,7 @@ func (e etablissement) getBatch() *pgx.Batch {
 		e.Value.Sirene.NumeroVoie,
 		e.Value.Sirene.Region,
 		e.Value.Sirene.TypeVoie,
+		e.Value.LastProcol.Action,
 	)
 
 	for _, a := range e.Value.APConso {
@@ -443,30 +442,47 @@ func (e etablissement) getBatch() *pgx.Batch {
 		)
 	}
 
-	for _, s := range e.Value.Scores {
-
-		sqlScore := `insert into score (libelle_liste, periode, siret, siren, score, alerte)
-		values ($1, $2, $3, $4, $5, $6)`
+	for _, s := range groupScores(e.Scores) {
+		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alerte)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 		batch.Queue(sqlScore,
-			s.toLibelle(),
-			s.Periode,
 			e.Value.Key,
 			e.Value.Key[:9],
+			s.toLibelle(),
+			s.Batch,
+			s.Algo,
+			s.Periode,
 			s.Score,
+			s.Diff,
 			s.Alert,
 		)
 	}
 	return &batch
 }
 
+func groupScores(scores []score) []score {
+	var a = make(map[string]score)
+	for _, s := range scores {
+		key := s.Batch + s.Algo
+		if i, ok := a[key]; !ok || i.Timestamp.After(s.Timestamp) {
+			a[key] = s
+		}
+	}
+	var res []score
+	for _, i := range a {
+		res = append(res, i)
+	}
+	return res
+}
+
 func (s score) toLibelle() string {
 	return s.Batch + s.Algo
 }
 
-func scoreToListe(tx *pgx.Tx) error {
-	sqlListe := `insert into liste select distinct libelle, batch, algo from score;`
-	_, err := (*tx).Query(context.Background(), sqlListe)
-
-	return err
+func scoreToListe() *pgx.Batch {
+	var batch pgx.Batch
+	batch.Queue(`insert into liste (libelle, batch, algo) 
+	select distinct libelle_liste as libelle, batch, algo from score;`)
+	return &batch
 }

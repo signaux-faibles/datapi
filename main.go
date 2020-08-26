@@ -14,6 +14,7 @@ import (
 
 var keycloak gocloak.GoCloak
 var db *pgx.Conn
+var ref reference
 
 func main() {
 	loadConfig()
@@ -46,6 +47,8 @@ func runAPI() {
 
 	if viper.GetBool("enableKeycloak") {
 		router.Use(keycloakMiddleware)
+	} else {
+		router.Use(fakeCloakMiddleware)
 	}
 
 	router.GET("/entreprise/get/:siren", getEntreprise)
@@ -60,7 +63,7 @@ func runAPI() {
 
 	router.GET("/listes", getListes)
 	router.GET("/scores", getLastListeScores)
-	router.GET("/scores/:liste", getListeScores)
+	router.POST("/scores/:id", getListeScores)
 
 	router.GET("/reference/naf", getCodesNaf)
 	router.GET("/reference/departements", getDepartements)

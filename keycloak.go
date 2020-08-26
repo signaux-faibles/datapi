@@ -11,6 +11,8 @@ import (
 	"github.com/spf13/viper"
 )
 
+type scope []string
+
 func connectKC() gocloak.GoCloak {
 	keycloak := gocloak.NewClient(viper.GetString("keycloakHostname"))
 	if keycloak == nil {
@@ -34,7 +36,7 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
-	token, claims, err := keycloak.DecodeAccessToken(context.Background(), rawToken[1], viper.GetString("keycloakRealm"))
+	_, claims, err := keycloak.DecodeAccessToken(context.Background(), rawToken[1], viper.GetString("keycloakRealm"))
 
 	if err != nil {
 		log.Println("unable to decode token: " + err.Error())
@@ -48,13 +50,29 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
-	c.Set("token", token)
 	c.Set("claims", claims)
-
 	c.Next()
 }
 
-func scopeFromClaims(claims *jwt.MapClaims) []string {
+func fakeCloakMiddleware(c *gin.Context) {
+	var fakeRoles []interface{}
+	for _, r := range viper.GetStringSlice("fakeKeycloakRoles") {
+		fakeRoles = append(fakeRoles, r)
+	}
+
+	var claims = jwt.MapClaims{
+		"resource_access": map[string]interface{}{
+			viper.GetString("keycloakClient"): map[string]interface{}{
+				"roles": fakeRoles,
+			},
+		},
+	}
+
+	c.Set("claims", &claims)
+	c.Next()
+}
+
+func scopeFromClaims(claims *jwt.MapClaims) scope {
 	var resourceAccess = make(map[string]interface{})
 	var client = make(map[string]interface{})
 	var scope []interface{}
@@ -64,7 +82,7 @@ func scopeFromClaims(claims *jwt.MapClaims) []string {
 		resourceAccess, _ = resourceAccessInterface.(map[string]interface{})
 	}
 
-	clientInterface, ok := (resourceAccess)["signauxfaibles"]
+	clientInterface, ok := (resourceAccess)[viper.GetString("keycloakClient")]
 	if ok {
 		client, _ = clientInterface.(map[string]interface{})
 	}
@@ -80,4 +98,22 @@ func scopeFromClaims(claims *jwt.MapClaims) []string {
 	}
 
 	return tags
+}
+
+func scopeFromContext(c *gin.Context) scope {
+	claims, ok := c.Get("claims")
+	if !ok {
+		return nil
+	}
+	roles := scopeFromClaims(claims.(*jwt.MapClaims))
+	return roles
+}
+
+func (s scope) zoneGeo() []string {
+	var zone []string
+	for _, role := range s {
+		departements, _ := ref.zones[role]
+		zone = append(zone, departements...)
+	}
+	return zone
 }

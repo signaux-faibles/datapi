@@ -6,19 +6,22 @@ create table liste (
   libelle text,
   batch text,
   algo text,
-  hash string
+  hash text
 );
 
-create_sequence score_id;
+create sequence score_id;
 create table score (
-  id int primary key default nextval('score_id')
+  id int primary key default nextval('score_id'),
   date_add timestamp default current_timestamp,
   version int default 0,
   siret text,
   siren text,
   libelle_liste text,
-  periode time.Time,
+  batch text,
+  algo text,
+  periode date,
   score real,
+  diff real,
   alerte text,
-  hash string
+  hash text
 );

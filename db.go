@@ -38,6 +38,8 @@ func connectDB() *pgx.Conn {
 		runMigrations(updateMigrations, db)
 	}
 
+	ref = loadReferences(db)
+
 	return db
 }
 
@@ -156,4 +158,39 @@ func newBatchRunner(tx *pgx.Tx) (chan *pgx.Batch, *sync.WaitGroup) {
 	}()
 
 	return batches, &wg
+}
+
+type reference struct {
+	zones map[string][]string
+}
+
+func loadReferences(db *pgx.Conn) reference {
+	sqlZones := `select r.libelle as region, d.code as departement from regions r 
+	inner join departements d on d.id_region = r.id order by region, departement`
+	rows, err := db.Query(context.Background(), sqlZones)
+	if err != nil {
+		panic("can't load references: " + err.Error())
+	}
+
+	var ref = make(map[string][]string)
+
+	for rows.Next() {
+		region, departement := "", ""
+		err := rows.Scan(&region, &departement)
+		if err != nil {
+			panic("can't load references: " + err.Error())
+		}
+
+		ref[departement] = []string{departement}
+		if _, ok := ref[region]; !ok {
+			ref[region] = nil
+		}
+		ref[region] = append(ref[region], departement)
+	}
+
+	result := reference{
+		zones: ref,
+	}
+
+	return result
 }
