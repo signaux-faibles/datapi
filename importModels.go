@@ -403,7 +403,7 @@ func (e etablissement) getBatch() *pgx.Batch {
 			e.Value.DebitPartOuvriere[i],
 			e.Value.DebitMontantMajorations[i],
 			e.Value.Effectif[i],
-			i == len(e.Value.Periodes)-1,
+			i > len(e.Value.Periodes)-4,
 		)
 	}
 

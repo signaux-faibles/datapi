@@ -45,7 +45,7 @@ type Liste struct {
 	Batch  string            `json:"batch"`
 	Algo   string            `json:"algo"`
 	Query  paramsListeScores `json:"-"`
-	Scores []Score           `json:"scores"`
+	Scores []Score           `json:"scores,omitempty"`
 }
 
 // Score d'une liste de détection
@@ -103,9 +103,23 @@ func (comment *Comment) createEntrepriseComment(db *sql.DB) error {
 	return errors.New("Non implémenté")
 }
 
-func findAllListes(db *pgx.Conn) ([]Liste, error) {
-	db.Query(context.Background(), "select * from liste")
-	return nil, errors.New("Non implémenté")
+func findAllListes() ([]Liste, error) {
+	var listes []Liste
+	rows, err := db.Query(context.Background(), "select algo, batch, libelle from liste order by batch desc, algo asc")
+	if err != nil {
+		return nil, err
+	}
+
+	for rows.Next() {
+		var l Liste
+		err := rows.Scan(&l.Algo, &l.Batch, &l.ID)
+		if err != nil {
+			return nil, err
+		}
+		listes = append(listes, l)
+	}
+
+	return listes, nil
 }
 
 func findLastListeScores(db *sql.DB) ([]Score, error) {
@@ -137,7 +151,7 @@ func (liste *Liste) getScores(roles scope) error {
 			where version = 0
 			group by siren),
 		effectif as (select siret, last(effectif order by periode) as effectif 
-			from etablissement_periode_urssaf where effectif is not null and version = 0
+			from etablissement_periode_urssaf where effectif is not null and version = 0 and last_periode = true
 			group by siret),
 		diane as (select siren, last(chiffre_affaire order by arrete_bilan_diane) as chiffre_affaire, 
 			last(resultat_expl order by arrete_bilan_diane) as resultat_expl,
@@ -175,11 +189,11 @@ func (liste *Liste) getScores(roles scope) error {
 		inner join departements d on d.code = et.departement
 		inner join naf n on n.code = et.ape
 		inner join naf n1 on n.id_n1 = n1.id
+		left join effectif ef on ef.siret = s.siret
 		left join urssaf u on u.siret = s.siret
 		left join apdemande ap on ap.siret = s.siret
 		left join procol ep on ep.siret = s.siret
 		left join diane di on di.siren = s.siren
-		left join effectif ef on ef.siret = s.siret
 		where 
 			s.libelle_liste = $2
 			and (ep.last_procol=any($3) or $3 is null)

@@ -151,9 +151,7 @@ func addEntrepriseComment(c *gin.Context) {
 }
 
 func getListes(c *gin.Context) {
-	log.Println("getListes")
-
-	listes, err := findAllListes(db)
+	listes, err := findAllListes()
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
