@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	pgx "github.com/jackc/pgx/v4"
 )
@@ -53,15 +54,17 @@ type Score struct {
 	Siret             string   `json:"siret"`
 	Score             float64  `json:"score"`
 	Diff              *float64 `json:"diff"`
-	RaisonSociale     *string  `json:"raisonSociale"`
+	RaisonSociale     *string  `json:"raison_sociale"`
 	Commune           *string  `json:"commune"`
-	Activite          *string  `json:"activite"`
+	LibelleActivite   *string  `json:"libelle_activite"`
+	CodeActivite      *string  `json:"code_activite"`
 	Departement       *string  `json:"departement"`
-	DernierEffectif   *int     `json:"dernierEffectif"`
-	HausseUrssaf      *bool    `json:"hausseUrssaf"`
+	DernierEffectif   *int     `json:"dernier_effectif"`
+	HausseUrssaf      *bool    `json:"urssaf"`
 	ActivitePartielle *bool    `json:"activitePartielle"`
-	DernierCA         *int     `json:"dernierCA"`
-	DernierREXP       *int     `json:"dernierREXP"`
+	DernierCA         *int     `json:"ca"`
+	DernierREXP       *int     `json:"resultat_expl"`
+	EtatProcol        *string  `json:"etat_procol"`
 }
 
 func findAllEntreprises(db *sql.DB) ([]Entreprise, error) {
@@ -139,7 +142,9 @@ func (liste *Liste) getScores(roles scope) error {
 		diane as (select siren, last(chiffre_affaire order by arrete_bilan_diane) as chiffre_affaire, 
 			last(resultat_expl order by arrete_bilan_diane) as resultat_expl,
 			last(arrete_bilan_diane) as arrete_bilan_diane
-			from entreprise_diane group by siren)
+			from entreprise_diane group by siren),
+		procol as (select siret, last(action_procol order by date_effet) as last_procol from etablissement_procol where version = 0 group by siret)
+		apdemande as (select distinct siret, true as ap from etablissement_apdemand where periode_start > $5 and version = 0)
 		select 
 			et.siret,
 			et.siren,
@@ -150,22 +155,28 @@ func (liste *Liste) getScores(roles scope) error {
 			s.diff,
 			di.chiffre_affaire,
 			di.resultat_expl,
-			ef.effectif
+			ef.effectif,
+			n.libelle,
+			et.ape,
+			coalesce(ep.last_procol, 'in_bonis') as last_procol
 		from score s
 		inner join roles r on r.roles && $1 and r.siren = s.siren
 		inner join etablissement et on et.siret = s.siret and et.version = 0
 		inner join entreprise en on en.siren = s.siren and en.version = 0
 		inner join departements d on d.code = et.departement
+		inner join naf n on n.code = et.ape
+		inner join naf n1 on n.id_n1 = n1.id
+		left join apdemande ap
+		left join procol ep on ep.siret = s.siret
 		left join diane di on di.siren = s.siren
 		left join effectif ef on ef.siret = s.siret
-		left join naf n on n.code = et.ape
-		left join naf n1 on n.id_n1 = n1.id
 		where 
 			s.libelle_liste = $2
-			and (n1.code=any($3) or $3 is null)
-			and (et.departement=any($4) or $4 is null)`
+			and (ep.last_procol=any($3) or $3 is null)
+			and (et.departement=any($4) or $4 is null)
+			and (n1.code=any($5) or $5 is null)`
 
-	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, liste.Query.Departements)
+	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, liste.Query.Departements, liste.Query.Activites)
 	if err != nil {
 		return err
 	}
@@ -184,6 +195,9 @@ func (liste *Liste) getScores(roles scope) error {
 			&score.DernierCA,
 			&score.DernierREXP,
 			&score.DernierEffectif,
+			&score.LibelleActivite,
+			&score.CodeActivite,
+			&score.EtatProcol,
 		)
 		if err != nil {
 			return err
@@ -193,4 +207,12 @@ func (liste *Liste) getScores(roles scope) error {
 
 	liste.Scores = scores
 	return nil
+}
+
+func batchToDate(batch string) (time.Time, error) {
+	if len(batch) < 4 {
+		return time.Time{}, errors.New("incorrect batch number")
+	}
+
+	return time.Parse("0601", batch[0:4])
 }
