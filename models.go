@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"errors"
-	"fmt"
 
 	pgx "github.com/jackc/pgx/v4"
 )
@@ -34,9 +33,9 @@ type Comment struct {
 }
 
 type paramsListeScores struct {
-	Departements []string `json:"zone"`
-	EtatsProcol  []string `json:"procol"`
-	Activites    []string `json:"activites"`
+	Departements []string `json:"zone,omitempty"`
+	EtatsProcol  []string `json:"procol,omitempty"`
+	Activites    []string `json:"activite,omitempty"`
 }
 
 // Liste de détection
@@ -50,20 +49,20 @@ type Liste struct {
 
 // Score d'une liste de détection
 type Score struct {
-	Siren             string  `json:"siren"`
-	Siret             string  `json:"siret"`
-	ListeID           string  `json:"listeId"`
-	Score             float64 `json:"score"`
-	Diff              float64 `json:"diff"`
-	RaisonSociale     string  `json:"raisonSociale"`
-	Activite          string  `json:"activite"`
-	Departement       string  `json:"departement"`
-	Ville             string  `json:"ville"`
-	DernierEffectif   int     `json:"dernierEffectif"`
-	HausseUrssaf      bool    `json:"hausseUrssaf"`
-	ActivitePartielle bool    `json:"activitePartielle"`
-	DernierCA         int     `json:"dernierCA"`
-	DernierREXP       int     `json:"dernierREXP"`
+	Siren             string   `json:"siren"`
+	Siret             string   `json:"siret"`
+	Score             float64  `json:"score"`
+	Diff              *float64 `json:"diff"`
+	RaisonSociale     *string  `json:"raisonSociale"`
+	Commune           *string  `json:"commune"`
+	Activite          *string  `json:"activite"`
+	Departement       *string  `json:"departement"`
+	Ville             *string  `json:"ville"`
+	DernierEffectif   *int     `json:"dernierEffectif"`
+	HausseUrssaf      *bool    `json:"hausseUrssaf"`
+	ActivitePartielle *bool    `json:"activitePartielle"`
+	DernierCA         *int     `json:"dernierCA"`
+	DernierREXP       *int     `json:"dernierREXP"`
 }
 
 func findAllEntreprises(db *sql.DB) ([]Entreprise, error) {
@@ -112,22 +111,37 @@ func findLastListeScores(db *sql.DB) ([]Score, error) {
 }
 
 func (liste *Liste) load(roles scope) error {
-	fmt.Println(roles, roles.zoneGeo())
 	sqlScores := `with roles as (select siren, array_agg(distinct departement) as roles
 			from etablissement
 			where version = 0
 			group by siren),
 		effectif as (select siret, last(effectif order by periode) as effectif 
 			from etablissement_periode_urssaf where effectif is not null and version = 0
-			group by siret)
-		select en.raison_sociale, d.libelle, s.score from score s
+			group by siret),
+		diane as (select siren, last(chiffre_affaire order by arrete_bilan_diane) as chiffre_affaire, 
+			last(resultat_expl order by arrete_bilan_diane) as resultat_expl,
+			last(arrete_bilan_diane) as arrete_bilan_diane
+			from entreprise_diane group by siren)
+		select 
+			et.siret,
+			et.siren,
+			en.raison_sociale, 
+			et.commune, 
+			d.libelle, 
+			s.score,
+			s.diff,
+			di.chiffre_affaire,
+			di.resultat_expl,
+			ef.effectif
+		from score s
 		inner join roles r on r.roles && $1 and r.siren = s.siren
 		inner join etablissement et on et.siret = s.siret and et.version = 0
 		inner join entreprise en on en.siren = s.siren and en.version = 0
-		inner join effectif ef on ef.siret = s.siret
-		inner join naf n on n.code = et.ape
-		inner join naf n1 on n.id_n1 = n1.id
 		inner join departements d on d.code = et.departement
+		left join diane di on di.siren = s.siren
+		left join effectif ef on ef.siret = s.siret
+		left join naf n on n.code = et.ape
+		left join naf n1 on n.id_n1 = n1.id
 		where 
 			s.libelle_liste = $2
 			and (n1.code=any($3) or $3 is null)
@@ -141,7 +155,18 @@ func (liste *Liste) load(roles scope) error {
 	var scores []Score
 	for rows.Next() {
 		var score Score
-		err := rows.Scan(&score.RaisonSociale, &score.Departement, &score.Score)
+		err := rows.Scan(
+			&score.Siret,
+			&score.Siren,
+			&score.RaisonSociale,
+			&score.Commune,
+			&score.Departement,
+			&score.Score,
+			&score.Diff,
+			&score.DernierCA,
+			&score.DernierREXP,
+			&score.DernierEffectif,
+		)
 		if err != nil {
 			return err
 		}
