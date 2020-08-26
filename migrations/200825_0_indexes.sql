@@ -1,0 +1,9 @@
+create index idx_etablissement_siret on etablissement (siret) where version = 0;
+create index idx_etablissement_periode_urssaf_siret on etablissement_periode_urssaf (siret) where version = 0;
+create index idx_etablissement_apconso_siret on etablissement_apconso (siret) where version = 0;
+create index idx_etablissement_apdemande_siret on etablissement_apdemande (siret) where version = 0;
+create index idx_score_siret on score (siret) where version = 0;
+create index idx_score_liste on score (libelle_liste) where version = 0;
+create index idx_liste_libelle on liste (libelle) where version = 0;
+create index idx_etablissement_procol on etablissement_procol (siret) where version = 0;
+create index idx_etablissement_delai on etablissement_delai (siret) where version = 0;
