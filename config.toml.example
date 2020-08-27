@@ -21,5 +21,5 @@ keycloakRealm = "master"
 # ]
 
 # Import des données
-sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json"
-sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json"
+sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json.gz"
+sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json.gz"
