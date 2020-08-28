@@ -123,17 +123,17 @@ func followEtablissement(c *gin.Context) {
 	}
 
 	if follow.Active {
-		c.JSON(403, follow)
+		c.JSON(204, follow)
 	} else {
 		err := follow.activate(db)
 		if err != nil && err.Error() != "no rows in result set" {
 			c.AbortWithError(500, err)
 			return
 		} else if err != nil && err.Error() == "no rows in result set" {
-			c.JSON(404, "unknown establishment")
+			c.JSON(403, "unknown establishment")
 			return
 		}
-		c.JSON(200, follow)
+		c.JSON(201, follow)
 	}
 }
 

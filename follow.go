@@ -60,7 +60,7 @@ func (f *Follow) deactivate() Jerror {
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		return newJSONerror(403, "this establishment is already not followed")
+		return newJSONerror(204, "this establishment is already not followed")
 	}
 
 	return nil
