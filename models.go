@@ -152,8 +152,10 @@ type EtablissementScore struct {
 
 // Follow type follow pour l'API
 type Follow struct {
-	Siren  string `json:"siren"`
+	Siret  string `json:"siren"`
 	UserID string `json:"userId"`
+	Query  struct {
+	}
 }
 
 // Comment commentaire sur une enterprise
@@ -185,8 +187,8 @@ type Liste struct {
 type Score struct {
 	Siren             string   `json:"siren"`
 	Siret             string   `json:"siret"`
-	Score             float64  `json:"score"`
-	Diff              *float64 `json:"diff"`
+	Score             float64  `json:"-"`
+	Diff              *float64 `json:"-"`
 	RaisonSociale     *string  `json:"raison_sociale"`
 	Commune           *string  `json:"commune"`
 	LibelleActivite   *string  `json:"libelle_activite"`
@@ -199,6 +201,7 @@ type Score struct {
 	DernierCA         *int     `json:"ca"`
 	DernierREXP       *int     `json:"resultat_expl"`
 	EtatProcol        *string  `json:"etat_procol"`
+	Alert             *string  `json:"alert"`
 }
 
 func (e Etablissements) sirensFromQuery() []string {
@@ -657,16 +660,13 @@ func (etablissement *Etablissement) findEtablissementBySiret() error {
 	return errors.New("Non implémenté")
 }
 
-func (entreprise *Entreprise) findEtablissementsBySiren(db *sql.DB) ([]Etablissement, error) {
-	return nil, errors.New("Non implémenté")
-}
-
 func (follow *Follow) findEntreprisesFollowedByUser(db *sql.DB) ([]Entreprise, error) {
 	return nil, errors.New("Non implémenté")
 }
 
-func (follow *Follow) createEntrepriseFollow(db *sql.DB) error {
-	return errors.New("Non implémenté")
+func (follow *Follow) createEtablissementFollow(db *sql.DB) error {
+	// sql
+	return nil
 }
 
 func (entreprise *Entreprise) findCommentsBySiren(db *sql.DB) ([]Comment, error) {
@@ -753,7 +753,8 @@ func (liste *Liste) getScores(roles scope) error {
 			et.ape,
 			coalesce(ep.last_procol, 'in_bonis') as last_procol,
 			ap.ap as activite_partielle,
-			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf
+			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
+			s.alert
 		from score s
 		inner join roles r on r.roles && $1 and r.siren = s.siren
 		inner join etablissement et on et.siret = s.siret and et.version = 0
@@ -801,6 +802,7 @@ func (liste *Liste) getScores(roles scope) error {
 			&score.EtatProcol,
 			&score.ActivitePartielle,
 			&score.HausseUrssaf,
+			&score.Alert,
 		)
 		if err != nil {
 			return err

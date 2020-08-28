@@ -130,21 +130,21 @@ func getEntreprisesFollowedByUser(c *gin.Context) {
 }
 
 func followEntreprise(c *gin.Context) {
-	log.Println("followEntreprise")
-	db := c.MustGet("DB").(*sql.DB)
-	siren := c.Param("siren")
-	// TODO: valider SIREN
-	if siren == "" {
-		c.JSON(400, "SIREN obligatoire")
-		return
-	}
-	userID := ""
-	follow := Follow{UserID: userID, Siren: siren}
-	err := follow.createEntrepriseFollow(db)
-	if err != nil {
-		c.JSON(500, err.Error())
-	}
-	c.JSON(200, follow)
+	// log.Println("followEntreprise")
+	// db := c.MustGet("DB").(*sql.DB)
+	// siren := c.Param("siren")
+	// // TODO: valider SIREN
+	// if siren == "" {
+	// 	c.JSON(400, "SIREN obligatoire")
+	// 	return
+	// }
+	// userID := ""
+	// follow := Follow{UserID: userID, Siren: siren}
+	// err := follow.createEntrepriseFollow(db)
+	// if err != nil {
+	// 	c.JSON(500, err.Error())
+	// }
+	// c.JSON(200, follow)
 }
 
 func getEntrepriseComments(c *gin.Context) {
@@ -198,6 +198,10 @@ func getListes(c *gin.Context) {
 func getLastListeScores(c *gin.Context) {
 	roles := scopeFromContext(c)
 	listes, err := findAllListes()
+	if err != nil || len(listes) == 0 {
+		c.AbortWithStatus(204)
+		return
+	}
 
 	var params paramsListeScores
 	err = c.Bind(&params)
@@ -237,6 +241,10 @@ func getListeScores(c *gin.Context) {
 	}
 
 	err = liste.getScores(roles)
+	if err.Error() == "no rows in result set" {
+		c.AbortWithStatus(204)
+		return
+	}
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
