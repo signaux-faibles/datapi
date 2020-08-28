@@ -174,7 +174,12 @@ func upgradeVersion(tx *pgx.Tx) error {
 }
 
 func refreshMaterializedViews(tx *pgx.Tx) error {
-	views := []string{"v_roles", "v_diane_variation_ca"}
+	views := []string{
+		"v_roles",
+		"v_diane_variation_ca",
+		"v_last_effectif",
+		"v_last_procol",
+		"v_hausse_urssaf"}
 	for _, v := range views {
 		fmt.Printf("\033[2K\rrefreshing %s", v)
 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))

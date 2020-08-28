@@ -324,12 +324,17 @@ func importHandler(c *gin.Context) {
 	}
 	log.Print("preparing database for import")
 	err = prepareImport(&tx)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
 
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
 	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
 		c.AbortWithError(500, err)
+		return
 	}
 
 	sourceEtablissement := viper.GetString("sourceEtablissement")
@@ -337,18 +342,21 @@ func importHandler(c *gin.Context) {
 	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
 		c.AbortWithError(500, err)
+		return
 	}
 
 	log.Printf("upgrading version of objects")
 	err = upgradeVersion(&tx)
 	if err != nil {
 		c.AbortWithError(500, err)
+		return
 	}
 
 	log.Print("refreshing materialized views")
 	err = refreshMaterializedViews(&tx)
 	if err != nil {
 		c.AbortWithError(500, err)
+		return
 	}
 
 	log.Print("commiting changes to database")
@@ -358,5 +366,6 @@ func importHandler(c *gin.Context) {
 	_, err = db.Exec(context.Background(), "vacuum full;")
 	if err != nil {
 		c.AbortWithError(500, err)
+		return
 	}
 }

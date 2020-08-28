@@ -719,61 +719,50 @@ func (liste *Liste) getScores(roles scope) error {
 			return err
 		}
 	}
-	sqlScores := `with effectif as (select siret, last(effectif order by periode) as effectif 
-			from etablissement_periode_urssaf where effectif is not null and version = 0 
-			group by siret),
-		procol as (select siret, last(action_procol order by date_effet) as last_procol 
-			from etablissement_procol0
-			where version = 0 group by siret),
-		apdemande as (select distinct siret, true as ap 
-			from etablissement_apdemande
-			where periode_start + '1 year'::interval > $6 and version = 0),
-		urssaf as (select siret, (array_agg(part_patronale + part_salariale order by periode desc))[0:3] as dette
-			from etablissement_periode_urssaf 
-			where last_periode = true
-			group by siret)
-		select 
-			et.siret,
-			et.siren,
-			en.raison_sociale, 
-			et.commune, 
-			d.libelle, 
-			d.code,
-			s.score,
-			s.diff,
-			di.chiffre_affaire,
-			di.arrete_bilan,
-			di.variation_ca,
-			di.resultat_expl,
-			ef.effectif,
-			n.libelle,
-			n1.libelle,
-			et.ape,
-			coalesce(ep.last_procol, 'in_bonis') as last_procol,
-			coalesce(ap.ap, false) as activite_partielle,
-			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
-			s.alert
-		from score s
-		inner join v_roles r on r.roles && $1 and r.siren = s.siren
-		inner join etablissement et on et.siret = s.siret and et.version = 0
-		inner join entreprise en on en.siren = s.siren and en.version = 0
-		inner join departements d on d.code = et.departement
-		inner join naf n on n.code = et.ape
-		inner join naf n1 on n.id_n1 = n1.id
-		left join effectif ef on ef.siret = s.siret
-		left join urssaf u on u.siret = s.siret
-		left join apdemande ap on ap.siret = s.siret
-		left join procol ep on ep.siret = s.siret
-		left join v_diane_variation_ca di on di.siren = s.siren
-		where 
-			s.libelle_liste = $2
-			and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
-			and (et.departement=any($4) or $4 is null)
-			and (n1.code=any($5) or $5 is null)
-			and (ef.effectif >= $7 or $7 is null)
-			and (ef.effectif <= $8 or $8 is null)
-			and (et.departement=any($1) or $9 = true);
-    `
+	sqlScores := `with apdemande as (select siret, true as ap 
+		from etablissement_apdemande0
+		where periode_start + '1 year'::interval > $6
+		group by siret)
+	select 
+		et.siret,
+		et.siren,
+		en.raison_sociale, 
+		et.commune, 
+		d.libelle, 
+		d.code,
+		s.score,
+		s.diff,
+		di.chiffre_affaire,
+		di.arrete_bilan,
+		di.variation_ca,
+		di.resultat_expl,
+		ef.effectif,
+		n.libelle,
+		n1.libelle,
+		et.ape,
+		coalesce(ep.last_procol, 'in_bonis') as last_procol,
+		coalesce(ap.ap, false) as activite_partielle,
+		case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
+		s.alert
+	from score0 s
+	inner join v_roles r on r.roles && $1 and r.siren = s.siren
+	inner join etablissement0 et on et.siret = s.siret
+	inner join entreprise0 en on en.siren = s.siren
+	inner join departements d on d.code = et.departement
+	inner join naf n on n.code = et.ape
+	inner join naf n1 on n.id_n1 = n1.id
+	left join v_last_effectif ef on ef.siret = s.siret
+	left join v_hausse_urssaf u on u.siret = s.siret
+	left join apdemande ap on ap.siret = s.siret
+	left join v_last_procol ep on ep.siret = s.siret
+	left join v_diane_variation_ca di on di.siren = s.siren
+	where s.libelle_liste = $2
+	and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
+	and (et.departement=any($4) or $4 is null)
+	and (n1.code=any($5) or $5 is null)
+	and (ef.effectif >= $7 or $7 is null)
+	and (ef.effectif <= $8 or $8 is null)
+	and (et.departement=any($1) or $9 = true);`
 	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol,
 		liste.Query.Departements, liste.Query.Activites, time.Now(), liste.Query.EffectifMin, liste.Query.EffectifMax, liste.Query.VueFrance)
 	if err != nil {

@@ -83,3 +83,28 @@ group by siren;
 
 create unique index idx_v_diane_variation_ca 
   on v_diane_variation_ca (siren);
+
+create materialized view v_last_effectif as
+select siret, last(effectif order by periode) as effectif 
+  from etablissement_periode_urssaf0 where effectif is not null
+  group by siret;
+
+create unique index idx_v_last_effectif
+  on v_last_effectif (siret);
+
+create materialized view v_last_procol as
+select siret, last(action_procol order by date_effet) as last_procol 
+  from etablissement_procol0
+  group by siret;
+
+create unique index idx_v_last_procol
+  on v_last_procol (siret);
+
+create materialized view v_hausse_urssaf as 
+select siret, (array_agg(part_patronale + part_salariale order by periode desc))[0:3] as dette
+  from etablissement_periode_urssaf0
+  where last_periode = true
+  group by siret;
+
+create unique index idx_v_hausse_urssaf
+  on v_hausse_urssaf (siret);
