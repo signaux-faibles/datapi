@@ -141,13 +141,13 @@ type EtablissementProcol struct {
 
 // EtablissementScore …
 type EtablissementScore struct {
-	IDListe string  `json:"idListe"`
-	Batch   string  `json:"batch"`
-	Algo    string  `json:"algo"`
-	Periode string  `json:"periode"`
-	Score   float64 `json:"score"`
-	Diff    float64 `json:"diff"`
-	Alert   string  `json:"alert"`
+	IDListe string    `json:"idListe"`
+	Batch   string    `json:"batch"`
+	Algo    string    `json:"algo"`
+	Periode time.Time `json:"periode"`
+	Score   float64   `json:"score"`
+	Diff    float64   `json:"diff"`
+	Alert   string    `json:"alert"`
 }
 
 // Follow type follow pour l'API
@@ -295,7 +295,32 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
+	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alerte
+		from score0 e
+		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+
 	return &batch
+}
+
+func (e *Etablissements) loadScore(rows *pgx.Rows) error {
+	var scores = make(map[string][]EtablissementScore)
+	for (*rows).Next() {
+		var sc EtablissementScore
+		var siret string
+		err := (*rows).Scan(&siret, &sc.IDListe, &sc.Batch, &sc.Algo, &sc.Periode, &sc.Score, &sc.Diff, &sc.Alert)
+		if err != nil {
+			return err
+		}
+		scores[siret] = append(scores[siret], sc)
+	}
+	for k, v := range scores {
+		etablissement := e.Etablissements[k]
+		etablissement.Scores = v
+		e.Etablissements[k] = etablissement
+	}
+	return nil
 }
 
 func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows) error {
@@ -579,7 +604,7 @@ func (e *Etablissements) load(roles scope) error {
 		return err
 	}
 
-	// periode_urssaf
+	// delai
 	rows, err = b.Query()
 	if err != nil {
 		return err
@@ -589,12 +614,22 @@ func (e *Etablissements) load(roles scope) error {
 		return err
 	}
 
-	// periode_urssaf
+	// procol
 	rows, err = b.Query()
 	if err != nil {
 		return err
 	}
 	err = e.loadProcol(&rows)
+	if err != nil {
+		return err
+	}
+
+	// scores
+	rows, err = b.Query()
+	if err != nil {
+		return err
+	}
+	err = e.loadScore(&rows)
 	if err != nil {
 		return err
 	}
@@ -767,4 +802,12 @@ func (liste *Liste) getScores(roles scope) error {
 
 	liste.Scores = scores
 	return nil
+}
+
+func getSiegeFromSiren(siren string) (string, error) {
+	sqlSiege := `select siret from etablissement0
+	where siren = $1 and siege`
+	var siret string
+	err := db.QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
+	return siret, err
 }

@@ -236,7 +236,7 @@ type sirene struct {
 	Ape             string   `json:"ape"`
 	Longitude       float64  `json:"longitude"`
 	Nic             string   `json:"nic"`
-	NicSiege        string   `json:"nic_siege"`
+	Siege           bool     `json:"siege"`
 }
 
 func (e entreprise) getBatch() *pgx.Batch {
@@ -327,8 +327,8 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	sqlEtablissement := `insert into etablissement
 		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie, statut_procol)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
+			numero_voie, region, type_voie, statut_procol, siege)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
 
 	batch.Queue(
 		sqlEtablissement,
@@ -346,6 +346,7 @@ func (e etablissement) getBatch() *pgx.Batch {
 		e.Value.Sirene.Region,
 		e.Value.Sirene.TypeVoie,
 		e.Value.LastProcol.Action,
+		e.Value.Sirene.Siege,
 	)
 
 	for _, a := range e.Value.APConso {

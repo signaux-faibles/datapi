@@ -148,7 +148,7 @@ func upgradeVersion(tx *pgx.Tx) error {
 			rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,	taille_compo_groupe, 
 			taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca, taux_valeur_ajoutee, valeur_ajoutee`,
 		"etablissement": `siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie, statut_procol`,
+			numero_voie, region, type_voie, statut_procol, siege`,
 		"etablissement_apconso": "siret, siren, id_conso, heure_consomme, montant, effectif, periode",
 		"etablissement_apdemande": `siret, siren, id_demande, effectif_entreprise, effectif, date_statut, periode_start, periode_end, hta, mta, 
 			effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme`,

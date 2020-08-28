@@ -18,6 +18,7 @@ create table etablissement (
   type_voie        text,
   visite_fce       boolean,
   statut_procol    text,
+  siege            boolean,
   hash             text
 );
 
