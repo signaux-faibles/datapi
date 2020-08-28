@@ -231,7 +231,8 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		et.numero_voie, et.type_voie, et.adresse, et.code_postal, et.commune, et.departement,
 		d.libelle, r.libelle,
 		et.lattitude, et.longitude,
-		et.visite_fce, n.code_n1, n.code_n2, n.code_n3, n.code_n4, n.code_n5
+		et.visite_fce, n.code_n1, n.code_n2, n.code_n3, n.code_n4, n.code_n5, 
+		n.libelle_n5, n.libelle_n1
 		from etablissement0 et
 		inner join v_roles ro on ro.siren = et.siren and ($3 && ro.roles)
 		inner join v_naf n on n.code_n5 = et.ape
@@ -304,7 +305,7 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alerte
+	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alert
 		from score0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
@@ -526,7 +527,9 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NumeroVoie, &et.Sirene.TypeVoie, &et.Sirene.Adresse, &et.Sirene.CodePostal, &et.Sirene.Commune, &et.Sirene.CodeDept,
 			&et.Sirene.Dept, &et.Sirene.Region,
 			&et.Sirene.Lattitude, &et.Sirene.Longitude, &et.VisiteFCE,
-			&et.Sirene.NAF.N1, &et.Sirene.NAF.N2, &et.Sirene.NAF.N3, &et.Sirene.NAF.N4, &et.Sirene.NAF.N5,
+			&et.Sirene.NAF.N1, &et.Sirene.NAF.N2, &et.Sirene.NAF.N3,
+			&et.Sirene.NAF.N4, &et.Sirene.NAF.N5, &et.Sirene.NAF.APE,
+			&et.Sirene.NAF.Secteur,
 		)
 		if err != nil {
 			return err
