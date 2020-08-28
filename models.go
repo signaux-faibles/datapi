@@ -167,6 +167,8 @@ type paramsListeScores struct {
 	Departements []string `json:"zone,omitempty"`
 	EtatsProcol  []string `json:"procol,omitempty"`
 	Activites    []string `json:"activite,omitempty"`
+	EffectifMin  *int     `json:"effectifMin"`
+	EffectifMax  *int     `json:"effectifMax"`
 }
 
 // Liste de détection
@@ -718,7 +720,7 @@ func (liste *Liste) getScores(roles scope) error {
 			where version = 0
 			group by siren),
 		effectif as (select siret, last(effectif order by periode) as effectif 
-			from etablissement_periode_urssaf where effectif is not null and version = 0 and last_periode = true
+			from etablissement_periode_urssaf where effectif is not null and version = 0 
 			group by siret),
 		diane as (select siren, last(chiffre_affaire order by arrete_bilan_diane) as chiffre_affaire, 
 			last(resultat_expl order by arrete_bilan_diane) as resultat_expl,
@@ -766,9 +768,12 @@ func (liste *Liste) getScores(roles scope) error {
 			s.libelle_liste = $2
 			and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
 			and (et.departement=any($4) or $4 is null)
-			and (n1.code=any($5) or $5 is null)`
-
-	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, liste.Query.Departements, liste.Query.Activites, time.Now())
+			and (n1.code=any($5) or $5 is null)
+			and (ef.effectif >= $7 or $7 is null)
+			and (ef.effectif <= $8 or $8 is null);
+    `
+	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol,
+		liste.Query.Departements, liste.Query.Activites, time.Now(), liste.Query.EffectifMin, liste.Query.EffectifMax)
 	if err != nil {
 		return err
 	}
