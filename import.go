@@ -156,7 +156,7 @@ func upgradeVersion(tx *pgx.Tx) error {
 		"etablissement_delai": `siret, siren, action, annee_creation, date_creation, date_echeance, denomination, duree_delai, indic_6m, 
 			montant_echeancier, numero_compte, numero_contentieux, stade`,
 		"etablissement_procol": "siret, siren, date_effet, action_procol, stade_procol",
-		"score":                "siret, siren, libelle_liste, periode, score, diff, alerte",
+		"score":                "siret, siren, libelle_liste, periode, score, diff, alert",
 		"liste":                "libelle, batch, algo",
 	}
 

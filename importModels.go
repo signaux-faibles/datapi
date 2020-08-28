@@ -449,7 +449,7 @@ func (e etablissement) getBatch() *pgx.Batch {
 	}
 
 	for _, s := range groupScores(e.Scores) {
-		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alerte)
+		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert)
 		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 		batch.Queue(sqlScore,

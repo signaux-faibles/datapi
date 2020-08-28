@@ -22,6 +22,6 @@ create table score (
   periode date,
   score real,
   diff real,
-  alerte text,
+  alert text,
   hash text
 );

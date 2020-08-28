@@ -202,6 +202,7 @@ type Score struct {
 	DernierREXP       *int     `json:"resultat_expl"`
 	EtatProcol        *string  `json:"etat_procol"`
 	Alert             *string  `json:"alert"`
+	VariationCA       *float64 `json:"variation_ca"`
 }
 
 func (e Etablissements) sirensFromQuery() []string {
@@ -754,7 +755,7 @@ func (liste *Liste) getScores(roles scope) error {
 			coalesce(ep.last_procol, 'in_bonis') as last_procol,
 			ap.ap as activite_partielle,
 			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
-			s.alerte
+			s.alert
 		from score s
 		inner join roles r on r.roles && $1 and r.siren = s.siren
 		inner join etablissement et on et.siret = s.siret and et.version = 0
