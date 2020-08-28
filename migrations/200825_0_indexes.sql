@@ -9,6 +9,7 @@ create index idx_etablissement_apdemande_siret on etablissement_apdemande (siret
 create index idx_etablissement_apdemande_siren on etablissement_apdemande (siren) where version = 0;
 create index idx_score_siret on score (siret) where version = 0;
 create index idx_score_siren on score (siren) where version = 0;
+create index idx_score_alert on score (alert) where version = 0;
 create index idx_score_liste on score (libelle_liste) where version = 0;
 create index idx_liste_libelle on liste (libelle) where version = 0;
 create index idx_etablissement_procol on etablissement_procol (siret) where version = 0;
