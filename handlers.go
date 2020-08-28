@@ -14,10 +14,6 @@ import (
 func getEntreprise(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siren := c.Param("siren")
-	if !isValidSiren(siren) {
-		c.JSON(400, "SIREN valide obligatoire")
-		return
-	}
 	siret, err := getSiegeFromSiren(siren)
 	if err != nil {
 		c.JSON(500, err.Error())
@@ -44,10 +40,6 @@ func getEntreprise(c *gin.Context) {
 func getEtablissement(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siret := c.Param("siret")
-	if !isValidSiret(siret) {
-		c.JSON(400, "SIRET valide obligatoire")
-		return
-	}
 	var etablissements Etablissements
 	etablissements.Query.Sirets = []string{siret}
 	err := etablissements.load(roles)
@@ -70,10 +62,6 @@ func getEtablissement(c *gin.Context) {
 func getEntrepriseEtablissements(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siren := c.Param("siren")
-	if !isValidSiren(siren) {
-		c.JSON(400, "SIREN valide obligatoire")
-		return
-	}
 	var etablissements Etablissements
 	etablissements.Query.Sirens = []string{siren}
 	err := etablissements.load(roles)
@@ -143,10 +131,6 @@ func addEntrepriseComment(c *gin.Context) {
 	log.Println("addEntrepriseComment")
 	db := c.MustGet("DB").(*sql.DB)
 	siren := c.Param("siren")
-	if !isValidSiren(siren) {
-		c.JSON(400, "SIREN valide obligatoire")
-		return
-	}
 	message := c.Param("message")
 	if message == "" {
 		c.JSON(400, "Message obligatoire")
@@ -344,18 +328,20 @@ func importHandler(c *gin.Context) {
 	}
 }
 
-func isValidSiren(siren string) bool {
+func validSiren(c *gin.Context) {
+	siren := c.Param("siren")
 	match, err := regexp.MatchString("[0-9]{9}", siren)
-	if err != nil {
-		return false
+	if err != nil || !match {
+		c.AbortWithStatusJSON(400, "SIREN valide obligatoire")
 	}
-	return match
+	c.Next()
 }
 
-func isValidSiret(siret string) bool {
-	match, err := regexp.MatchString("[0-9]{14}", siret)
-	if err != nil {
-		return false
+func validSiret(c *gin.Context) {
+	siren := c.Param("siret")
+	match, err := regexp.MatchString("[0-9]{14}", siren)
+	if err != nil || !match {
+		c.AbortWithStatusJSON(400, "SIRET valide obligatoire")
 	}
-	return match
+	c.Next()
 }

@@ -51,15 +51,15 @@ func runAPI() {
 		router.Use(fakeCloakMiddleware)
 	}
 
-	router.GET("/entreprise/get/:siren", getEntreprise)
-	router.GET("/etablissement/get/:siret", getEtablissement)
-	router.GET("/etablissements/get/:siren", getEntrepriseEtablissements)
+	router.GET("/entreprise/get/:siren", validSiren, getEntreprise)
+	router.GET("/etablissement/get/:siret", validSiret, getEtablissement)
+	router.GET("/etablissements/get/:siren", validSiren, getEntrepriseEtablissements)
 
 	router.GET("/follow", getEntreprisesFollowedByUser)
-	router.POST("/follow/:siret", followEtablissement)
+	router.POST("/follow/:siret", validSiret, followEtablissement)
 
-	router.GET("/entreprise/comments/:siren", getEntrepriseComments)
-	router.POST("/entreprise/comments/:siren", addEntrepriseComment)
+	router.GET("/entreprise/comments/:siren", validSiren, getEntrepriseComments)
+	router.POST("/entreprise/comments/:siren", validSiren, addEntrepriseComment)
 
 	router.GET("/listes", getListes)
 	router.POST("/scores", getLastListeScores)
