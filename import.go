@@ -33,11 +33,9 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 		return err
 	}
 	defer file.Close()
-
 	batches, wg := newBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	decoder := json.NewDecoder(unzip)
-
 	i := 0
 	for {
 		var e entreprise
@@ -51,7 +49,6 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 			}
 			return err
 		}
-
 		if e.Value.SireneUL.Siren != "" {
 			batch := e.getBatch()
 			batches <- batch
@@ -61,7 +58,6 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 			}
 		}
 	}
-
 }
 
 func processEtablissement(fileName string, tx *pgx.Tx) error {
@@ -74,7 +70,6 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 	if err != nil {
 		return err
 	}
-
 	batches, wg := newBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	decoder := json.NewDecoder(unzip)

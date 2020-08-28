@@ -40,10 +40,10 @@ func runAPI() {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
 	config.AddAllowHeaders("Authorization")
-	config.AddAllowMethods("GET", "POST")
+	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 
-	router.Use(dbMiddleware(db))
+	// router.Use(dbMiddleware(db))
 
 	if viper.GetBool("enableKeycloak") {
 		router.Use(keycloakMiddleware)
@@ -55,8 +55,9 @@ func runAPI() {
 	router.GET("/etablissement/get/:siret", validSiret, getEtablissement)
 	router.GET("/etablissements/get/:siren", validSiren, getEntrepriseEtablissements)
 
-	router.GET("/follow", getEntreprisesFollowedByUser)
+	router.GET("/follow", getEtablissementsFollowedByCurrentUser)
 	router.POST("/follow/:siret", validSiret, followEtablissement)
+	router.DELETE("/follow/:siret", validSiret, unfollowEtablissement)
 
 	router.GET("/entreprise/comments/:siren", validSiren, getEntrepriseComments)
 	router.POST("/entreprise/comments/:siren", validSiren, addEntrepriseComment)
@@ -78,9 +79,9 @@ func runAPI() {
 	}
 }
 
-func dbMiddleware(db *pgx.Conn) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Set("DB", db)
-		c.Next()
-	}
-}
+// func dbMiddleware(db *pgx.Conn) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.Set("DB", db)
+// 		c.Next()
+// 	}
+// }

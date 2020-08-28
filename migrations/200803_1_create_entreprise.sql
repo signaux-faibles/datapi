@@ -1,7 +1,7 @@
 create sequence entreprise_id;
 create table entreprise (
   id integer primary key default nextval('entreprise_id'),
-  siren char(9),
+  siren varchar(9),
   version integer default 0,
   date_add timestamp default current_timestamp,
   siret_siege char(14),
@@ -13,7 +13,7 @@ create table entreprise (
 create sequence entreprise_bdf_id;
 create table entreprise_bdf (
   id integer primary key default nextval('entreprise_bdf_id'),
-  siren text,
+  siren varchar(9),
   version integer default 0,
   date_add timestamp default current_timestamp,
   arrete_bilan_bdf date,
@@ -30,7 +30,7 @@ create table entreprise_bdf (
 create sequence entreprise_diane_id;
 create table entreprise_diane (
   id integer primary key default nextval('entreprise_diane_id'),
-  siren text,
+  siren varchar(9),
   version integer default 0,
   date_add timestamp default current_timestamp,
   arrete_bilan_diane date,
@@ -108,26 +108,10 @@ create table entreprise_diane (
   hash text
 );
 
-create table entreprise_followers (
-  id integer primary key,
-  siren varchar(14),
-  id_keycloak text,
-  date_add timestamp,
-  status text,
-  data jsonb
-);
-
-create table entreprise_scope (
-  id integer primary key,
-  id_entreprise int references entreprise (id),
-  siren varchar(9),
-  scope text[]
-);
-
 create table entreprise_comments (
   id int primary key,
   id_parent int references entreprise_comments,
-  siren text,
+  siren varchar(9),
   id_keycloak text,
   date_add timestamp,
   comment text

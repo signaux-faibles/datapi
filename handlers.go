@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"database/sql"
-	"fmt"
 	"log"
 	"regexp"
 
@@ -82,33 +81,76 @@ func getEntrepriseEtablissements(c *gin.Context) {
 	c.JSON(200, entreprise)
 }
 
-func getEntreprisesFollowedByUser(c *gin.Context) {
-	log.Println("getEntreprisesFollowedByUser")
-	db := c.MustGet("DB").(*sql.DB)
-	userID := ""
-	follow := Follow{UserID: userID}
-	entreprises, err := follow.findEntreprisesFollowedByUser(db)
+func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
+	userID := c.GetString("userID")
+	follow := Follow{UserID: &userID}
+	follows, err := follow.list()
+
 	if err != nil {
-		c.JSON(500, err.Error())
+		c.JSON(err.Code(), err.Error())
+		return
 	}
-	c.JSON(200, entreprises)
+
+	c.JSON(200, follows)
 }
 
 func followEtablissement(c *gin.Context) {
-	siren := c.Param("siren")
-	fmt.Println(siren)
-	// // TODO: valider SIREN
-	// if siren == "" {
-	// 	c.JSON(400, "SIREN obligatoire")
-	// 	return
-	// }
-	// userID := ""
-	// follow := Follow{UserID: userID, Siren: siren}
-	// err := follow.createEntrepriseFollow(db)
-	// if err != nil {
-	// 	c.JSON(500, err.Error())
-	// }
-	// c.JSON(200, follow)
+	siret := c.Param("siret")
+	userID := c.GetString("userID")
+	var param struct {
+		Comment string `json:"comment"`
+	}
+	err := c.ShouldBind(&param)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if param.Comment == "" {
+		c.JSON(400, "mandatory non-empty `comment` property")
+		return
+	}
+
+	follow := Follow{
+		Siret:   &siret,
+		UserID:  &userID,
+		Comment: param.Comment,
+	}
+
+	err = follow.load(db)
+	if err != nil && err.Error() != "no rows in result set" {
+		c.AbortWithError(500, err)
+		return
+	}
+
+	if follow.Active {
+		c.JSON(403, follow)
+	} else {
+		err := follow.activate(db)
+		if err != nil && err.Error() != "no rows in result set" {
+			c.AbortWithError(500, err)
+			return
+		} else if err != nil && err.Error() == "no rows in result set" {
+			c.JSON(404, "unknown establishment")
+			return
+		}
+		c.JSON(200, follow)
+	}
+}
+
+func unfollowEtablissement(c *gin.Context) {
+	siret := c.Param("siret")
+	userID := c.GetString("userID")
+	follow := Follow{
+		Siret:  &siret,
+		UserID: &userID,
+	}
+
+	err := follow.deactivate()
+	if err != nil {
+		c.JSON(err.Code(), err.Error())
+		return
+	}
+	c.JSON(200, "this establishment is no longer followed")
 }
 
 func getEntrepriseComments(c *gin.Context) {

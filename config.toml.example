@@ -13,6 +13,7 @@ keycloakRealm = "master"
 
 # enableKeycloak = false
 # keycloakClient = "signauxfaibles"
+# fakeUserIDKeycloak = "john.doe@zone51.gov"
 # fakeKeycloakRole = [
 #   "Bourgogne-Franche-Comté",
 #   "urssaf",

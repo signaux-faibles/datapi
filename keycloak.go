@@ -50,7 +50,14 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
+	if email, ok := (*claims)["email"]; ok {
+		c.Set("userID", email)
+	} else {
+		c.AbortWithStatus(401)
+	}
+
 	c.Set("claims", claims)
+
 	c.Next()
 }
 
@@ -68,6 +75,7 @@ func fakeCloakMiddleware(c *gin.Context) {
 		},
 	}
 
+	c.Set("userID", viper.GetString("fakeUserIDKeycloak"))
 	c.Set("claims", &claims)
 	c.Next()
 }
