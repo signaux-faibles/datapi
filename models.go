@@ -763,7 +763,8 @@ func (liste *Liste) getScores(roles scope) error {
 	and (ef.effectif >= $7 or $7 is null)
 	and (ef.effectif <= $8 or $8 is null)
 	and (et.departement=any($1) or $9 = true)
-	and s.alert != 'Pas d''alerte';`
+	and s.alert != 'Pas d''alerte'
+	order by s.score desc;`
 	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol,
 		liste.Query.Departements, liste.Query.Activites, time.Now(), liste.Query.EffectifMin, liste.Query.EffectifMax, liste.Query.VueFrance)
 	if err != nil {
