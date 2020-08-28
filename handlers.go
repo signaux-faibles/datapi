@@ -322,6 +322,7 @@ func importHandler(c *gin.Context) {
 	if err != nil {
 		c.AbortWithError(500, err)
 	}
+	log.Print("preparing database for import")
 	err = prepareImport(&tx)
 
 	sourceEntreprise := viper.GetString("sourceEntreprise")
@@ -338,10 +339,24 @@ func importHandler(c *gin.Context) {
 		c.AbortWithError(500, err)
 	}
 
+	log.Printf("upgrading version of objects")
 	err = upgradeVersion(&tx)
 	if err != nil {
 		c.AbortWithError(500, err)
 	}
 
+	log.Print("refreshing materialized views")
+	err = refreshMaterializedViews(&tx)
+	if err != nil {
+		c.AbortWithError(500, err)
+	}
+
+	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
+
+	log.Print("drop dead data")
+	_, err = db.Exec(context.Background(), "vacuum full;")
+	if err != nil {
+		c.AbortWithError(500, err)
+	}
 }

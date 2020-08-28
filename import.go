@@ -169,6 +169,20 @@ func upgradeVersion(tx *pgx.Tx) error {
 		where t0.id = t.id`, table, table, table, f0, f0))
 		batch.Queue(fmt.Sprintf(`delete from %s where version = -1`, table))
 	}
+	b := (*tx).SendBatch(context.Background(), &batch)
+	return b.Close()
+}
 
-	return (*tx).SendBatch(context.Background(), &batch).Close()
+func refreshMaterializedViews(tx *pgx.Tx) error {
+	views := []string{"v_roles", "v_diane_variation_ca"}
+	for _, v := range views {
+		fmt.Printf("\033[2K\rrefreshing %s", v)
+		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))
+		if err != nil {
+			return err
+		}
+	}
+	fmt.Println("")
+	log.Printf("success: %d views refreshed\n", len(views))
+	return nil
 }

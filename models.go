@@ -185,25 +185,26 @@ type Liste struct {
 
 // Score d'une liste de détection
 type Score struct {
-	Siren              string   `json:"siren"`
-	Siret              string   `json:"siret"`
-	Score              float64  `json:"-"`
-	Diff               *float64 `json:"-"`
-	RaisonSociale      *string  `json:"raison_sociale"`
-	Commune            *string  `json:"commune"`
-	LibelleActivite    *string  `json:"libelle_activite"`
-	LibelleActiviteN1  *string  `json:"libelle_activite_n1"`
-	CodeActivite       *string  `json:"code_activite"`
-	Departement        *string  `json:"departement"`
-	LibelleDepartement *string  `json:"libelleDepartement"`
-	DernierEffectif    *int     `json:"dernier_effectif"`
-	HausseUrssaf       *bool    `json:"urssaf"`
-	ActivitePartielle  *bool    `json:"activite_partielle"`
-	DernierCA          *int     `json:"ca"`
-	DernierREXP        *int     `json:"resultat_expl"`
-	EtatProcol         *string  `json:"etat_procol"`
-	Alert              *string  `json:"alert"`
-	VariationCA        *float64 `json:"variation_ca"`
+	Siren              string     `json:"siren"`
+	Siret              string     `json:"siret"`
+	Score              float64    `json:"-"`
+	Diff               *float64   `json:"-"`
+	RaisonSociale      *string    `json:"raison_sociale"`
+	Commune            *string    `json:"commune"`
+	LibelleActivite    *string    `json:"libelle_activite"`
+	LibelleActiviteN1  *string    `json:"libelle_activite_n1"`
+	CodeActivite       *string    `json:"code_activite"`
+	Departement        *string    `json:"departement"`
+	LibelleDepartement *string    `json:"libelleDepartement"`
+	DernierEffectif    *int       `json:"dernier_effectif"`
+	HausseUrssaf       *bool      `json:"urssaf"`
+	ActivitePartielle  *bool      `json:"activite_partielle"`
+	DernierCA          *int       `json:"ca"`
+	VariationCA        *float64   `json:"variation_ca"`
+	ArreteBilan        *time.Time `json:"arrete_bilan"`
+	DernierREXP        *int       `json:"resultat_expl"`
+	EtatProcol         *string    `json:"etat_procol"`
+	Alert              *string    `json:"alert"`
 }
 
 func (e Etablissements) sirensFromQuery() []string {
@@ -718,19 +719,11 @@ func (liste *Liste) getScores(roles scope) error {
 			return err
 		}
 	}
-	sqlScores := `with roles as (select siren, array_agg(distinct departement) as roles
-			from etablissement
-			where version = 0
-			group by siren),
-		effectif as (select siret, last(effectif order by periode) as effectif 
+	sqlScores := `with effectif as (select siret, last(effectif order by periode) as effectif 
 			from etablissement_periode_urssaf where effectif is not null and version = 0 
 			group by siret),
-		diane as (select siren, last(chiffre_affaire order by arrete_bilan_diane) as chiffre_affaire, 
-			last(resultat_expl order by arrete_bilan_diane) as resultat_expl,
-			last(arrete_bilan_diane) as arrete_bilan_diane
-			from entreprise_diane group by siren),
 		procol as (select siret, last(action_procol order by date_effet) as last_procol 
-			from etablissement_procol 
+			from etablissement_procol0
 			where version = 0 group by siret),
 		apdemande as (select distinct siret, true as ap 
 			from etablissement_apdemande
@@ -749,6 +742,8 @@ func (liste *Liste) getScores(roles scope) error {
 			s.score,
 			s.diff,
 			di.chiffre_affaire,
+			di.arrete_bilan,
+			di.variation_ca,
 			di.resultat_expl,
 			ef.effectif,
 			n.libelle,
@@ -759,7 +754,7 @@ func (liste *Liste) getScores(roles scope) error {
 			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
 			s.alert
 		from score s
-		inner join roles r on r.roles && $1 and r.siren = s.siren
+		inner join v_roles r on r.roles && $1 and r.siren = s.siren
 		inner join etablissement et on et.siret = s.siret and et.version = 0
 		inner join entreprise en on en.siren = s.siren and en.version = 0
 		inner join departements d on d.code = et.departement
@@ -769,7 +764,7 @@ func (liste *Liste) getScores(roles scope) error {
 		left join urssaf u on u.siret = s.siret
 		left join apdemande ap on ap.siret = s.siret
 		left join procol ep on ep.siret = s.siret
-		left join diane di on di.siren = s.siren
+		left join v_diane_variation_ca di on di.siren = s.siren
 		where 
 			s.libelle_liste = $2
 			and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
@@ -798,6 +793,8 @@ func (liste *Liste) getScores(roles scope) error {
 			&score.Score,
 			&score.Diff,
 			&score.DernierCA,
+			&score.ArreteBilan,
+			&score.VariationCA,
 			&score.DernierREXP,
 			&score.DernierEffectif,
 			&score.LibelleActivite,

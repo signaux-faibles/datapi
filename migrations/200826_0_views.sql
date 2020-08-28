@@ -51,8 +51,35 @@ from naf n5
   inner join naf n2 on n3.id_parent = n2.id
   inner join naf n1 on n2.id_parent = n1.id;
 
-create view v_roles as 
+create materialized view v_roles as 
 select siren, array_agg(distinct departement) as roles
   from etablissement
   where version = 0
   group by siren;
+
+create unique index idx_v_roles
+  on v_roles (siren);
+
+create materialized view v_diane_variation_ca as
+with diane as (SELECT
+	siren,
+	arrete_bilan_diane,
+	lag(arrete_bilan_diane,1) OVER (partition by siren order by arrete_bilan_diane) prev_arrete_bilan_diane,
+	chiffre_affaire,
+	lag(chiffre_affaire,1) OVER (partition by siren order by arrete_bilan_diane) prev_chiffre_affaire,
+  resultat_expl
+from entreprise_diane0
+order by siren, arrete_bilan_diane desc)
+select siren, 
+first(arrete_bilan_diane) as arrete_bilan, 
+first(prev_chiffre_affaire) as prev_chiffre_affaire,
+first(chiffre_affaire) as chiffre_affaire, 
+first(chiffre_affaire / prev_chiffre_affaire) as variation_ca,
+first(resultat_expl) as resultat_expl
+from diane
+where coalesce(prev_chiffre_affaire,0) != 0 and  coalesce(chiffre_affaire,0) != 0 and
+arrete_bilan_diane - '1 year'::interval = prev_arrete_bilan_diane 
+group by siren;
+
+create unique index idx_v_diane_variation_ca 
+  on v_diane_variation_ca (siren);
