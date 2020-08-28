@@ -56,7 +56,7 @@ func runAPI() {
 	router.GET("/etablissements/get/:siren", getEntrepriseEtablissements)
 
 	router.GET("/follow", getEntreprisesFollowedByUser)
-	router.POST("/follow/:siren", followEntreprise)
+	router.POST("/follow/:siret", followEtablissement)
 
 	router.GET("/entreprise/comments/:siren", getEntrepriseComments)
 	router.POST("/entreprise/comments/:siren", addEntrepriseComment)
