@@ -16,9 +16,10 @@ type Entreprise struct {
 		RaisonSociale   string `json:"raisonSociale"`
 		StatutJuridique string `json:"statutJuridique"`
 	}
-	Diane          []diane                `json:"diane"`
-	Bdf            []bdf                  `json:"bdf"`
-	Etablissements []EtablissementSummary `json:"etablissements,omitempty"`
+	Diane                 []diane                `json:"diane"`
+	Bdf                   []bdf                  `json:"bdf"`
+	EtablissementsSummary []EtablissementSummary `json:"etablissementsSummary,omitempty"`
+	Etablissements        []Etablissement        `json:"etablissements,omitEmpty"`
 }
 
 // EtablissementSummary …

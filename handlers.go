@@ -49,18 +49,20 @@ func getAllEtablissements(c *gin.Context) {
 
 func getEtablissement(c *gin.Context) {
 	roles := scopeFromContext(c)
-
 	siret := c.Param("siret")
 	isValidSiret, err := regexp.MatchString("[0-9]{14}", siret)
 	if !isValidSiret || err != nil {
 		c.JSON(400, "SIRET valide obligatoire")
 	}
-
-	var etablissements = Etablissements{}
+	var etablissements Etablissements
 	etablissements.Query.Sirets = []string{siret}
 	err = etablissements.load(roles)
 
-	result := etablissements.Etablissements[siret]
+	result, ok := etablissements.Etablissements[siret]
+	if !ok {
+		c.JSON(404, "etablissement non disponible")
+		return
+	}
 	entreprise := etablissements.Entreprises[siret[0:9]]
 	result.Entreprise = &entreprise
 
@@ -72,20 +74,30 @@ func getEtablissement(c *gin.Context) {
 }
 
 func getEntrepriseEtablissements(c *gin.Context) {
-	log.Println("getEntrepriseEtablissements")
-	db := c.MustGet("DB").(*sql.DB)
+	roles := scopeFromContext(c)
 	siren := c.Param("siren")
-	// TODO: valider SIREN
-	if siren == "" {
-		c.JSON(400, "SIREN obligatoire")
+	isValidSiret, err := regexp.MatchString("[0-9]{9}", siren)
+	if !isValidSiret || err != nil {
+		c.JSON(400, "SIREN valide obligatoire")
 		return
 	}
-	entreprise := Entreprise{Siren: siren}
-	etablissements, err := entreprise.findEtablissementsBySiren(db)
+	var etablissements Etablissements
+	etablissements.Query.Sirens = []string{siren}
+	err = etablissements.load(roles)
 	if err != nil {
 		c.JSON(500, err.Error())
 	}
-	c.JSON(200, etablissements)
+	entreprise, ok := etablissements.Entreprises[siren]
+	if !ok {
+		c.JSON(404, "ressource non disponible")
+		return
+	}
+
+	for _, v := range etablissements.Etablissements {
+		entreprise.Etablissements = append(entreprise.Etablissements, v)
+	}
+
+	c.JSON(200, entreprise)
 }
 
 func getEntreprisesFollowedByUser(c *gin.Context) {
