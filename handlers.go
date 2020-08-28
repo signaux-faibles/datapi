@@ -4,36 +4,37 @@ import (
 	"context"
 	"database/sql"
 	"log"
+	"regexp"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
 func getAllEntreprises(c *gin.Context) {
-	log.Println("getAllEntreprises")
-	db := c.MustGet("DB").(*sql.DB)
-	entreprises, err := findAllEntreprises(db)
-	if err != nil {
-		c.JSON(500, err.Error())
-	}
-	c.JSON(200, entreprises)
+	// log.Println("getAllEntreprises")
+	// db := c.MustGet("DB").(*sql.DB)
+	// entreprises, err := findAllEntreprises(db)
+	// if err != nil {
+	// 	c.JSON(500, err.Error())
+	// }
+	// c.JSON(200, entreprises)
 }
 
 func getEntreprise(c *gin.Context) {
-	log.Println("getEntreprise")
+	// log.Println("getEntreprise")
 
-	siren := c.Param("siren")
-	// TODO: valider SIREN
-	if siren == "" {
-		c.JSON(400, "SIREN obligatoire")
-		return
-	}
-	entreprise := Entreprise{Siren: siren}
-	err := entreprise.findEntrepriseBySiren(db)
-	if err != nil {
-		c.JSON(500, err.Error())
-	}
-	c.JSON(200, entreprise)
+	// siren := c.Param("siren")
+	// // TODO: valider SIREN
+	// if siren == "" {
+	// 	c.JSON(400, "SIREN obligatoire")
+	// 	return
+	// }
+	// entreprise := Entreprise{Siren: siren}
+	// err := entreprise.findEntrepriseBySiren(db)
+	// if err != nil {
+	// 	c.JSON(500, err.Error())
+	// }
+	// c.JSON(200, entreprise)
 }
 
 func getAllEtablissements(c *gin.Context) {
@@ -47,20 +48,27 @@ func getAllEtablissements(c *gin.Context) {
 }
 
 func getEtablissement(c *gin.Context) {
-	log.Println("getEtablissement")
-	db := c.MustGet("DB").(*sql.DB)
+	roles := scopeFromContext(c)
+
 	siret := c.Param("siret")
-	// TODO: valider SIRET
-	if siret == "" {
-		c.JSON(400, "SIRET obligatoire")
-		return
+	isValidSiret, err := regexp.MatchString("[0-9]{14}", siret)
+	if !isValidSiret || err != nil {
+		c.JSON(400, "SIRET valide obligatoire")
 	}
-	etablissement := Etablissement{Siret: siret}
-	err := etablissement.findEtablissementBySiret(db)
+
+	var etablissements = Etablissements{}
+	etablissements.Query.Sirets = []string{siret}
+	err = etablissements.load(roles)
+
+	result := etablissements.Etablissements[siret]
+	entreprise := etablissements.Entreprises[siret[0:9]]
+	result.Entreprise = &entreprise
+
 	if err != nil {
 		c.JSON(500, err.Error())
+		return
 	}
-	c.JSON(200, etablissement)
+	c.JSON(200, result)
 }
 
 func getEntrepriseEtablissements(c *gin.Context) {

@@ -25,6 +25,7 @@ create sequence etablissement_apconso_id;
 create table etablissement_apconso (
   id               integer primary key default nextval('etablissement_apconso_id'),
   siret            varchar(14),
+  siren            varchar(9),
   version          integer default 0,
   date_add         timestamp default current_timestamp,
   id_conso         text,
@@ -39,6 +40,7 @@ create sequence etablissement_apdemande_id;
 create table etablissement_apdemande (
   id                  integer primary key default nextval('etablissement_apdemande_id'),
   siret               varchar(14),
+  siren               varchar(9),
   version             integer default 0,
   date_add            timestamp default current_timestamp,
   id_demande          text,
@@ -61,6 +63,7 @@ create sequence etablissement_periode_urssaf_id;
 create table etablissement_periode_urssaf (
   id                  integer primary key default nextval('etablissement_periode_urssaf_id'),
   siret               varchar(14),
+  siren               varchar(9),
   version             integer default 0,
   date_add            timestamp default current_timestamp,
   periode             date,
@@ -77,6 +80,7 @@ create sequence etablissement_delai_id;
 create table etablissement_delai (
   id                 integer primary key default nextval('etablissement_delai_id'),
   siret              varchar(14),
+  siren              varchar(9),
   version            integer default 0,
   date_add           timestamp default current_timestamp,
   action             text,
@@ -97,10 +101,11 @@ create sequence etablissement_procol_id;
 create table etablissement_procol (
   id            integer primary key default nextval('etablissement_procol_id'),
   siret         varchar(14),
+  siren         varchar(9),
   version       integer default 0,
   date_add      timestamp default current_timestamp,
   date_effet    date,
   action_procol text,
-  state_procol  text,
+  stade_procol  text,
   hash          text
 );

@@ -115,5 +115,8 @@ func (s scope) zoneGeo() []string {
 		departements, _ := ref.zones[role]
 		zone = append(zone, departements...)
 	}
+	for _, sc := range s {
+		zone = append(zone, sc)
+	}
 	return zone
 }

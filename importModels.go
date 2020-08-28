@@ -350,12 +350,13 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	for _, a := range e.Value.APConso {
 		sqlAPConso := `insert into etablissement_apconso
-		(siret, id_conso, heure_consomme, montant, effectif, periode)
-		values ($1, $2, $3, $4, $5, $6);`
+		(siret, siren, id_conso, heure_consomme, montant, effectif, periode)
+		values ($1, $2, $3, $4, $5, $6, $7);`
 
 		batch.Queue(
 			sqlAPConso,
 			e.Value.Key,
+			e.Value.Key[0:9],
 			a.IDConso,
 			a.HeureConsomme,
 			a.Montant,
@@ -366,13 +367,14 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	for _, a := range e.Value.APDemande {
 		sqlAPDemande := `insert into etablissement_apdemande
-				(siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, periode_end,
+				(siret, siren, id_demande, effectif_entreprise, effectif, date_statut, periode_start, periode_end,
 				 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 		batch.Queue(
 			sqlAPDemande,
 			e.Value.Key,
+			e.Value.Key[0:9],
 			a.IDDemande,
 			a.EffectifEntreprise,
 			a.Effectif,
@@ -391,12 +393,13 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	for i, a := range e.Value.Periodes {
 		sqlUrssaf := `insert into etablissement_periode_urssaf
-				(siret, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
-				values ($1, $2, $3, $4, $5, $6, $7, $8)`
+				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 		batch.Queue(
 			sqlUrssaf,
 			e.Value.Key,
+			e.Value.Key[0:9],
 			a,
 			e.Value.Cotisation[i],
 			e.Value.DebitPartPatronale[i],
@@ -408,13 +411,14 @@ func (e etablissement) getBatch() *pgx.Batch {
 	}
 
 	for _, a := range e.Value.Delai {
-		sqlDelai := `insert into etablissement_delai (siret, action, annee_creation, date_creation, date_echeance,
+		sqlDelai := `insert into etablissement_delai (siret, siren, action, annee_creation, date_creation, date_echeance,
 				denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
 
 		batch.Queue(
 			sqlDelai,
 			e.Value.Key,
+			e.Value.Key[0:9],
 			a.Action,
 			a.AnneeCreation,
 			a.DateCreation,
@@ -430,12 +434,13 @@ func (e etablissement) getBatch() *pgx.Batch {
 	}
 
 	for _, p := range e.Value.Procol {
-		sqlProcol := `insert into etablissement_procol (siret, date_effet,
-			action_procol, state_procol) values ($1, $2, $3, $4);`
+		sqlProcol := `insert into etablissement_procol (siret, siren, date_effet,
+			action_procol, stade_procol) values ($1, $2, $3, $4, $5);`
 
 		batch.Queue(
 			sqlProcol,
 			e.Value.Key,
+			e.Value.Key[0:9],
 			p.DateEffet,
 			p.Action,
 			p.Stade,
