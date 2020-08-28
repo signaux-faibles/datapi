@@ -165,8 +165,11 @@ type reference struct {
 }
 
 func loadReferences(db *pgx.Conn) reference {
-	sqlZones := `select r.libelle as region, d.code as departement from regions r 
-	inner join departements d on d.id_region = r.id order by region, departement`
+	sqlZones := `select r.libelle as region, d.code as departement 
+	from regions r 
+	inner join departements d on d.id_region = r.id 
+	union select 'France entière', code from departements
+	order by region, departement`
 	rows, err := db.Query(context.Background(), sqlZones)
 	if err != nil {
 		panic("can't load references: " + err.Error())
