@@ -393,22 +393,24 @@ func (e etablissement) getBatch() *pgx.Batch {
 	}
 
 	for i, a := range e.Value.Periodes {
-		sqlUrssaf := `insert into etablissement_periode_urssaf
+		if *e.Value.Cotisation[i]+*e.Value.DebitPartPatronale[i]+*e.Value.DebitPartOuvriere[i]+*e.Value.DebitMontantMajorations[i] != 0 || e.Value.Effectif[i] != nil {
+			sqlUrssaf := `insert into etablissement_periode_urssaf
 				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
 				values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
-		batch.Queue(
-			sqlUrssaf,
-			e.Value.Key,
-			e.Value.Key[0:9],
-			a,
-			e.Value.Cotisation[i],
-			e.Value.DebitPartPatronale[i],
-			e.Value.DebitPartOuvriere[i],
-			e.Value.DebitMontantMajorations[i],
-			e.Value.Effectif[i],
-			i > len(e.Value.Periodes)-4,
-		)
+			batch.Queue(
+				sqlUrssaf,
+				e.Value.Key,
+				e.Value.Key[0:9],
+				a,
+				e.Value.Cotisation[i],
+				e.Value.DebitPartPatronale[i],
+				e.Value.DebitPartOuvriere[i],
+				e.Value.DebitMontantMajorations[i],
+				e.Value.Effectif[i],
+				i > len(e.Value.Periodes)-4,
+			)
+		}
 	}
 
 	for _, a := range e.Value.Delai {
