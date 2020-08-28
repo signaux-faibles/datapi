@@ -185,24 +185,25 @@ type Liste struct {
 
 // Score d'une liste de détection
 type Score struct {
-	Siren             string   `json:"siren"`
-	Siret             string   `json:"siret"`
-	Score             float64  `json:"-"`
-	Diff              *float64 `json:"-"`
-	RaisonSociale     *string  `json:"raison_sociale"`
-	Commune           *string  `json:"commune"`
-	LibelleActivite   *string  `json:"libelle_activite"`
-	LibelleActiviteN1 *string  `json:"libelle_activite_n1"`
-	CodeActivite      *string  `json:"code_activite"`
-	Departement       *string  `json:"departement"`
-	DernierEffectif   *int     `json:"dernier_effectif"`
-	HausseUrssaf      *bool    `json:"urssaf"`
-	ActivitePartielle *bool    `json:"activite_partielle"`
-	DernierCA         *int     `json:"ca"`
-	DernierREXP       *int     `json:"resultat_expl"`
-	EtatProcol        *string  `json:"etat_procol"`
-	Alert             *string  `json:"alert"`
-	VariationCA       *float64 `json:"variation_ca"`
+	Siren              string   `json:"siren"`
+	Siret              string   `json:"siret"`
+	Score              float64  `json:"-"`
+	Diff               *float64 `json:"-"`
+	RaisonSociale      *string  `json:"raison_sociale"`
+	Commune            *string  `json:"commune"`
+	LibelleActivite    *string  `json:"libelle_activite"`
+	LibelleActiviteN1  *string  `json:"libelle_activite_n1"`
+	CodeActivite       *string  `json:"code_activite"`
+	Departement        *string  `json:"departement"`
+	LibelleDepartement *string  `json:"libelleDepartement"`
+	DernierEffectif    *int     `json:"dernier_effectif"`
+	HausseUrssaf       *bool    `json:"urssaf"`
+	ActivitePartielle  *bool    `json:"activite_partielle"`
+	DernierCA          *int     `json:"ca"`
+	DernierREXP        *int     `json:"resultat_expl"`
+	EtatProcol         *string  `json:"etat_procol"`
+	Alert              *string  `json:"alert"`
+	VariationCA        *float64 `json:"variation_ca"`
 }
 
 func (e Etablissements) sirensFromQuery() []string {
@@ -744,6 +745,7 @@ func (liste *Liste) getScores(roles scope) error {
 			en.raison_sociale, 
 			et.commune, 
 			d.libelle, 
+			d.code,
 			s.score,
 			s.diff,
 			di.chiffre_affaire,
@@ -753,7 +755,7 @@ func (liste *Liste) getScores(roles scope) error {
 			n1.libelle,
 			et.ape,
 			coalesce(ep.last_procol, 'in_bonis') as last_procol,
-			ap.ap as activite_partielle,
+			coalesce(ap.ap, false) as activite_partielle,
 			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
 			s.alert
 		from score s
@@ -791,6 +793,7 @@ func (liste *Liste) getScores(roles scope) error {
 			&score.Siren,
 			&score.RaisonSociale,
 			&score.Commune,
+			&score.LibelleDepartement,
 			&score.Departement,
 			&score.Score,
 			&score.Diff,

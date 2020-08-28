@@ -138,7 +138,7 @@ type bdf struct {
 	TauxMarge           float64   `json:"taux_marge"`
 }
 type diane struct {
-	ChiffreAffaire                  float64   `json:"ca,omitempty"`
+	ChiffreAffaire                  *float64  `json:"ca,omitempty"`
 	Exercice                        float64   `json:"exercice_diane,omitempty"`
 	NomEntreprise                   string    `json:"nom_entreprise,omitempty"`
 	NumeroSiren                     string    `json:"numero_siren,omitempty"`
