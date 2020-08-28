@@ -241,11 +241,12 @@ func getListeScores(c *gin.Context) {
 	}
 
 	err = liste.getScores(roles)
-	if err.Error() == "no rows in result set" {
-		c.AbortWithStatus(204)
-		return
-	}
+
 	if err != nil {
+		if err.Error() == "no rows in result set" {
+			c.AbortWithStatus(204)
+			return
+		}
 		c.JSON(500, err.Error())
 		return
 	}
