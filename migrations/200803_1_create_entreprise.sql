@@ -107,12 +107,3 @@ create table entreprise_diane (
   valeur_ajoutee real,
   hash text
 );
-
-create table entreprise_comments (
-  id int primary key,
-  id_parent int references entreprise_comments,
-  siren varchar(9),
-  id_keycloak text,
-  date_add timestamp,
-  comment text
-);

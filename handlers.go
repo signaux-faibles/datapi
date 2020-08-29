@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"log"
 	"regexp"
 
@@ -151,40 +150,6 @@ func unfollowEtablissement(c *gin.Context) {
 		return
 	}
 	c.JSON(200, "this establishment is no longer followed")
-}
-
-func getEntrepriseComments(c *gin.Context) {
-	log.Println("getEntreprisesComments")
-	db := c.MustGet("DB").(*sql.DB)
-	siren := c.Param("siren")
-	if siren == "" {
-		c.JSON(400, "SIREN obligatoire")
-		return
-	}
-	entreprise := Entreprise{Siren: siren}
-	comments, err := entreprise.findCommentsBySiren(db)
-	if err != nil {
-		c.JSON(500, err.Error())
-	}
-	c.JSON(200, comments)
-}
-
-func addEntrepriseComment(c *gin.Context) {
-	log.Println("addEntrepriseComment")
-	db := c.MustGet("DB").(*sql.DB)
-	siren := c.Param("siren")
-	message := c.Param("message")
-	if message == "" {
-		c.JSON(400, "Message obligatoire")
-		return
-	}
-	userID := ""
-	comment := Comment{Siren: siren, UserID: userID, Message: message}
-	err := comment.createEntrepriseComment(db)
-	if err != nil {
-		c.JSON(500, err.Error())
-	}
-	c.JSON(200, comment)
 }
 
 func getListes(c *gin.Context) {
