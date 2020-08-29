@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -11,13 +12,14 @@ import (
 
 // Comment commentaire sur une enterprise
 type Comment struct {
-	ID       *int       `json:"id,omitempty"`
-	IDParent *int       `json:"idParent,omitempty"`
-	Comments []*Comment `json:"comments,omitempty"`
-	Siret    *string    `json:"siret,omitempty"`
-	UserID   *string    `json:"userID,omitempty"`
-	DateAdd  *time.Time `json:"dateAdd,omitempty"`
-	Message  *string    `json:"message,omitempty"`
+	ID             *int        `json:"id,omitempty"`
+	IDParent       *int        `json:"idParent,omitempty"`
+	Comments       []*Comment  `json:"comments,omitempty"`
+	Siret          *string     `json:"siret,omitempty"`
+	UserID         *string     `json:"userID,omitempty"`
+	DateHistory    []time.Time `json:"dateHistory,omitempty"`
+	Message        *string     `json:"message,omitempty"`
+	MessageHistory []string    `json:"messageHistory,omitempty"`
 }
 
 // ************ Handlers ****************
@@ -41,6 +43,7 @@ func addEntrepriseComment(c *gin.Context) {
 	var comment Comment
 	if c.ShouldBind(&comment) != nil {
 		c.JSON(400, "malformed query")
+		return
 	}
 	siret := c.Param("siret")
 	userID := c.GetString("userID")
@@ -54,15 +57,38 @@ func addEntrepriseComment(c *gin.Context) {
 	c.JSON(200, comment)
 }
 
+func updateEntrepriseComment(c *gin.Context) {
+	var message string
+	id, err := strconv.Atoi(c.Param("id"))
+
+	if c.ShouldBind(&message) != nil || err != nil {
+		c.JSON(400, "malformed query")
+		return
+	}
+	userID := c.GetString("userID")
+	comment := Comment{
+		ID:      &id,
+		UserID:  &userID,
+		Message: &message,
+	}
+	jerr := comment.update()
+	if jerr != nil {
+		c.JSON(jerr.Code(), jerr.Error())
+		return
+	}
+	c.JSON(200, comment)
+
+}
+
 // ************ Model functions ****************
 func (c *Comment) save() Jerror {
 	sqlSaveComment := `insert into etablissement_comments
-	(id_parent, siret, siren, user_id, message) 
-	select $1, $2, substring($3 from 0 for 9), $5, $6
+	(id_parent, siret, siren, user_id, message_history) 
+	select $1, $2, substring($3 from 0 for 9), $5, array[$6]
 	from etablissement0 e 
 	left join etablissement_comments m on m.id = $7 and m.siret = e.siret
 	where e.siret = $4 and (m.id is not null or $7 is null)
-	returning id, date_add;`
+	returning id, date_history, message_history;`
 
 	err := db.QueryRow(
 		context.Background(),
@@ -74,7 +100,8 @@ func (c *Comment) save() Jerror {
 		c.UserID,
 		c.Message,
 		c.IDParent,
-	).Scan(&c.ID, &c.DateAdd)
+	).Scan(&c.ID, &c.DateHistory, &c.MessageHistory)
+	c.Message = nil
 
 	if err != nil {
 		if err.Error() == "no rows in result set" {
@@ -87,7 +114,7 @@ func (c *Comment) save() Jerror {
 
 func (c *Comment) load() Jerror {
 	sqlListComment := `select 
-	id, id_parent, user_id, date_add, message
+	id, id_parent, user_id, date_history, message_history
 	from etablissement_comments e
 	where e.siret = $1`
 
@@ -99,7 +126,7 @@ func (c *Comment) load() Jerror {
 	comments := make(map[int]*Comment)
 	for rows.Next() {
 		var c Comment
-		err := rows.Scan(&c.ID, &c.IDParent, &c.UserID, &c.DateAdd, &c.Message)
+		err := rows.Scan(&c.ID, &c.IDParent, &c.UserID, &c.DateHistory, &c.MessageHistory)
 		if err != nil {
 			return errorToJSON(500, err)
 		}
@@ -115,5 +142,34 @@ func (c *Comment) load() Jerror {
 		}
 	}
 
+	return nil
+}
+
+func (c *Comment) update() Jerror {
+	sqlUpdateComment := `update etablissement_comments set 
+	 message_history = array[$1] || message_history,
+	 date_history = current_timestamp::timestamp || date_history
+	 where user_id = $2 and id = $3 and message_history[1] != $4
+	 returning id, id_parent, user_id, date_history, message_history, null`
+
+	err := db.QueryRow(context.Background(), sqlUpdateComment,
+		c.Message,
+		c.UserID,
+		c.ID,
+		c.Message).Scan(
+		&c.ID,
+		&c.IDParent,
+		&c.UserID,
+		&c.DateHistory,
+		&c.MessageHistory,
+		&c.Message,
+	)
+
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			return newJSONerror(403, "either duplicate comment, wrong userID or wrong ID")
+		}
+		return errorToJSON(500, err)
+	}
 	return nil
 }

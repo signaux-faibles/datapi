@@ -125,11 +125,11 @@ create table etablissement_follow (
 
 create sequence etablissement_comment_id;
 create table etablissement_comments (
-  id        int primary key default nextval('etablissement_comment_id'),
-  id_parent int references etablissement_comments,
-  siret     varchar(14),
-  siren     varchar(9),
-  user_id   text,
-  date_add  timestamp default current_timestamp,
-  message   text
+  id              int primary key default nextval('etablissement_comment_id'),
+  id_parent       int references etablissement_comments,
+  siret           varchar(14),
+  siren           varchar(9),
+  user_id         text,
+  date_history    timestamp[] default array[current_timestamp],
+  message_history text[]
 );
