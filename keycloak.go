@@ -13,6 +13,33 @@ import (
 
 type scope []string
 
+func (sc scope) containsRole(role string) bool {
+	for _, s := range sc {
+		if role == s {
+			return true
+		}
+	}
+	return false
+}
+
+func (sc scope) containsScope(roles scope) bool {
+	for _, r := range roles {
+		if !sc.containsRole(r) {
+			return false
+		}
+	}
+	return true
+}
+
+func (sc scope) overlapsScope(roles scope) bool {
+	for _, r := range roles {
+		if sc.containsRole(r) {
+			return true
+		}
+	}
+	return false
+}
+
 func connectKC() gocloak.GoCloak {
 	keycloak := gocloak.NewClient(viper.GetString("keycloakHostname"))
 	if keycloak == nil {
@@ -117,14 +144,14 @@ func scopeFromContext(c *gin.Context) scope {
 	return roles
 }
 
-func (s scope) zoneGeo() []string {
+func (sc scope) zoneGeo() []string {
 	var zone []string
-	for _, role := range s {
+	for _, role := range sc {
 		departements, _ := ref.zones[role]
 		zone = append(zone, departements...)
 	}
-	for _, sc := range s {
-		zone = append(zone, sc)
+	for _, s := range sc {
+		zone = append(zone, s)
 	}
 	return zone
 }
