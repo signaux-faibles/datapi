@@ -292,6 +292,12 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		e.sirensFromQuery(),
 		roles.zoneGeo())
 
+	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alert
+		from score0 e
+		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+
 	batch.Queue(`select siret, id_conso, heure_consomme, montant, effectif, periode from etablissement_apconso0 e
 		inner join v_roles ro on ro.siren = e.siren and (ro.roles) && $1 and $1 @> array['dgefp']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
@@ -304,7 +310,8 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select siret, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif
+	batch.Queue(`select siret, periode, 
+		cotisation, part_patronale, part_salariale, montant_majorations, effectif
 		from etablissement_periode_urssaf0 e
 		inner join v_roles ro on ro.siren = e.siren and  ro.roles && $1 and $1 @> array['urssaf']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
@@ -320,12 +327,6 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 
 	batch.Queue(`select siret, date_effet, action_procol, stade_procol
 		from etablissement_procol0 e
-		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
-
-	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alert
-		from score0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
@@ -352,7 +353,7 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows) error {
+func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 	var cotisations = make(map[string][]*float64)
 	var partPatronales = make(map[string][]*float64)
 	var partSalariales = make(map[string][]*float64)
@@ -378,11 +379,13 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows) error {
 
 		if *pu.partPatronale+*pu.partSalariale+*pu.montantMajoration != 0 || pu.effectif != nil {
 			cotisations[pu.siret] = append(cotisations[pu.siret], pu.cotisation)
-			partPatronales[pu.siret] = append(partPatronales[pu.siret], pu.partPatronale)
-			partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
-			montantMajorations[pu.siret] = append(montantMajorations[pu.siret], pu.montantMajoration)
 			effectifs[pu.siret] = append(effectifs[pu.siret], pu.effectif)
 			periodes[pu.siret] = append(periodes[pu.siret], pu.periode)
+			if len(e.Etablissements[pu.siret].Scores) > 0 && roles.containsRole("urssaf") {
+				partPatronales[pu.siret] = append(partPatronales[pu.siret], pu.partPatronale)
+				partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
+				montantMajorations[pu.siret] = append(montantMajorations[pu.siret], pu.montantMajoration)
+			}
 		}
 	}
 
@@ -462,7 +465,7 @@ func (e *Etablissements) loadBDF(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
+func (e *Etablissements) loadAPDemande(rows *pgx.Rows, roles scope) error {
 	var apdemandes = make(map[string][]EtablissementAPDemande)
 	for (*rows).Next() {
 		var ap EtablissementAPDemande
@@ -473,7 +476,9 @@ func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
 		if err != nil {
 			return err
 		}
-		apdemandes[siret] = append(apdemandes[siret], ap)
+		if len(e.Etablissements[siret].Scores) > 0 && roles.containsRole("dgefp") {
+			apdemandes[siret] = append(apdemandes[siret], ap)
+		}
 	}
 	for k, v := range apdemandes {
 		etablissement := e.Etablissements[k]
@@ -483,7 +488,7 @@ func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadAPConso(rows *pgx.Rows) error {
+func (e *Etablissements) loadAPConso(rows *pgx.Rows, roles scope) error {
 	var apconsos = make(map[string][]EtablissementAPConso)
 	for (*rows).Next() {
 		var ap EtablissementAPConso
@@ -492,7 +497,9 @@ func (e *Etablissements) loadAPConso(rows *pgx.Rows) error {
 		if err != nil {
 			return err
 		}
-		apconsos[siret] = append(apconsos[siret], ap)
+		if len(e.Etablissements[siret].Scores) > 0 && roles.containsRole("dgefp") {
+			apconsos[siret] = append(apconsos[siret], ap)
+		}
 	}
 	for k, v := range apconsos {
 		etablissement := e.Etablissements[k]
@@ -605,12 +612,22 @@ func (e *Etablissements) load(roles scope) error {
 		return err
 	}
 
+	// scores
+	rows, err = b.Query()
+	if err != nil {
+		return err
+	}
+	err = e.loadScore(&rows)
+	if err != nil {
+		return err
+	}
+
 	// apconso
 	rows, err = b.Query()
 	if err != nil {
 		return err
 	}
-	err = e.loadAPConso(&rows)
+	err = e.loadAPConso(&rows, roles)
 	if err != nil {
 		return err
 	}
@@ -620,7 +637,7 @@ func (e *Etablissements) load(roles scope) error {
 	if err != nil {
 		return err
 	}
-	err = e.loadAPDemande(&rows)
+	err = e.loadAPDemande(&rows, roles)
 	if err != nil {
 		return err
 	}
@@ -630,7 +647,7 @@ func (e *Etablissements) load(roles scope) error {
 	if err != nil {
 		return err
 	}
-	err = e.loadPeriodeUrssaf(&rows)
+	err = e.loadPeriodeUrssaf(&rows, roles)
 	if err != nil {
 		return err
 	}
@@ -651,16 +668,6 @@ func (e *Etablissements) load(roles scope) error {
 		return err
 	}
 	err = e.loadProcol(&rows)
-	if err != nil {
-		return err
-	}
-
-	// scores
-	rows, err = b.Query()
-	if err != nil {
-		return err
-	}
-	err = e.loadScore(&rows)
 	if err != nil {
 		return err
 	}
