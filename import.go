@@ -12,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cnf/structhash"
 	"github.com/gin-gonic/gin"
 	"github.com/globalsign/mgo/bson"
 	pgx "github.com/jackc/pgx/v4"
@@ -19,6 +20,8 @@ import (
 )
 
 type score struct {
+	Siret     string        `json:"-"`
+	Libelle   string        `json:"-"`
 	ID        bson.ObjectId `json:"-"`
 	Score     float64       `json:"score"`
 	Diff      float64       `json:"diff"`
@@ -31,6 +34,7 @@ type score struct {
 
 // Procol donne le statut et la date de statut pour une entreprise en matière de procédures collectives
 type procol struct {
+	Siret     string    `json:"siret"`
 	DateEffet time.Time `json:"date_effet"`
 	Action    string    `json:"action_procol"`
 	Stade     string    `json:"stade_procol"`
@@ -64,6 +68,7 @@ type etablissement struct {
 }
 
 type delai struct {
+	Siret             string    `json:"siret"`
 	Action            string    `json:"action"`
 	AnneeCreation     int       `json:"anne_creation"`
 	DateCreation      time.Time `json:"date_creation"`
@@ -103,15 +108,6 @@ type debit struct {
 	Periode            time.Time `json:"periode"`
 }
 
-// APConso detail
-type apConso struct {
-	IDConso       string    `json:"id_conso"`
-	HeureConsomme float64   `json:"heure_consomme"`
-	Montant       float64   `json:"montant"`
-	Effectif      int       `json:"int"`
-	Periode       time.Time `json:"periode"`
-}
-
 // SireneUL detail
 type sireneUL struct {
 	Siren           string `json:"siren"`
@@ -119,8 +115,19 @@ type sireneUL struct {
 	StatutJuridique string `json:"statut_juridique"`
 }
 
+// APConso detail
+type apConso struct {
+	Siret         string    `json:"siret"`
+	IDConso       string    `json:"id_conso"`
+	HeureConsomme float64   `json:"heure_consomme"`
+	Montant       float64   `json:"montant"`
+	Effectif      int       `json:"int"`
+	Periode       time.Time `json:"periode"`
+}
+
 // APDemande detail
 type apDemande struct {
+	Siret      string    `json:"siret"`
 	DateStatut time.Time `json:"date_statut"`
 	Periode    struct {
 		Start time.Time `json:"start"`
@@ -139,6 +146,7 @@ type apDemande struct {
 }
 
 type bdf struct {
+	Siren               string    `json:"siren"`
 	Annee               int       `json:"annee_bdf"`
 	ArreteBilan         time.Time `json:"arrete_bilan_bdf"`
 	DelaiFournisseur    float64   `json:"delai_fournisseur"`
@@ -148,6 +156,7 @@ type bdf struct {
 	PoidsFrng           float64   `json:"poids_frng"`
 	TauxMarge           float64   `json:"taux_marge"`
 }
+
 type diane struct {
 	ChiffreAffaire                  *float64  `json:"ca,omitempty"`
 	Exercice                        float64   `json:"exercice_diane,omitempty"`
@@ -233,6 +242,7 @@ type diane struct {
 
 // Sirene detail
 type sirene struct {
+	Siret           string   `json:"-"`
 	Region          string   `json:"region"`
 	Commune         string   `json:"commune"`
 	RaisonSociale   string   `json:"raison_sociale"`
@@ -254,25 +264,26 @@ func (e entreprise) getBatch() *pgx.Batch {
 	var batch pgx.Batch
 
 	sqlEntreprise := `insert into entreprise 
-	(siren, raison_sociale, statut_juridique)
-  values ($1, $2, $3);`
+	(siren, raison_sociale, statut_juridique, hash)
+  values ($1, $2, $3, $4);`
 
 	batch.Queue(
 		sqlEntreprise,
 		e.Value.SireneUL.Siren,
 		e.Value.SireneUL.RaisonSociale,
 		e.Value.SireneUL.StatutJuridique,
+		fmt.Sprintf("%x", structhash.Md5(e.Value.SireneUL, 0)),
 	)
 
 	for _, b := range e.Value.BDF {
 		sqlEntrepriseBDF := `insert into entreprise_bdf
 			(siren, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme,
-	 		poids_frng, dette_fiscale, frais_financier, taux_marge)
-			values ($1, $2, $3, $4, $5, $6, $7, $8, $9);`
+	 		poids_frng, dette_fiscale, frais_financier, taux_marge, hash)
+			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
 
 		batch.Queue(
 			sqlEntrepriseBDF,
-			e.Value.SireneUL.Siren,
+			b.Siren,
 			b.ArreteBilan,
 			b.Annee,
 			b.DelaiFournisseur,
@@ -281,6 +292,7 @@ func (e entreprise) getBatch() *pgx.Batch {
 			b.DetteFiscale,
 			b.FraisFinancier,
 			b.TauxMarge,
+			fmt.Sprintf("%x", structhash.Md5(b, 0)),
 		)
 	}
 
@@ -304,15 +316,15 @@ func (e entreprise) getBatch() *pgx.Batch {
 				 rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
 				 rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,
 				 taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-				 taux_valeur_ajoutee, valeur_ajoutee)
+				 taux_valeur_ajoutee, valeur_ajoutee, hash)
 				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
 				 $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
 				 $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
-				 $66, $67, $68, $69, $70, $71, $72, $73);`
+				 $66, $67, $68, $69, $70, $71, $72, $73, $74);`
 
 		batch.Queue(
 			sqlEntrepriseDiane,
-			e.Value.SireneUL.Siren, d.ArreteBilan, d.ChiffreAffaire, d.CreditClient, d.ResultatExploitation, d.AchatMarchandises,
+			d.NumeroSiren, d.ArreteBilan, d.ChiffreAffaire, d.CreditClient, d.ResultatExploitation, d.AchatMarchandises,
 			d.AchatMatieresPremieres, d.AutonomieFinanciere, d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises,
 			d.CAExportation, d.CapaciteAutofinancement, d.CapaciteRemboursement, d.ChargeExceptionnelle, d.ChargePersonnel,
 			d.ChargesFinancieres, d.ConcesBrevEtDroitsSim, d.Consommation, d.CouvertureCaBesoinFdr, d.CouvertureCaFdr,
@@ -326,7 +338,7 @@ func (e entreprise) getBatch() *pgx.Batch {
 			d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
 			d.RentabiliteNette, d.ResultatAvantImpot, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
 			d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
-			d.TauxValeurAjoutee, d.ValeurAjoutee,
+			d.TauxValeurAjoutee, d.ValeurAjoutee, fmt.Sprintf("%x", structhash.Md5(d, 0)),
 		)
 	}
 
@@ -338,13 +350,14 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	sqlEtablissement := `insert into etablissement
 		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie, statut_procol, siege)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
+			numero_voie, region, type_voie, statut_procol, siege, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`
 
+	e.Value.Sirene.Siret = e.Value.Key
 	batch.Queue(
 		sqlEtablissement,
-		e.Value.Key,
-		e.Value.Key[0:9],
+		e.Value.Sirene.Siret,
+		e.Value.Sirene.Siret[0:9],
 		strings.Join(e.Value.Sirene.Adresse, "\n"),
 		e.Value.Sirene.Ape,
 		e.Value.Sirene.CodePostal,
@@ -358,35 +371,41 @@ func (e etablissement) getBatch() *pgx.Batch {
 		e.Value.Sirene.TypeVoie,
 		e.Value.LastProcol.Action,
 		e.Value.Sirene.Siege,
+		fmt.Sprintf("%x", structhash.Md5(e.Value.Sirene, 0)),
 	)
 
 	for _, a := range e.Value.APConso {
 		sqlAPConso := `insert into etablissement_apconso
-		(siret, siren, id_conso, heure_consomme, montant, effectif, periode)
-		values ($1, $2, $3, $4, $5, $6, $7);`
+		(siret, siren, id_conso, heure_consomme, montant, effectif, periode, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8);`
+
+		a.Siret = e.Value.Key
 
 		batch.Queue(
 			sqlAPConso,
-			e.Value.Key,
-			e.Value.Key[0:9],
+			a.Siret,
+			a.Siret[0:9],
 			a.IDConso,
 			a.HeureConsomme,
 			a.Montant,
 			a.Effectif,
 			a.Periode,
+			fmt.Sprintf("%x", structhash.Md5(a, 0)),
 		)
 	}
 
 	for _, a := range e.Value.APDemande {
 		sqlAPDemande := `insert into etablissement_apdemande
 				(siret, siren, id_demande, effectif_entreprise, effectif, date_statut, periode_start, periode_end,
-				 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
+				 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme, hash)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`
+
+		a.Siret = e.Value.Key
 
 		batch.Queue(
 			sqlAPDemande,
-			e.Value.Key,
-			e.Value.Key[0:9],
+			a.Siret,
+			a.Siret[0:9],
 			a.IDDemande,
 			a.EffectifEntreprise,
 			a.Effectif,
@@ -400,39 +419,62 @@ func (e etablissement) getBatch() *pgx.Batch {
 			a.HeureConsomme,
 			a.MontantConsomme,
 			a.EffectifConsomme,
+			fmt.Sprintf("%x", structhash.Md5(a, 0)),
 		)
 	}
 
 	for i, a := range e.Value.Periodes {
 		if *e.Value.Cotisation[i]+*e.Value.DebitPartPatronale[i]+*e.Value.DebitPartOuvriere[i]+*e.Value.DebitMontantMajorations[i] != 0 || e.Value.Effectif[i] != nil {
 			sqlUrssaf := `insert into etablissement_periode_urssaf
-				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode, hash)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+
+			var periode = struct {
+				Siret                   string
+				Effectif                *int
+				DebitPartPatronale      *float64
+				DebitPartOuvriere       *float64
+				DebitMontantMajorations *float64
+				Cotisation              *float64
+				Periode                 time.Time
+				Last                    bool
+			}{
+				Siret:                   e.Value.Key,
+				Periode:                 a,
+				Effectif:                e.Value.Effectif[i],
+				DebitPartPatronale:      e.Value.DebitPartPatronale[i],
+				DebitPartOuvriere:       e.Value.DebitPartOuvriere[i],
+				DebitMontantMajorations: e.Value.DebitMontantMajorations[i],
+				Cotisation:              e.Value.Cotisation[i],
+				Last:                    i > len(e.Value.Periodes)-4,
+			}
 
 			batch.Queue(
 				sqlUrssaf,
-				e.Value.Key,
-				e.Value.Key[0:9],
-				a,
-				e.Value.Cotisation[i],
-				e.Value.DebitPartPatronale[i],
-				e.Value.DebitPartOuvriere[i],
-				e.Value.DebitMontantMajorations[i],
-				e.Value.Effectif[i],
-				i > len(e.Value.Periodes)-4,
+				periode.Siret,
+				periode.Siret[0:9],
+				periode.Periode,
+				periode.Cotisation,
+				periode.DebitPartPatronale,
+				periode.DebitPartOuvriere,
+				periode.DebitMontantMajorations,
+				periode.Effectif,
+				periode.Last,
+				fmt.Sprintf("%x", structhash.Md5(periode, 0)),
 			)
 		}
 	}
 
 	for _, a := range e.Value.Delai {
 		sqlDelai := `insert into etablissement_delai (siret, siren, action, annee_creation, date_creation, date_echeance,
-				denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
+				denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade, hash)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
 
+		a.Siret = e.Value.Key
 		batch.Queue(
 			sqlDelai,
-			e.Value.Key,
-			e.Value.Key[0:9],
+			a.Siret,
+			a.Siret[0:9],
 			a.Action,
 			a.AnneeCreation,
 			a.DateCreation,
@@ -444,30 +486,35 @@ func (e etablissement) getBatch() *pgx.Batch {
 			a.NumeroCompte,
 			a.NumeroContentieux,
 			a.Stade,
+			fmt.Sprintf("%x", structhash.Md5(a, 0)),
 		)
 	}
 
 	for _, p := range e.Value.Procol {
 		sqlProcol := `insert into etablissement_procol (siret, siren, date_effet,
-			action_procol, stade_procol) values ($1, $2, $3, $4, $5);`
+			action_procol, stade_procol, hash) values ($1, $2, $3, $4, $5, $6);`
 
+		p.Siret = e.Value.Key
 		batch.Queue(
 			sqlProcol,
-			e.Value.Key,
-			e.Value.Key[0:9],
+			p.Siret,
+			p.Siret[0:9],
 			p.DateEffet,
 			p.Action,
 			p.Stade,
+			fmt.Sprintf("%x", structhash.Md5(p, 0)),
 		)
 	}
 
 	for _, s := range groupScores(e.Scores) {
-		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
 
+		s.Siret = e.Value.Key
+		s.Libelle = s.toLibelle()
 		batch.Queue(sqlScore,
-			e.Value.Key,
-			e.Value.Key[:9],
+			s.Siret,
+			s.Siret[:9],
 			s.toLibelle(),
 			s.Batch,
 			s.Algo,
@@ -475,6 +522,7 @@ func (e etablissement) getBatch() *pgx.Batch {
 			s.Score,
 			s.Diff,
 			s.Alert,
+			fmt.Sprintf("%x", structhash.Md5(s, 0)),
 		)
 	}
 	return &batch
@@ -666,49 +714,23 @@ func prepareImport(tx *pgx.Tx) error {
 }
 
 func upgradeVersion(tx *pgx.Tx) error {
-	var batch pgx.Batch
-	tables := map[string]string{
-		"entreprise": `siren, raison_sociale, statut_juridique`,
-		"entreprise_bdf": `siren, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme, 
-			poids_frng, dette_fiscale, frais_financier, taux_marge`,
-		"entreprise_diane": `siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
-			achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,		
-			ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel,
-			charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr,
-			credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement,
-			endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
-			financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
-			liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
-			operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
-			performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier, 
-			productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,	
-			rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique, 
-			rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,	taille_compo_groupe, 
-			taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca, taux_valeur_ajoutee, valeur_ajoutee`,
-		"etablissement": `siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie, statut_procol, siege`,
-		"etablissement_apconso": "siret, siren, id_conso, heure_consomme, montant, effectif, periode",
-		"etablissement_apdemande": `siret, siren, id_demande, effectif_entreprise, effectif, date_statut, periode_start, periode_end, hta, mta, 
-			effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme`,
-		"etablissement_periode_urssaf": "siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode",
-		"etablissement_delai": `siret, siren, action, annee_creation, date_creation, date_echeance, denomination, duree_delai, indic_6m, 
-			montant_echeancier, numero_compte, numero_contentieux, stade`,
-		"etablissement_procol": "siret, siren, date_effet, action_procol, stade_procol",
-		"score":                "siret, siren, libelle_liste, periode, score, diff, alert",
-		"liste":                "libelle, batch, algo",
-	}
+	// var batch pgx.Batch
+	// // tables := map[string]string{
+	// // 	"liste": "libelle, batch, algo",
+	// // }
 
-	for table, fields := range tables {
-		batch.Queue(fmt.Sprintf("update %s set hash = md5(row(%s)::text) where version = 0", table, fields))
-		f0 := strings.Split(fields, ",")[0]
-		batch.Queue(fmt.Sprintf(`update %s t set version = version - 1 from
-		(select unnest(array[t0.id, t1.id]) id from %s t0
-		inner join %s t1 on t0.%s = t1.%s and t0.version = 0 and t1.version = 1 and t0.hash = t1.hash) t0
-		where t0.id = t.id`, table, table, table, f0, f0))
-		batch.Queue(fmt.Sprintf(`delete from %s where version = -1`, table))
-	}
-	b := (*tx).SendBatch(context.Background(), &batch)
-	return b.Close()
+	// // for table, fields := range tables {
+	// // 	batch.Queue(fmt.Sprintf("update %s set hash = md5(row(%s)::text) where version = 0", table, fields))
+	// // 	f0 := strings.Split(fields, ",")[0]
+	// // 	batch.Queue(fmt.Sprintf(`update %s t set version = version - 1 from
+	// // 	(select unnest(array[t0.id, t1.id]) id from %s t0
+	// // 	inner join %s t1 on t0.%s = t1.%s and t0.version = 0 and t1.version = 1 and t0.hash = t1.hash) t0
+	// // 	where t0.id = t.id`, table, table, table, f0, f0))
+	// // 	batch.Queue(fmt.Sprintf(`delete from %s where version = -1`, table))
+	// // }
+	// b := (*tx).SendBatch(context.Background(), &batch)
+	// return b.Close()
+	return nil
 }
 
 func refreshMaterializedViews(tx *pgx.Tx) error {
