@@ -20,6 +20,7 @@ require (
 	github.com/go-playground/validator/v10 v10.3.0 // indirect
 	github.com/golang/protobuf v1.4.2 // indirect
 	github.com/gorilla/websocket v1.4.2
+	github.com/jackc/pgproto3/v2 v2.0.4 // indirect
 	github.com/jackc/pgx/v4 v4.8.1
 	github.com/json-iterator/go v1.1.10 // indirect
 	github.com/lib/pq v1.8.0
@@ -41,6 +42,7 @@ require (
 	golang.org/x/net v0.0.0-20200822124328-c89045814202 // indirect
 	golang.org/x/sys v0.0.0-20200828194041-157a740278f4 // indirect
 	golang.org/x/tools v0.0.0-20200828161849-5deb26317202 // indirect
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/dgrijalva/jwt-go.v3 v3.2.0 // indirect
 	gopkg.in/ini.v1 v1.60.2 // indirect
