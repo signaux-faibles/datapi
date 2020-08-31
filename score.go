@@ -194,11 +194,7 @@ func (liste *Liste) getScores(roles scope) error {
 			return err
 		}
 	}
-	sqlScores := `with apdemande as (select siret, true as ap 
-		from etablissement_apdemande0
-		where periode_start + '1 year'::interval > $6
-		group by siret)
-	select 
+	sqlScores := `	select 
 		et.siret,
 		et.siren,
 		en.raison_sociale, 
@@ -228,20 +224,20 @@ func (liste *Liste) getScores(roles scope) error {
 	inner join naf n1 on n.id_n1 = n1.id
 	left join v_last_effectif ef on ef.siret = s.siret
 	left join v_hausse_urssaf u on u.siret = s.siret
-	left join apdemande ap on ap.siret = s.siret
+	left join v_apdemande ap on ap.siret = s.siret
 	left join v_last_procol ep on ep.siret = s.siret
 	left join v_diane_variation_ca di on di.siren = s.siren
 	where s.libelle_liste = $2
 	and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
 	and (et.departement=any($4) or $4 is null)
 	and (n1.code=any($5) or $5 is null)
-	and (ef.effectif >= $7 or $7 is null)
-	and (ef.effectif <= $8 or $8 is null)
-	and (et.departement=any($1) or $9 = true)
+	and (ef.effectif >= $6 or $6 is null)
+	and (ef.effectif <= $7 or $7 is null)
+	and (et.departement=any($1) or $8 = true)
 	and s.alert != 'Pas d''alerte'
 	order by s.score desc;`
 	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol,
-		liste.Query.Departements, liste.Query.Activites, time.Now(), liste.Query.EffectifMin, liste.Query.EffectifMax, liste.Query.VueFrance)
+		liste.Query.Departements, liste.Query.Activites, liste.Query.EffectifMin, liste.Query.EffectifMax, liste.Query.VueFrance)
 	if err != nil {
 		return err
 	}
