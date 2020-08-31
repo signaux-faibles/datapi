@@ -156,13 +156,6 @@ type EtablissementScore struct {
 	Alert   string    `json:"alert"`
 }
 
-// Comment commentaire sur une enterprise
-type Comment struct {
-	Siren   string `json:"siren"`
-	UserID  string `json:"userId"`
-	Message string `json:"message"`
-}
-
 type paramsListeScores struct {
 	Departements []string `json:"zone,omitempty"`
 	EtatsProcol  []string `json:"procol,omitempty"`

@@ -113,12 +113,23 @@ create table etablissement_procol (
 
 create sequence etablissemment_follow_id;
 create table etablissement_follow (
-  id integer primary key default nextval('etablissemment_follow_id'),
-  siret varchar(14),
-  siren varchar(9),
-  user_id text,
-  active boolean,
-  since timestamp,
-  until timestamp,
-  comment text  
+  id       integer primary key default nextval('etablissemment_follow_id'),
+  siret    varchar(14),
+  siren    varchar(9),
+  user_id  text,
+  active   boolean,
+  since    timestamp,
+  until    timestamp,
+  comment  text  
+);
+
+create sequence etablissement_comment_id;
+create table etablissement_comments (
+  id              int primary key default nextval('etablissement_comment_id'),
+  id_parent       int references etablissement_comments,
+  siret           varchar(14),
+  siren           varchar(9),
+  user_id         text,
+  date_history    timestamp[] default array[current_timestamp],
+  message_history text[]
 );
