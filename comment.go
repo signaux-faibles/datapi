@@ -88,7 +88,7 @@ func (c *Comment) save() Jerror {
 	from etablissement0 e 
 	left join etablissement_comments m on m.id = $7 and m.siret = e.siret
 	where e.siret = $4 and (m.id is not null or $7 is null)
-	returning id, date_history, message_history;`
+	returning id, siret, date_history, message_history;`
 
 	err := db.QueryRow(
 		context.Background(),
@@ -100,7 +100,7 @@ func (c *Comment) save() Jerror {
 		c.UserID,
 		c.Message,
 		c.IDParent,
-	).Scan(&c.ID, &c.DateHistory, &c.MessageHistory)
+	).Scan(&c.ID, &c.Siret, &c.DateHistory, &c.MessageHistory)
 	c.Message = nil
 
 	if err != nil {
