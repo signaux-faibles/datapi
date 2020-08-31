@@ -40,10 +40,10 @@ func runAPI() {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = []string{"*"}
 	config.AddAllowHeaders("Authorization")
-	config.AddAllowMethods("GET", "POST")
+	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 
-	router.Use(dbMiddleware(db))
+	// router.Use(dbMiddleware(db))
 
 	if viper.GetBool("enableKeycloak") {
 		router.Use(keycloakMiddleware)
@@ -51,15 +51,16 @@ func runAPI() {
 		router.Use(fakeCloakMiddleware)
 	}
 
-	router.GET("/entreprise/get/:siren", getEntreprise)
-	router.GET("/etablissement/get/:siret", getEtablissement)
-	router.GET("/etablissements/get/:siren", getEntrepriseEtablissements)
+	router.GET("/entreprise/get/:siren", validSiren, getEntreprise)
+	router.GET("/etablissement/get/:siret", validSiret, getEtablissement)
+	router.GET("/etablissements/get/:siren", validSiren, getEntrepriseEtablissements)
 
-	router.GET("/follow", getEntreprisesFollowedByUser)
-	router.POST("/follow/:siren", followEntreprise)
+	router.GET("/follow", getEtablissementsFollowedByCurrentUser)
+	router.POST("/follow/:siret", validSiret, followEtablissement)
+	router.DELETE("/follow/:siret", validSiret, unfollowEtablissement)
 
-	router.GET("/entreprise/comments/:siren", getEntrepriseComments)
-	router.POST("/entreprise/comments/:siren", addEntrepriseComment)
+	router.GET("/entreprise/comments/:siren", validSiren, getEntrepriseComments)
+	router.POST("/entreprise/comments/:siren", validSiren, addEntrepriseComment)
 
 	router.GET("/listes", getListes)
 	router.POST("/scores", getLastListeScores)
@@ -78,9 +79,9 @@ func runAPI() {
 	}
 }
 
-func dbMiddleware(db *pgx.Conn) gin.HandlerFunc {
-	return func(c *gin.Context) {
-		c.Set("DB", db)
-		c.Next()
-	}
-}
+// func dbMiddleware(db *pgx.Conn) gin.HandlerFunc {
+// 	return func(c *gin.Context) {
+// 		c.Set("DB", db)
+// 		c.Next()
+// 	}
+// }

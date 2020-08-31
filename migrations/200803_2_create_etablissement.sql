@@ -2,9 +2,9 @@ create sequence etablissement_id;
 create table etablissement (
   id               integer primary key default nextval('etablissement_id'),
   siret            varchar(14),
+  siren            varchar(9),
   version          integer default 0,
   date_add         timestamp default current_timestamp,
-  siren            char(9),
   adresse          text,
   ape              text,
   code_postal      text,
@@ -109,4 +109,16 @@ create table etablissement_procol (
   action_procol text,
   stade_procol  text,
   hash          text
+);
+
+create sequence etablissemment_follow_id;
+create table etablissement_follow (
+  id integer primary key default nextval('etablissemment_follow_id'),
+  siret varchar(14),
+  siren varchar(9),
+  user_id text,
+  active boolean,
+  since timestamp,
+  until timestamp,
+  comment text  
 );

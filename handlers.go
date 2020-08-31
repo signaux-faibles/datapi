@@ -10,24 +10,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-func getAllEntreprises(c *gin.Context) {
-	// log.Println("getAllEntreprises")
-	// db := c.MustGet("DB").(*sql.DB)
-	// entreprises, err := findAllEntreprises(db)
-	// if err != nil {
-	// 	c.JSON(500, err.Error())
-	// }
-	// c.JSON(200, entreprises)
-}
-
 func getEntreprise(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siren := c.Param("siren")
-	isValidSiret, err := regexp.MatchString("[0-9]{9}", siren)
-	if !isValidSiret || err != nil {
-		c.JSON(400, "SIREN valide obligatoire")
-		return
-	}
 	siret, err := getSiegeFromSiren(siren)
 	if err != nil {
 		c.JSON(500, err.Error())
@@ -45,34 +30,18 @@ func getEntreprise(c *gin.Context) {
 		c.JSON(404, "ressource non disponible")
 		return
 	}
-
 	for _, v := range etablissements.Etablissements {
 		entreprise.Etablissements = append(entreprise.Etablissements, v)
 	}
-
 	c.JSON(200, entreprise)
-}
-
-func getAllEtablissements(c *gin.Context) {
-	log.Println("getAllEtablissements")
-	db := c.MustGet("DB").(*sql.DB)
-	etablissements, err := findAllEtablissements(db)
-	if err != nil {
-		c.JSON(500, err.Error())
-	}
-	c.JSON(200, etablissements)
 }
 
 func getEtablissement(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siret := c.Param("siret")
-	isValidSiret, err := regexp.MatchString("[0-9]{14}", siret)
-	if !isValidSiret || err != nil {
-		c.JSON(400, "SIRET valide obligatoire")
-	}
 	var etablissements Etablissements
 	etablissements.Query.Sirets = []string{siret}
-	err = etablissements.load(roles)
+	err := etablissements.load(roles)
 
 	result, ok := etablissements.Etablissements[siret]
 	if !ok {
@@ -92,14 +61,9 @@ func getEtablissement(c *gin.Context) {
 func getEntrepriseEtablissements(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siren := c.Param("siren")
-	isValidSiret, err := regexp.MatchString("[0-9]{9}", siren)
-	if !isValidSiret || err != nil {
-		c.JSON(400, "SIREN valide obligatoire")
-		return
-	}
 	var etablissements Etablissements
 	etablissements.Query.Sirens = []string{siren}
-	err = etablissements.load(roles)
+	err := etablissements.load(roles)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -117,41 +81,82 @@ func getEntrepriseEtablissements(c *gin.Context) {
 	c.JSON(200, entreprise)
 }
 
-func getEntreprisesFollowedByUser(c *gin.Context) {
-	log.Println("getEntreprisesFollowedByUser")
-	db := c.MustGet("DB").(*sql.DB)
-	userID := ""
-	follow := Follow{UserID: userID}
-	entreprises, err := follow.findEntreprisesFollowedByUser(db)
+func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
+	userID := c.GetString("userID")
+	follow := Follow{UserID: &userID}
+	follows, err := follow.list()
+
 	if err != nil {
-		c.JSON(500, err.Error())
+		c.JSON(err.Code(), err.Error())
+		return
 	}
-	c.JSON(200, entreprises)
+
+	c.JSON(200, follows)
 }
 
-func followEntreprise(c *gin.Context) {
-	// log.Println("followEntreprise")
-	// db := c.MustGet("DB").(*sql.DB)
-	// siren := c.Param("siren")
-	// // TODO: valider SIREN
-	// if siren == "" {
-	// 	c.JSON(400, "SIREN obligatoire")
-	// 	return
-	// }
-	// userID := ""
-	// follow := Follow{UserID: userID, Siren: siren}
-	// err := follow.createEntrepriseFollow(db)
-	// if err != nil {
-	// 	c.JSON(500, err.Error())
-	// }
-	// c.JSON(200, follow)
+func followEtablissement(c *gin.Context) {
+	siret := c.Param("siret")
+	userID := c.GetString("userID")
+	var param struct {
+		Comment string `json:"comment"`
+	}
+	err := c.ShouldBind(&param)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if param.Comment == "" {
+		c.JSON(400, "mandatory non-empty `comment` property")
+		return
+	}
+
+	follow := Follow{
+		Siret:   &siret,
+		UserID:  &userID,
+		Comment: param.Comment,
+	}
+
+	err = follow.load(db)
+	if err != nil && err.Error() != "no rows in result set" {
+		c.AbortWithError(500, err)
+		return
+	}
+
+	if follow.Active {
+		c.JSON(403, follow)
+	} else {
+		err := follow.activate(db)
+		if err != nil && err.Error() != "no rows in result set" {
+			c.AbortWithError(500, err)
+			return
+		} else if err != nil && err.Error() == "no rows in result set" {
+			c.JSON(404, "unknown establishment")
+			return
+		}
+		c.JSON(200, follow)
+	}
+}
+
+func unfollowEtablissement(c *gin.Context) {
+	siret := c.Param("siret")
+	userID := c.GetString("userID")
+	follow := Follow{
+		Siret:  &siret,
+		UserID: &userID,
+	}
+
+	err := follow.deactivate()
+	if err != nil {
+		c.JSON(err.Code(), err.Error())
+		return
+	}
+	c.JSON(200, "this establishment is no longer followed")
 }
 
 func getEntrepriseComments(c *gin.Context) {
 	log.Println("getEntreprisesComments")
 	db := c.MustGet("DB").(*sql.DB)
 	siren := c.Param("siren")
-	// TODO: valider SIREN
 	if siren == "" {
 		c.JSON(400, "SIREN obligatoire")
 		return
@@ -168,11 +173,6 @@ func addEntrepriseComment(c *gin.Context) {
 	log.Println("addEntrepriseComment")
 	db := c.MustGet("DB").(*sql.DB)
 	siren := c.Param("siren")
-	// TODO: valider SIREN
-	if siren == "" {
-		c.JSON(400, "SIREN obligatoire")
-		return
-	}
 	message := c.Param("message")
 	if message == "" {
 		c.JSON(400, "Message obligatoire")
@@ -368,4 +368,22 @@ func importHandler(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
+}
+
+func validSiren(c *gin.Context) {
+	siren := c.Param("siren")
+	match, err := regexp.MatchString("[0-9]{9}", siren)
+	if err != nil || !match {
+		c.AbortWithStatusJSON(400, "SIREN valide obligatoire")
+	}
+	c.Next()
+}
+
+func validSiret(c *gin.Context) {
+	siren := c.Param("siret")
+	match, err := regexp.MatchString("[0-9]{14}", siren)
+	if err != nil || !match {
+		c.AbortWithStatusJSON(400, "SIRET valide obligatoire")
+	}
+	c.Next()
 }

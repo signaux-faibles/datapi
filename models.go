@@ -24,11 +24,17 @@ type Entreprise struct {
 
 // EtablissementSummary …
 type EtablissementSummary struct {
-	Siret          string `json:"siret"`
-	Departement    string `json:"departement"`
-	Region         string `json:"region"`
-	CodeActivite   string `json:"codeActivite"`
-	CodeActiviteN1 string ``
+	Siret              *string `json:"siret,omitempty"`
+	Departement        *string `json:"departement"`
+	LibelleDepartement *string `json:"libelleDepartement"`
+	RaisonSociale      *string `json:"raisonSociale"`
+	Commune            *string `json:"commune"`
+	Region             *string `json:"region"`
+	CodeActivite       *string `json:"codeActivite"`
+	CodeSecteur        *string `json:"codeSecteur"`
+	Activite           *string `json:"activite"`
+	Secteur            *string `json:"secteur"`
+	DernierEffectif    *int    `json:"dernierEffectif,omitempty"`
 }
 
 type findEtablissementsParams struct {
@@ -62,7 +68,7 @@ type Etablissement struct {
 		Longitude  float64 `json:"longitude"`
 		NumeroVoie string  `json:"numeroVoie"`
 		TypeVoie   string  `json:"typeVoie"`
-		Commune    string  `json:"string"`
+		Commune    string  `json:"commune"`
 		NAF        struct {
 			APE     string `json:"activite"`
 			Secteur string `json:"secteur"`
@@ -148,14 +154,6 @@ type EtablissementScore struct {
 	Score   float64   `json:"score"`
 	Diff    float64   `json:"diff"`
 	Alert   string    `json:"alert"`
-}
-
-// Follow type follow pour l'API
-type Follow struct {
-	Siret  string `json:"siren"`
-	UserID string `json:"userId"`
-	Query  struct {
-	}
 }
 
 // Comment commentaire sur une enterprise
@@ -815,4 +813,35 @@ func getSiegeFromSiren(siren string) (string, error) {
 	var siret string
 	err := db.QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
 	return siret, err
+}
+
+// Jerror interface for JSON errors
+type Jerror interface {
+	Error() string
+	Code() int
+}
+
+// JSONerror enables returning enriched errors with JSON status
+type JSONerror struct {
+	error string
+	code  int
+}
+
+// Error() provide the classical error status
+func (j JSONerror) Error() string {
+	return j.error
+}
+
+// Code provides JSON error code to be returned
+func (j JSONerror) Code() int {
+	return j.code
+}
+
+// newJSONerror return JSON error from string
+func newJSONerror(code int, e string) JSONerror {
+	return JSONerror{error: e, code: code}
+}
+
+func errorToJSON(code int, e error) JSONerror {
+	return JSONerror{error: e.Error(), code: code}
 }

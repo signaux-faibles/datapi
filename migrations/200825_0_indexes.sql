@@ -15,3 +15,4 @@ create index idx_liste_libelle on liste (libelle) where version = 0;
 create index idx_etablissement_procol on etablissement_procol (siret) where version = 0;
 create index idx_etablissement_delai on etablissement_delai (siret) where version = 0;
 create index idx_naf_code_niveau on naf (code, niveau);
+create index idx_etablissement_follow on etablissement_follow (siret, user_id);
