@@ -84,7 +84,7 @@ func (c *Comment) save() Jerror {
 	from etablissement0 e 
 	left join etablissement_comments m on m.id = $7 and m.siret = e.siret
 	where e.siret = $4 and (m.id is not null or $7 is null)
-	returning id, date_history, message_history;`
+	returning id, siret, date_history, message_history;`
 
 	err := db.QueryRow(
 		context.Background(),
@@ -96,7 +96,7 @@ func (c *Comment) save() Jerror {
 		c.UserID,
 		c.Message,
 		c.IDParent,
-	).Scan(&c.ID, &c.DateHistory, &c.MessageHistory)
+	).Scan(&c.ID, &c.Siret, &c.DateHistory, &c.MessageHistory)
 	c.Message = nil
 
 	if err != nil {
@@ -146,7 +146,7 @@ func (c *Comment) update() Jerror {
 	 message_history = array[$1] || message_history,
 	 date_history = current_timestamp::timestamp || date_history
 	 where user_id = $2 and id = $3 and message_history[1] != $4
-	 returning id, id_parent, user_id, date_history, message_history, null`
+	 returning id, id_parent, siret, user_id, date_history, message_history, null`
 
 	err := db.QueryRow(context.Background(), sqlUpdateComment,
 		c.Message,
@@ -155,6 +155,7 @@ func (c *Comment) update() Jerror {
 		c.Message).Scan(
 		&c.ID,
 		&c.IDParent,
+		&c.Siret,
 		&c.UserID,
 		&c.DateHistory,
 		&c.MessageHistory,
