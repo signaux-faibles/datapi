@@ -150,7 +150,7 @@ func (c *Comment) update() Jerror {
 	 message_history = array[$1] || message_history,
 	 date_history = current_timestamp::timestamp || date_history
 	 where user_id = $2 and id = $3 and message_history[1] != $4
-	 returning id, id_parent, user_id, date_history, message_history, null`
+	 returning id, id_parent, siret, user_id, date_history, message_history, null`
 
 	err := db.QueryRow(context.Background(), sqlUpdateComment,
 		c.Message,
@@ -159,6 +159,7 @@ func (c *Comment) update() Jerror {
 		c.Message).Scan(
 		&c.ID,
 		&c.IDParent,
+		&c.Siret,
 		&c.UserID,
 		&c.DateHistory,
 		&c.MessageHistory,
