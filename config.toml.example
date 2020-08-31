@@ -7,10 +7,12 @@ postgres = "user=postgres dbname=datapi"
 
 # Authentification
 enableKeycloak = true
-keycloakHostName = "localhost"
+keycloakHostname = "localhost"
 keycloakClient = "signauxfaibles"
 keycloakRealm = "master"
-
+keycloakAdminUserID = "adminUserID"
+keycloakAdminPassword = "adminPassword"
+# Options pour développer sans keycloak
 # enableKeycloak = false
 # keycloakClient = "signauxfaibles"
 # fakeUserIDKeycloak = "john.doe@zone51.gov"

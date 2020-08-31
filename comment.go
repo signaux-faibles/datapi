@@ -8,8 +8,6 @@ import (
 	"github.com/gin-gonic/gin"
 )
 
-// ************** Models ****************
-
 // Comment commentaire sur une enterprise
 type Comment struct {
 	ID             *int        `json:"id,omitempty"`
@@ -20,9 +18,8 @@ type Comment struct {
 	DateHistory    []time.Time `json:"dateHistory,omitempty"`
 	Message        *string     `json:"message,omitempty"`
 	MessageHistory []string    `json:"messageHistory,omitempty"`
+	Scope          [][]string  `json:"scope,omitempty"`
 }
-
-// ************ Handlers ****************
 
 func getEntrepriseComments(c *gin.Context) {
 	siret := c.Param("siret")
@@ -80,7 +77,6 @@ func updateEntrepriseComment(c *gin.Context) {
 
 }
 
-// ************ Model functions ****************
 func (c *Comment) save() Jerror {
 	sqlSaveComment := `insert into etablissement_comments
 	(id_parent, siret, siren, user_id, message_history) 

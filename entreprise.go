@@ -2,10 +2,9 @@ package main
 
 import (
 	"context"
-	"database/sql"
-	"errors"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	pgx "github.com/jackc/pgx/v4"
 )
 
@@ -156,46 +155,75 @@ type EtablissementScore struct {
 	Alert   string    `json:"alert"`
 }
 
-type paramsListeScores struct {
-	Departements []string `json:"zone,omitempty"`
-	EtatsProcol  []string `json:"procol,omitempty"`
-	Activites    []string `json:"activite,omitempty"`
-	EffectifMin  *int     `json:"effectifMin"`
-	EffectifMax  *int     `json:"effectifMax"`
-	VueFrance    *bool    `json:"vueFrance"`
+func getEntreprise(c *gin.Context) {
+	roles := scopeFromContext(c)
+	siren := c.Param("siren")
+	siret, err := getSiegeFromSiren(siren)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	var etablissements Etablissements
+	etablissements.Query.Sirets = []string{siret}
+	err = etablissements.load(roles)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	entreprise, ok := etablissements.Entreprises[siren]
+	if !ok {
+		c.JSON(404, "ressource non disponible")
+		return
+	}
+	for _, v := range etablissements.Etablissements {
+		entreprise.Etablissements = append(entreprise.Etablissements, v)
+	}
+	c.JSON(200, entreprise)
 }
 
-// Liste de détection
-type Liste struct {
-	ID     string            `json:"id"`
-	Batch  string            `json:"batch"`
-	Algo   string            `json:"algo"`
-	Query  paramsListeScores `json:"-"`
-	Scores []Score           `json:"scores,omitempty"`
+func getEtablissement(c *gin.Context) {
+	roles := scopeFromContext(c)
+	siret := c.Param("siret")
+	var etablissements Etablissements
+	etablissements.Query.Sirets = []string{siret}
+	err := etablissements.load(roles)
+
+	result, ok := etablissements.Etablissements[siret]
+	if !ok {
+		c.JSON(404, "etablissement non disponible")
+		return
+	}
+	entreprise := etablissements.Entreprises[siret[0:9]]
+	result.Entreprise = &entreprise
+
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	c.JSON(200, result)
 }
 
-// Score d'une liste de détection
-type Score struct {
-	Siren              string     `json:"siren"`
-	Siret              string     `json:"siret"`
-	Score              float64    `json:"-"`
-	Diff               *float64   `json:"-"`
-	RaisonSociale      *string    `json:"raison_sociale"`
-	Commune            *string    `json:"commune"`
-	LibelleActivite    *string    `json:"libelle_activite"`
-	LibelleActiviteN1  *string    `json:"libelle_activite_n1"`
-	CodeActivite       *string    `json:"code_activite"`
-	Departement        *string    `json:"departement"`
-	LibelleDepartement *string    `json:"libelleDepartement"`
-	DernierEffectif    *int       `json:"dernier_effectif"`
-	HausseUrssaf       *bool      `json:"urssaf"`
-	ActivitePartielle  *bool      `json:"activite_partielle"`
-	DernierCA          *int       `json:"ca"`
-	VariationCA        *float64   `json:"variation_ca"`
-	ArreteBilan        *time.Time `json:"arrete_bilan"`
-	DernierREXP        *int       `json:"resultat_expl"`
-	EtatProcol         *string    `json:"etat_procol"`
-	Alert              *string    `json:"alert"`
+func getEntrepriseEtablissements(c *gin.Context) {
+	roles := scopeFromContext(c)
+	siren := c.Param("siren")
+	var etablissements Etablissements
+	etablissements.Query.Sirens = []string{siren}
+	err := etablissements.load(roles)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	entreprise, ok := etablissements.Entreprises[siren]
+	if !ok {
+		c.JSON(404, "ressource non disponible")
+		return
+	}
+
+	for _, v := range etablissements.Etablissements {
+		entreprise.Etablissements = append(entreprise.Etablissements, v)
+	}
+
+	c.JSON(200, entreprise)
 }
 
 func (e Etablissements) sirensFromQuery() []string {
@@ -264,6 +292,12 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		e.sirensFromQuery(),
 		roles.zoneGeo())
 
+	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alert
+		from score0 e
+		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+
 	batch.Queue(`select siret, id_conso, heure_consomme, montant, effectif, periode from etablissement_apconso0 e
 		inner join v_roles ro on ro.siren = e.siren and (ro.roles) && $1 and $1 @> array['dgefp']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
@@ -276,7 +310,8 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select siret, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif
+	batch.Queue(`select siret, periode, 
+		cotisation, part_patronale, part_salariale, montant_majorations, effectif
 		from etablissement_periode_urssaf0 e
 		inner join v_roles ro on ro.siren = e.siren and  ro.roles && $1 and $1 @> array['urssaf']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
@@ -292,12 +327,6 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 
 	batch.Queue(`select siret, date_effet, action_procol, stade_procol
 		from etablissement_procol0 e
-		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
-
-	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alert
-		from score0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
@@ -324,7 +353,7 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows) error {
+func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 	var cotisations = make(map[string][]*float64)
 	var partPatronales = make(map[string][]*float64)
 	var partSalariales = make(map[string][]*float64)
@@ -350,11 +379,13 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows) error {
 
 		if *pu.partPatronale+*pu.partSalariale+*pu.montantMajoration != 0 || pu.effectif != nil {
 			cotisations[pu.siret] = append(cotisations[pu.siret], pu.cotisation)
-			partPatronales[pu.siret] = append(partPatronales[pu.siret], pu.partPatronale)
-			partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
-			montantMajorations[pu.siret] = append(montantMajorations[pu.siret], pu.montantMajoration)
 			effectifs[pu.siret] = append(effectifs[pu.siret], pu.effectif)
 			periodes[pu.siret] = append(periodes[pu.siret], pu.periode)
+			if len(e.Etablissements[pu.siret].Scores) > 0 && roles.containsRole("urssaf") {
+				partPatronales[pu.siret] = append(partPatronales[pu.siret], pu.partPatronale)
+				partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
+				montantMajorations[pu.siret] = append(montantMajorations[pu.siret], pu.montantMajoration)
+			}
 		}
 	}
 
@@ -434,7 +465,7 @@ func (e *Etablissements) loadBDF(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
+func (e *Etablissements) loadAPDemande(rows *pgx.Rows, roles scope) error {
 	var apdemandes = make(map[string][]EtablissementAPDemande)
 	for (*rows).Next() {
 		var ap EtablissementAPDemande
@@ -445,7 +476,9 @@ func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
 		if err != nil {
 			return err
 		}
-		apdemandes[siret] = append(apdemandes[siret], ap)
+		if len(e.Etablissements[siret].Scores) > 0 && roles.containsRole("dgefp") {
+			apdemandes[siret] = append(apdemandes[siret], ap)
+		}
 	}
 	for k, v := range apdemandes {
 		etablissement := e.Etablissements[k]
@@ -455,7 +488,7 @@ func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadAPConso(rows *pgx.Rows) error {
+func (e *Etablissements) loadAPConso(rows *pgx.Rows, roles scope) error {
 	var apconsos = make(map[string][]EtablissementAPConso)
 	for (*rows).Next() {
 		var ap EtablissementAPConso
@@ -464,7 +497,9 @@ func (e *Etablissements) loadAPConso(rows *pgx.Rows) error {
 		if err != nil {
 			return err
 		}
-		apconsos[siret] = append(apconsos[siret], ap)
+		if len(e.Etablissements[siret].Scores) > 0 && roles.containsRole("dgefp") {
+			apconsos[siret] = append(apconsos[siret], ap)
+		}
 	}
 	for k, v := range apconsos {
 		etablissement := e.Etablissements[k]
@@ -577,12 +612,22 @@ func (e *Etablissements) load(roles scope) error {
 		return err
 	}
 
+	// scores
+	rows, err = b.Query()
+	if err != nil {
+		return err
+	}
+	err = e.loadScore(&rows)
+	if err != nil {
+		return err
+	}
+
 	// apconso
 	rows, err = b.Query()
 	if err != nil {
 		return err
 	}
-	err = e.loadAPConso(&rows)
+	err = e.loadAPConso(&rows, roles)
 	if err != nil {
 		return err
 	}
@@ -592,7 +637,7 @@ func (e *Etablissements) load(roles scope) error {
 	if err != nil {
 		return err
 	}
-	err = e.loadAPDemande(&rows)
+	err = e.loadAPDemande(&rows, roles)
 	if err != nil {
 		return err
 	}
@@ -602,7 +647,7 @@ func (e *Etablissements) load(roles scope) error {
 	if err != nil {
 		return err
 	}
-	err = e.loadPeriodeUrssaf(&rows)
+	err = e.loadPeriodeUrssaf(&rows, roles)
 	if err != nil {
 		return err
 	}
@@ -627,176 +672,6 @@ func (e *Etablissements) load(roles scope) error {
 		return err
 	}
 
-	// scores
-	rows, err = b.Query()
-	if err != nil {
-		return err
-	}
-	err = e.loadScore(&rows)
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func findAllEntreprises(db *sql.DB) ([]Entreprise, error) {
-	return nil, errors.New("Non implémenté")
-}
-
-func (entreprise *Entreprise) findEntrepriseBySiren(db *pgx.Conn) error {
-	return errors.New("Non implémenté")
-}
-
-func findAllEtablissements(db *sql.DB) ([]Etablissement, error) {
-	return nil, errors.New("Non implémenté")
-}
-
-func (etablissement *Etablissement) findEtablissementBySiret() error {
-
-	return errors.New("Non implémenté")
-}
-
-func (follow *Follow) findEntreprisesFollowedByUser(db *sql.DB) ([]Entreprise, error) {
-	return nil, errors.New("Non implémenté")
-}
-
-func (follow *Follow) createEtablissementFollow(db *sql.DB) error {
-	// sql
-	return nil
-}
-
-func (entreprise *Entreprise) findCommentsBySiren(db *sql.DB) ([]Comment, error) {
-	return nil, errors.New("Non implémenté")
-}
-
-func (comment *Comment) createEntrepriseComment(db *sql.DB) error {
-	return errors.New("Non implémenté")
-}
-
-func findAllListes() ([]Liste, error) {
-	var listes []Liste
-	rows, err := db.Query(context.Background(), "select algo, batch, libelle from liste order by batch desc, algo asc")
-	if err != nil {
-		return nil, err
-	}
-
-	for rows.Next() {
-		var l Liste
-		err := rows.Scan(&l.Algo, &l.Batch, &l.ID)
-		if err != nil {
-			return nil, err
-		}
-		listes = append(listes, l)
-	}
-
-	return listes, nil
-}
-
-func (liste *Liste) load() error {
-	sqlListe := `select batch, algo from liste where libelle=$1 and version=0`
-	row := db.QueryRow(context.Background(), sqlListe, liste.ID)
-	batch, algo := "", ""
-	err := row.Scan(&batch, &algo)
-	if err != nil {
-		return err
-	}
-	liste.Batch = batch
-	liste.Algo = algo
-	return nil
-}
-
-func (liste *Liste) getScores(roles scope) error {
-	if liste.Batch == "" {
-		err := liste.load()
-		if err != nil {
-			return err
-		}
-	}
-	sqlScores := `with apdemande as (select siret, true as ap 
-		from etablissement_apdemande0
-		where periode_start + '1 year'::interval > $6
-		group by siret)
-	select 
-		et.siret,
-		et.siren,
-		en.raison_sociale, 
-		et.commune, 
-		d.libelle, 
-		d.code,
-		s.score,
-		s.diff,
-		di.chiffre_affaire,
-		di.arrete_bilan,
-		di.variation_ca,
-		di.resultat_expl,
-		ef.effectif,
-		n.libelle,
-		n1.libelle,
-		et.ape,
-		coalesce(ep.last_procol, 'in_bonis') as last_procol,
-		coalesce(ap.ap, false) as activite_partielle,
-		case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
-		s.alert
-	from score0 s
-	inner join v_roles r on r.roles && $1 and r.siren = s.siren
-	inner join etablissement0 et on et.siret = s.siret
-	inner join entreprise0 en on en.siren = s.siren
-	inner join departements d on d.code = et.departement
-	inner join naf n on n.code = et.ape
-	inner join naf n1 on n.id_n1 = n1.id
-	left join v_last_effectif ef on ef.siret = s.siret
-	left join v_hausse_urssaf u on u.siret = s.siret
-	left join apdemande ap on ap.siret = s.siret
-	left join v_last_procol ep on ep.siret = s.siret
-	left join v_diane_variation_ca di on di.siren = s.siren
-	where s.libelle_liste = $2
-	and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
-	and (et.departement=any($4) or $4 is null)
-	and (n1.code=any($5) or $5 is null)
-	and (ef.effectif >= $7 or $7 is null)
-	and (ef.effectif <= $8 or $8 is null)
-	and (et.departement=any($1) or $9 = true)
-	and s.alert != 'Pas d''alerte'
-	order by s.score desc;`
-	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol,
-		liste.Query.Departements, liste.Query.Activites, time.Now(), liste.Query.EffectifMin, liste.Query.EffectifMax, liste.Query.VueFrance)
-	if err != nil {
-		return err
-	}
-
-	var scores []Score
-	for rows.Next() {
-		var score Score
-		err := rows.Scan(
-			&score.Siret,
-			&score.Siren,
-			&score.RaisonSociale,
-			&score.Commune,
-			&score.LibelleDepartement,
-			&score.Departement,
-			&score.Score,
-			&score.Diff,
-			&score.DernierCA,
-			&score.ArreteBilan,
-			&score.VariationCA,
-			&score.DernierREXP,
-			&score.DernierEffectif,
-			&score.LibelleActivite,
-			&score.LibelleActiviteN1,
-			&score.CodeActivite,
-			&score.EtatProcol,
-			&score.ActivitePartielle,
-			&score.HausseUrssaf,
-			&score.Alert,
-		)
-		if err != nil {
-			return err
-		}
-		scores = append(scores, score)
-	}
-
-	liste.Scores = scores
 	return nil
 }
 
@@ -806,35 +681,4 @@ func getSiegeFromSiren(siren string) (string, error) {
 	var siret string
 	err := db.QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
 	return siret, err
-}
-
-// Jerror interface for JSON errors
-type Jerror interface {
-	Error() string
-	Code() int
-}
-
-// JSONerror enables returning enriched errors with JSON status
-type JSONerror struct {
-	error string
-	code  int
-}
-
-// Error() provide the classical error status
-func (j JSONerror) Error() string {
-	return j.error
-}
-
-// Code provides JSON error code to be returned
-func (j JSONerror) Code() int {
-	return j.code
-}
-
-// newJSONerror return JSON error from string
-func newJSONerror(code int, e string) JSONerror {
-	return JSONerror{error: e, code: code}
-}
-
-func errorToJSON(code int, e error) JSONerror {
-	return JSONerror{error: e.Error(), code: code}
 }

@@ -72,6 +72,7 @@ func runAPI() {
 	router.GET("/reference/regions", getRegions)
 
 	router.GET("/import", importHandler)
+	router.GET("/keycloak", getKeycloakUsers)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
