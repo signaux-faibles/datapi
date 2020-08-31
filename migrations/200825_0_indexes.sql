@@ -16,3 +16,8 @@ create index idx_etablissement_procol on etablissement_procol using hash (siret)
 create index idx_etablissement_delai on etablissement_delai using hash (siret) where version = 0;
 create index idx_naf_code_niveau on naf (code, niveau);
 create index idx_etablissement_follow on etablissement_follow (siret, user_id);
+create index idx_etablissement_departement on etablissement (departement) where version = 0;
+create index idx_score_score on score (score) where version = 0;
+create index idx_etablissement_naf on etablissement (ape) where version = 0;
+create index idx_naf_code on naf using hash (code);
+create index idx_naf_n1 on naf (id_n1);

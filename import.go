@@ -81,7 +81,8 @@ type delai struct {
 type entreprise struct {
 	ID    string `json:"_id"`
 	Value struct {
-		Sirets   []string `json:"sirets"`
+		Sirets   []string `json:"sirets" hash:"-"`
+		Siren    string   `json:"siren"`
 		Diane    []diane  `json:"diane"`
 		BDF      []bdf    `json:"bdf"`
 		SireneUL sireneUL `json:"sirene_ul"`
@@ -561,7 +562,7 @@ func importHandler(c *gin.Context) {
 	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
 	log.Print("drop dead data")
-	_, err = db.Exec(context.Background(), "vacuum full;")
+	_, err = db.Exec(context.Background(), "vacuum;")
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -716,7 +717,8 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 		"v_diane_variation_ca",
 		"v_last_effectif",
 		"v_last_procol",
-		"v_hausse_urssaf"}
+		"v_hausse_urssaf",
+		"v_apdemande"}
 	for _, v := range views {
 		fmt.Printf("\033[2K\rrefreshing %s", v)
 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))
