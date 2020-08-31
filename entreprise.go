@@ -187,7 +187,10 @@ func getEtablissement(c *gin.Context) {
 	var etablissements Etablissements
 	etablissements.Query.Sirets = []string{siret}
 	err := etablissements.load(roles)
-
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
 	result, ok := etablissements.Etablissements[siret]
 	if !ok {
 		c.JSON(404, "etablissement non disponible")
