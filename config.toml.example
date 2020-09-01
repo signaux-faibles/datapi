@@ -10,12 +10,12 @@ enableKeycloak = true
 keycloakHostname = "localhost"
 keycloakClient = "signauxfaibles"
 keycloakRealm = "master"
-keycloakAdminUserID = "adminUserID"
+keycloakAdminUsername = "adminUsername"
 keycloakAdminPassword = "adminPassword"
 # Options pour développer sans keycloak
 # enableKeycloak = false
 # keycloakClient = "signauxfaibles"
-# fakeUserIDKeycloak = "john.doe@zone51.gov"
+# fakeUsernameKeycloak = "john.doe@zone51.gov"
 # fakeKeycloakRole = [
 #   "Bourgogne-Franche-Comté",
 #   "urssaf",

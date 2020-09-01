@@ -8,7 +8,7 @@ import (
 // Follow type follow pour l'API
 type Follow struct {
 	Siret                *string               `json:"siret"`
-	UserID               *string               `json:"userID"`
+	Username             *string               `json:"username"`
 	Active               bool                  `json:"active"`
 	Since                time.Time             `json:"since"`
 	Comment              string                `json:"comment"`
@@ -20,17 +20,17 @@ func (f *Follow) load() error {
 		active, since, comment		
 		from etablissement_follow 
 		where
-		user_id = $1 and
+		username = $1 and
 		siret = $2 and
 		active`
 
-	return db.QueryRow(context.Background(), sqlFollow, f.UserID, f.Siret).Scan(&f.Active, &f.Since, &f.Comment)
+	return db.QueryRow(context.Background(), sqlFollow, f.Username, f.Siret).Scan(&f.Active, &f.Since, &f.Comment)
 }
 
 func (f *Follow) activate() error {
 	f.Active = true
 	sqlActivate := `insert into etablissement_follow
-	(siret, siren, user_id, active, since, comment)
+	(siret, siren, username, active, since, comment)
 	select $1, $2, $3, true, current_timestamp, $4
 	from etablissement0 e
 	where siret = $5
@@ -40,7 +40,7 @@ func (f *Follow) activate() error {
 		sqlActivate,
 		*f.Siret,
 		(*f.Siret)[0:9],
-		f.UserID,
+		f.Username,
 		f.Comment,
 		f.Siret,
 	).Scan(&f.Since, &f.Active)
@@ -48,10 +48,10 @@ func (f *Follow) activate() error {
 
 func (f *Follow) deactivate() Jerror {
 	sqlUnactivate := `update etablissement_follow set active = false, until = current_timestamp
-		where siret = $1 and user_id = $2 and active = true`
+		where siret = $1 and username = $2 and active = true`
 
 	commandTag, err := db.Exec(context.Background(),
-		sqlUnactivate, f.Siret, f.UserID)
+		sqlUnactivate, f.Siret, f.Username)
 
 	if err != nil {
 		return errorToJSON(500, err)
@@ -65,7 +65,7 @@ func (f *Follow) deactivate() Jerror {
 }
 
 func (f *Follow) list() ([]Follow, Jerror) {
-	sqlFollow := `select f.siret, f.user_id, f.since, f.comment,
+	sqlFollow := `select f.siret, f.username, f.since, f.comment,
 	d.libelle, d.code, en.raison_sociale, e.commune,
 	r.libelle, e.ape, n.code_n1, n.libelle_n5, n.libelle_n1, ef.effectif
 	from etablissement_follow f
@@ -75,9 +75,9 @@ func (f *Follow) list() ([]Follow, Jerror) {
 	inner join entreprise0 en on en.siren = f.siren
 	inner join v_naf n on e.ape = n.code_n5
 	left join v_last_effectif ef on ef.siret = f.siret
-	where ((f.siret = $1 or $1 is null) and (f.user_id = $2 or $2 is null)) and f.active`
+	where ((f.siret = $1 or $1 is null) and (f.username = $2 or $2 is null)) and f.active`
 
-	rows, err := db.Query(context.Background(), sqlFollow, f.Siret, f.UserID)
+	rows, err := db.Query(context.Background(), sqlFollow, f.Siret, f.Username)
 	if err != nil {
 		return nil, errorToJSON(500, err)
 	}
@@ -87,7 +87,7 @@ func (f *Follow) list() ([]Follow, Jerror) {
 		var f Follow
 		var e EtablissementSummary
 		err := rows.Scan(
-			&f.Siret, &f.UserID, &f.Since, &f.Comment,
+			&f.Siret, &f.Username, &f.Since, &f.Comment,
 			&e.LibelleDepartement, &e.Departement, &e.RaisonSociale, &e.Commune,
 			&e.Region, &e.CodeActivite, &e.CodeSecteur, &e.Activite, &e.Secteur, &e.DernierEffectif,
 		)

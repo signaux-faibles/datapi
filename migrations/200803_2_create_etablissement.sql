@@ -116,7 +116,7 @@ create table etablissement_follow (
   id       integer primary key default nextval('etablissemment_follow_id'),
   siret    varchar(14),
   siren    varchar(9),
-  user_id  text,
+  username  text,
   active   boolean,
   since    timestamp,
   until    timestamp,
@@ -129,7 +129,7 @@ create table etablissement_comments (
   id_parent       int references etablissement_comments,
   siret           varchar(14),
   siren           varchar(9),
-  user_id         text,
+  username         text,
   date_history    timestamp[] default array[current_timestamp],
   message_history text[]
 );

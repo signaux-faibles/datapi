@@ -731,11 +731,12 @@ func upgradeVersion(tx *pgx.Tx) error {
 
 	for table, field := range tables {
 
-		batch.Queue(fmt.Sprintf(`
-		with keys as (select %s, hash, count(%s) over (partition by %s, hash) as dup
-		from %s where version in (0,1))
+		batch.Queue(fmt.Sprintf(`with keys as (
+			select id, count(version) over (partition by %s, hash) as dup
+			from %s where version in (0,1)
+		)
 		update %s e set version = version - 1 from
-		keys k where e.%s = k.%s and dup > 1`, field, field, field, table, table, field, field))
+		keys k where e.id = k.id and dup > 1`, field, table, table))
 		batch.Queue(fmt.Sprintf(`delete from %s where version = -1`, table))
 	}
 	b := (*tx).SendBatch(context.Background(), &batch)

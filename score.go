@@ -50,8 +50,8 @@ type Score struct {
 }
 
 func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
-	userID := c.GetString("userID")
-	follow := Follow{UserID: &userID}
+	username := c.GetString("username")
+	follow := Follow{Username: &username}
 	follows, err := follow.list()
 
 	if err != nil {
@@ -64,7 +64,7 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 
 func followEtablissement(c *gin.Context) {
 	siret := c.Param("siret")
-	userID := c.GetString("userID")
+	username := c.GetString("username")
 	var param struct {
 		Comment string `json:"comment"`
 	}
@@ -79,9 +79,9 @@ func followEtablissement(c *gin.Context) {
 	}
 
 	follow := Follow{
-		Siret:   &siret,
-		UserID:  &userID,
-		Comment: param.Comment,
+		Siret:    &siret,
+		Username: &username,
+		Comment:  param.Comment,
 	}
 
 	err = follow.load()
@@ -107,10 +107,10 @@ func followEtablissement(c *gin.Context) {
 
 func unfollowEtablissement(c *gin.Context) {
 	siret := c.Param("siret")
-	userID := c.GetString("userID")
+	username := c.GetString("username")
 	follow := Follow{
-		Siret:  &siret,
-		UserID: &userID,
+		Siret:    &siret,
+		Username: &username,
 	}
 
 	err := follow.deactivate()
