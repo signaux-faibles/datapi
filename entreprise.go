@@ -258,7 +258,7 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		inner join departements d on d.code = et.departement
 		inner join regions r on d.id_region = r.id
 		left join entreprise0 en on en.siren = et.siren
-	where 
+		where 
 		(et.siret=any($1) or et.siren=any($2))
 		and coalesce($1, $2) is not null
 	`, e.Query.Sirets, e.Query.Sirens, roles.zoneGeo())

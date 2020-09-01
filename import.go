@@ -714,23 +714,32 @@ func prepareImport(tx *pgx.Tx) error {
 }
 
 func upgradeVersion(tx *pgx.Tx) error {
-	// var batch pgx.Batch
-	// // tables := map[string]string{
-	// // 	"liste": "libelle, batch, algo",
-	// // }
+	var batch pgx.Batch
+	tables := map[string]string{
+		"entreprise":                   "siren",
+		"entreprise_bdf":               "siren",
+		"entreprise_diane":             "siren",
+		"etablissement":                "siret",
+		"etablissement_apconso":        "siret",
+		"etablissement_apdemande":      "siret",
+		"etablissement_periode_urssaf": "siret",
+		"etablissement_delai":          "siret",
+		"etablissement_procol":         "siret",
+		"score":                        "siret",
+		"liste":                        "id",
+	}
 
-	// // for table, fields := range tables {
-	// // 	batch.Queue(fmt.Sprintf("update %s set hash = md5(row(%s)::text) where version = 0", table, fields))
-	// // 	f0 := strings.Split(fields, ",")[0]
-	// // 	batch.Queue(fmt.Sprintf(`update %s t set version = version - 1 from
-	// // 	(select unnest(array[t0.id, t1.id]) id from %s t0
-	// // 	inner join %s t1 on t0.%s = t1.%s and t0.version = 0 and t1.version = 1 and t0.hash = t1.hash) t0
-	// // 	where t0.id = t.id`, table, table, table, f0, f0))
-	// // 	batch.Queue(fmt.Sprintf(`delete from %s where version = -1`, table))
-	// // }
-	// b := (*tx).SendBatch(context.Background(), &batch)
-	// return b.Close()
-	return nil
+	for table, field := range tables {
+
+		batch.Queue(fmt.Sprintf(`
+		with keys as (select %s, hash, count(%s) over (partition by %s, hash) as dup
+		from %s where version in (0,1))
+		update %s e set version = version - 1 from
+		keys k where e.%s = k.%s and dup > 1`, field, field, field, table, table, field, field))
+		batch.Queue(fmt.Sprintf(`delete from %s where version = -1`, table))
+	}
+	b := (*tx).SendBatch(context.Background(), &batch)
+	return b.Close()
 }
 
 func refreshMaterializedViews(tx *pgx.Tx) error {
