@@ -118,7 +118,7 @@ func (c *Comment) save() Jerror {
 
 func (c *Comment) load() Jerror {
 	sqlListComment := `select 
-	e.id, id_parent, username, date_history, message_history, u.firstname, u.lastname
+	e.id, id_parent, e.username, date_history, message_history, u.firstname, u.lastname
 	from etablissement_comments e
 	left join users u on u.username = e.username
 	where e.siret = $1 order by e.id`

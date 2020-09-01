@@ -300,7 +300,7 @@ func importUsersAndRoles(userMap map[string]keycloakUser, roleMap map[string]*st
 }
 
 type user struct {
-	Username  *string `json:"email"`
+	Username  *string `json:"username"`
 	FirstName *string `json:"firstName"`
 	LastName  *string `json:"lastName"`
 }
