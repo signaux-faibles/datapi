@@ -87,7 +87,7 @@ func keycloakMiddleware(c *gin.Context) {
 	}
 
 	if username, ok := (*claims)["preferred_username"]; ok {
-		c.Set("preferred_username", username)
+		c.Set("username", username)
 	} else {
 		c.AbortWithStatus(401)
 	}
