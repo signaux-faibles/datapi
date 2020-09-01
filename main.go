@@ -7,13 +7,13 @@ import (
 	gocloak "github.com/Nerzal/gocloak/v6"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	pgx "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/spf13/viper"
 )
 
 var keycloak gocloak.GoCloak
-var db *pgx.Conn
+var db *pgxpool.Pool
 var ref reference
 
 func main() {

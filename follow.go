@@ -3,8 +3,6 @@ package main
 import (
 	"context"
 	"time"
-
-	pgx "github.com/jackc/pgx/v4"
 )
 
 // Follow type follow pour l'API
@@ -17,7 +15,7 @@ type Follow struct {
 	EtablissementSummary *EtablissementSummary `json:"etablissementSummary,omitempty"`
 }
 
-func (f *Follow) load(db *pgx.Conn) error {
+func (f *Follow) load() error {
 	sqlFollow := `select 
 		active, since, comment		
 		from etablissement_follow 
@@ -29,7 +27,7 @@ func (f *Follow) load(db *pgx.Conn) error {
 	return db.QueryRow(context.Background(), sqlFollow, f.UserID, f.Siret).Scan(&f.Active, &f.Since, &f.Comment)
 }
 
-func (f *Follow) activate(d *pgx.Conn) error {
+func (f *Follow) activate() error {
 	f.Active = true
 	sqlActivate := `insert into etablissement_follow
 	(siret, siren, user_id, active, since, comment)

@@ -84,7 +84,7 @@ func followEtablissement(c *gin.Context) {
 		Comment: param.Comment,
 	}
 
-	err = follow.load(db)
+	err = follow.load()
 	if err != nil && err.Error() != "no rows in result set" {
 		c.AbortWithError(500, err)
 		return
@@ -93,7 +93,7 @@ func followEtablissement(c *gin.Context) {
 	if follow.Active {
 		c.JSON(204, follow)
 	} else {
-		err := follow.activate(db)
+		err := follow.activate()
 		if err != nil && err.Error() != "no rows in result set" {
 			c.AbortWithError(500, err)
 			return
