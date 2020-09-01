@@ -300,7 +300,7 @@ func importUsersAndRoles(userMap map[string]keycloakUser, roleMap map[string]*st
 }
 
 type user struct {
-	Email     *string `json:"email"`
+	Username  *string `json:"email"`
 	FirstName *string `json:"firstName"`
 	LastName  *string `json:"lastName"`
 }
@@ -310,7 +310,7 @@ func getUser(username string) (user, error) {
 	err := db.QueryRow(context.Background(),
 		`select username, firstName, lastname from users where username = $1`,
 		username).Scan(
-		&u.Email,
+		&u.Username,
 		&u.FirstName,
 		&u.LastName,
 	)

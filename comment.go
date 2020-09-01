@@ -101,8 +101,8 @@ func (c *Comment) save() Jerror {
 	c.Message = nil
 
 	user, _ := getUser(*c.Username)
-	if user.Email == nil {
-		user.Email = c.Username
+	if user.Username == nil {
+		user.Username = c.Username
 	}
 	c.User = &user
 	c.Username = nil
@@ -135,7 +135,7 @@ func (c *Comment) load() Jerror {
 		var c Comment
 
 		c.User = &user{}
-		err := rows.Scan(&c.ID, &c.IDParent, &c.User.Email, &c.DateHistory, &c.MessageHistory, &c.User.FirstName, &c.User.LastName)
+		err := rows.Scan(&c.ID, &c.IDParent, &c.User.Username, &c.DateHistory, &c.MessageHistory, &c.User.FirstName, &c.User.LastName)
 		if err != nil {
 			return errorToJSON(500, err)
 		}
@@ -176,6 +176,13 @@ func (c *Comment) update() Jerror {
 		&c.MessageHistory,
 		&c.Message,
 	)
+
+	user, _ := getUser(*c.Username)
+	if user.Username == nil {
+		user.Username = c.Username
+	}
+	c.User = &user
+	c.Username = nil
 
 	if err != nil {
 		if err.Error() == "no rows in result set" {
