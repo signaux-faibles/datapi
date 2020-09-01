@@ -3,6 +3,8 @@ package main
 import (
 	"context"
 	"time"
+
+	"github.com/gin-gonic/gin"
 )
 
 // Follow type follow pour l'API
@@ -99,4 +101,63 @@ func (f *Follow) list() ([]Follow, Jerror) {
 	}
 
 	return follows, nil
+}
+
+func followEtablissement(c *gin.Context) {
+	siret := c.Param("siret")
+	username := c.GetString("username")
+	var param struct {
+		Comment string `json:"comment"`
+	}
+	err := c.ShouldBind(&param)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if param.Comment == "" {
+		c.JSON(400, "mandatory non-empty `comment` property")
+		return
+	}
+
+	follow := Follow{
+		Siret:    &siret,
+		Username: &username,
+		Comment:  param.Comment,
+	}
+
+	err = follow.load()
+	if err != nil && err.Error() != "no rows in result set" {
+		c.AbortWithError(500, err)
+		return
+	}
+
+	if follow.Active {
+		c.JSON(204, follow)
+	} else {
+		err := follow.activate()
+		if err != nil && err.Error() != "no rows in result set" {
+			c.AbortWithError(500, err)
+			return
+		} else if err != nil && err.Error() == "no rows in result set" {
+			c.JSON(403, "unknown establishment")
+			return
+		}
+		c.JSON(201, follow)
+	}
+}
+
+func unfollowEtablissement(c *gin.Context) {
+	siret := c.Param("siret")
+	username := c.GetString("username")
+	follow := Follow{
+		Siret:    &siret,
+		Username: &username,
+	}
+
+	err := follow.deactivate()
+	if err != nil {
+		c.JSON(err.Code(), err.Error())
+		return
+	}
+	c.JSON(200, "this establishment is no longer followed")
 }

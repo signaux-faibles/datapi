@@ -5,7 +5,7 @@ go 1.14
 require (
 	github.com/Nerzal/gocloak/v6 v6.4.0
 	github.com/cnf/structhash v0.0.0-20180104161610-62a607eb0224
-	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
+	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.6.3

@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	gocloak "github.com/Nerzal/gocloak/v6"
-	"github.com/dgrijalva/jwt-go/v4"
+	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
@@ -86,8 +86,8 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
-	if email, ok := (*claims)["email"]; ok {
-		c.Set("username", email)
+	if username, ok := (*claims)["preferred_username"]; ok {
+		c.Set("preferred_username", username)
 	} else {
 		c.AbortWithStatus(401)
 	}
