@@ -10,6 +10,7 @@ import (
 	"sync"
 
 	pgx "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/spf13/viper"
 
@@ -22,12 +23,13 @@ type migrationScript struct {
 	hash     string
 }
 
-func connectDB() *pgx.Conn {
+func connectDB() *pgxpool.Pool {
 	pgConnStr := viper.GetString("postgres")
-	db, err := pgx.Connect(context.Background(), pgConnStr)
+	db, err := pgxpool.Connect(context.Background(), pgConnStr)
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
 	}
+
 	log.Print("connected to postgresql database")
 	dbMigrations := listDatabaseMigrations(db)
 	dirMigrations := listDirMigrations()
@@ -43,7 +45,7 @@ func connectDB() *pgx.Conn {
 	return db
 }
 
-func listDatabaseMigrations(db *pgx.Conn) []migrationScript {
+func listDatabaseMigrations(db *pgxpool.Pool) []migrationScript {
 	var exists bool
 	err := db.QueryRow(context.Background(),
 		`select exists
@@ -114,7 +116,7 @@ func listDirMigrations() []migrationScript {
 	return dirMigrations
 }
 
-func runMigrations(migrationScripts []migrationScript, db *pgx.Conn) {
+func runMigrations(migrationScripts []migrationScript, db *pgxpool.Pool) {
 	tx, err := db.Begin(context.Background())
 
 	if err != nil {
@@ -164,7 +166,7 @@ type reference struct {
 	zones map[string][]string
 }
 
-func loadReferences(db *pgx.Conn) reference {
+func loadReferences(db *pgxpool.Pool) reference {
 	sqlZones := `select r.libelle as region, d.code as departement 
 	from regions r 
 	inner join departements d on d.id_region = r.id 
