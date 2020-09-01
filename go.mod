@@ -6,12 +6,14 @@ require (
 	github.com/Nerzal/gocloak/v3 v3.10.0
 	github.com/Nerzal/gocloak/v5 v5.5.0
 	github.com/Nerzal/gocloak/v6 v6.4.0
+	github.com/Nerzal/gocloak/v7 v7.4.0
 	github.com/alecthomas/template v0.0.0-20190718012654-fb15b899a751
 	github.com/appleboy/gin-jwt v2.5.0+incompatible
 	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
 	github.com/cnf/structhash v0.0.0-20180104161610-62a607eb0224
 	github.com/davecgh/go-spew v1.1.1
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
+	github.com/dgrijalva/jwt-go/v4 v4.0.0-preview1
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/cors v1.3.1
 	github.com/gin-gonic/gin v1.6.3

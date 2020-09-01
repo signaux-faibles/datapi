@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	gocloak "github.com/Nerzal/gocloak/v6"
-	jwt "github.com/appleboy/gin-jwt"
+	"github.com/dgrijalva/jwt-go/v4"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
@@ -87,7 +87,7 @@ func keycloakMiddleware(c *gin.Context) {
 	}
 
 	if email, ok := (*claims)["email"]; ok {
-		c.Set("userID", email)
+		c.Set("username", email)
 	} else {
 		c.AbortWithStatus(401)
 	}
@@ -111,7 +111,7 @@ func fakeCloakMiddleware(c *gin.Context) {
 		},
 	}
 
-	c.Set("userID", viper.GetString("fakeUserIDKeycloak"))
+	c.Set("username", viper.GetString("fakeUsernameKeycloak"))
 	c.Set("claims", &claims)
 	c.Next()
 }
@@ -190,7 +190,7 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, Jerror) 
 	kcAdmin := gocloak.NewClient(viper.GetString("keycloakHostname"))
 	jwt, err := kcAdmin.LoginAdmin(
 		context.TODO(),
-		viper.GetString("keycloakAdminUserid"),
+		viper.GetString("keycloakAdminUsername"),
 		viper.GetString("keycloakAdminPassword"),
 		realm,
 	)
@@ -297,4 +297,22 @@ func importUsersAndRoles(userMap map[string]keycloakUser, roleMap map[string]*st
 	}
 
 	return nil
+}
+
+type user struct {
+	Email     *string `json:"email"`
+	FirstName *string `json:"firstName"`
+	LastName  *string `json:"lastName"`
+}
+
+func getUser(username string) (user, error) {
+	var u user
+	err := db.QueryRow(context.Background(),
+		`select username, firstName, lastname from users where username = $1`,
+		username).Scan(
+		&u.Email,
+		&u.FirstName,
+		&u.LastName,
+	)
+	return u, err
 }

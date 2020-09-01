@@ -34,7 +34,7 @@ create index idx_score_hash on score (siret, hash) where version in (0, 1);
 
 create index idx_liste_libelle on liste using hash (libelle) where version = 0;
 create index idx_naf_code_niveau on naf (code, niveau);
-create index idx_etablissement_follow on etablissement_follow (siret, user_id, active);
+create index idx_etablissement_follow on etablissement_follow (siret, username, active);
 
 create index idx_naf_code on naf using hash (code);
 create index idx_naf_n1 on naf (id_n1);
