@@ -45,36 +45,29 @@ func runAPI() {
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 
-	var kcm func(c *gin.Context)
-	if viper.GetBool("enableKeycloak") {
-		kcm = keycloakMiddleware
-	} else {
-		kcm = fakeCloakMiddleware
-	}
-
-	entreprise := router.Group("/entreprise", kcm)
+	entreprise := router.Group("/entreprise", getKeycloakMiddleware())
 	entreprise.GET("/get/:siren", validSiren, getEntreprise)
 	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
 
-	etablissement := router.Group("/etablissement", kcm)
+	etablissement := router.Group("/etablissement", getKeycloakMiddleware())
 	etablissement.GET("/get/:siret", validSiret, getEtablissement)
 	etablissement.GET("/etablissement/comments/:siret", validSiret, getEntrepriseComments)
 	etablissement.POST("/etablissement/comments/:siret", validSiret, addEntrepriseComment)
 	etablissement.PUT("/etablissement/comments/:id", updateEntrepriseComment)
 
-	follow := router.Group("/follow", kcm)
+	follow := router.Group("/follow", getKeycloakMiddleware())
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
 
-	listes := router.Group("/listes", kcm)
+	listes := router.Group("/listes", getKeycloakMiddleware())
 	listes.GET("", getListes)
 
-	scores := router.Group("/scores", kcm)
+	scores := router.Group("/scores", getKeycloakMiddleware())
 	scores.POST("", getLastListeScores)
 	scores.POST("/:id", getListeScores)
 
-	reference := router.Group("/reference", kcm)
+	reference := router.Group("/reference", getKeycloakMiddleware())
 	reference.GET("/naf", getCodesNaf)
 	reference.GET("/departements", getDepartements)
 	reference.GET("/regions", getRegions)
@@ -89,6 +82,13 @@ func runAPI() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
+}
+
+func getKeycloakMiddleware() gin.HandlerFunc {
+	if viper.GetBool("enableKeycloak") {
+		return keycloakMiddleware
+	}
+	return fakeCloakMiddleware
 }
 
 func getAdminAuthMiddleware() gin.HandlerFunc {
