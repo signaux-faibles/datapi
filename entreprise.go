@@ -813,3 +813,59 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 
 	return r, nil
 }
+
+func getEntrepriseViewers(c *gin.Context) {
+	sqlViewers := `select username, firstname, lastname from v_roles r
+		inner join users u on u.roles && r.roles
+		where siren = $1`
+
+	siren := c.Param("siren")
+	rows, err := db.Query(context.Background(), sqlViewers, siren)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	var users []user
+	for rows.Next() {
+		var u user
+		err := rows.Scan(&u.Username, &u.FirstName, &u.LastName)
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+		users = append(users, u)
+	}
+	if len(users) == 0 {
+		c.JSON(204, "")
+		return
+	}
+	c.JSON(200, users)
+}
+
+func getEtablissementViewers(c *gin.Context) {
+	sqlViewers := `select username, firstname, lastname from v_roles r
+		inner join users u on u.roles && r.roles
+		where siren = $1`
+
+	siren := c.Param("siret")[0:9]
+	rows, err := db.Query(context.Background(), sqlViewers, siren)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	var users []user
+	for rows.Next() {
+		var u user
+		err := rows.Scan(&u.Username, &u.FirstName, &u.LastName)
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+		users = append(users, u)
+	}
+	if len(users) == 0 {
+		c.JSON(204, "")
+		return
+	}
+	c.JSON(200, users)
+}

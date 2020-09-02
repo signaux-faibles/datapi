@@ -73,7 +73,7 @@ func getRegions(c *gin.Context) {
 
 func validSiren(c *gin.Context) {
 	siren := c.Param("siren")
-	match, err := regexp.MatchString("[0-9]{9}", siren)
+	match, err := regexp.MatchString("^[0-9]{9}$", siren)
 	if err != nil || !match {
 		c.AbortWithStatusJSON(400, "SIREN valide obligatoire")
 	}
@@ -82,7 +82,7 @@ func validSiren(c *gin.Context) {
 
 func validSiret(c *gin.Context) {
 	siren := c.Param("siret")
-	match, err := regexp.MatchString("[0-9]{14}", siren)
+	match, err := regexp.MatchString("^[0-9]{14}$", siren)
 	if err != nil || !match {
 		c.AbortWithStatusJSON(400, "SIRET valide obligatoire")
 	}
