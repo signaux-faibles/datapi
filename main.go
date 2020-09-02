@@ -10,6 +10,8 @@ import (
 	"github.com/jackc/pgx/v4/pgxpool"
 
 	"github.com/spf13/viper"
+
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var keycloak gocloak.GoCloak
@@ -43,36 +45,44 @@ func runAPI() {
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 
-	// router.Use(dbMiddleware(db))
-
+	var kcm func(c *gin.Context)
 	if viper.GetBool("enableKeycloak") {
-		router.Use(keycloakMiddleware)
+		kcm = keycloakMiddleware
 	} else {
-		router.Use(fakeCloakMiddleware)
+		kcm = fakeCloakMiddleware
 	}
 
-	router.GET("/entreprise/get/:siren", validSiren, getEntreprise)
-	router.GET("/etablissement/get/:siret", validSiret, getEtablissement)
-	router.GET("/etablissements/get/:siren", validSiren, getEntrepriseEtablissements)
+	entreprise := router.Group("/entreprise", kcm)
+	entreprise.GET("/get/:siren", validSiren, getEntreprise)
+	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
 
-	router.GET("/follow", getEtablissementsFollowedByCurrentUser)
-	router.POST("/follow/:siret", validSiret, followEtablissement)
-	router.DELETE("/follow/:siret", validSiret, unfollowEtablissement)
+	etablissement := router.Group("/etablissement", kcm)
+	etablissement.GET("/get/:siret", validSiret, getEtablissement)
+	etablissement.GET("/etablissement/comments/:siret", validSiret, getEntrepriseComments)
+	etablissement.POST("/etablissement/comments/:siret", validSiret, addEntrepriseComment)
+	etablissement.PUT("/etablissement/comments/:id", updateEntrepriseComment)
 
-	router.GET("/etablissement/comments/:siret", validSiret, getEntrepriseComments)
-	router.POST("/etablissement/comments/:siret", validSiret, addEntrepriseComment)
-	router.PUT("/etablissement/comments/:id", updateEntrepriseComment)
+	follow := router.Group("/follow", kcm)
+	follow.GET("", getEtablissementsFollowedByCurrentUser)
+	follow.POST("/:siret", validSiret, followEtablissement)
+	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
 
-	router.GET("/listes", getListes)
-	router.POST("/scores", getLastListeScores)
-	router.POST("/scores/:id", getListeScores)
+	listes := router.Group("/listes", kcm)
+	listes.GET("", getListes)
 
-	router.GET("/reference/naf", getCodesNaf)
-	router.GET("/reference/departements", getDepartements)
-	router.GET("/reference/regions", getRegions)
+	scores := router.Group("/scores", kcm)
+	scores.POST("", getLastListeScores)
+	scores.POST("/:id", getListeScores)
 
-	router.GET("/import", importHandler)
-	router.GET("/keycloak", getKeycloakUsers)
+	reference := router.Group("/reference", kcm)
+	reference.GET("/naf", getCodesNaf)
+	reference.GET("/departements", getDepartements)
+	reference.GET("/regions", getRegions)
+
+	utils := router.Group("/utils", getAdminAuthMiddleware())
+	utils.GET("/import", importHandler)
+	utils.GET("/keycloak", getKeycloakUsers)
+	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
@@ -81,9 +91,18 @@ func runAPI() {
 	}
 }
 
-// func dbMiddleware(db *pgx.Conn) gin.HandlerFunc {
-// 	return func(c *gin.Context) {
-// 		c.Set("DB", db)
-// 		c.Next()
-// 	}
-// }
+func getAdminAuthMiddleware() gin.HandlerFunc {
+	var whitelist = viper.GetStringSlice("adminWhitelist")
+	var wlmap = make(map[string]bool)
+	for _, ip := range whitelist {
+		wlmap[ip] = true
+	}
+
+	return func(c *gin.Context) {
+		if !wlmap[c.ClientIP()] {
+			log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
+			c.AbortWithStatus(403)
+			return
+		}
+	}
+}
