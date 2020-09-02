@@ -51,9 +51,9 @@ func runAPI() {
 
 	etablissement := router.Group("/etablissement", getKeycloakMiddleware())
 	etablissement.GET("/get/:siret", validSiret, getEtablissement)
-	etablissement.GET("/etablissement/comments/:siret", validSiret, getEntrepriseComments)
-	etablissement.POST("/etablissement/comments/:siret", validSiret, addEntrepriseComment)
-	etablissement.PUT("/etablissement/comments/:id", updateEntrepriseComment)
+	etablissement.GET("/comments/:siret", validSiret, getEntrepriseComments)
+	etablissement.POST("/comments/:siret", validSiret, addEntrepriseComment)
+	etablissement.PUT("/comments/:id", updateEntrepriseComment)
 
 	follow := router.Group("/follow", getKeycloakMiddleware())
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
