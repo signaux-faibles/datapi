@@ -689,11 +689,11 @@ func getSiegeFromSiren(siren string) (string, error) {
 }
 
 type searchParams struct {
-	search    string
-	page      int
-	vueFrance bool
-	vueRoles  bool
-	roles     scope
+	search      string
+	page        int
+	ignoreRoles bool
+	ignoreZone  bool
+	roles       scope
 }
 
 func searchEtablissementHandler(c *gin.Context) {
@@ -714,16 +714,16 @@ func searchEtablissementHandler(c *gin.Context) {
 		}
 	}
 
-	if vueFrance, ok := c.GetQuery("france"); ok {
-		params.vueFrance, err = strconv.ParseBool(vueFrance)
+	if ignoreRoles, ok := c.GetQuery("ignoreroles"); ok {
+		params.ignoreRoles, err = strconv.ParseBool(ignoreRoles)
 		if err != nil {
 			c.JSON(400, "france is either `true` or `false`")
 			return
 		}
 	}
 
-	if vueRoles, ok := c.GetQuery("roles"); ok {
-		params.vueRoles, err = strconv.ParseBool(vueRoles)
+	if ignoreZone, ok := c.GetQuery("ignorezone"); ok {
+		params.ignoreZone, err = strconv.ParseBool(ignoreZone)
 		if err != nil {
 			c.JSON(400, "roles is either `true` or `false`")
 			return
@@ -785,13 +785,13 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	limit $3
 	offset $4`
 
+	var departements []string
 	var roles []string
-	var france []string
-	if !params.vueFrance {
-		france = params.roles.zoneGeo()
-	}
-	if params.vueRoles {
+	if !params.ignoreRoles {
 		roles = params.roles.zoneGeo()
+	}
+	if !params.ignoreZone {
+		departements = params.roles.zoneGeo()
 	}
 
 	rows, err := db.Query(context.Background(),
@@ -800,12 +800,13 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		"%"+params.search+"%",
 		viper.GetInt("searchPageLength"),
 		viper.GetInt("searchPageLength")*params.page,
+		departements,
 		roles,
-		france,
 	)
 	if err != nil {
 		return searchResult{}, errorToJSON(500, err)
 	}
+
 	var total int
 	var result []EtablissementSummary
 	for rows.Next() {
@@ -827,7 +828,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		From:                  viper.GetInt("searchPageLength") * params.page,
 		To:                    viper.GetInt("searchPageLength")*params.page + len(result),
 		Total:                 total,
-		PageMax:               total/viper.GetInt("searchPageLength") + 1,
+		PageMax:               (total-1)/viper.GetInt("searchPageLength") + 1,
 		EtablissementsSummary: result,
 	}
 
