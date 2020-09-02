@@ -23,6 +23,10 @@ keycloakAdminPassword = "adminPassword"
 #   "bdf",
 # ]
 
+# Sécurité de /utils
+# Ne nécessite pas d'authentification, mais accès sur whitelist uniquement
+adminWhiteList = ["127.0.0.1"]
+
 # Import des données
 sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json.gz"
 sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json.gz"

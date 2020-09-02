@@ -19,6 +19,7 @@ require (
 	github.com/magiconair/properties v1.8.2 // indirect
 	github.com/mitchellh/mapstructure v1.3.3 // indirect
 	github.com/pelletier/go-toml v1.8.0 // indirect
+	github.com/prometheus/client_golang v0.9.3
 	github.com/segmentio/ksuid v1.0.3 // indirect
 	github.com/spf13/afero v1.3.4 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
