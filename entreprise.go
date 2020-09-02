@@ -36,6 +36,8 @@ type EtablissementSummary struct {
 	Activite           *string `json:"activite"`
 	Secteur            *string `json:"secteur"`
 	DernierEffectif    *int    `json:"dernierEffectif,omitempty"`
+	Visible            *bool   `json:"visible"`
+	Inzone             *bool   `json:"zone"`
 }
 
 type findEtablissementsParams struct {
@@ -751,7 +753,8 @@ type searchResult struct {
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	sqlSearch := `select et.siret, d.libelle, d.code, en.raison_sociale, et.commune,
-	r.libelle, n.code_n1, n.libelle_n1, n.code_n5, n.libelle_n5, count(*) over ()
+	r.libelle, n.code_n1, n.libelle_n1, n.code_n5, n.libelle_n5, count(*) over (),
+	ro.roles && $7 as visible, et.departement = any($7)
 	from etablissement0 et
 	inner join entreprise0 en on en.siren = et.siren 
 	inner join v_roles ro on ro.siren = en.siren
@@ -781,6 +784,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		viper.GetInt("searchPageLength")*params.page,
 		departements,
 		roles,
+		params.roles.zoneGeo(),
 	)
 	if err != nil {
 		return searchResult{}, errorToJSON(500, err)
@@ -791,7 +795,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	for rows.Next() {
 		var e EtablissementSummary
 		err := rows.Scan(&e.Siret, &e.LibelleDepartement, &e.Departement, &e.RaisonSociale, &e.Commune,
-			&e.Region, &e.CodeSecteur, &e.Secteur, &e.CodeActivite, &e.Activite, &total,
+			&e.Region, &e.CodeSecteur, &e.Secteur, &e.CodeActivite, &e.Activite, &total, &e.Visible, &e.Inzone,
 		)
 		if err != nil {
 			return searchResult{}, errorToJSON(500, err)
