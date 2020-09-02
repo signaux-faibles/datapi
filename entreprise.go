@@ -741,18 +741,6 @@ func searchEtablissementHandler(c *gin.Context) {
 
 }
 
-// Siret              *string `json:"siret,omitempty"`
-// Departement        *string `json:"departement"`
-// LibelleDepartement *string `json:"libelleDepartement"`
-// RaisonSociale      *string `json:"raisonSociale"`
-// Commune            *string `json:"commune"`
-// Region             *string `json:"region"`
-// CodeActivite       *string `json:"codeActivite"`
-// CodeSecteur        *string `json:"codeSecteur"`
-// Activite           *string `json:"activite"`
-// Secteur            *string `json:"secteur"`
-// DernierEffectif    *int    `json:"dernierEffectif,omitempty"`
-
 type searchResult struct {
 	From                  int                    `json:"from"`
 	To                    int                    `json:"to"`
@@ -762,15 +750,6 @@ type searchResult struct {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	/*
-		$1 search string
-		$2 search string
-		$3 result length
-		$4 result offset
-		$5 `departement` list from user
-		$6 `role` list from user
-	*/
-
 	sqlSearch := `select et.siret, d.libelle, d.code, en.raison_sociale, et.commune,
 	r.libelle, n.code_n1, n.libelle_n1, n.code_n5, n.libelle_n5, count(*) over ()
 	from etablissement0 et
