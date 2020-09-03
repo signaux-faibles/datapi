@@ -54,15 +54,14 @@ type etablissement struct {
 			Numero  string    `json:"numero_compte"`
 			Periode time.Time `json:"periode"`
 		} `json:"compte"`
-		Periodes                []time.Time       `json:"periodes"`
-		Effectif                []*int            `json:"effectif"`
-		DebitPartPatronale      []*float64        `json:"debit_part_patronale"`
-		DebitPartOuvriere       []*float64        `json:"debit_part_ouvriere"`
-		DebitMontantMajorations []*float64        `json:"debit_montant_majorations"`
-		Cotisation              []*float64        `json:"cotisation"`
-		Delai                   []delai           `json:"delai"`
-		Procol                  map[string]procol `json:"procol"`
-		LastProcol              procol            `json:"last_procol"`
+		Periodes                []time.Time `json:"periodes"`
+		Effectif                []*int      `json:"effectif"`
+		DebitPartPatronale      []*float64  `json:"debit_part_patronale"`
+		DebitPartOuvriere       []*float64  `json:"debit_part_ouvriere"`
+		DebitMontantMajorations []*float64  `json:"debit_montant_majorations"`
+		Cotisation              []*float64  `json:"cotisation"`
+		Delai                   []delai     `json:"delai"`
+		Procol                  []procol    `json:"procol"`
 	} `bson:"value"`
 	Scores []score `json:"scores"`
 }
@@ -350,8 +349,8 @@ func (e etablissement) getBatch() *pgx.Batch {
 
 	sqlEtablissement := `insert into etablissement
 		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie, statut_procol, siege, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16);`
+			numero_voie, region, type_voie, siege, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
 
 	e.Value.Sirene.Siret = e.Value.Key
 	batch.Queue(
@@ -369,7 +368,6 @@ func (e etablissement) getBatch() *pgx.Batch {
 		e.Value.Sirene.NumeroVoie,
 		e.Value.Sirene.Region,
 		e.Value.Sirene.TypeVoie,
-		e.Value.LastProcol.Action,
 		e.Value.Sirene.Siege,
 		fmt.Sprintf("%x", structhash.Md5(e.Value.Sirene, 0)),
 	)
@@ -426,8 +424,8 @@ func (e etablissement) getBatch() *pgx.Batch {
 	for i, a := range e.Value.Periodes {
 		if *e.Value.Cotisation[i]+*e.Value.DebitPartPatronale[i]+*e.Value.DebitPartOuvriere[i]+*e.Value.DebitMontantMajorations[i] != 0 || e.Value.Effectif[i] != nil {
 			sqlUrssaf := `insert into etablissement_periode_urssaf
-				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, last_periode, hash)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, hash)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
 
 			var periode = struct {
 				Siret                   string
@@ -437,7 +435,6 @@ func (e etablissement) getBatch() *pgx.Batch {
 				DebitMontantMajorations *float64
 				Cotisation              *float64
 				Periode                 time.Time
-				Last                    bool
 			}{
 				Siret:                   e.Value.Key,
 				Periode:                 a,
@@ -446,7 +443,6 @@ func (e etablissement) getBatch() *pgx.Batch {
 				DebitPartOuvriere:       e.Value.DebitPartOuvriere[i],
 				DebitMontantMajorations: e.Value.DebitMontantMajorations[i],
 				Cotisation:              e.Value.Cotisation[i],
-				Last:                    i > len(e.Value.Periodes)-4,
 			}
 
 			batch.Queue(
@@ -459,7 +455,6 @@ func (e etablissement) getBatch() *pgx.Batch {
 				periode.DebitPartOuvriere,
 				periode.DebitMontantMajorations,
 				periode.Effectif,
-				periode.Last,
 				fmt.Sprintf("%x", structhash.Md5(periode, 0)),
 			)
 		}
@@ -567,13 +562,10 @@ type importValue struct {
 }
 
 func importHandler(c *gin.Context) {
-	roles := scopeFromContext(c)
-	if !roles.containsRole("import") {
-		c.AbortWithStatus(403)
-	}
 	tx, err := db.Begin(context.Background())
 	if err != nil {
 		c.AbortWithError(500, err)
+		return
 	}
 	log.Print("preparing database for import")
 	err = prepareImport(&tx)
