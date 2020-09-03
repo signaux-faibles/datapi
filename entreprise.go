@@ -2,10 +2,12 @@ package main
 
 import (
 	"context"
+	"strconv"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	pgx "github.com/jackc/pgx/v4"
+	"github.com/spf13/viper"
 )
 
 // Entreprise type entreprise pour l'API
@@ -34,6 +36,8 @@ type EtablissementSummary struct {
 	Activite           *string `json:"activite"`
 	Secteur            *string `json:"secteur"`
 	DernierEffectif    *int    `json:"dernierEffectif,omitempty"`
+	Visible            *bool   `json:"visible"`
+	Inzone             *bool   `json:"zone"`
 }
 
 type findEtablissementsParams struct {
@@ -684,4 +688,132 @@ func getSiegeFromSiren(siren string) (string, error) {
 	var siret string
 	err := db.QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
 	return siret, err
+}
+
+type searchParams struct {
+	search      string
+	page        int
+	ignoreRoles bool
+	ignoreZone  bool
+	roles       scope
+}
+
+func searchEtablissementHandler(c *gin.Context) {
+	var params searchParams
+	var err error
+
+	if search := c.Param("search"); len(search) >= 3 {
+		params.search = search
+	} else {
+		c.JSON(400, "search string length < 3")
+	}
+
+	if page, ok := c.GetQuery("page"); ok {
+		params.page, err = strconv.Atoi(page)
+		if err != nil {
+			c.JSON(400, "page has to be integer >= 0")
+			return
+		}
+	}
+
+	if ignoreRoles, ok := c.GetQuery("ignoreroles"); ok {
+		params.ignoreRoles, err = strconv.ParseBool(ignoreRoles)
+		if err != nil {
+			c.JSON(400, "france is either `true` or `false`")
+			return
+		}
+	}
+
+	if ignoreZone, ok := c.GetQuery("ignorezone"); ok {
+		params.ignoreZone, err = strconv.ParseBool(ignoreZone)
+		if err != nil {
+			c.JSON(400, "roles is either `true` or `false`")
+			return
+		}
+	}
+
+	params.roles = scopeFromContext(c)
+
+	result, Jerr := searchEtablissement(params)
+	if Jerr != nil {
+		c.JSON(Jerr.Code(), Jerr.Error())
+		return
+	}
+	c.JSON(200, result)
+
+}
+
+type searchResult struct {
+	From                  int                    `json:"from"`
+	To                    int                    `json:"to"`
+	Total                 int                    `json:"total"`
+	PageMax               int                    `json:"pageMax"`
+	EtablissementsSummary []EtablissementSummary `json:"etablissementsSummary"`
+}
+
+func searchEtablissement(params searchParams) (searchResult, Jerror) {
+	sqlSearch := `select et.siret, d.libelle, d.code, en.raison_sociale, et.commune,
+	r.libelle, n.code_n1, n.libelle_n1, n.code_n5, n.libelle_n5, count(*) over (),
+	ro.roles && $7 as visible, et.departement = any($7)
+	from etablissement0 et
+	inner join entreprise0 en on en.siren = et.siren 
+	inner join v_roles ro on ro.siren = en.siren
+	inner join departements d on d.code = et.departement
+	inner join regions r on r.id = d.id_region
+	inner join v_naf n on n.code_n5 = et.ape
+  where (et.siret like $1 or en.raison_sociale like $2)
+	and (et.departement = any($5) or $5 is null)
+	and (ro.roles && $6 or $6 is null)
+	limit $3
+	offset $4`
+
+	var departements []string
+	var roles []string
+	if !params.ignoreRoles {
+		roles = params.roles.zoneGeo()
+	}
+	if !params.ignoreZone {
+		departements = params.roles.zoneGeo()
+	}
+
+	rows, err := db.Query(context.Background(),
+		sqlSearch,
+		params.search+"%",
+		"%"+params.search+"%",
+		viper.GetInt("searchPageLength"),
+		viper.GetInt("searchPageLength")*params.page,
+		departements,
+		roles,
+		params.roles.zoneGeo(),
+	)
+	if err != nil {
+		return searchResult{}, errorToJSON(500, err)
+	}
+
+	var total int
+	var result []EtablissementSummary
+	for rows.Next() {
+		var e EtablissementSummary
+		err := rows.Scan(&e.Siret, &e.LibelleDepartement, &e.Departement, &e.RaisonSociale, &e.Commune,
+			&e.Region, &e.CodeSecteur, &e.Secteur, &e.CodeActivite, &e.Activite, &total, &e.Visible, &e.Inzone,
+		)
+		if err != nil {
+			return searchResult{}, errorToJSON(500, err)
+		}
+		result = append(result, e)
+	}
+
+	if viper.GetInt("searchPageLength")*params.page > total {
+		return searchResult{}, newJSONerror(204, "empty page")
+	}
+
+	r := searchResult{
+		From:                  viper.GetInt("searchPageLength") * params.page,
+		To:                    viper.GetInt("searchPageLength")*params.page + len(result),
+		Total:                 total,
+		PageMax:               (total-1)/viper.GetInt("searchPageLength") + 1,
+		EtablissementsSummary: result,
+	}
+
+	return r, nil
 }
