@@ -46,10 +46,12 @@ func runAPI() {
 	router.Use(cors.New(config))
 
 	entreprise := router.Group("/entreprise", getKeycloakMiddleware())
+	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
 	entreprise.GET("/get/:siren", validSiren, getEntreprise)
 	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
 
 	etablissement := router.Group("/etablissement", getKeycloakMiddleware())
+	etablissement.GET("/viewers/:siret", validSiret, getEtablissementViewers)
 	etablissement.GET("/get/:siret", validSiret, getEtablissement)
 	etablissement.GET("/comments/:siret", validSiret, getEntrepriseComments)
 	etablissement.POST("/comments/:siret", validSiret, addEntrepriseComment)
