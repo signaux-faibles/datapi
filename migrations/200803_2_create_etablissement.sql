@@ -17,7 +17,6 @@ create table etablissement (
   region           text,
   type_voie        text,
   visite_fce       boolean,
-  statut_procol    text,
   siege            boolean,
   hash             text
 );
@@ -73,7 +72,6 @@ create table etablissement_periode_urssaf (
   part_salariale      real,
   montant_majorations real,
   effectif            real,
-  last_periode        boolean,
   hash                text
 );
 

@@ -106,7 +106,6 @@ create unique index idx_v_last_procol_siret
 create materialized view v_hausse_urssaf as 
 select siret, (array_agg(part_patronale + part_salariale order by periode desc))[0:3] as dette
   from etablissement_periode_urssaf0
-  where last_periode = true
   group by siret;
 
 create unique index idx_v_hausse_urssaf_siret
