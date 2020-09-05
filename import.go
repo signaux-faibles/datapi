@@ -259,9 +259,7 @@ type sirene struct {
 	Siege           bool     `json:"siege"`
 }
 
-func (e entreprise) getBatch() *pgx.Batch {
-	var batch pgx.Batch
-
+func (e entreprise) getBatch(batch *pgx.Batch) {
 	sqlEntreprise := `insert into entreprise 
 	(siren, raison_sociale, statut_juridique, hash)
   values ($1, $2, $3, $4);`
@@ -340,13 +338,9 @@ func (e entreprise) getBatch() *pgx.Batch {
 			d.TauxValeurAjoutee, d.ValeurAjoutee, fmt.Sprintf("%x", structhash.Md5(d, 0)),
 		)
 	}
-
-	return &batch
 }
 
-func (e etablissement) getBatch() *pgx.Batch {
-	var batch pgx.Batch
-
+func (e etablissement) getBatch(batch *pgx.Batch) {
 	sqlEtablissement := `insert into etablissement
 		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
 			numero_voie, region, type_voie, siege, hash)
@@ -520,7 +514,6 @@ func (e etablissement) getBatch() *pgx.Batch {
 			fmt.Sprintf("%x", structhash.Md5(s, 0)),
 		)
 	}
-	return &batch
 }
 
 func groupScores(scores []score) []score {
@@ -542,11 +535,11 @@ func (s score) toLibelle() string {
 	return s.Batch + s.Algo
 }
 
-func scoreToListe() *pgx.Batch {
+func scoreToListe() pgx.Batch {
 	var batch pgx.Batch
 	batch.Queue(`insert into liste (libelle, batch, algo) 
 	select distinct libelle_liste as libelle, batch, algo from score;`)
-	return &batch
+	return batch
 }
 
 type importObject struct {
@@ -620,10 +613,13 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 	unzip, err := gzip.NewReader(file)
 	decoder := json.NewDecoder(unzip)
 	i := 0
+	var batch pgx.Batch
+
 	for {
 		var e entreprise
 		err := decoder.Decode(&e)
 		if err != nil {
+			batches <- batch
 			close(batches)
 			wg.Wait()
 			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
@@ -632,11 +628,14 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 			}
 			return err
 		}
+
 		if e.Value.SireneUL.Siren != "" {
-			batch := e.getBatch()
-			batches <- batch
+			e.getBatch(&batch)
+
 			i++
 			if math.Mod(float64(i), 100) == 0 {
+				batches <- batch
+				batch = pgx.Batch{}
 				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
 			}
 		}
@@ -658,10 +657,12 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 	decoder := json.NewDecoder(unzip)
 
 	i := 0
+	var batch pgx.Batch
 	for {
 		var e etablissement
 		err := decoder.Decode(&e)
 		if err != nil {
+			batches <- batch
 			batches <- scoreToListe()
 			close(batches)
 			wg.Wait()
@@ -674,9 +675,11 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 
 		if len(e.ID) > 14 && e.Value.Sirene.Departement != "" {
 			e.Value.Key = e.ID[len(e.ID)-14:]
-			batches <- e.getBatch()
+			e.getBatch(&batch)
 			i++
 			if math.Mod(float64(i), 100) == 0 {
+				batches <- batch
+				batch = pgx.Batch{}
 				fmt.Printf("\033[2K\r%s: %d objects sent to postgres", fileName, i)
 			}
 		}

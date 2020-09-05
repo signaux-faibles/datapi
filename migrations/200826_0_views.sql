@@ -57,7 +57,7 @@ select siren, array_agg(distinct departement) as roles
   where version = 0
   group by siren;
 
-create unique index idx_v_roles_siret
+create index idx_v_roles_siret
   on v_roles (siren);
 create index idx_v_roles_roles on v_roles using gin (roles);
 
