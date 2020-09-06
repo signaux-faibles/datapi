@@ -6,7 +6,7 @@ create table liste (
   libelle text,
   batch text,
   algo text,
-  hash text
+  hash bytea
 );
 
 create sequence score_id;
@@ -23,5 +23,5 @@ create table score (
   score real,
   diff real,
   alert text,
-  hash text
+  hash bytea
 );

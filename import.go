@@ -269,7 +269,7 @@ func (e entreprise) getBatch(batch *pgx.Batch) {
 		e.Value.SireneUL.Siren,
 		e.Value.SireneUL.RaisonSociale,
 		e.Value.SireneUL.StatutJuridique,
-		fmt.Sprintf("%x", structhash.Md5(e.Value.SireneUL, 0)),
+		structhash.Md5(e.Value.SireneUL, 0),
 	)
 
 	for _, b := range e.Value.BDF {
@@ -289,7 +289,7 @@ func (e entreprise) getBatch(batch *pgx.Batch) {
 			b.DetteFiscale,
 			b.FraisFinancier,
 			b.TauxMarge,
-			fmt.Sprintf("%x", structhash.Md5(b, 0)),
+			structhash.Md5(b, 0),
 		)
 	}
 
@@ -363,7 +363,7 @@ func (e etablissement) getBatch(batch *pgx.Batch) {
 		e.Value.Sirene.Region,
 		e.Value.Sirene.TypeVoie,
 		e.Value.Sirene.Siege,
-		fmt.Sprintf("%x", structhash.Md5(e.Value.Sirene, 0)),
+		structhash.Md5(e.Value.Sirene, 0),
 	)
 
 	for _, a := range e.Value.APConso {
@@ -382,7 +382,7 @@ func (e etablissement) getBatch(batch *pgx.Batch) {
 			a.Montant,
 			a.Effectif,
 			a.Periode,
-			fmt.Sprintf("%x", structhash.Md5(a, 0)),
+			structhash.Md5(a, 0),
 		)
 	}
 
@@ -411,7 +411,7 @@ func (e etablissement) getBatch(batch *pgx.Batch) {
 			a.HeureConsomme,
 			a.MontantConsomme,
 			a.EffectifConsomme,
-			fmt.Sprintf("%x", structhash.Md5(a, 0)),
+			structhash.Md5(a, 0),
 		)
 	}
 
@@ -449,7 +449,7 @@ func (e etablissement) getBatch(batch *pgx.Batch) {
 				periode.DebitPartOuvriere,
 				periode.DebitMontantMajorations,
 				periode.Effectif,
-				fmt.Sprintf("%x", structhash.Md5(periode, 0)),
+				structhash.Md5(periode, 0),
 			)
 		}
 	}
@@ -475,7 +475,7 @@ func (e etablissement) getBatch(batch *pgx.Batch) {
 			a.NumeroCompte,
 			a.NumeroContentieux,
 			a.Stade,
-			fmt.Sprintf("%x", structhash.Md5(a, 0)),
+			structhash.Md5(a, 0),
 		)
 	}
 
@@ -491,7 +491,7 @@ func (e etablissement) getBatch(batch *pgx.Batch) {
 			p.DateEffet,
 			p.Action,
 			p.Stade,
-			fmt.Sprintf("%x", structhash.Md5(p, 0)),
+			structhash.Md5(p, 0),
 		)
 	}
 
@@ -511,7 +511,7 @@ func (e etablissement) getBatch(batch *pgx.Batch) {
 			s.Score,
 			s.Diff,
 			s.Alert,
-			fmt.Sprintf("%x", structhash.Md5(s, 0)),
+			structhash.Md5(s, 0),
 		)
 	}
 }
@@ -756,4 +756,23 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 	fmt.Println("")
 	log.Printf("success: %d views refreshed\n", len(views))
 	return nil
+}
+
+func loadTree(c *gin.Context) {
+	h := htree{}
+	sql := `select hash from etablissement_periode_urssaf0 
+	inner join (select 0 union select 1) a on true
+	inner join (select 0 union select 1) b on true
+	inner join (select 0 union select 1) c on true
+	inner join (select 0 union select 1) d on true
+	inner join (select 0 union select 1) e on true`
+	rows, _ := db.Query(context.Background(), sql)
+	i := 0
+	for rows.Next() {
+		i++
+		var hash []byte
+		rows.Scan(&hash)
+		h.insert(hash)
+	}
+	fmt.Println(i)
 }

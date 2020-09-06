@@ -18,7 +18,7 @@ create table etablissement (
   type_voie        text,
   visite_fce       boolean,
   siege            boolean,
-  hash             text
+  hash             bytea
 );
 
 create sequence etablissement_apconso_id;
@@ -33,7 +33,7 @@ create table etablissement_apconso (
   montant          real,
   effectif         integer,
   periode          date,
-  hash             text
+  hash             bytea
 );
 
 create sequence etablissement_apdemande_id;
@@ -56,7 +56,7 @@ create table etablissement_apdemande (
   heure_consomme      real,
   montant_consomme    real,
   effectif_consomme   integer,
-  hash                text
+  hash                bytea
 );
 
 create sequence etablissement_periode_urssaf_id;
@@ -72,7 +72,7 @@ create table etablissement_periode_urssaf (
   part_salariale      real,
   montant_majorations real,
   effectif            real,
-  hash                text
+  hash                bytea
 );
 
 create sequence etablissement_delai_id;
@@ -93,7 +93,7 @@ create table etablissement_delai (
   numero_compte      text,
   numero_contentieux text,
   stade              text,
-  hash               text
+  hash               bytea
 );
 
 create sequence etablissement_procol_id;
@@ -106,7 +106,7 @@ create table etablissement_procol (
   date_effet    date,
   action_procol text,
   stade_procol  text,
-  hash          text
+  hash          bytea
 );
 
 create sequence etablissemment_follow_id;
@@ -118,7 +118,7 @@ create table etablissement_follow (
   active   boolean,
   since    timestamp,
   until    timestamp,
-  comment  text  
+  comment  bytea  
 );
 
 create sequence etablissement_comment_id;

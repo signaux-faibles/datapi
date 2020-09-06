@@ -7,7 +7,7 @@ create table entreprise (
   siret_siege char(14),
   raison_sociale text,
   statut_juridique text,
-  hash text
+  hash bytea
 );
 
 create sequence entreprise_bdf_id;
@@ -24,7 +24,7 @@ create table entreprise_bdf (
   dette_fiscale real,
   frais_financier real,
   taux_marge real,
-  hash text
+  hash bytea
 );
 
 create sequence entreprise_diane_id;
@@ -105,5 +105,5 @@ create table entreprise_diane (
   taux_interet_sur_ca real,
   taux_valeur_ajoutee real,
   valeur_ajoutee real,
-  hash text
+  hash bytea
 );
