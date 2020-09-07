@@ -18,7 +18,7 @@ type Entreprise struct {
 		StatutJuridique string `json:"statutJuridique"`
 	}
 	Diane                 []diane                `json:"diane"`
-	Bdf                   []bdf                  `json:"bdf"`
+	Bdf                   []bdf                  `json:"-"`
 	EtablissementsSummary []EtablissementSummary `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement        `json:"etablissements,omitEmpty"`
 }
@@ -291,7 +291,7 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		e.sirensFromQuery(),
 		roles.zoneGeo())
 
-	batch.Queue(`select en.siren, annee_bdf, delai_fournisseur, financier_court_terme, poids_frng,
+	batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
 		dette_fiscale, frais_financier, taux_marge
 		from entreprise_bdf0 en
 		inner join v_roles ro on ro.siren = en.siren and (ro.roles && $2) and $2 @> array['bdf']
@@ -456,7 +456,7 @@ func (e *Etablissements) loadBDF(rows *pgx.Rows) error {
 
 		var bd bdf
 		var siren string
-		err := (*rows).Scan(&siren, &bd.Annee, &bd.DelaiFournisseur, &bd.FinancierCourtTerme,
+		err := (*rows).Scan(&siren, &bd.Annee, &bd.ArreteBilan, &bd.DelaiFournisseur, &bd.FinancierCourtTerme,
 			&bd.PoidsFrng, &bd.DetteFiscale, &bd.FraisFinancier, &bd.TauxMarge,
 		)
 		if err != nil {

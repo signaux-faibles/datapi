@@ -145,7 +145,7 @@ type apDemande struct {
 }
 
 type bdf struct {
-	Siren               string    `json:"siren"`
+	Siren               string    `json:"siren,omitempty"`
 	Annee               int       `json:"annee_bdf"`
 	ArreteBilan         time.Time `json:"arrete_bilan_bdf"`
 	DelaiFournisseur    float64   `json:"delai_fournisseur"`
@@ -806,7 +806,7 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 
 func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
 	var batch pgx.Batch
-	var tables []string = []string{
+	var tables = []string{
 		"entreprise",
 		"entreprise_bdf",
 		"entreprise_diane",

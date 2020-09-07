@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 type paramsListeScores struct {
@@ -14,15 +15,23 @@ type paramsListeScores struct {
 	EffectifMin  *int     `json:"effectifMin"`
 	EffectifMax  *int     `json:"effectifMax"`
 	VueFrance    *bool    `json:"vueFrance"`
+	Page         int      `json:"page"`
 }
 
 // Liste de détection
 type Liste struct {
-	ID     string            `json:"id"`
-	Batch  string            `json:"batch"`
-	Algo   string            `json:"algo"`
-	Query  paramsListeScores `json:"-"`
-	Scores []Score           `json:"scores,omitempty"`
+	ID      string            `json:"id"`
+	Batch   string            `json:"batch"`
+	Algo    string            `json:"algo"`
+	Query   paramsListeScores `json:"-"`
+	Scores  []Score           `json:"scores,omitempty"`
+	NbF1    int               `json:"nbF1"`
+	NbF2    int               `json:"nbF2"`
+	From    int               `json:"from"`
+	Total   int               `json:"total"`
+	Page    int               `json:"page"`
+	PageMax int               `json:"pageMax"`
+	To      int               `json:"to"`
 }
 
 // Score d'une liste de détection
@@ -90,10 +99,14 @@ func getLastListeScores(c *gin.Context) {
 		ID:    listes[0].ID,
 		Query: params,
 	}
-
-	err = liste.getScores(roles)
-	if err != nil {
-		c.JSON(500, err.Error())
+	limit := viper.GetInt("searchPageLength")
+	if limit == 0 {
+		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
+		return
+	}
+	Jerr := liste.getScores(roles, params.Page, limit)
+	if Jerr != nil {
+		c.JSON(Jerr.Code(), Jerr.Error())
 		return
 	}
 	c.JSON(200, liste)
@@ -114,28 +127,29 @@ func getListeScores(c *gin.Context) {
 		c.AbortWithStatus(400)
 		return
 	}
-
-	err = liste.getScores(roles)
-
-	if err != nil {
-		if err.Error() == "no rows in result set" {
-			c.AbortWithStatus(204)
-			return
-		}
-		c.JSON(500, err.Error())
+	limit := viper.GetInt("searchPageLength")
+	if limit == 0 {
+		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
 		return
 	}
+	Jerr := liste.getScores(roles, params.Page, limit)
+
+	if Jerr != nil {
+		c.JSON(Jerr.Code(), Jerr.Error())
+		return
+	}
+
 	c.JSON(200, liste)
 }
 
-func (liste *Liste) getScores(roles scope) error {
+func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 	if liste.Batch == "" {
 		err := liste.load()
 		if err != nil {
 			return err
 		}
 	}
-	sqlScores := `	select 
+	sqlScores := `select 
 		et.siret,
 		et.siren,
 		en.raison_sociale, 
@@ -155,7 +169,10 @@ func (liste *Liste) getScores(roles scope) error {
 		coalesce(ep.last_procol, 'in_bonis') as last_procol,
 		coalesce(ap.ap, false) as activite_partielle,
 		case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
-		s.alert
+		s.alert,
+		count(case when s.alert='Alerte seuil F1' then 1 else null end) over (),
+		count(case when s.alert='Alerte seuil F2' then 1 else null end) over (),
+		count(*) over ()
 	from score0 s
 	inner join v_roles r on r.roles && $1 and r.siren = s.siren
 	inner join etablissement0 et on et.siret = s.siret
@@ -176,16 +193,21 @@ func (liste *Liste) getScores(roles scope) error {
 	and (ef.effectif <= $7 or $7 is null)
 	and (et.departement=any($1) or $8 = true)
 	and s.alert != 'Pas d''alerte'
-	order by s.score desc;`
-	rows, err := db.Query(context.Background(), sqlScores, roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol,
-		liste.Query.Departements, liste.Query.Activites, liste.Query.EffectifMin, liste.Query.EffectifMax, liste.Query.VueFrance)
+	order by s.score desc
+	limit $9 offset $10;`
+	rows, err := db.Query(context.Background(), sqlScores,
+		roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, // $1…
+		liste.Query.Departements, liste.Query.Activites, // $4…
+		liste.Query.EffectifMin, liste.Query.EffectifMax, // $6…
+		liste.Query.VueFrance, limit, page*limit) // $8…
 	if err != nil {
-		return err
+		return errorToJSON(500, err)
 	}
 
 	var scores []Score
 	for rows.Next() {
 		var score Score
+
 		err := rows.Scan(
 			&score.Siret,
 			&score.Siren,
@@ -207,14 +229,26 @@ func (liste *Liste) getScores(roles scope) error {
 			&score.ActivitePartielle,
 			&score.HausseUrssaf,
 			&score.Alert,
+			&liste.NbF1,
+			&liste.NbF2,
+			&liste.Total,
 		)
 		if err != nil {
-			return err
+			return errorToJSON(500, err)
 		}
 		scores = append(scores, score)
 	}
 
 	liste.Scores = scores
+	liste.Page = page
+	liste.PageMax = (liste.Total - 1) / limit
+	liste.From = limit*page + 1
+	liste.To = limit*page + len(scores)
+
+	if limit*page > liste.Total {
+		return newJSONerror(204, "empty page")
+	}
+
 	return nil
 }
 
@@ -237,13 +271,16 @@ func findAllListes() ([]Liste, error) {
 	return listes, nil
 }
 
-func (liste *Liste) load() error {
+func (liste *Liste) load() Jerror {
 	sqlListe := `select batch, algo from liste where libelle=$1 and version=0`
 	row := db.QueryRow(context.Background(), sqlListe, liste.ID)
 	batch, algo := "", ""
 	err := row.Scan(&batch, &algo)
 	if err != nil {
-		return err
+		if err.Error() == "no rows in result set" {
+			return newJSONerror(404, "no such list")
+		}
+		return errorToJSON(500, err)
 	}
 	liste.Batch = batch
 	liste.Algo = algo
