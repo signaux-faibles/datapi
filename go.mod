@@ -30,4 +30,7 @@ require (
 	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
 	google.golang.org/protobuf v1.25.0 // indirect
 	gopkg.in/ini.v1 v1.61.0 // indirect
+	modernc.org/b v1.0.0
+	modernc.org/mathutil v1.1.1 // indirect
+	modernc.org/strutil v1.1.0 // indirect
 )

@@ -79,7 +79,6 @@ func runAPI() {
 	utils.GET("/import", importHandler)
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	utils.GET("/load", loadTree)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
