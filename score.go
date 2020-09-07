@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -38,7 +39,7 @@ type Liste struct {
 type Score struct {
 	Siren              string     `json:"siren"`
 	Siret              string     `json:"siret"`
-	Score              float64    `json:"-"`
+	Score              *float64   `json:"-"`
 	Diff               *float64   `json:"-"`
 	RaisonSociale      *string    `json:"raison_sociale"`
 	Commune            *string    `json:"commune"`
@@ -48,14 +49,16 @@ type Score struct {
 	Departement        *string    `json:"departement"`
 	LibelleDepartement *string    `json:"libelleDepartement"`
 	DernierEffectif    *int       `json:"dernier_effectif"`
-	HausseUrssaf       *bool      `json:"urssaf"`
-	ActivitePartielle  *bool      `json:"activite_partielle"`
+	HausseUrssaf       *bool      `json:"urssaf,omitempty"`
+	ActivitePartielle  *bool      `json:"activite_partielle,omitempty"`
 	DernierCA          *int       `json:"ca"`
 	VariationCA        *float64   `json:"variation_ca"`
 	ArreteBilan        *time.Time `json:"arrete_bilan"`
 	DernierREXP        *int       `json:"resultat_expl"`
-	EtatProcol         *string    `json:"etat_procol"`
-	Alert              *string    `json:"alert"`
+	EtatProcol         *string    `json:"etat_procol,omitempty"`
+	Alert              *string    `json:"alert,omitempty"`
+	Visible            *bool      `json:"visible"`
+	InZone             *bool      `json:"inZone"`
 }
 
 func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
@@ -268,6 +271,9 @@ func findAllListes() ([]Liste, error) {
 		listes = append(listes, l)
 	}
 
+	if len(listes) == 0 {
+		return nil, errors.New("no list found")
+	}
 	return listes, nil
 }
 

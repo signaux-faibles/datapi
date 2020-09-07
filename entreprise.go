@@ -222,7 +222,7 @@ func getEntrepriseEtablissements(c *gin.Context) {
 	}
 	entreprise, ok := etablissements.Entreprises[siren]
 	if !ok {
-		c.JSON(404, "ressource non disponible")
+		c.JSON(404, "ressource ênon disponible")
 		return
 	}
 
@@ -322,7 +322,7 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select siret, periode, 
-		cotisation, part_patronale, part_salariale, montant_majorations, effectif
+		case when cotisation = 0 then null else cotisation end, part_patronale, part_salariale, montant_majorations, effectif
 		from etablissement_periode_urssaf0 e
 		inner join v_roles ro on ro.siren = e.siren and  ro.roles && $1 and $1 @> array['urssaf']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
@@ -709,6 +709,15 @@ type searchParams struct {
 	roles       scope
 }
 
+type searchResult struct {
+	From    int     `json:"from"`
+	To      int     `json:"to"`
+	Total   int     `json:"total"`
+	PageMax int     `json:"pageMax"`
+	Page    int     `json:"page"`
+	Results []Score `json:"results"`
+}
+
 func searchEtablissementHandler(c *gin.Context) {
 	var params searchParams
 	var err error
@@ -754,79 +763,121 @@ func searchEtablissementHandler(c *gin.Context) {
 
 }
 
-type searchResult struct {
-	From                  int                    `json:"from"`
-	To                    int                    `json:"to"`
-	Total                 int                    `json:"total"`
-	PageMax               int                    `json:"pageMax"`
-	EtablissementsSummary []EtablissementSummary `json:"etablissementsSummary"`
-}
-
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `select et.siret, d.libelle, d.code, en.raison_sociale, et.commune,
-	r.libelle, n.code_n1, n.libelle_n1, n.code_n5, n.libelle_n5, count(*) over (),
-	ro.roles && $7 as visible, et.departement = any($7)
-	from etablissement0 et
-	inner join entreprise0 en on en.siren = et.siren 
-	inner join v_roles ro on ro.siren = en.siren
-	inner join departements d on d.code = et.departement
-	inner join regions r on r.id = d.id_region
-	inner join v_naf n on n.code_n5 = et.ape
-  where (et.siret like $1 or en.raison_sociale like $2)
-	and (et.departement = any($5) or $5 is null)
-	and (ro.roles && $6 or $6 is null)
-	limit $3
-	offset $4`
+	sqlSearch := `select 
+		et.siret,
+		et.siren,
+		en.raison_sociale, 
+		et.commune, 
+		d.libelle, 
+		d.code,
+		case when r.roles && $1 then s.score else null end,
+		case when r.roles && $1 then s.diff else null end,
+		di.chiffre_affaire,
+		di.arrete_bilan,
+		di.variation_ca,
+		di.resultat_expl,
+		ef.effectif,
+		n.libelle,
+		n1.libelle,
+		et.ape,
+		coalesce(ep.last_procol, 'in_bonis') as last_procol,
+		case when r.roles && $1 then coalesce(ap.ap, false) else null end as activite_partielle ,
+		case when r.roles && $1 then 
+			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
+		else null end as hausseUrssaf,
+		case when r.roles && $1 then s.alert else null end,
+		count(*) over (),
+		r.roles && $1 as visible,
+		et.departement = any($2) as in_zone
+		from score0 s
+		inner join v_roles r on r.siren = s.siren
+		inner join etablissement0 et on et.siret = s.siret
+		inner join entreprise0 en on en.siren = s.siren
+		inner join departements d on d.code = et.departement
+		inner join naf n on n.code = et.ape
+		inner join naf n1 on n.id_n1 = n1.id
+		left join v_last_effectif ef on ef.siret = s.siret
+		left join v_hausse_urssaf u on u.siret = s.siret
+		left join v_apdemande ap on ap.siret = s.siret
+		left join v_last_procol ep on ep.siret = s.siret
+		left join v_diane_variation_ca di on di.siren = s.siren
+		where (et.siret like $6 or en.raison_sociale like $7)
+		and (r.roles && $1 or $8)
+		and (et.departement=any($2) or $9)
+		and s.libelle_liste = $5
+		order by s.score desc
+		limit $3 offset $4
+		;`
 
-	var departements []string
-	var roles []string
-	if !params.ignoreRoles {
-		roles = params.roles.zoneGeo()
+	liste, err := findAllListes()
+	if err != nil {
+		return searchResult{}, errorToJSON(500, err)
 	}
-	if !params.ignoreZone {
-		departements = params.roles.zoneGeo()
-	}
+	zoneGeo := params.roles.zoneGeo()
+	limit := viper.GetInt("searchPageLength")
 
-	rows, err := db.Query(context.Background(),
-		sqlSearch,
+	rows, err := db.Query(context.Background(), sqlSearch,
+
+		zoneGeo,
+		zoneGeo,
+		limit,
+		params.page*limit,
+		liste[0].ID,
 		params.search+"%",
 		"%"+params.search+"%",
-		viper.GetInt("searchPageLength"),
-		viper.GetInt("searchPageLength")*params.page,
-		departements,
-		roles,
-		params.roles.zoneGeo(),
+		params.ignoreRoles,
+		params.ignoreZone,
+		// ,
 	)
+
 	if err != nil {
 		return searchResult{}, errorToJSON(500, err)
 	}
 
-	var total int
-	var result []EtablissementSummary
+	var search searchResult
 	for rows.Next() {
-		var e EtablissementSummary
-		err := rows.Scan(&e.Siret, &e.LibelleDepartement, &e.Departement, &e.RaisonSociale, &e.Commune,
-			&e.Region, &e.CodeSecteur, &e.Secteur, &e.CodeActivite, &e.Activite, &total, &e.Visible, &e.Inzone,
+		var r Score
+		err := rows.Scan(&r.Siret,
+			&r.Siren,
+			&r.RaisonSociale,
+			&r.Commune,
+			&r.LibelleDepartement,
+			&r.Departement,
+			&r.Score,
+			&r.Diff,
+			&r.DernierCA,
+			&r.ArreteBilan,
+			&r.VariationCA,
+			&r.DernierREXP,
+			&r.DernierEffectif,
+			&r.LibelleActivite,
+			&r.LibelleActiviteN1,
+			&r.CodeActivite,
+			&r.EtatProcol,
+			&r.ActivitePartielle,
+			&r.HausseUrssaf,
+			&r.Alert,
+			&search.Total,
+			&r.Visible,
+			&r.InZone,
 		)
 		if err != nil {
 			return searchResult{}, errorToJSON(500, err)
 		}
-		result = append(result, e)
+		search.Results = append(search.Results, r)
 	}
 
-	if viper.GetInt("searchPageLength")*params.page > total {
+	if viper.GetInt("searchPageLength")*params.page >= search.Total {
 		return searchResult{}, newJSONerror(204, "empty page")
 	}
 
-	r := searchResult{
-		From:                  viper.GetInt("searchPageLength") * params.page,
-		To:                    viper.GetInt("searchPageLength")*params.page + len(result),
-		Total:                 total,
-		PageMax:               (total-1)/viper.GetInt("searchPageLength") + 1,
-		EtablissementsSummary: result,
-	}
+	search.From = limit*params.page + 1
+	search.To = limit*params.page + len(search.Results)
+	search.Page = params.page
+	search.PageMax = (search.Total - 1) / limit
 
-	return r, nil
+	return search, nil
 }
 
 func getEntrepriseViewers(c *gin.Context) {
