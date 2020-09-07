@@ -802,7 +802,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		left join v_apdemande ap on ap.siret = s.siret
 		left join v_last_procol ep on ep.siret = s.siret
 		left join v_diane_variation_ca di on di.siren = s.siren
-		where (et.siret like $6 or en.raison_sociale like $7)
+		where (et.siret ilike $6 or en.raison_sociale ilike $7)
 		and (r.roles && $1 or $8)
 		and (et.departement=any($2) or $9)
 		and s.libelle_liste = $5

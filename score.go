@@ -197,7 +197,7 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 	and (ef.effectif <= $7 or $7 is null)
 	and (et.departement=any($1) or $8 = true)
 	and s.alert != 'Pas d''alerte'
-	and (et.siret like $11 or en.raison_sociale like $12)
+	and (et.siret ilike $11 or en.raison_sociale ilike $12)
 	order by s.score desc
 	limit $9 offset $10;`
 	rows, err := db.Query(context.Background(), sqlScores,
