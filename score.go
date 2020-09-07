@@ -17,6 +17,7 @@ type paramsListeScores struct {
 	EffectifMax  *int     `json:"effectifMax"`
 	VueFrance    *bool    `json:"vueFrance"`
 	Page         int      `json:"page"`
+	Filter       string   `json:"filter"`
 }
 
 // Liste de détection
@@ -196,13 +197,16 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 	and (ef.effectif <= $7 or $7 is null)
 	and (et.departement=any($1) or $8 = true)
 	and s.alert != 'Pas d''alerte'
+	and (et.siret like $11 or en.raison_sociale like $12)
 	order by s.score desc
 	limit $9 offset $10;`
 	rows, err := db.Query(context.Background(), sqlScores,
 		roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, // $1…
 		liste.Query.Departements, liste.Query.Activites, // $4…
 		liste.Query.EffectifMin, liste.Query.EffectifMax, // $6…
-		liste.Query.VueFrance, limit, page*limit) // $8…
+		liste.Query.VueFrance, limit, page*limit, // $8…
+		liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", // $11
+	)
 	if err != nil {
 		return errorToJSON(500, err)
 	}
