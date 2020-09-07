@@ -73,13 +73,13 @@ type Etablissement struct {
 		TypeVoie   string  `json:"typeVoie"`
 		Commune    string  `json:"commune"`
 		NAF        struct {
-			APE     string `json:"activite"`
-			Secteur string `json:"secteur"`
-			N1      string `json:"n1"`
-			N2      string `json:"n2"`
-			N3      string `json:"n3"`
-			N4      string `json:"n4"`
-			N5      string `json:"n5"`
+			LibelleActivite string `json:"libelleActivite"`
+			LibelleSecteur  string `json:"libelleSecteur"`
+			CodeSecteur     string `json:"codeSecteur"`
+			CodeActivite    string `json:"codeActivité"`
+			LibelleN2       string `json:"libelleN2"`
+			LibelleN3       string `json:"libelleN3"`
+			LibelleN4       string `json:"libelleN4"`
 		} `json:"naf"`
 	} `json:"sirene"`
 	PeriodeUrssaf EtablissementPeriodeUrssaf `json:"periodeUrssaf,omitempty"`
@@ -255,10 +255,9 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		`select 
 		et.siret, et.siren, et.siren,	en.raison_sociale, en.statut_juridique,
 		et.numero_voie, et.type_voie, et.adresse, et.code_postal, et.commune, et.departement,
-		d.libelle, r.libelle,
-		et.lattitude, et.longitude,
-		et.visite_fce, n.code_n1, n.code_n2, n.code_n3, n.code_n4, n.code_n5, 
-		n.libelle_n5, n.libelle_n1
+		d.libelle, r.libelle, et.lattitude, et.longitude, et.visite_fce, 
+		n.libelle_n1, n.code_n1, n.libelle_n5, n.code_n5,
+		n.libelle_n2, n.libelle_n3, n.libelle_n4
 		from etablissement0 et
 		inner join v_roles ro on ro.siren = et.siren and ($3 && ro.roles)
 		inner join v_naf n on n.code_n5 = et.ape
@@ -267,7 +266,7 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		left join entreprise0 en on en.siren = et.siren
 		where 
 		(et.siret=any($1) or et.siren=any($2))
-		and coalesce($1, $2) is not null
+		and coalesce($1, $2) is not null;
 	`, e.Query.Sirets, e.Query.Sirens, roles.zoneGeo())
 
 	batch.Queue(`select en.siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
@@ -287,7 +286,8 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		taux_valeur_ajoutee, valeur_ajoutee
 		from entreprise_diane0 en
 		inner join v_roles ro on ro.siren = en.siren and (ro.roles && $2)
-		where en.siren=any($1)`,
+		where en.siren=any($1)
+		order by en.arrete_bilan_diane;`,
 		e.sirensFromQuery(),
 		roles.zoneGeo())
 
@@ -295,26 +295,30 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		dette_fiscale, frais_financier, taux_marge
 		from entreprise_bdf0 en
 		inner join v_roles ro on ro.siren = en.siren and (ro.roles && $2) and $2 @> array['bdf']
-		where en.siren=any($1)`,
+		where en.siren=any($1)
+		order by arrete_bilan_bdf;`,
 		e.sirensFromQuery(),
 		roles.zoneGeo())
 
 	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alert
 		from score0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		order by siret, batch desc, score desc;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select siret, id_conso, heure_consomme, montant, effectif, periode from etablissement_apconso0 e
 		inner join v_roles ro on ro.siren = e.siren and (ro.roles) && $1 and $1 @> array['dgefp']
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		order by siret, periode;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, 
 		periode_end, hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme
 		from etablissement_apdemande0 e
 		inner join v_roles ro on ro.siren = e.siren and (ro.roles) && $1 and $1 @> array['dgefp']
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		order by siret, periode_start;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select siret, periode, 
@@ -322,20 +326,22 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		from etablissement_periode_urssaf0 e
 		inner join v_roles ro on ro.siren = e.siren and  ro.roles && $1 and $1 @> array['urssaf']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
-		order by e.siret, e.periode;`,
+		order by siret, periode;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, action, annee_creation, date_creation, date_echeance, denomination,
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
 		from etablissement_delai0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1 and $1 @> array['urssaf']
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		order by e.siret, date_creation;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select siret, date_effet, action_procol, stade_procol
 		from etablissement_procol0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null;`,
+		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		order by e.siret, date_effet;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	return &batch
@@ -560,10 +566,15 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NumeroVoie, &et.Sirene.TypeVoie, &et.Sirene.Adresse, &et.Sirene.CodePostal, &et.Sirene.Commune, &et.Sirene.CodeDept,
 			&et.Sirene.Dept, &et.Sirene.Region,
 			&et.Sirene.Lattitude, &et.Sirene.Longitude, &et.VisiteFCE,
-			&et.Sirene.NAF.N1, &et.Sirene.NAF.N2, &et.Sirene.NAF.N3,
-			&et.Sirene.NAF.N4, &et.Sirene.NAF.N5, &et.Sirene.NAF.APE,
-			&et.Sirene.NAF.Secteur,
+			&et.Sirene.NAF.LibelleSecteur,
+			&et.Sirene.NAF.CodeSecteur,
+			&et.Sirene.NAF.LibelleActivite,
+			&et.Sirene.NAF.CodeActivite,
+			&et.Sirene.NAF.LibelleN2,
+			&et.Sirene.NAF.LibelleN3,
+			&et.Sirene.NAF.LibelleN4,
 		)
+
 		if err != nil {
 			return err
 		}
