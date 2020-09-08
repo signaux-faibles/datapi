@@ -259,12 +259,12 @@ type sirene struct {
 	Siege           bool     `json:"siege"`
 }
 
-func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][][]byte {
+func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
 	htreeEntreprise := htrees["entreprise"]
 	htreeEntrepriseBdF := htrees["entreprise_bdf"]
 	htreeEntrepriseDiane := htrees["entreprise_diane"]
 
-	updates := make(map[string][][]byte)
+	updates := make(map[string][]int)
 
 	sqlEntrepriseInsert := `insert into entreprise 
 	(siren, raison_sociale, statut_juridique, hash)
@@ -272,7 +272,7 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 
 	hash := structhash.Md5(e.Value.SireneUL, 0)
 
-	if !htreeEntreprise.contains(hash) {
+	if id, ok := htreeEntreprise.contains(hash); !ok {
 		batch.Queue(
 			sqlEntrepriseInsert,
 			e.Value.SireneUL.Siren,
@@ -281,7 +281,7 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 			hash,
 		)
 	} else {
-		updates["entreprise"] = append(updates["entreprise"], hash)
+		updates["entreprise"] = append(updates["entreprise"], id)
 	}
 
 	for _, b := range e.Value.BDF {
@@ -291,7 +291,7 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
 
 		hash := structhash.Md5(b, 0)
-		if !htreeEntrepriseBdF.contains(hash) {
+		if id, ok := htreeEntrepriseBdF.contains(hash); !ok {
 			batch.Queue(
 				sqlEntrepriseBDF,
 				b.Siren,
@@ -306,7 +306,7 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 				hash,
 			)
 		} else {
-			updates["entreprise_bdf"] = append(updates["entreprise_bdf"], hash)
+			updates["entreprise_bdf"] = append(updates["entreprise_bdf"], id)
 		}
 	}
 
@@ -337,7 +337,7 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 				 $66, $67, $68, $69, $70, $71, $72, $73, $74);`
 
 		hash := structhash.Md5(d, 0)
-		if !htreeEntrepriseDiane.contains(hash) {
+		if id, ok := htreeEntrepriseDiane.contains(hash); !ok {
 			batch.Queue(
 				sqlEntrepriseDiane,
 				d.NumeroSiren, d.ArreteBilan, d.ChiffreAffaire, d.CreditClient, d.ResultatExploitation, d.AchatMarchandises,
@@ -357,14 +357,14 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 				d.TauxValeurAjoutee, d.ValeurAjoutee, hash,
 			)
 		} else {
-			updates["entreprise_diane"] = append(updates["entreprise_diane"], hash)
+			updates["entreprise_diane"] = append(updates["entreprise_diane"], id)
 		}
 	}
 
 	return updates
 }
 
-func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][][]byte {
+func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
 	htreeEtablissement := htrees["etablissement"]
 	htreeEtablissementAPConso := htrees["etablissement_apconso"]
 	htreeEtablissementAPDemande := htrees["etablissement_apdemande"]
@@ -373,7 +373,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 	htreeEtablissementProcol := htrees["etablissement_procol"]
 	htreeScore := htrees["score"]
 
-	updates := make(map[string][][]byte)
+	updates := make(map[string][]int)
 
 	sqlEtablissement := `insert into etablissement
 		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
@@ -382,7 +382,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 	hash := structhash.Md5(e.Value.Sirene, 0)
 
-	if !htreeEtablissement.contains(hash) {
+	if id, ok := htreeEtablissement.contains(hash); !ok {
 		e.Value.Sirene.Siret = e.Value.Key
 		batch.Queue(
 			sqlEtablissement,
@@ -403,7 +403,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 			hash,
 		)
 	} else {
-		updates["etablissement"] = append(updates["etablissement"], hash)
+		updates["etablissement"] = append(updates["etablissement"], id)
 	}
 
 	for _, a := range e.Value.APConso {
@@ -415,7 +415,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 		hash := structhash.Md5(a, 0)
 
-		if !htreeEtablissementAPConso.contains(hash) {
+		if id, ok := htreeEtablissementAPConso.contains(hash); !ok {
 			batch.Queue(
 				sqlAPConso,
 				a.Siret,
@@ -428,7 +428,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 				hash,
 			)
 		} else {
-			updates["etablissement_apconso"] = append(updates["etablissement_apconso"], hash)
+			updates["etablissement_apconso"] = append(updates["etablissement_apconso"], id)
 		}
 	}
 
@@ -443,7 +443,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 		hash := structhash.Md5(a, 0)
 
-		if !htreeEtablissementAPDemande.contains(hash) {
+		if id, ok := htreeEtablissementAPDemande.contains(hash); !ok {
 			batch.Queue(
 				sqlAPDemande,
 				a.Siret,
@@ -464,7 +464,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 				hash,
 			)
 		} else {
-			updates["etablissement_apdemande"] = append(updates["etablissement_apdemande"], hash)
+			updates["etablissement_apdemande"] = append(updates["etablissement_apdemande"], id)
 		}
 	}
 
@@ -495,7 +495,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 			hash := structhash.Md5(periode, 0)
 
-			if !htreeEtablissementPeriodeUrssaf.contains(hash) {
+			if id, ok := htreeEtablissementPeriodeUrssaf.contains(hash); !ok {
 				batch.Queue(
 					sqlUrssaf,
 					periode.Siret,
@@ -509,7 +509,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 					hash,
 				)
 			} else {
-				updates["etablissement_periode_urssaf"] = append(updates["etablissement_periode_urssaf"], hash)
+				updates["etablissement_periode_urssaf"] = append(updates["etablissement_periode_urssaf"], id)
 			}
 		}
 	}
@@ -522,7 +522,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		a.Siret = e.Value.Key
 		hash := structhash.Md5(a, 0)
 
-		if !htreeEtablissementDelai.contains(hash) {
+		if id, ok := htreeEtablissementDelai.contains(hash); !ok {
 
 			batch.Queue(
 				sqlDelai,
@@ -542,7 +542,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 				hash,
 			)
 		} else {
-			updates["etablissement_delai"] = append(updates["etablissement_delai"], hash)
+			updates["etablissement_delai"] = append(updates["etablissement_delai"], id)
 		}
 	}
 
@@ -554,7 +554,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 		hash := structhash.Md5(p, 0)
 
-		if !htreeEtablissementProcol.contains(hash) {
+		if id, ok := htreeEtablissementProcol.contains(hash); !ok {
 			batch.Queue(
 				sqlProcol,
 				p.Siret,
@@ -565,7 +565,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 				hash,
 			)
 		} else {
-			updates["etablissement_procol"] = append(updates["etablissement_procol"], hash)
+			updates["etablissement_procol"] = append(updates["etablissement_procol"], id)
 		}
 	}
 
@@ -577,7 +577,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		s.Libelle = s.toLibelle()
 
 		hash := structhash.Md5(s, 0)
-		if !htreeScore.contains(hash) {
+		if id, ok := htreeScore.contains(hash); !ok {
 			batch.Queue(sqlScore,
 				s.Siret,
 				s.Siret[:9],
@@ -591,7 +591,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 				hash,
 			)
 		} else {
-			updates["score"] = append(updates["score"], hash)
+			updates["score"] = append(updates["score"], id)
 		}
 	}
 
@@ -692,7 +692,7 @@ func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) er
 	i := 0
 	var batch pgx.Batch
 
-	var updates = make(map[string][][]byte)
+	var updates = make(map[string][]int)
 
 	for {
 		var e entreprise
@@ -718,7 +718,7 @@ func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) er
 			if math.Mod(float64(i), 1000) == 0 {
 				updatesToBatch(updates, &batch)
 				batches <- batch
-				updates = make(map[string][][]byte)
+				updates = make(map[string][]int)
 				batch = pgx.Batch{}
 				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
 			}
@@ -726,10 +726,10 @@ func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) er
 	}
 }
 
-func updatesToBatch(updates map[string][][]byte, batch *pgx.Batch) {
-	for table, hashes := range updates {
-		sqlUpdate := fmt.Sprintf(`update %s set version = 0 where hash = any($1) and version = 1`, table)
-		batch.Queue(sqlUpdate, hashes)
+func updatesToBatch(updates map[string][]int, batch *pgx.Batch) {
+	for table, ids := range updates {
+		sqlUpdate := fmt.Sprintf(`update %s set version = 0 where id = any($1)`, table)
+		batch.Queue(sqlUpdate, ids)
 	}
 }
 
@@ -749,7 +749,7 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 
 	i := 0
 	var batch pgx.Batch
-	var updates = make(map[string][][]byte)
+	var updates = make(map[string][]int)
 
 	for {
 		var e etablissement
@@ -820,23 +820,27 @@ func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
 		"liste",
 	}
 	for _, table := range tables {
-		batch.Queue(fmt.Sprintf("update %s set version = version + 1 returning case when version = 1 then hash else null end", table))
+		batch.Queue(fmt.Sprintf("update %s set version = version + 1 returning id, case when version = 1 then hash else null end", table))
 	}
 	var htrees = make(map[string]*htree)
 	r := (*tx).SendBatch(context.Background(), &batch)
 	for _, table := range tables {
 		tree := &htree{}
+		fmt.Printf("update table %s\n", table)
 		rows, err := r.Query()
 		if err != nil {
 			return nil, err
 		}
 		for rows.Next() {
 			var hash []byte
-			err := rows.Scan(&hash)
+			var id int
+			err := rows.Scan(&id, &hash)
 			if err != nil {
 				return nil, err
 			}
-			tree.insert(hash)
+			if hash != nil {
+				tree.insert(hash, id)
+			}
 		}
 		htrees[table] = tree
 	}
