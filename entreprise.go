@@ -423,7 +423,7 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 		if sumPFloats(pu.partPatronale, pu.partSalariale, pu.montantMajoration) != 0 || pu.effectif != nil {
 			effectifs[pu.siret] = append(effectifs[pu.siret], pu.effectif)
 			periodes[pu.siret] = append(periodes[pu.siret], pu.periode)
-			if (e.Etablissements[pu.siret].Visible && e.Etablissements[pu.siret].Alert) || e.Etablissements[pu.siret].Followed {
+			if roles.containsRole("urssaf") && (e.Etablissements[pu.siret].Visible && e.Etablissements[pu.siret].Alert || e.Etablissements[pu.siret].Followed) {
 				cotisations[pu.siret] = append(cotisations[pu.siret], pu.cotisation)
 				partPatronales[pu.siret] = append(partPatronales[pu.siret], pu.partPatronale)
 				partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)

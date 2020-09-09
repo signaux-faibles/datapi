@@ -5,6 +5,9 @@ prod = true # limite les logs
 # Base de données
 postgres = "user=postgres dbname=datapi"
 
+# Paramètres de l'API
+searchPageLength = 20
+
 # Authentification
 enableKeycloak = true
 keycloakHostname = "localhost"

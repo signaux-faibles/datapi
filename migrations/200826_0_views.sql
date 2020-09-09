@@ -125,5 +125,5 @@ from score
 where alert in ('Alerte seuil F1', 'Alerte seuil F2');
 create unique index idx_v_score_siret
   on v_score (siret);
-create unique index idx_v_score_siren 
+create index idx_v_score_siren 
   on v_score (siren);

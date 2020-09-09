@@ -791,7 +791,8 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 		"v_last_effectif",
 		"v_last_procol",
 		"v_hausse_urssaf",
-		"v_apdemande"}
+		"v_apdemande",
+		"v_score"}
 	for _, v := range views {
 		fmt.Printf("\033[2K\rrefreshing %s", v)
 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))
