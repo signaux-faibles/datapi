@@ -10,12 +10,12 @@ import (
 
 // Follow type follow pour l'API
 type Follow struct {
-	Siret         *string   `json:"siret"`
-	Username      *string   `json:"username"`
-	Active        bool      `json:"active"`
-	Since         time.Time `json:"since"`
-	Comment       string    `json:"comment"`
-	Etablissement *Score    `json:"etablissement,omitempty"`
+	Siret          *string   `json:"siret,omitempty"`
+	Username       *string   `json:"username,omitempty"`
+	Active         bool      `json:"active"`
+	Since          time.Time `json:"since"`
+	Comment        string    `json:"comment"`
+	Etablissements *Score    `json:"etablissements,omitempty"`
 }
 
 func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
@@ -189,7 +189,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 	left join v_last_procol ep on ep.siret = f.siret
 	left join v_diane_variation_ca di on di.siren = f.siren
 	left join score s on s.siret = f.siret and s.libelle_liste = $2
-	where f.username = $3
+	where f.username = $3 and f.active
 	`
 
 	rows, err := db.Query(context.Background(), sqlFollow, roles, liste[0].ID, f.Username)
@@ -231,7 +231,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 		if err != nil {
 			return nil, errorToJSON(500, err)
 		}
-		f.Etablissement = &e
+		f.Etablissements = &e
 		f.Active = true
 		follows = append(follows, f)
 	}
