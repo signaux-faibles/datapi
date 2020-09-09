@@ -306,8 +306,9 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
 		dette_fiscale, frais_financier, taux_marge
 		from entreprise_bdf0 en
-		left join etablissement_follow f on f.siren = en.siren and f.username = $3 and f.active
-		inner join v_roles ro on ro.siren = en.siren and ((ro.roles && $2) or f.id is not null) and $2 @> array['bdf']
+		left join (select distinct siren from v_score) s on s.siren = en.siren
+		left join (select distinct siren from etablissement_follow where username=$3 and active) f on f.siren = en.siren
+		inner join v_roles ro on ro.siren = en.siren and $2 @> array['bdf'] and (s.siren is not null and (ro.roles && $2) or f.siren is not null) 
 		where en.siren=any($1)
 		order by arrete_bilan_bdf;`,
 		e.sirensFromQuery(),
@@ -317,16 +318,16 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 
 	batch.Queue(`select e.siret, libelle_liste, batch, algo, periode, score, diff, alert
 		from score0 e
-		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 or f.id is not null)
+		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, batch desc, score desc;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
 		from etablissement_apconso0 e
+		left join v_score s on s.siret = e.siret
 		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and ((ro.roles) && $1 or f.id is not null) and $1 @> array['dgefp']
+		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 and s.siren is not null or f.id is not null) and $1 @> array['dgefp']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, periode;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
@@ -334,23 +335,25 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select e.siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, 
 		periode_end, hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme
 		from etablissement_apdemande0 e
+		left join v_score s on s.siret = e.siret
 		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and ((ro.roles) && $1 or f.id is not null) and $1 @> array['dgefp']
+		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 and s.siren is not null or f.id is not null) and $1 @> array['dgefp']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, periode_start;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
 	batch.Queue(`select e.siret, e.periode, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) and cotisation != 0 then 
+		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) and cotisation != 0 then 
 			cotisation else null
 		end, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) then part_patronale else null end, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) then part_salariale else null end, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) then montant_majorations else null end, 
+		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) then part_patronale else null end, 
+		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) then part_salariale else null end, 
+		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) then montant_majorations else null end, 
 		effectif
 		from etablissement_periode_urssaf0 e
+		left join v_score s on s.siret = e.siret
+		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
 		inner join v_roles ro on ro.siren = e.siren
-		left join etablissement_follow c on c.siret = e.siret and c.username = $4 and c.active
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, periode;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
@@ -358,19 +361,18 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select e.siret, action, annee_creation, date_creation, date_echeance, denomination,
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
 		from etablissement_delai0 e
+		left join v_score s on s.siret = e.siret
 		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 or f.id is not null) and $1 @> array['urssaf']
+		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 and s.siret is not null or f.id is not null) and $1 @> array['urssaf']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by e.siret, date_creation;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
 	batch.Queue(`select e.siret, date_effet, action_procol, stade_procol
 		from etablissement_procol0 e
-		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 or f.id is not null)
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		where e.siret=any($1) or e.siren=any($2) and coalesce($1, $2) is not null
 		order by e.siret, date_effet;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
+		e.Query.Sirets, e.Query.Sirens)
 
 	return &batch
 }
