@@ -58,8 +58,8 @@ type Score struct {
 	DernierREXP        *int       `json:"resultat_expl"`
 	EtatProcol         *string    `json:"etat_procol,omitempty"`
 	Alert              *string    `json:"alert,omitempty"`
-	Visible            *bool      `json:"visible"`
-	InZone             *bool      `json:"inZone"`
+	Visible            *bool      `json:"visible,omitempty"`
+	InZone             *bool      `json:"inZone,omitempty"`
 }
 
 func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
@@ -176,7 +176,8 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 		s.alert,
 		count(case when s.alert='Alerte seuil F1' then 1 else null end) over (),
 		count(case when s.alert='Alerte seuil F2' then 1 else null end) over (),
-		count(*) over ()
+		count(*) over (),
+		et.departement=any($1) 
 	from score0 s
 	inner join v_roles r on r.roles && $1 and r.siren = s.siren
 	inner join etablissement0 et on et.siret = s.siret
@@ -239,6 +240,7 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 			&liste.NbF1,
 			&liste.NbF2,
 			&liste.Total,
+			&score.InZone,
 		)
 		if err != nil {
 			return errorToJSON(500, err)

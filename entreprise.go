@@ -36,8 +36,9 @@ type EtablissementSummary struct {
 	Activite           *string `json:"activite"`
 	Secteur            *string `json:"secteur"`
 	DernierEffectif    *int    `json:"dernierEffectif,omitempty"`
-	Visible            *bool   `json:"visible"`
-	Inzone             *bool   `json:"zone"`
+	Visible            *bool   `json:"visible,omitempty"`
+	Inzone             *bool   `json:"zone,omitempty"`
+	Alert              *bool   `json:"alert,omitempty"`
 }
 
 type findEtablissementsParams struct {
@@ -88,6 +89,10 @@ type Etablissement struct {
 	APConso       []EtablissementAPConso     `json:"apConso,omitempty"`
 	Procol        []EtablissementProcol      `json:"procol,omitempty"`
 	Scores        []EtablissementScore       `json:"scores,omitempty"`
+	Followed      bool                       `json:"followed"`
+	Visible       bool                       `json:"visible"`
+	InZone        bool                       `json:"inZone"`
+	Alert         bool                       `json:"alert,omitempty"`
 }
 
 // EtablissementPeriodeUrssaf …
@@ -162,6 +167,7 @@ type EtablissementScore struct {
 func getEntreprise(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siren := c.Param("siren")
+	username := c.GetString("username")
 	siret, err := getSiegeFromSiren(siren)
 	if err != nil {
 		c.JSON(500, err.Error())
@@ -169,7 +175,7 @@ func getEntreprise(c *gin.Context) {
 	}
 	var etablissements Etablissements
 	etablissements.Query.Sirets = []string{siret}
-	err = etablissements.load(roles)
+	err = etablissements.load(roles, username)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -188,9 +194,10 @@ func getEntreprise(c *gin.Context) {
 func getEtablissement(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siret := c.Param("siret")
+	username := c.GetString("username")
 	var etablissements Etablissements
 	etablissements.Query.Sirets = []string{siret}
-	err := etablissements.load(roles)
+	err := etablissements.load(roles, username)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -213,9 +220,10 @@ func getEtablissement(c *gin.Context) {
 func getEntrepriseEtablissements(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siren := c.Param("siren")
+	username := c.GetString("username")
 	var etablissements Etablissements
 	etablissements.Query.Sirens = []string{siren}
-	err := etablissements.load(roles)
+	err := etablissements.load(roles, username)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -248,7 +256,7 @@ func (e Etablissements) sirensFromQuery() []string {
 	return list
 }
 
-func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
+func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	var batch pgx.Batch
 
 	batch.Queue(
@@ -257,17 +265,22 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		et.numero_voie, et.type_voie, et.adresse, et.code_postal, et.commune, et.departement,
 		d.libelle, r.libelle, et.lattitude, et.longitude, et.visite_fce, 
 		n.libelle_n1, n.code_n1, n.libelle_n5, n.code_n5,
-		n.libelle_n2, n.libelle_n3, n.libelle_n4
+		n.libelle_n2, n.libelle_n3, n.libelle_n4,
+		f.id is not null as followed,
+		ro.roles && $4 as visible,
+		s.siret is not null as alert
 		from etablissement0 et
-		inner join v_roles ro on ro.siren = et.siren and ($3 && ro.roles)
 		inner join v_naf n on n.code_n5 = et.ape
 		inner join departements d on d.code = et.departement
 		inner join regions r on d.id_region = r.id
+		inner join v_roles ro on ro.siren = et.siren
+		left join etablissement_follow f on f.siret = et.siret and f.active = true and f.username = $3
 		left join entreprise0 en on en.siren = et.siren
+		left join v_score s on s.siret = et.siret
 		where 
 		(et.siret=any($1) or et.siren=any($2))
 		and coalesce($1, $2) is not null;
-	`, e.Query.Sirets, e.Query.Sirens, roles.zoneGeo())
+	`, e.Query.Sirets, e.Query.Sirens, username, roles.zoneGeo())
 
 	batch.Queue(`select en.siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
 		achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,
@@ -285,64 +298,79 @@ func (e *Etablissements) getBatch(roles scope) *pgx.Batch {
 		taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
 		taux_valeur_ajoutee, valeur_ajoutee
 		from entreprise_diane0 en
-		inner join v_roles ro on ro.siren = en.siren and (ro.roles && $2)
 		where en.siren=any($1)
 		order by en.arrete_bilan_diane;`,
 		e.sirensFromQuery(),
-		roles.zoneGeo())
+	)
 
 	batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
 		dette_fiscale, frais_financier, taux_marge
 		from entreprise_bdf0 en
-		inner join v_roles ro on ro.siren = en.siren and (ro.roles && $2) and $2 @> array['bdf']
+		left join etablissement_follow f on f.siren = en.siren and f.username = $3 and f.active
+		inner join v_roles ro on ro.siren = en.siren and ((ro.roles && $2) or f.id is not null) and $2 @> array['bdf']
 		where en.siren=any($1)
 		order by arrete_bilan_bdf;`,
 		e.sirensFromQuery(),
-		roles.zoneGeo())
+		roles.zoneGeo(),
+		username,
+	)
 
-	batch.Queue(`select siret, libelle_liste, batch, algo, periode, score, diff, alert
+	batch.Queue(`select e.siret, libelle_liste, batch, algo, periode, score, diff, alert
 		from score0 e
-		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
+		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
+		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 or f.id is not null)
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, batch desc, score desc;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
-	batch.Queue(`select siret, id_conso, heure_consomme, montant, effectif, periode from etablissement_apconso0 e
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles) && $1 and $1 @> array['dgefp']
+	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
+		from etablissement_apconso0 e
+		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
+		inner join v_roles ro on ro.siren = e.siren and ((ro.roles) && $1 or f.id is not null) and $1 @> array['dgefp']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, periode;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
-	batch.Queue(`select siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, 
+	batch.Queue(`select e.siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, 
 		periode_end, hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme
 		from etablissement_apdemande0 e
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles) && $1 and $1 @> array['dgefp']
+		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
+		inner join v_roles ro on ro.siren = e.siren and ((ro.roles) && $1 or f.id is not null) and $1 @> array['dgefp']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, periode_start;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
-	batch.Queue(`select siret, periode, 
-		case when cotisation = 0 then null else cotisation end, part_patronale, part_salariale, montant_majorations, effectif
+	batch.Queue(`select e.siret, e.periode, 
+		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) and cotisation != 0 then 
+			cotisation else null
+		end, 
+		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) then part_patronale else null end, 
+		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) then part_salariale else null end, 
+		case when 'urssaf' = any($1) and (ro.roles && $1 or c.id is not null) then montant_majorations else null end, 
+		effectif
 		from etablissement_periode_urssaf0 e
-		inner join v_roles ro on ro.siren = e.siren and  ro.roles && $1 and $1 @> array['urssaf']
+		inner join v_roles ro on ro.siren = e.siren
+		left join etablissement_follow c on c.siret = e.siret and c.username = $4 and c.active
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, periode;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
 	batch.Queue(`select e.siret, action, annee_creation, date_creation, date_echeance, denomination,
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
 		from etablissement_delai0 e
-		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1 and $1 @> array['urssaf']
+		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
+		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 or f.id is not null) and $1 @> array['urssaf']
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by e.siret, date_creation;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
-	batch.Queue(`select siret, date_effet, action_procol, stade_procol
+	batch.Queue(`select e.siret, date_effet, action_procol, stade_procol
 		from etablissement_procol0 e
-		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
+		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
+		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 or f.id is not null)
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by e.siret, date_effet;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
 	return &batch
 }
@@ -390,11 +418,11 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 			return err
 		}
 
-		if *pu.partPatronale+*pu.partSalariale+*pu.montantMajoration != 0 || pu.effectif != nil {
-			cotisations[pu.siret] = append(cotisations[pu.siret], pu.cotisation)
+		if sumPFloats(pu.partPatronale, pu.partSalariale, pu.montantMajoration) != 0 || pu.effectif != nil {
 			effectifs[pu.siret] = append(effectifs[pu.siret], pu.effectif)
 			periodes[pu.siret] = append(periodes[pu.siret], pu.periode)
-			if len(e.Etablissements[pu.siret].Scores) > 0 && roles.containsRole("urssaf") {
+			if (e.Etablissements[pu.siret].Visible && e.Etablissements[pu.siret].Alert) || e.Etablissements[pu.siret].Followed {
+				cotisations[pu.siret] = append(cotisations[pu.siret], pu.cotisation)
 				partPatronales[pu.siret] = append(partPatronales[pu.siret], pu.partPatronale)
 				partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
 				montantMajorations[pu.siret] = append(montantMajorations[pu.siret], pu.montantMajoration)
@@ -402,14 +430,14 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 		}
 	}
 
-	for k, cotisation := range cotisations {
+	for k, periode := range periodes {
 		etablissement := e.Etablissements[k]
-		etablissement.PeriodeUrssaf.Cotisation = cotisation
+		etablissement.PeriodeUrssaf.Cotisation = cotisations[k]
 		etablissement.PeriodeUrssaf.PartPatronale = partPatronales[k]
 		etablissement.PeriodeUrssaf.PartSalariale = partSalariales[k]
 		etablissement.PeriodeUrssaf.MontantMajorations = montantMajorations[k]
 		etablissement.PeriodeUrssaf.Effectif = effectifs[k]
-		etablissement.PeriodeUrssaf.Periode = periodes[k]
+		etablissement.PeriodeUrssaf.Periode = periode
 		e.Etablissements[k] = etablissement
 	}
 	return nil
@@ -573,6 +601,9 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NAF.LibelleN2,
 			&et.Sirene.NAF.LibelleN3,
 			&et.Sirene.NAF.LibelleN4,
+			&et.Followed,
+			&et.Visible,
+			&et.Alert,
 		)
 
 		if err != nil {
@@ -584,13 +615,13 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) load(roles scope) error {
+func (e *Etablissements) load(roles scope, username string) error {
 	tx, err := db.Begin(context.Background())
 	if err != nil {
 		return err
 	}
 	defer tx.Commit(context.Background())
-	batch := e.getBatch(roles)
+	batch := e.getBatch(roles, username)
 	b := tx.SendBatch(context.Background(), batch)
 	if err != nil {
 		return err
@@ -934,4 +965,16 @@ func getEtablissementViewers(c *gin.Context) {
 		return
 	}
 	c.JSON(200, users)
+}
+
+func sumPFloats(floats ...*float64) float64 {
+	var total float64
+	for _, f := range floats {
+		if f == nil {
+			continue
+		} else {
+			total += *f
+		}
+	}
+	return total
 }
