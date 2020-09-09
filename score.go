@@ -171,8 +171,10 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 		n1.libelle,
 		et.ape,
 		coalesce(ep.last_procol, 'in_bonis') as last_procol,
-		coalesce(ap.ap, false) as activite_partielle,
-		case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end as hausseUrssaf,
+		case when 'dgefp' = any($1) then coalesce(ap.ap, false) else null end as activite_partielle,
+		case when 'urssaf' = any($1) then 
+			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
+		else null end as hausseUrssaf,
 		s.alert,
 		count(case when s.alert='Alerte seuil F1' then 1 else null end) over (),
 		count(case when s.alert='Alerte seuil F2' then 1 else null end) over (),
