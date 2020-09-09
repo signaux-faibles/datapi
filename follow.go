@@ -143,6 +143,11 @@ func (f *Follow) deactivate() Jerror {
 }
 
 func (f *Follow) list(roles scope) ([]Follow, Jerror) {
+	liste, err := findAllListes()
+	if err != nil {
+		return nil, errorToJSON(500, err)
+	}
+
 	sqlFollow := `select 
 	f.comment,
 	f.since,
@@ -163,13 +168,13 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 	n1.libelle,
 	et.ape,
 	coalesce(ep.last_procol, 'in_bonis') as last_procol,
-	case when 'dgefp' = any($4) then coalesce(ap.ap, false) else null end as activite_partielle ,
-	case when 'urssaf' then 
+	case when 'dgefp' = any($1) then coalesce(ap.ap, false) else null end as activite_partielle ,
+	case when 'urssaf' = any($1) then 
 		case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
 	else null end as hausseUrssaf,
 	s.alert,
 	r.roles && $1 as visible,
-	et.departement = any($2) as in_zone,
+	et.departement = any($1) as in_zone,
 	true as followed
 	from etablissement_follow f
 	inner join v_roles r on r.siren = f.siren
@@ -183,11 +188,11 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 	left join v_apdemande ap on ap.siret = f.siret
 	left join v_last_procol ep on ep.siret = f.siret
 	left join v_diane_variation_ca di on di.siren = f.siren
-	left join scores s on s.siret = f.siret and s.libelle_liste = $3
-	where f.username = $4
+	left join score s on s.siret = f.siret and s.libelle_liste = $2
+	where f.username = $3
 	`
 
-	rows, err := db.Query(context.Background(), sqlFollow, roles, f.Username)
+	rows, err := db.Query(context.Background(), sqlFollow, roles, liste[0].ID, f.Username)
 	if err != nil {
 		return nil, errorToJSON(500, err)
 	}
@@ -219,6 +224,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 			&e.ActivitePartielle,
 			&e.HausseUrssaf,
 			&e.Alert,
+			&e.Visible,
 			&e.InZone,
 			&e.Followed,
 		)
