@@ -118,7 +118,7 @@ create table etablissement_follow (
   active   boolean,
   since    timestamp,
   until    timestamp,
-  comment  bytea  
+  comment  text  
 );
 
 create sequence etablissement_comment_id;
