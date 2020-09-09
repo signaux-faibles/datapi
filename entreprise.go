@@ -77,7 +77,7 @@ type Etablissement struct {
 			LibelleActivite string `json:"libelleActivite"`
 			LibelleSecteur  string `json:"libelleSecteur"`
 			CodeSecteur     string `json:"codeSecteur"`
-			CodeActivite    string `json:"codeActivité"`
+			CodeActivite    string `json:"codeActivite"`
 			LibelleN2       string `json:"libelleN2"`
 			LibelleN3       string `json:"libelleN3"`
 			LibelleN4       string `json:"libelleN4"`
