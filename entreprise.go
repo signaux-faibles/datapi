@@ -824,16 +824,16 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		else null end as hausseUrssaf,
 		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
 		count(*) over (),
-		r.roles && $1 as visible,
-		et.departement = any($2) as in_zone,
+		coalesce(r.roles && $1, false) as visible,
+		coalesce(et.departement = any($2), false) as in_zone,
 		f.id is not null as followed
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
 		inner join departements d on d.code = et.departement
 		inner join naf n on n.code = et.ape
-		inner join naf n1 on n.id_n1 = n1.id
-		left join score s on r.siren = s.siren
+		inner join naf n1 on n.id_n1 = n1.id 
+		left join score s on r.siret = s.siret
 		left join v_score vs on vs.siret = et.siret
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $10
 		left join v_last_effectif ef on ef.siret = et.siret
