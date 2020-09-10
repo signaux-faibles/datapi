@@ -15,7 +15,7 @@ type paramsListeScores struct {
 	Activites    []string `json:"activite,omitempty"`
 	EffectifMin  *int     `json:"effectifMin"`
 	EffectifMax  *int     `json:"effectifMax"`
-	VueFrance    *bool    `json:"vueFrance"`
+	IgnoreZone   *bool    `json:"ignorezone"`
 	Page         int      `json:"page"`
 	Filter       string   `json:"filter"`
 }
@@ -202,7 +202,7 @@ func (liste *Liste) getScores(roles scope, page int, limit int, username string)
 		roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, // $1…
 		liste.Query.Departements, liste.Query.Activites, // $4…
 		liste.Query.EffectifMin, liste.Query.EffectifMax, // $6…
-		liste.Query.VueFrance, limit, page*limit, // $8…
+		liste.Query.IgnoreZone, limit, page*limit, // $8…
 		liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", // $11
 		username,
 	)

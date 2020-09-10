@@ -824,7 +824,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		else null end as hausseUrssaf,
 		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
 		count(*) over (),
-		coalesce(r.roles && $1, false) as visible,
+		coalesce(r.roles && $1 and vs.siret is not null, false) as visible,
 		coalesce(et.departement = any($2), false) as in_zone,
 		f.id is not null as followed
 		from etablissement0 et
