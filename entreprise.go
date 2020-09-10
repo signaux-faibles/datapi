@@ -319,6 +319,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select e.siret, libelle_liste, batch, algo, periode, score, diff, alert
 		from score0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
+		inner join v_score s on s.siret = e.siret
 		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
 		order by siret, batch desc, score desc;`,
 		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
@@ -412,10 +413,11 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 			effectif          *int
 			periode           *time.Time
 			siret             string
+			followed          bool
 		}
 
 		err := (*rows).Scan(&pu.siret, &pu.periode, &pu.cotisation, &pu.partPatronale, &pu.partSalariale, &pu.montantMajoration,
-			&pu.effectif)
+			&pu.effectif, &pu.followed)
 		if err != nil {
 			return err
 		}
