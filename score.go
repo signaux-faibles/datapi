@@ -60,19 +60,7 @@ type Score struct {
 	Alert              *string    `json:"alert,omitempty"`
 	Visible            *bool      `json:"visible,omitempty"`
 	InZone             *bool      `json:"inZone,omitempty"`
-}
-
-func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
-	username := c.GetString("username")
-	follow := Follow{Username: &username}
-	follows, err := follow.list()
-
-	if err != nil {
-		c.JSON(err.Code(), err.Error())
-		return
-	}
-
-	c.JSON(200, follows)
+	Followed           *bool      `json:"followed,omitempty"`
 }
 
 func getListes(c *gin.Context) {
@@ -85,6 +73,7 @@ func getListes(c *gin.Context) {
 
 func getLastListeScores(c *gin.Context) {
 	roles := scopeFromContext(c)
+	username := c.GetString("username")
 	listes, err := findAllListes()
 	if err != nil || len(listes) == 0 {
 		c.AbortWithStatus(204)
@@ -108,7 +97,7 @@ func getLastListeScores(c *gin.Context) {
 		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
 		return
 	}
-	Jerr := liste.getScores(roles, params.Page, limit)
+	Jerr := liste.getScores(roles, params.Page, limit, username)
 	if Jerr != nil {
 		c.JSON(Jerr.Code(), Jerr.Error())
 		return
@@ -118,6 +107,7 @@ func getLastListeScores(c *gin.Context) {
 
 func getListeScores(c *gin.Context) {
 	roles := scopeFromContext(c)
+	username := c.GetString("username")
 
 	var params paramsListeScores
 	err := c.Bind(&params)
@@ -136,7 +126,7 @@ func getListeScores(c *gin.Context) {
 		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
 		return
 	}
-	Jerr := liste.getScores(roles, params.Page, limit)
+	Jerr := liste.getScores(roles, params.Page, limit, username)
 
 	if Jerr != nil {
 		c.JSON(Jerr.Code(), Jerr.Error())
@@ -146,7 +136,7 @@ func getListeScores(c *gin.Context) {
 	c.JSON(200, liste)
 }
 
-func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
+func (liste *Liste) getScores(roles scope, page int, limit int, username string) Jerror {
 	if liste.Batch == "" {
 		err := liste.load()
 		if err != nil {
@@ -179,9 +169,11 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 		count(case when s.alert='Alerte seuil F1' then 1 else null end) over (),
 		count(case when s.alert='Alerte seuil F2' then 1 else null end) over (),
 		count(*) over (),
-		et.departement=any($1) 
+		et.departement=any($1) as inZone,
+		f.id is not null as followed,
+		r.roles && $1 as visible
 	from score0 s
-	inner join v_roles r on r.roles && $1 and r.siren = s.siren
+	inner join v_roles r on r.siren = s.siren
 	inner join etablissement0 et on et.siret = s.siret
 	inner join entreprise0 en on en.siren = s.siren
 	inner join departements d on d.code = et.departement
@@ -192,7 +184,10 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 	left join v_apdemande ap on ap.siret = s.siret
 	left join v_last_procol ep on ep.siret = s.siret
 	left join v_diane_variation_ca di on di.siren = s.siren
-	where s.libelle_liste = $2
+	left join etablissement_follow f on f.siret = s.siret and f.active = true and f.username = $13
+	where 
+	(r.roles && $1 or f.id is not null)
+	and s.libelle_liste = $2
 	and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
 	and (et.departement=any($4) or $4 is null)
 	and (n1.code=any($5) or $5 is null)
@@ -209,6 +204,7 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 		liste.Query.EffectifMin, liste.Query.EffectifMax, // $6…
 		liste.Query.VueFrance, limit, page*limit, // $8…
 		liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", // $11
+		username,
 	)
 	if err != nil {
 		return errorToJSON(500, err)
@@ -243,6 +239,8 @@ func (liste *Liste) getScores(roles scope, page int, limit int) Jerror {
 			&liste.NbF2,
 			&liste.Total,
 			&score.InZone,
+			&score.Followed,
+			&score.Visible,
 		)
 		if err != nil {
 			return errorToJSON(500, err)

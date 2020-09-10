@@ -740,6 +740,7 @@ type searchParams struct {
 	ignoreRoles bool
 	ignoreZone  bool
 	roles       scope
+	username    string
 }
 
 type searchResult struct {
@@ -754,6 +755,8 @@ type searchResult struct {
 func searchEtablissementHandler(c *gin.Context) {
 	var params searchParams
 	var err error
+
+	params.username = c.GetString("username")
 
 	if search := c.Param("search"); len(search) >= 3 {
 		params.search = search
@@ -804,8 +807,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		et.commune, 
 		d.libelle, 
 		d.code,
-		case when r.roles && $1 then s.score else null end,
-		case when r.roles && $1 then s.diff else null end,
+		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.score else null end,
+		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.diff else null end,
 		di.chiffre_affaire,
 		di.arrete_bilan,
 		di.variation_ca,
@@ -815,14 +818,15 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		n1.libelle,
 		et.ape,
 		coalesce(ep.last_procol, 'in_bonis') as last_procol,
-		case when r.roles && $1 then coalesce(ap.ap, false) else null end as activite_partielle ,
-		case when r.roles && $1 then 
+		case when 'dgefp' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then coalesce(ap.ap, false) else null end as activite_partielle ,
+		case when 'urssaf' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then 
 			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
 		else null end as hausseUrssaf,
-		case when r.roles && $1 then s.alert else null end,
+		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
 		count(*) over (),
 		r.roles && $1 as visible,
-		et.departement = any($2) as in_zone
+		et.departement = any($2) as in_zone,
+		f.id is not null as followed
 		from score0 s
 		inner join v_roles r on r.siren = s.siren
 		inner join etablissement0 et on et.siret = s.siret
@@ -830,6 +834,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		inner join departements d on d.code = et.departement
 		inner join naf n on n.code = et.ape
 		inner join naf n1 on n.id_n1 = n1.id
+		left join v_score vs on vs.siret = s.siret
+		left join etablissement_follow f on f.siret = s.siret and f.active and f.username = $10
 		left join v_last_effectif ef on ef.siret = s.siret
 		left join v_hausse_urssaf u on u.siret = s.siret
 		left join v_apdemande ap on ap.siret = s.siret
@@ -861,7 +867,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		"%"+params.search+"%",
 		params.ignoreRoles,
 		params.ignoreZone,
-		// ,
+		params.username,
 	)
 
 	if err != nil {
@@ -894,6 +900,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&search.Total,
 			&r.Visible,
 			&r.InZone,
+			&r.Followed,
 		)
 		if err != nil {
 			return searchResult{}, errorToJSON(500, err)
