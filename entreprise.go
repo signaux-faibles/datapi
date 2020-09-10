@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 	"time"
 
@@ -319,10 +320,11 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select e.siret, libelle_liste, batch, algo, periode, score, diff, alert
 		from score0 e
 		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
-		inner join v_score s on s.siret = e.siret
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		left join v_score s on s.siret = e.siret
+		left join etablissement_follow f on f.siret = e.siret and f.active and f.username = $4
+		where (e.siret=any($2) or e.siren=any($3)) and coalesce($2, $3) is not null and coalesce(s.siret, f.siret) is not null
 		order by siret, batch desc, score desc;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
 
 	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
 		from etablissement_apconso0 e
@@ -421,7 +423,7 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 			return err
 		}
 
-		if sumPFloats(pu.partPatronale, pu.partSalariale, pu.montantMajoration) != 0 || pu.effectif != nil {
+		if sumPFloats(pu.cotisation, pu.partPatronale, pu.partSalariale, pu.montantMajoration) != 0 || pu.effectif != nil {
 			effectifs[pu.siret] = append(effectifs[pu.siret], pu.effectif)
 			periodes[pu.siret] = append(periodes[pu.siret], pu.periode)
 			if roles.containsRole("urssaf") && (e.Etablissements[pu.siret].Visible && e.Etablissements[pu.siret].Alert || e.Etablissements[pu.siret].Followed) {
@@ -430,6 +432,8 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 				partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
 				montantMajorations[pu.siret] = append(montantMajorations[pu.siret], pu.montantMajoration)
 			}
+		} else {
+			fmt.Println(sumPFloats(pu.partPatronale, pu.partSalariale, pu.montantMajoration), pu.effectif)
 		}
 	}
 
