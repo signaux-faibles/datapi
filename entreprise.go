@@ -413,11 +413,10 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 			effectif          *int
 			periode           *time.Time
 			siret             string
-			followed          bool
 		}
 
 		err := (*rows).Scan(&pu.siret, &pu.periode, &pu.cotisation, &pu.partPatronale, &pu.partSalariale, &pu.montantMajoration,
-			&pu.effectif, &pu.followed)
+			&pu.effectif)
 		if err != nil {
 			return err
 		}
