@@ -827,24 +827,24 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		r.roles && $1 as visible,
 		et.departement = any($2) as in_zone,
 		f.id is not null as followed
-		from score0 s
-		inner join v_roles r on r.siren = s.siren
-		inner join etablissement0 et on et.siret = s.siret
-		inner join entreprise0 en on en.siren = s.siren
+		from etablissement0 et
+		inner join v_roles r on et.siren = r.siren
+		inner join entreprise0 en on en.siren = r.siren
 		inner join departements d on d.code = et.departement
 		inner join naf n on n.code = et.ape
 		inner join naf n1 on n.id_n1 = n1.id
-		left join v_score vs on vs.siret = s.siret
-		left join etablissement_follow f on f.siret = s.siret and f.active and f.username = $10
-		left join v_last_effectif ef on ef.siret = s.siret
-		left join v_hausse_urssaf u on u.siret = s.siret
-		left join v_apdemande ap on ap.siret = s.siret
-		left join v_last_procol ep on ep.siret = s.siret
+		left join score s on r.siren = s.siren
+		left join v_score vs on vs.siret = et.siret
+		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $10
+		left join v_last_effectif ef on ef.siret = et.siret
+		left join v_hausse_urssaf u on u.siret = et.siret
+		left join v_apdemande ap on ap.siret = et.siret
+		left join v_last_procol ep on ep.siret = et.siret
 		left join v_diane_variation_ca di on di.siren = s.siren
 		where (et.siret ilike $6 or en.raison_sociale ilike $7)
 		and (r.roles && $1 or $8)
 		and (et.departement=any($2) or $9)
-		and s.libelle_liste = $5
+		and coalesce(s.libelle_liste, $5) = $5
 		order by s.score desc
 		limit $3 offset $4
 		;`

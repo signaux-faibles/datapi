@@ -236,5 +236,9 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 		follows = append(follows, f)
 	}
 
+	if len(follows) == 0 {
+		return nil, newJSONerror(204, "aucun suivi")
+	}
+
 	return follows, nil
 }
