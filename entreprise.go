@@ -833,7 +833,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		inner join departements d on d.code = et.departement
 		inner join naf n on n.code = et.ape
 		inner join naf n1 on n.id_n1 = n1.id 
-		left join score s on r.siret = s.siret
+		left join score s on et.siret = s.siret
 		left join v_score vs on vs.siret = et.siret
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $10
 		left join v_last_effectif ef on ef.siret = et.siret
