@@ -67,8 +67,9 @@ func runAPI() {
 	listes.GET("", getListes)
 
 	scores := router.Group("/scores", getKeycloakMiddleware())
-	scores.POST("", getLastListeScores)
-	scores.POST("/:id", getListeScores)
+	scores.POST("/liste", getLastListeScores)
+	scores.POST("/liste/:id", getListeScores)
+	scores.POST("/xls/:id", getXLSListeScores)
 
 	reference := router.Group("/reference", getKeycloakMiddleware())
 	reference.GET("/naf", getCodesNaf)

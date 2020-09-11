@@ -1,12 +1,16 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	"github.com/tealeg/xlsx"
 )
 
 type paramsListeScores struct {
@@ -103,6 +107,39 @@ func getLastListeScores(c *gin.Context) {
 		return
 	}
 	c.JSON(200, liste)
+}
+
+func getXLSListeScores(c *gin.Context) {
+	roles := scopeFromContext(c)
+	username := c.GetString("username")
+
+	var params paramsListeScores
+	err := c.Bind(&params)
+
+	liste := Liste{
+		ID:    c.Param("id"),
+		Query: params,
+	}
+
+	if err != nil || liste.ID == "" {
+		c.AbortWithStatus(400)
+		return
+	}
+	limit := viper.GetInt("searchPageLength")
+	if limit == 0 {
+		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
+		return
+	}
+	Jerr := liste.getScores(roles, params.Page, limit, username)
+
+	if Jerr != nil {
+		c.JSON(Jerr.Code(), Jerr.Error())
+		return
+	}
+
+	file, err := liste.toXLS()
+	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract.xls")
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file)
 }
 
 func getListeScores(c *gin.Context) {
@@ -297,4 +334,25 @@ func (liste *Liste) load() Jerror {
 	liste.Batch = batch
 	liste.Algo = algo
 	return nil
+}
+
+func (liste *Liste) toXLS() ([]byte, Jerror) {
+	xlFile := xlsx.NewFile()
+	xlSheet, err := xlFile.AddSheet("extract")
+	if err != nil {
+		return nil, errorToJSON(500, err)
+	}
+
+	for _, score := range liste.Scores {
+		row := xlSheet.AddRow()
+		if err != nil {
+			return nil, errorToJSON(500, err)
+		}
+		row.AddCell().Value = fmt.Sprintf("%d", score.Score)
+	}
+	data := bytes.NewBuffer(nil)
+	file := bufio.NewWriter(data)
+	xlFile.Write(file)
+
+	return data.Bytes(), nil
 }
