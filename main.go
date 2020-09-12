@@ -40,7 +40,7 @@ func runAPI() {
 	router := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"}
+	config.AllowOrigins = []string{"http://localhost:8081"}
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"time"
@@ -101,7 +102,7 @@ func getLastListeScores(c *gin.Context) {
 		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
 		return
 	}
-	Jerr := liste.getScores(roles, params.Page, limit, username)
+	Jerr := liste.getScores(roles, params.Page, &limit, username)
 	if Jerr != nil {
 		c.JSON(Jerr.Code(), Jerr.Error())
 		return
@@ -130,14 +131,14 @@ func getXLSListeScores(c *gin.Context) {
 		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
 		return
 	}
-	Jerr := liste.getScores(roles, params.Page, limit, username)
+	Jerr := liste.getScores(roles, 0, nil, username)
 
 	if Jerr != nil {
 		c.JSON(Jerr.Code(), Jerr.Error())
 		return
 	}
 
-	file, err := liste.toXLS()
+	file, err := liste.toXLS(params)
 	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract.xls")
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file)
 }
@@ -163,7 +164,7 @@ func getListeScores(c *gin.Context) {
 		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
 		return
 	}
-	Jerr := liste.getScores(roles, params.Page, limit, username)
+	Jerr := liste.getScores(roles, params.Page, &limit, username)
 
 	if Jerr != nil {
 		c.JSON(Jerr.Code(), Jerr.Error())
@@ -173,12 +174,18 @@ func getListeScores(c *gin.Context) {
 	c.JSON(200, liste)
 }
 
-func (liste *Liste) getScores(roles scope, page int, limit int, username string) Jerror {
+func (liste *Liste) getScores(roles scope, page int, limit *int, username string) Jerror {
 	if liste.Batch == "" {
 		err := liste.load()
 		if err != nil {
 			return err
 		}
+	}
+	var offset int
+	if limit == nil {
+		offset = 0
+	} else {
+		offset = page * *limit
 	}
 	sqlScores := `select 
 		et.siret,
@@ -239,7 +246,7 @@ func (liste *Liste) getScores(roles scope, page int, limit int, username string)
 		roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, // $1…
 		liste.Query.Departements, liste.Query.Activites, // $4…
 		liste.Query.EffectifMin, liste.Query.EffectifMax, // $6…
-		liste.Query.IgnoreZone, limit, page*limit, // $8…
+		liste.Query.IgnoreZone, limit, offset, // $8…
 		liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", // $11
 		username,
 	)
@@ -285,13 +292,17 @@ func (liste *Liste) getScores(roles scope, page int, limit int, username string)
 		scores = append(scores, score)
 	}
 
+	if limit == nil {
+		i := 1
+		limit = &i
+	}
 	liste.Scores = scores
 	liste.Page = page
-	liste.PageMax = (liste.Total - 1) / limit
-	liste.From = limit*page + 1
-	liste.To = limit*page + len(scores)
+	liste.PageMax = (liste.Total - 1) / *limit
+	liste.From = *limit*page + 1
+	liste.To = *limit*page + len(scores)
 
-	if limit*page > liste.Total {
+	if *limit*page > liste.Total {
 		return newJSONerror(204, "empty page")
 	}
 
@@ -336,23 +347,79 @@ func (liste *Liste) load() Jerror {
 	return nil
 }
 
-func (liste *Liste) toXLS() ([]byte, Jerror) {
+func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
 	if err != nil {
 		return nil, errorToJSON(500, err)
 	}
 
+	row := xlSheet.AddRow()
+	row.AddCell().Value = "liste"
+	row.AddCell().Value = "siren"
+	row.AddCell().Value = "siret"
+	row.AddCell().Value = "departement"
+	row.AddCell().Value = "raison_sociale"
+	row.AddCell().Value = "dernier_effectif"
+	row.AddCell().Value = "code_activite"
+	row.AddCell().Value = "libelle_activite"
+	row.AddCell().Value = "alert"
+
 	for _, score := range liste.Scores {
 		row := xlSheet.AddRow()
 		if err != nil {
 			return nil, errorToJSON(500, err)
 		}
-		row.AddCell().Value = fmt.Sprintf("%d", score.Score)
+		row.AddCell().Value = fmt.Sprintf("%s", liste.ID)
+		row.AddCell().Value = fmt.Sprintf("%s", score.Siren)
+		row.AddCell().Value = fmt.Sprintf("%s", score.Siret)
+		row.AddCell().Value = fmt.Sprintf("%s", *score.Departement)
+		row.AddCell().Value = fmt.Sprintf("%s", *score.RaisonSociale)
+		row.AddCell().Value = fmt.Sprintf("%d", *score.DernierEffectif)
+		row.AddCell().Value = fmt.Sprintf("%s", *score.CodeActivite)
+		row.AddCell().Value = fmt.Sprintf("%s", *score.LibelleActivite)
+		row.AddCell().Value = fmt.Sprintf("%s", *score.Alert)
 	}
+
+	sheetParams, err := xlFile.AddSheet("parameters")
+	row = sheetParams.AddRow()
+	s, err := json.Marshal(params.Activites)
+	row.AddCell().Value = "activites"
+	row.AddCell().Value = string(s)
+
+	row = sheetParams.AddRow()
+	s, err = json.Marshal(params.Departements)
+	row.AddCell().Value = "departements"
+	row.AddCell().Value = string(s)
+
+	row = sheetParams.AddRow()
+	s, err = json.Marshal(params.EffectifMin)
+	row.AddCell().Value = "effectifMin"
+	row.AddCell().Value = string(s)
+
+	row = sheetParams.AddRow()
+	s, err = json.Marshal(params.EffectifMax)
+	row.AddCell().Value = "effectifMax"
+	row.AddCell().Value = string(s)
+
+	row = sheetParams.AddRow()
+	s, err = json.Marshal(params.EtatsProcol)
+	row.AddCell().Value = "etatsProcol"
+	row.AddCell().Value = string(s)
+
+	row = sheetParams.AddRow()
+	s, err = json.Marshal(params.Filter)
+	row.AddCell().Value = "filter"
+	row.AddCell().Value = string(s)
+
+	row = sheetParams.AddRow()
+	s, err = json.Marshal(params.IgnoreZone)
+	row.AddCell().Value = "ignorezone"
+	row.AddCell().Value = string(s)
+
 	data := bytes.NewBuffer(nil)
 	file := bufio.NewWriter(data)
 	xlFile.Write(file)
-
+	file.Flush()
 	return data.Bytes(), nil
 }
