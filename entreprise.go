@@ -850,7 +850,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		and (r.roles && $1 or $8)
 		and (et.departement=any($2) or $9)
 		and coalesce(s.libelle_liste, $5) = $5
-		order by s.score desc
+		order by en.raison_sociale, siret
 		limit $3 offset $4
 		;`
 
