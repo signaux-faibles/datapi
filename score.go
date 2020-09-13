@@ -240,7 +240,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	and (et.departement=any($1) or $8 = true)
 	and s.alert != 'Pas d''alerte'
 	and (et.siret ilike $11 or en.raison_sociale ilike $12)
-	order by s.score desc
+	order by s.score desc, s.siret asc
 	limit $9 offset $10;`
 	rows, err := db.Query(context.Background(), sqlScores,
 		roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, // $1…
