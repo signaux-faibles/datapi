@@ -576,22 +576,24 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		s.Siret = e.Value.Key
 		s.Libelle = s.toLibelle()
 
-		hash := structhash.Md5(s, 0)
-		if id, ok := htreeScore.contains(hash); !ok {
-			batch.Queue(sqlScore,
-				s.Siret,
-				s.Siret[:9],
-				s.toLibelle(),
-				s.Batch,
-				s.Algo,
-				s.Periode,
-				s.Score,
-				s.Diff,
-				s.Alert,
-				hash,
-			)
-		} else {
-			updates["score"] = append(updates["score"], id)
+		if s.Algo == viper.GetString("algoImport") {
+			hash := structhash.Md5(s, 0)
+			if id, ok := htreeScore.contains(hash); !ok {
+				batch.Queue(sqlScore,
+					s.Siret,
+					s.Siret[:9],
+					s.toLibelle(),
+					s.Batch,
+					s.Algo,
+					s.Periode,
+					s.Score,
+					s.Diff,
+					s.Alert,
+					hash,
+				)
+			} else {
+				updates["score"] = append(updates["score"], id)
+			}
 		}
 	}
 
@@ -614,7 +616,23 @@ func groupScores(scores []score) []score {
 }
 
 func (s score) toLibelle() string {
-	return s.Batch + s.Algo
+	months := map[string]string{
+		"01": "Janvier",
+		"02": "Février",
+		"03": "Mars",
+		"04": "Avril",
+		"05": "Mai",
+		"06": "Juin",
+		"07": "Juillet",
+		"08": "Août",
+		"09": "Septembre",
+		"10": "Octobre",
+		"11": "Novembre",
+		"12": "Décembre",
+	}
+	year := "20" + s.Batch[0:2]
+	month := s.Batch[2:4]
+	return s.Batch[0:4] + " - " + months[month] + " " + year
 }
 
 func scoreToListe() pgx.Batch {

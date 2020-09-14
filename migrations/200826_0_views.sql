@@ -120,9 +120,10 @@ create unique index idx_v_apdemande_siret
   on v_apdemande (siret);
 
 create materialized view v_score as
-select distinct siren, siret
+select siren, siret, min(libelle_liste) as first_list
 from score
-where alert in ('Alerte seuil F1', 'Alerte seuil F2');
+where alert in ('Alerte seuil F1', 'Alerte seuil F2')
+group by siren, siret;
 create unique index idx_v_score_siret
   on v_score (siret);
 create index idx_v_score_siren 

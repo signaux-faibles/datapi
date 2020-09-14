@@ -66,6 +66,7 @@ type Score struct {
 	Visible            *bool      `json:"visible,omitempty"`
 	InZone             *bool      `json:"inZone,omitempty"`
 	Followed           *bool      `json:"followed,omitempty"`
+	New                *bool      `json:"new"`
 }
 
 func getListes(c *gin.Context) {
@@ -215,8 +216,10 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		count(*) over (),
 		et.departement=any($1) as inZone,
 		f.id is not null as followed,
-		r.roles && $1 as visible
+		r.roles && $1 as visible,
+		vs.first_list = $2 as new
 	from score0 s
+	inner join v_score vs on vs.siret = s.siret
 	inner join v_roles r on r.siren = s.siren
 	inner join etablissement0 et on et.siret = s.siret
 	inner join entreprise0 en on en.siren = s.siren
@@ -285,6 +288,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			&score.InZone,
 			&score.Followed,
 			&score.Visible,
+			&score.New,
 		)
 		if err != nil {
 			return errorToJSON(500, err)
@@ -302,7 +306,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	liste.From = *limit*page + 1
 	liste.To = *limit*page + len(scores)
 
-	if *limit*page > liste.Total {
+	if *limit*page > liste.Total || liste.Total == 0 {
 		return newJSONerror(204, "empty page")
 	}
 

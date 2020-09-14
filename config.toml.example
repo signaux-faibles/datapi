@@ -33,3 +33,4 @@ adminWhiteList = ["127.0.0.1"]
 # Import des données
 sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json.gz"
 sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json.gz"
+algoImport = "algo2_avec_urssaf"
