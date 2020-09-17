@@ -204,7 +204,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		ef.effectif,
 		n.libelle,
 		n1.libelle,
-		et.ape,
+		et.code_activite,
 		coalesce(ep.last_procol, 'in_bonis') as last_procol,
 		case when 'dgefp' = any($1) then coalesce(ap.ap, false) else null end as activite_partielle,
 		case when 'urssaf' = any($1) then 

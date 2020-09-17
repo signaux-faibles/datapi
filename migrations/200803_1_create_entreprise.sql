@@ -6,7 +6,14 @@ create table entreprise (
   date_add timestamp default current_timestamp,
   siret_siege char(14),
   raison_sociale text,
+  prenom1 text,
+  prenom2 text,
+  prenom3 text,
+  prenom4 text,
+  nom text,
+  nom_usage text,
   statut_juridique text,
+  creation timestamp,
   hash bytea
 );
 

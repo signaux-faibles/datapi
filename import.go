@@ -9,7 +9,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cnf/structhash"
@@ -109,9 +108,16 @@ type debit struct {
 
 // SireneUL detail
 type sireneUL struct {
-	Siren           string `json:"siren"`
-	RaisonSociale   string `json:"raison_sociale"`
-	StatutJuridique string `json:"statut_juridique"`
+	Siren               string     `json:"siren,omitempty"`
+	RaisonSociale       string     `json:"raison_sociale"`
+	Prenom1UniteLegale  string     `json:"prenom1_unite_legale,omitempty"`
+	Prenom2UniteLegale  string     `json:"prenom2_unite_legale,omitempty"`
+	Prenom3UniteLegale  string     `json:"prenom3_unite_legale,omitempty"`
+	Prenom4UniteLegale  string     `json:"prenom4_unite_legale,omitempty"`
+	NomUniteLegale      string     `json:"nom_unite_legale,omitempty"`
+	NomUsageUniteLegale string     `json:"nom_usage_unite_legale,omitempty"`
+	StatutJuridique     string     `json:"statut_juridique"`
+	Creation            *time.Time `json:"date_creation,omitempty"`
 }
 
 // APConso detail
@@ -120,7 +126,7 @@ type apConso struct {
 	IDConso       string    `json:"id_conso"`
 	HeureConsomme float64   `json:"heure_consomme"`
 	Montant       float64   `json:"montant"`
-	Effectif      int       `json:"int"`
+	Effectif      int       `json:"effectif"`
 	Periode       time.Time `json:"periode"`
 }
 
@@ -241,22 +247,27 @@ type diane struct {
 
 // Sirene detail
 type sirene struct {
-	Siret           string   `json:"-"`
-	Region          string   `json:"region"`
-	Commune         string   `json:"commune"`
-	RaisonSociale   string   `json:"raison_sociale"`
-	TypeVoie        string   `json:"type_voie"`
-	Siren           string   `json:"siren"`
-	CodePostal      string   `json:"code_postal"`
-	Lattitude       float64  `json:"lattitude"`
-	Adresse         []string `json:"adresse"`
-	Departement     string   `json:"departement"`
-	NatureJuridique string   `json:"nature_juridique"`
-	NumeroVoie      string   `json:"numero_voie"`
-	Ape             string   `json:"ape"`
-	Longitude       float64  `json:"longitude"`
-	Nic             string   `json:"nic"`
-	Siege           bool     `json:"siege"`
+	Siret                string  `json:"-"`
+	Siren                string  `json:"siren,omitempty"`
+	Nic                  string  `json:"nic"`
+	Siege                bool    `json:"siege"`
+	Region               string  `json:"region"`
+	Commune              string  `json:"commune"`
+	RaisonSociale        string  `json:"raison_sociale"`
+	NumeroVoie           string  `json:"numero_voie"`
+	TypeVoie             string  `json:"type_voie"`
+	IndiceRepetition     string  `json:"indice_repetition"`
+	Voie                 string  `json:"voie"`
+	Cedex                string  `json:"cedex"`
+	DistributionSpeciale string  `json:"distribution_speciale"`
+	CodePostal           string  `json:"code_postal"`
+	Departement          string  `json:"departement"`
+	Latitude             float64 `json:"latitude"`
+	Longitude            float64 `json:"longitude"`
+	NatureJuridique      string  `json:"nature_juridique"`
+	APE                  string  `json:"ape"`
+	CodeActivite         string  `json:"code_activite"`
+	NomenActivite        string  `json:"nomen_activite"`
 }
 
 func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
@@ -267,8 +278,9 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 	updates := make(map[string][]int)
 
 	sqlEntrepriseInsert := `insert into entreprise 
-	(siren, raison_sociale, statut_juridique, hash)
-  values ($1, $2, $3, $4);`
+	(siren, raison_sociale, prenom1, prenom2, prenom3, prenom4, 
+	  nom, nom_usage, statut_juridique, creation, hash)
+  values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`
 
 	hash := structhash.Md5(e.Value.SireneUL, 0)
 
@@ -277,7 +289,14 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 			sqlEntrepriseInsert,
 			e.Value.SireneUL.Siren,
 			e.Value.SireneUL.RaisonSociale,
+			e.Value.SireneUL.Prenom1UniteLegale,
+			e.Value.SireneUL.Prenom2UniteLegale,
+			e.Value.SireneUL.Prenom3UniteLegale,
+			e.Value.SireneUL.Prenom4UniteLegale,
+			e.Value.SireneUL.NomUniteLegale,
+			e.Value.SireneUL.NomUsageUniteLegale,
 			e.Value.SireneUL.StatutJuridique,
+			e.Value.SireneUL.Creation,
 			hash,
 		)
 	} else {
@@ -376,11 +395,14 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 	updates := make(map[string][]int)
 
 	sqlEtablissement := `insert into etablissement
-		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie, siege, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
+		(siret, siren, siege, numero_voie, indice_repetition, distribution_speciale, 
+		type_voie, voie, commune, code_postal, departement, latitude, longitude,
+		code_activite, nomen_activite, nature_juridique, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
 
 	hash := structhash.Md5(e.Value.Sirene, 0)
+
+	defaultNomen := "NAFRev2"
 
 	if id, ok := htreeEtablissement.contains(hash); !ok {
 		e.Value.Sirene.Siret = e.Value.Key
@@ -388,18 +410,20 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 			sqlEtablissement,
 			e.Value.Sirene.Siret,
 			e.Value.Sirene.Siret[0:9],
-			strings.Join(e.Value.Sirene.Adresse, "\n"),
-			e.Value.Sirene.Ape,
-			e.Value.Sirene.CodePostal,
-			e.Value.Sirene.Commune,
-			e.Value.Sirene.Departement,
-			e.Value.Sirene.Lattitude,
-			e.Value.Sirene.Longitude,
-			e.Value.Sirene.NatureJuridique,
-			e.Value.Sirene.NumeroVoie,
-			e.Value.Sirene.Region,
-			e.Value.Sirene.TypeVoie,
 			e.Value.Sirene.Siege,
+			e.Value.Sirene.NumeroVoie,
+			e.Value.Sirene.IndiceRepetition,
+			e.Value.Sirene.DistributionSpeciale,
+			e.Value.Sirene.TypeVoie,
+			e.Value.Sirene.Voie,
+			e.Value.Sirene.Commune,
+			e.Value.Sirene.CodePostal,
+			e.Value.Sirene.Departement,
+			e.Value.Sirene.Latitude,
+			e.Value.Sirene.Longitude,
+			coalescepString(&e.Value.Sirene.APE, &e.Value.Sirene.CodeActivite),
+			coalescepString(&e.Value.Sirene.NomenActivite, &defaultNomen),
+			e.Value.Sirene.NatureJuridique,
 			hash,
 		)
 	} else {

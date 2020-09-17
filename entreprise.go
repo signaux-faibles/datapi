@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"strconv"
 	"time"
 
@@ -15,8 +14,15 @@ import (
 type Entreprise struct {
 	Siren  string `json:"siren"`
 	Sirene struct {
-		RaisonSociale   string `json:"raisonSociale"`
-		StatutJuridique string `json:"statutJuridique"`
+		RaisonSociale   string    `json:"raisonSociale"`
+		StatutJuridique string    `json:"statutJuridique"`
+		Prenom1         string    `json:"prenom1,omitempty"`
+		Prenom2         string    `json:"prenom2,omitempty"`
+		Prenom3         string    `json:"prenom3,omitempty"`
+		Prenom4         string    `json:"prenom4,omitempty"`
+		Nom             string    `json:"nom,omitempty"`
+		NomUsage        string    `json:"nomUsage,omitempty"`
+		Creation        time.Time `json:"creation,omitempty"`
 	}
 	Diane                 []diane                `json:"diane"`
 	Bdf                   []bdf                  `json:"-"`
@@ -64,17 +70,19 @@ type Etablissement struct {
 	Entreprise *Entreprise `json:"entreprise,omitempty"`
 	VisiteFCE  *bool       `json:"visiteFCE"`
 	Sirene     struct {
-		Adresse    string  `json:"adresse"`
-		Dept       string  `json:"dept"`
-		CodeDept   string  `json:"codeDept"`
-		CodePostal string  `json:"codePostal"`
-		Region     string  `json:"region"`
-		Lattitude  float64 `json:"lattitude"`
-		Longitude  float64 `json:"longitude"`
-		NumeroVoie string  `json:"numeroVoie"`
-		TypeVoie   string  `json:"typeVoie"`
-		Commune    string  `json:"commune"`
-		NAF        struct {
+		Latitude             float64 `json:"latitude"`
+		Longitude            float64 `json:"longitude"`
+		NumeroVoie           string  `json:"numeroVoie"`
+		TypeVoie             string  `json:"typeVoie"`
+		Voie                 string  `json:"voie"`
+		IndiceRepetition     string  `json:"indiceRepetition"`
+		DistributionSpeciale string  `json:"distributionSpeciale"`
+		Commune              string  `json:"commune"`
+		Dept                 string  `json:"dept"`
+		CodeDept             string  `json:"codeDept"`
+		CodePostal           string  `json:"codePostal"`
+		Region               string  `json:"region"`
+		NAF                  struct {
 			LibelleActivite string `json:"libelleActivite"`
 			LibelleSecteur  string `json:"libelleSecteur"`
 			CodeSecteur     string `json:"codeSecteur"`
@@ -82,6 +90,7 @@ type Etablissement struct {
 			LibelleN2       string `json:"libelleN2"`
 			LibelleN3       string `json:"libelleN3"`
 			LibelleN4       string `json:"libelleN4"`
+			NomenActivite   string `json:"nomenActivite"`
 		} `json:"naf"`
 	} `json:"sirene"`
 	PeriodeUrssaf EtablissementPeriodeUrssaf `json:"periodeUrssaf,omitempty"`
@@ -263,15 +272,18 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(
 		`select 
 		et.siret, et.siren, et.siren,	en.raison_sociale, en.statut_juridique,
-		et.numero_voie, et.type_voie, et.adresse, et.code_postal, et.commune, et.departement,
-		d.libelle, r.libelle, et.lattitude, et.longitude, et.visite_fce, 
+		et.numero_voie, et.type_voie, et.voie, et.indice_repetition, et.distribution_speciale, 
+		et.code_postal, et.commune, et.departement,
+		d.libelle, r.libelle, et.latitude, et.longitude, et.visite_fce, 
 		n.libelle_n1, n.code_n1, n.libelle_n5, n.code_n5,
 		n.libelle_n2, n.libelle_n3, n.libelle_n4,
+		coalesce(et.nomen_activite, 'NAFRev2'),
 		f.id is not null as followed,
 		ro.roles && $4 as visible,
-		s.siret is not null as alert
+		s.siret is not null as alert,
+		en.prenom1, en.prenom2, en.prenom3, en.prenom4, en.nom, en.nom_usage, en.creation
 		from etablissement0 et
-		inner join v_naf n on n.code_n5 = et.ape
+		inner join v_naf n on n.code_n5 = et.code_activite
 		inner join departements d on d.code = et.departement
 		inner join regions r on d.id_region = r.id
 		inner join v_roles ro on ro.siren = et.siren
@@ -432,8 +444,6 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 				partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
 				montantMajorations[pu.siret] = append(montantMajorations[pu.siret], pu.montantMajoration)
 			}
-		} else {
-			fmt.Println(sumPFloats(pu.partPatronale, pu.partSalariale, pu.montantMajoration), pu.effectif)
 		}
 	}
 
@@ -598,9 +608,11 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 		var en Entreprise
 		err := (*rows).Scan(&et.Siret, &et.Siren, &en.Siren,
 			&en.Sirene.RaisonSociale, &en.Sirene.StatutJuridique,
-			&et.Sirene.NumeroVoie, &et.Sirene.TypeVoie, &et.Sirene.Adresse, &et.Sirene.CodePostal, &et.Sirene.Commune, &et.Sirene.CodeDept,
+			&et.Sirene.NumeroVoie, &et.Sirene.TypeVoie,
+			&et.Sirene.Voie, &et.Sirene.IndiceRepetition, &et.Sirene.DistributionSpeciale,
+			&et.Sirene.CodePostal, &et.Sirene.Commune, &et.Sirene.CodeDept,
 			&et.Sirene.Dept, &et.Sirene.Region,
-			&et.Sirene.Lattitude, &et.Sirene.Longitude, &et.VisiteFCE,
+			&et.Sirene.Latitude, &et.Sirene.Longitude, &et.VisiteFCE,
 			&et.Sirene.NAF.LibelleSecteur,
 			&et.Sirene.NAF.CodeSecteur,
 			&et.Sirene.NAF.LibelleActivite,
@@ -608,9 +620,17 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NAF.LibelleN2,
 			&et.Sirene.NAF.LibelleN3,
 			&et.Sirene.NAF.LibelleN4,
+			&et.Sirene.NAF.NomenActivite,
 			&et.Followed,
 			&et.Visible,
 			&et.Alert,
+			&en.Sirene.Prenom1,
+			&en.Sirene.Prenom2,
+			&en.Sirene.Prenom3,
+			&en.Sirene.Prenom4,
+			&en.Sirene.Nom,
+			&en.Sirene.NomUsage,
+			&en.Sirene.Creation,
 		)
 
 		if err != nil {
@@ -821,7 +841,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		ef.effectif,
 		n.libelle,
 		n1.libelle,
-		et.ape,
+		et.code_activite,
 		coalesce(ep.last_procol, 'in_bonis') as last_procol,
 		case when 'dgefp' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then coalesce(ap.ap, false) else null end as activite_partielle ,
 		case when 'urssaf' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then 
@@ -836,7 +856,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
 		inner join departements d on d.code = et.departement
-		inner join naf n on n.code = et.ape
+		inner join naf n on n.code = et.code_activite
 		inner join naf n1 on n.id_n1 = n1.id 
 		left join score s on et.siret = s.siret
 		left join v_score vs on vs.siret = et.siret

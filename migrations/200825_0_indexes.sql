@@ -1,7 +1,7 @@
 create index idx_etablissement_siret on etablissement (siret) where version = 0;
 create index idx_etablissement_siren on etablissement (siren) where version = 0;
 create index idx_etablissement_departement on etablissement (departement) where version = 0;
-create index idx_etablissement_naf on etablissement (ape) where version = 0;
+create index idx_etablissement_naf on etablissement (code_activite) where version = 0;
 
 create index idx_entreprise_siren on entreprise (siren) where version = 0;
 
