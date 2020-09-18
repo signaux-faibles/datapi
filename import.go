@@ -247,27 +247,31 @@ type diane struct {
 
 // Sirene detail
 type sirene struct {
-	Siret                string  `json:"-"`
-	Siren                string  `json:"siren,omitempty"`
-	Nic                  string  `json:"nic"`
-	Siege                bool    `json:"siege"`
-	Region               string  `json:"region"`
-	Commune              string  `json:"commune"`
-	RaisonSociale        string  `json:"raison_sociale"`
-	NumeroVoie           string  `json:"numero_voie"`
-	TypeVoie             string  `json:"type_voie"`
-	IndiceRepetition     string  `json:"indice_repetition"`
-	Voie                 string  `json:"voie"`
-	Cedex                string  `json:"cedex"`
-	DistributionSpeciale string  `json:"distribution_speciale"`
-	CodePostal           string  `json:"code_postal"`
-	Departement          string  `json:"departement"`
-	Latitude             float64 `json:"latitude"`
-	Longitude            float64 `json:"longitude"`
-	NatureJuridique      string  `json:"nature_juridique"`
-	APE                  string  `json:"ape"`
-	CodeActivite         string  `json:"code_activite"`
-	NomenActivite        string  `json:"nomen_activite"`
+	Siret                string     `json:"-"`
+	Siren                string     `json:"siren,omitempty"`
+	Nic                  string     `json:"nic,omitempty"`
+	Siege                bool       `json:"siege,omitempty"`
+	ComplementAdresse    string     `json:"complement_adresse,omitempty"`
+	NumVoie              string     `json:"numero_voie,omitempty"`
+	IndRep               string     `json:"indrep,omitempty"`
+	TypeVoie             string     `json:"type_voie,omitempty"`
+	Voie                 string     `json:"voie,omitempty"`
+	Commune              string     `json:"commune,omitempty"`
+	CommuneEtranger      string     `json:"commune_etranger,omitempty"`
+	DistributionSpeciale string     `json:"distribution_speciale,omitempty"`
+	CodeCommune          string     `json:"code_commune,omitempty"`
+	CodeCedex            string     `json:"code_cedex,omitempty"`
+	Cedex                string     `json:"cedex,omitempty"`
+	CodePaysEtranger     string     `json:"code_pays_etranger,omitempty"`
+	PaysEtranger         string     `json:"pays_etranger,omitempty"`
+	CodePostal           string     `json:"code_postal,omitempty"`
+	Departement          string     `json:"departement,omitempty"`
+	APE                  string     `json:"ape,omitempty"`
+	CodeActivite         string     `json:"code_activite,omitempty"`
+	NomenActivite        string     `json:"nomen_activite,omitempty"`
+	Creation             *time.Time `json:"date_creation,omitempty"`
+	Longitude            float64    `json:"longitude,omitempty"`
+	Latitude             float64    `json:"latitude,omitempty"`
 }
 
 func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
@@ -395,10 +399,12 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 	updates := make(map[string][]int)
 
 	sqlEtablissement := `insert into etablissement
-		(siret, siren, siege, numero_voie, indice_repetition, distribution_speciale, 
-		type_voie, voie, commune, code_postal, departement, latitude, longitude,
-		code_activite, nomen_activite, nature_juridique, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
+		(siret, siren, siege, complement_adresse, numero_voie, indice_repetition, 
+		type_voie, voie, commune, commune_etranger, distribution_speciale, code_commune,
+		cedex, code_pays_etranger, pays_etranger, code_postal, departement,
+		code_activite, nomen_activite, creation, latitude, longitude, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 
+		$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23);`
 
 	hash := structhash.Md5(e.Value.Sirene, 0)
 
@@ -409,21 +415,27 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		batch.Queue(
 			sqlEtablissement,
 			e.Value.Sirene.Siret,
-			e.Value.Sirene.Siret[0:9],
+			e.Value.Sirene.Siren,
 			e.Value.Sirene.Siege,
-			e.Value.Sirene.NumeroVoie,
-			e.Value.Sirene.IndiceRepetition,
-			e.Value.Sirene.DistributionSpeciale,
+			e.Value.Sirene.ComplementAdresse,
+			e.Value.Sirene.NumVoie,
+			e.Value.Sirene.IndRep,
 			e.Value.Sirene.TypeVoie,
 			e.Value.Sirene.Voie,
 			e.Value.Sirene.Commune,
+			e.Value.Sirene.CommuneEtranger,
+			e.Value.Sirene.DistributionSpeciale,
+			e.Value.Sirene.CodeCommune,
+			e.Value.Sirene.Cedex,
+			e.Value.Sirene.CodePaysEtranger,
+			e.Value.Sirene.PaysEtranger,
 			e.Value.Sirene.CodePostal,
 			e.Value.Sirene.Departement,
-			e.Value.Sirene.Latitude,
-			e.Value.Sirene.Longitude,
 			coalescepString(&e.Value.Sirene.APE, &e.Value.Sirene.CodeActivite),
 			coalescepString(&e.Value.Sirene.NomenActivite, &defaultNomen),
-			e.Value.Sirene.NatureJuridique,
+			e.Value.Sirene.Creation,
+			e.Value.Sirene.Latitude,
+			e.Value.Sirene.Longitude,
 			hash,
 		)
 	} else {
