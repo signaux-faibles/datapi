@@ -251,24 +251,24 @@ type sirene struct {
 	Siren                string     `json:"siren,omitempty"`
 	Nic                  string     `json:"nic,omitempty"`
 	Siege                bool       `json:"siege,omitempty"`
-	ComplementAdresse    string     `json:"complement_adresse,omitempty"`
-	NumVoie              string     `json:"numero_voie,omitempty"`
-	IndRep               string     `json:"indrep,omitempty"`
-	TypeVoie             string     `json:"type_voie,omitempty"`
-	Voie                 string     `json:"voie,omitempty"`
-	Commune              string     `json:"commune,omitempty"`
-	CommuneEtranger      string     `json:"commune_etranger,omitempty"`
-	DistributionSpeciale string     `json:"distribution_speciale,omitempty"`
-	CodeCommune          string     `json:"code_commune,omitempty"`
-	CodeCedex            string     `json:"code_cedex,omitempty"`
-	Cedex                string     `json:"cedex,omitempty"`
-	CodePaysEtranger     string     `json:"code_pays_etranger,omitempty"`
-	PaysEtranger         string     `json:"pays_etranger,omitempty"`
-	CodePostal           string     `json:"code_postal,omitempty"`
-	Departement          string     `json:"departement,omitempty"`
-	APE                  string     `json:"ape,omitempty"`
-	CodeActivite         string     `json:"code_activite,omitempty"`
-	NomenActivite        string     `json:"nomen_activite,omitempty"`
+	ComplementAdresse    *string    `json:"complement_adresse,omitempty"`
+	NumVoie              *string    `json:"numero_voie,omitempty"`
+	IndRep               *string    `json:"indrep,omitempty"`
+	TypeVoie             *string    `json:"type_voie,omitempty"`
+	Voie                 *string    `json:"voie,omitempty"`
+	Commune              *string    `json:"commune,omitempty"`
+	CommuneEtranger      *string    `json:"commune_etranger,omitempty"`
+	DistributionSpeciale *string    `json:"distribution_speciale,omitempty"`
+	CodeCommune          *string    `json:"code_commune,omitempty"`
+	CodeCedex            *string    `json:"code_cedex,omitempty"`
+	Cedex                *string    `json:"cedex,omitempty"`
+	CodePaysEtranger     *string    `json:"code_pays_etranger,omitempty"`
+	PaysEtranger         *string    `json:"pays_etranger,omitempty"`
+	CodePostal           *string    `json:"code_postal,omitempty"`
+	Departement          *string    `json:"departement,omitempty"`
+	APE                  *string    `json:"ape,omitempty"`
+	CodeActivite         *string    `json:"code_activite,omitempty"`
+	NomenActivite        *string    `json:"nomen_activite,omitempty"`
 	Creation             *time.Time `json:"date_creation,omitempty"`
 	Longitude            float64    `json:"longitude,omitempty"`
 	Latitude             float64    `json:"latitude,omitempty"`
@@ -431,8 +431,8 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 			e.Value.Sirene.PaysEtranger,
 			e.Value.Sirene.CodePostal,
 			e.Value.Sirene.Departement,
-			coalescepString(&e.Value.Sirene.APE, &e.Value.Sirene.CodeActivite),
-			coalescepString(&e.Value.Sirene.NomenActivite, &defaultNomen),
+			coalescepString(e.Value.Sirene.APE, e.Value.Sirene.CodeActivite),
+			coalescepString(e.Value.Sirene.NomenActivite, &defaultNomen),
 			e.Value.Sirene.Creation,
 			e.Value.Sirene.Latitude,
 			e.Value.Sirene.Longitude,
@@ -821,7 +821,7 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 			return err
 		}
 
-		if len(e.ID) > 14 && e.Value.Sirene.Departement != "" {
+		if len(e.ID) > 14 && e.Value.Sirene.Departement != nil {
 			e.Value.Key = e.ID[len(e.ID)-14:]
 			newUpdates := e.getBatch(&batch, htrees)
 			for k, v := range newUpdates {
@@ -846,7 +846,8 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 		"v_last_procol",
 		"v_hausse_urssaf",
 		"v_apdemande",
-		"v_score"}
+		"v_alert_etablissement",
+		"v_alert_entreprise"}
 	for _, v := range views {
 		fmt.Printf("\033[2K\rrefreshing %s", v)
 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))

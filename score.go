@@ -66,7 +66,7 @@ type Score struct {
 	Visible            *bool      `json:"visible,omitempty"`
 	InZone             *bool      `json:"inZone,omitempty"`
 	Followed           *bool      `json:"followed,omitempty"`
-	New                *bool      `json:"new"`
+	FirstAlert         *bool      `json:"firstAlert"`
 }
 
 func getListes(c *gin.Context) {
@@ -202,8 +202,8 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		di.variation_ca,
 		di.resultat_expl,
 		ef.effectif,
-		n.libelle,
-		n1.libelle,
+		n.libelle_n5,
+		n.libelle_n1,
 		et.code_activite,
 		coalesce(ep.last_procol, 'in_bonis') as last_procol,
 		case when 'dgefp' = any($1) then coalesce(ap.ap, false) else null end as activite_partielle,
@@ -217,15 +217,14 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		et.departement=any($1) as inZone,
 		f.id is not null as followed,
 		r.roles && $1 as visible,
-		vs.first_list = $2 as new
+		vs.first_list = $2 as firstAlert
 	from score0 s
-	inner join v_score vs on vs.siret = s.siret
+	inner join v_alert_etablissement vs on vs.siret = s.siret
 	inner join v_roles r on r.siren = s.siren
 	inner join etablissement0 et on et.siret = s.siret
 	inner join entreprise0 en on en.siren = s.siren
 	inner join departements d on d.code = et.departement
-	inner join naf n on n.code = et.ape
-	inner join naf n1 on n.id_n1 = n1.id
+	left join v_naf n on n.code_n5 = et.code_activite
 	left join v_last_effectif ef on ef.siret = s.siret
 	left join v_hausse_urssaf u on u.siret = s.siret
 	left join v_apdemande ap on ap.siret = s.siret
@@ -237,7 +236,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	and s.libelle_liste = $2
 	and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
 	and (et.departement=any($4) or $4 is null)
-	and (n1.code=any($5) or $5 is null)
+	and (n.code_n1=any($5) or $5 is null)
 	and (ef.effectif >= $6 or $6 is null)
 	and (ef.effectif <= $7 or $7 is null)
 	and (et.departement=any($1) or $8 = true)
@@ -288,7 +287,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			&score.InZone,
 			&score.Followed,
 			&score.Visible,
-			&score.New,
+			&score.FirstAlert,
 		)
 		if err != nil {
 			return errorToJSON(500, err)
