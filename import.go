@@ -146,7 +146,7 @@ type apDemande struct {
 	MTA                float64 `json:"mta"`
 	HTA                float64 `json:"hta"`
 	MotifRecoursSE     int     `json:"motif_recours_se"`
-	HeureConsomme      float64 `json:"heure_consomme"`
+	HeureConsomme      float64 `json:"heure_consommee"`
 	MontantConsomme    float64 `json:"montant_consommee"`
 }
 
