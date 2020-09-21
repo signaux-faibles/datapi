@@ -124,7 +124,7 @@ type sireneUL struct {
 type apConso struct {
 	Siret         string    `json:"siret"`
 	IDConso       string    `json:"id_conso"`
-	HeureConsomme float64   `json:"heure_consomme"`
+	HeureConsomme float64   `json:"heure_consommee"`
 	Montant       float64   `json:"montant"`
 	Effectif      int       `json:"effectif"`
 	Periode       time.Time `json:"periode"`

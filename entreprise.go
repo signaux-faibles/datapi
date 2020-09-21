@@ -755,26 +755,6 @@ func (e *Etablissements) load(roles scope, username string) error {
 	return nil
 }
 
-// ComplementAdresse    *string    `json:"-"`
-// NumVoie              *string    `json:"-"`
-// IndRep               *string    `json:"-"`
-// TypeVoie             *string    `json:"-"`
-// Voie                 *string    `json:"-"`
-// Commune              *string    `json:"-"`
-// CommuneEtranger      *string    `json:"-"`
-// DistributionSpeciale *string    `json:"-"`
-// CodeCommune          *string    `json:"-"`
-// CodeCedex            *string    `json:"-"`
-// Cedex                *string    `json:"-"`
-// CodePaysEtranger     *string    `json:"-"`
-// PaysEtranger         *string    `json:"-"`
-// Adresse              *string    `json:"adresse"`
-// Dept                 *string    `json:"dept"`
-// CodeDepartement      *string    `json:"codeDepartement"`
-// Departement          *string    `json:"departement"`
-// CodePostal           *string    `json:"codePostal"`
-// Region               *string    `json:"region"`
-
 func (e *Etablissement) setAdresse() {
 	space := regexp.MustCompile(`\s+`)
 	adresse := []string{}
