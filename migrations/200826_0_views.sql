@@ -119,12 +119,18 @@ create materialized view v_apdemande as select siret, true as ap
 create unique index idx_v_apdemande_siret 
   on v_apdemande (siret);
 
-create materialized view v_score as
-select siren, siret, min(libelle_liste) as first_list
+create materialized view v_alert_etablissement as
+select siret, min(libelle_liste) as first_list
 from score
 where alert in ('Alerte seuil F1', 'Alerte seuil F2')
-group by siren, siret;
-create unique index idx_v_score_siret
-  on v_score (siret);
-create index idx_v_score_siren 
-  on v_score (siren);
+group by siret;
+create unique index idx_v_alert_etablissement_siret
+  on v_alert_etablissement (siret);
+
+create materialized view v_alert_entreprise as
+select siren, min(libelle_liste) as first_list
+from score
+where alert in ('Alerte seuil F1', 'Alerte seuil F2')
+group by siren;
+create index idx_v_alert_entreprise_siren
+  on v_alert_entreprise (siren);

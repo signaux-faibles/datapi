@@ -9,7 +9,6 @@ import (
 	"log"
 	"math"
 	"os"
-	"strings"
 	"time"
 
 	"github.com/cnf/structhash"
@@ -109,18 +108,25 @@ type debit struct {
 
 // SireneUL detail
 type sireneUL struct {
-	Siren           string `json:"siren"`
-	RaisonSociale   string `json:"raison_sociale"`
-	StatutJuridique string `json:"statut_juridique"`
+	Siren               string     `json:"siren,omitempty"`
+	RaisonSociale       string     `json:"raison_sociale"`
+	Prenom1UniteLegale  string     `json:"prenom1_unite_legale,omitempty"`
+	Prenom2UniteLegale  string     `json:"prenom2_unite_legale,omitempty"`
+	Prenom3UniteLegale  string     `json:"prenom3_unite_legale,omitempty"`
+	Prenom4UniteLegale  string     `json:"prenom4_unite_legale,omitempty"`
+	NomUniteLegale      string     `json:"nom_unite_legale,omitempty"`
+	NomUsageUniteLegale string     `json:"nom_usage_unite_legale,omitempty"`
+	StatutJuridique     string     `json:"statut_juridique"`
+	Creation            *time.Time `json:"date_creation,omitempty"`
 }
 
 // APConso detail
 type apConso struct {
 	Siret         string    `json:"siret"`
 	IDConso       string    `json:"id_conso"`
-	HeureConsomme float64   `json:"heure_consomme"`
+	HeureConsomme float64   `json:"heure_consommee"`
 	Montant       float64   `json:"montant"`
-	Effectif      int       `json:"int"`
+	Effectif      int       `json:"effectif"`
 	Periode       time.Time `json:"periode"`
 }
 
@@ -136,7 +142,7 @@ type apDemande struct {
 	Effectif           int     `json:"effectif"`
 	EffectifAutorise   int     `json:"effectif_autorise"`
 	EffectifConsomme   int     `json:"effectif_consomme"`
-	IDDemande          string  `json:"id_conso"`
+	IDDemande          string  `json:"id_demande"`
 	MTA                float64 `json:"mta"`
 	HTA                float64 `json:"hta"`
 	MotifRecoursSE     int     `json:"motif_recours_se"`
@@ -241,22 +247,31 @@ type diane struct {
 
 // Sirene detail
 type sirene struct {
-	Siret           string   `json:"-"`
-	Region          string   `json:"region"`
-	Commune         string   `json:"commune"`
-	RaisonSociale   string   `json:"raison_sociale"`
-	TypeVoie        string   `json:"type_voie"`
-	Siren           string   `json:"siren"`
-	CodePostal      string   `json:"code_postal"`
-	Lattitude       float64  `json:"lattitude"`
-	Adresse         []string `json:"adresse"`
-	Departement     string   `json:"departement"`
-	NatureJuridique string   `json:"nature_juridique"`
-	NumeroVoie      string   `json:"numero_voie"`
-	Ape             string   `json:"ape"`
-	Longitude       float64  `json:"longitude"`
-	Nic             string   `json:"nic"`
-	Siege           bool     `json:"siege"`
+	Siret                string     `json:"-"`
+	Siren                string     `json:"siren,omitempty"`
+	Nic                  string     `json:"nic,omitempty"`
+	Siege                bool       `json:"siege,omitempty"`
+	ComplementAdresse    *string    `json:"complement_adresse,omitempty"`
+	NumVoie              *string    `json:"numero_voie,omitempty"`
+	IndRep               *string    `json:"indrep,omitempty"`
+	TypeVoie             *string    `json:"type_voie,omitempty"`
+	Voie                 *string    `json:"voie,omitempty"`
+	Commune              *string    `json:"commune,omitempty"`
+	CommuneEtranger      *string    `json:"commune_etranger,omitempty"`
+	DistributionSpeciale *string    `json:"distribution_speciale,omitempty"`
+	CodeCommune          *string    `json:"code_commune,omitempty"`
+	CodeCedex            *string    `json:"code_cedex,omitempty"`
+	Cedex                *string    `json:"cedex,omitempty"`
+	CodePaysEtranger     *string    `json:"code_pays_etranger,omitempty"`
+	PaysEtranger         *string    `json:"pays_etranger,omitempty"`
+	CodePostal           *string    `json:"code_postal,omitempty"`
+	Departement          *string    `json:"departement,omitempty"`
+	APE                  *string    `json:"ape,omitempty"`
+	CodeActivite         *string    `json:"code_activite,omitempty"`
+	NomenActivite        *string    `json:"nomen_activite,omitempty"`
+	Creation             *time.Time `json:"date_creation,omitempty"`
+	Longitude            float64    `json:"longitude,omitempty"`
+	Latitude             float64    `json:"latitude,omitempty"`
 }
 
 func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
@@ -267,8 +282,9 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 	updates := make(map[string][]int)
 
 	sqlEntrepriseInsert := `insert into entreprise 
-	(siren, raison_sociale, statut_juridique, hash)
-  values ($1, $2, $3, $4);`
+	(siren, raison_sociale, prenom1, prenom2, prenom3, prenom4, 
+	  nom, nom_usage, statut_juridique, creation, hash)
+  values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`
 
 	hash := structhash.Md5(e.Value.SireneUL, 0)
 
@@ -277,7 +293,14 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 			sqlEntrepriseInsert,
 			e.Value.SireneUL.Siren,
 			e.Value.SireneUL.RaisonSociale,
+			e.Value.SireneUL.Prenom1UniteLegale,
+			e.Value.SireneUL.Prenom2UniteLegale,
+			e.Value.SireneUL.Prenom3UniteLegale,
+			e.Value.SireneUL.Prenom4UniteLegale,
+			e.Value.SireneUL.NomUniteLegale,
+			e.Value.SireneUL.NomUsageUniteLegale,
 			e.Value.SireneUL.StatutJuridique,
+			e.Value.SireneUL.Creation,
 			hash,
 		)
 	} else {
@@ -376,30 +399,43 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 	updates := make(map[string][]int)
 
 	sqlEtablissement := `insert into etablissement
-		(siret, siren, adresse, ape, code_postal, commune, departement, lattitude, longitude, nature_juridique,
-			numero_voie, region, type_voie, siege, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15);`
+		(siret, siren, siege, complement_adresse, numero_voie, indice_repetition, 
+		type_voie, voie, commune, commune_etranger, distribution_speciale, code_commune,
+		cedex, code_pays_etranger, pays_etranger, code_postal, departement,
+		code_activite, nomen_activite, creation, latitude, longitude, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 
+		$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23);`
 
 	hash := structhash.Md5(e.Value.Sirene, 0)
+
+	defaultNomen := "NAFRev2"
 
 	if id, ok := htreeEtablissement.contains(hash); !ok {
 		e.Value.Sirene.Siret = e.Value.Key
 		batch.Queue(
 			sqlEtablissement,
 			e.Value.Sirene.Siret,
-			e.Value.Sirene.Siret[0:9],
-			strings.Join(e.Value.Sirene.Adresse, "\n"),
-			e.Value.Sirene.Ape,
-			e.Value.Sirene.CodePostal,
-			e.Value.Sirene.Commune,
-			e.Value.Sirene.Departement,
-			e.Value.Sirene.Lattitude,
-			e.Value.Sirene.Longitude,
-			e.Value.Sirene.NatureJuridique,
-			e.Value.Sirene.NumeroVoie,
-			e.Value.Sirene.Region,
-			e.Value.Sirene.TypeVoie,
+			e.Value.Sirene.Siren,
 			e.Value.Sirene.Siege,
+			e.Value.Sirene.ComplementAdresse,
+			e.Value.Sirene.NumVoie,
+			e.Value.Sirene.IndRep,
+			e.Value.Sirene.TypeVoie,
+			e.Value.Sirene.Voie,
+			e.Value.Sirene.Commune,
+			e.Value.Sirene.CommuneEtranger,
+			e.Value.Sirene.DistributionSpeciale,
+			e.Value.Sirene.CodeCommune,
+			e.Value.Sirene.Cedex,
+			e.Value.Sirene.CodePaysEtranger,
+			e.Value.Sirene.PaysEtranger,
+			e.Value.Sirene.CodePostal,
+			e.Value.Sirene.Departement,
+			coalescepString(e.Value.Sirene.APE, e.Value.Sirene.CodeActivite),
+			coalescepString(e.Value.Sirene.NomenActivite, &defaultNomen),
+			e.Value.Sirene.Creation,
+			e.Value.Sirene.Latitude,
+			e.Value.Sirene.Longitude,
 			hash,
 		)
 	} else {
@@ -576,7 +612,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		s.Siret = e.Value.Key
 		s.Libelle = s.toLibelle()
 
-		if s.Algo == viper.GetString("algoImport") {
+		if !contains(viper.GetStringSlice("algoIgnore"), s.Algo) && !contains(viper.GetStringSlice("batchIgnore"), s.Batch) {
 			hash := structhash.Md5(s, 0)
 			if id, ok := htreeScore.contains(hash); !ok {
 				batch.Queue(sqlScore,
@@ -598,6 +634,15 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 	}
 
 	return updates
+}
+
+func contains(array []string, test string) bool {
+	for _, s := range array {
+		if s == test {
+			return true
+		}
+	}
+	return false
 }
 
 func groupScores(scores []score) []score {
@@ -785,7 +830,7 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 			return err
 		}
 
-		if len(e.ID) > 14 && e.Value.Sirene.Departement != "" {
+		if len(e.ID) > 14 && e.Value.Sirene.Departement != nil {
 			e.Value.Key = e.ID[len(e.ID)-14:]
 			newUpdates := e.getBatch(&batch, htrees)
 			for k, v := range newUpdates {
@@ -810,7 +855,8 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 		"v_last_procol",
 		"v_hausse_urssaf",
 		"v_apdemande",
-		"v_score"}
+		"v_alert_etablissement",
+		"v_alert_entreprise"}
 	for _, v := range views {
 		fmt.Printf("\033[2K\rrefreshing %s", v)
 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))

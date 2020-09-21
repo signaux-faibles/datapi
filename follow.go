@@ -166,7 +166,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 	ef.effectif,
 	n.libelle,
 	n1.libelle,
-	et.ape,
+	et.code_activite,
 	coalesce(ep.last_procol, 'in_bonis') as last_procol,
 	case when 'dgefp' = any($1) then coalesce(ap.ap, false) else null end as activite_partielle ,
 	case when 'urssaf' = any($1) then 
@@ -181,8 +181,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 	inner join etablissement0 et on et.siret = f.siret
 	inner join entreprise0 en on en.siren = f.siren
 	inner join departements d on d.code = et.departement
-	left join naf n on n.code = et.ape
-	left join naf n1 on n.id_n1 = n1.id
+	left join v_naf n on n.code_n5 = et.code_activite
 	left join v_last_effectif ef on ef.siret = f.siret
 	left join v_hausse_urssaf u on u.siret = f.siret
 	left join v_apdemande ap on ap.siret = f.siret

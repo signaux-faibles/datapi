@@ -33,4 +33,5 @@ adminWhiteList = ["127.0.0.1"]
 # Import des données
 sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json.gz"
 sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json.gz"
-algoImport = "algo_avec_urssaf"
+algoIgnore = ["algo_sans_urssaf"]
+batchIgnore = ["1910_8", "1906_7", "1901_interim"]

@@ -88,3 +88,12 @@ func validSiret(c *gin.Context) {
 	}
 	c.Next()
 }
+
+func coalescepString(o ...*string) *string {
+	for _, i := range o {
+		if i != nil {
+			return i
+		}
+	}
+	return nil
+}

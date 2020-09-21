@@ -253,7 +253,7 @@ sirene.ape
 sirene.code_postal
 sirene.commune
 sirene.departement
-sirene.lattitude
+sirene.latitude
 sirene.longitude
 sirene.nature_juridique
 sirene.nic
