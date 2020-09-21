@@ -142,7 +142,7 @@ type apDemande struct {
 	Effectif           int     `json:"effectif"`
 	EffectifAutorise   int     `json:"effectif_autorise"`
 	EffectifConsomme   int     `json:"effectif_consomme"`
-	IDDemande          string  `json:"id_conso"`
+	IDDemande          string  `json:"id_demande"`
 	MTA                float64 `json:"mta"`
 	HTA                float64 `json:"hta"`
 	MotifRecoursSE     int     `json:"motif_recours_se"`
@@ -612,7 +612,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		s.Siret = e.Value.Key
 		s.Libelle = s.toLibelle()
 
-		if s.Algo == viper.GetString("algoImport") {
+		if !contains(viper.GetStringSlice("algoIgnore"), s.Algo) && !contains(viper.GetStringSlice("batchIgnore"), s.Batch) {
 			hash := structhash.Md5(s, 0)
 			if id, ok := htreeScore.contains(hash); !ok {
 				batch.Queue(sqlScore,
@@ -634,6 +634,15 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 	}
 
 	return updates
+}
+
+func contains(array []string, test string) bool {
+	for _, s := range array {
+		if s == test {
+			return true
+		}
+	}
+	return false
 }
 
 func groupScores(scores []score) []score {
