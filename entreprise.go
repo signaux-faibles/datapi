@@ -870,8 +870,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		di.variation_ca,
 		di.resultat_expl,
 		ef.effectif,
-		n.libelle,
-		n1.libelle,
+		n.libelle_n5,
+		n.libelle_n1,
 		et.code_activite,
 		coalesce(ep.last_procol, 'in_bonis') as last_procol,
 		case when 'dgefp' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then coalesce(ap.ap, false) else null end as activite_partielle ,
@@ -887,8 +887,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
 		inner join departements d on d.code = et.departement
-		inner join naf n on n.code = et.code_activite
-		inner join naf n1 on n.id_n1 = n1.id 
+		inner join v_naf n on n.code_n5 = et.code_activite
 		left join score s on et.siret = s.siret
 		left join v_alert_etablissement vs on vs.siret = et.siret
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $10
