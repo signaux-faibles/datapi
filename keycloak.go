@@ -166,12 +166,6 @@ func (sc scope) zoneGeo() []string {
 }
 
 func getKeycloakUsers(c *gin.Context) {
-	roles := scopeFromContext(c)
-	if !roles.containsRole("import") {
-		c.AbortWithStatus(403)
-		return
-	}
-
 	userMap, roleMap, err := fetchUsersAndRoles()
 	if err != nil {
 		c.JSON(err.Code(), err.Error())
@@ -179,6 +173,7 @@ func getKeycloakUsers(c *gin.Context) {
 	}
 	err = importUsersAndRoles(userMap, roleMap)
 	if err != nil {
+		log.Print(err.Error())
 		c.JSON(err.Code(), err.Error())
 	}
 	c.JSON(200, "utilisateurs mis à jour")
@@ -198,11 +193,14 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, Jerror) 
 		return nil, nil, errorToJSON(500, err)
 	}
 
+	var i = 100000
 	users, err := kcAdmin.GetUsers(
 		context.TODO(),
 		jwt.AccessToken,
 		viper.GetString("keycloakRealm"),
-		gocloak.GetUsersParams{},
+		gocloak.GetUsersParams{
+			Max: &i,
+		},
 	)
 	if err != nil {
 		return nil, nil, errorToJSON(500, err)

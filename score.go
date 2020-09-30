@@ -54,13 +54,13 @@ type Score struct {
 	CodeActivite       *string    `json:"code_activite"`
 	Departement        *string    `json:"departement"`
 	LibelleDepartement *string    `json:"libelleDepartement"`
-	DernierEffectif    *int       `json:"dernier_effectif"`
+	DernierEffectif    *float64   `json:"dernier_effectif"`
 	HausseUrssaf       *bool      `json:"urssaf,omitempty"`
 	ActivitePartielle  *bool      `json:"activite_partielle,omitempty"`
-	DernierCA          *int       `json:"ca"`
+	DernierCA          *float64   `json:"ca"`
 	VariationCA        *float64   `json:"variation_ca"`
 	ArreteBilan        *time.Time `json:"arrete_bilan"`
-	DernierREXP        *int       `json:"resultat_expl"`
+	DernierREXP        *float64   `json:"resultat_expl"`
 	EtatProcol         *string    `json:"etat_procol,omitempty"`
 	Alert              *string    `json:"alert,omitempty"`
 	Visible            *bool      `json:"visible,omitempty"`

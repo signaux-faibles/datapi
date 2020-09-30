@@ -51,6 +51,7 @@ type EtablissementSummary struct {
 	Visible            *bool   `json:"visible,omitempty"`
 	Inzone             *bool   `json:"zone,omitempty"`
 	Alert              *bool   `json:"alert,omitempty"`
+	Siege              *bool   `json:"siege,omitempty"`
 }
 
 type findEtablissementsParams struct {
