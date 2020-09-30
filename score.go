@@ -67,6 +67,7 @@ type Score struct {
 	InZone             *bool      `json:"inZone,omitempty"`
 	Followed           *bool      `json:"followed,omitempty"`
 	FirstAlert         *bool      `json:"firstAlert"`
+	Siege              *bool      `json:"siege"`
 }
 
 func getListes(c *gin.Context) {
@@ -217,7 +218,8 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		et.departement=any($1) as inZone,
 		f.id is not null as followed,
 		r.roles && $1 as visible,
-		vs.first_list = $2 as firstAlert
+		vs.first_list = $2 as firstAlert,
+		et.siege
 	from score0 s
 	inner join v_alert_etablissement vs on vs.siret = s.siret
 	inner join v_roles r on r.siren = s.siren
@@ -288,6 +290,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			&score.Followed,
 			&score.Visible,
 			&score.FirstAlert,
+			&score.Siege,
 		)
 		if err != nil {
 			return errorToJSON(500, err)

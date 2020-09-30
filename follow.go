@@ -175,7 +175,8 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 	s.alert,
 	r.roles && $1 as visible,
 	et.departement = any($1) as in_zone,
-	true as followed
+	true as followed,
+	et.siege
 	from etablissement_follow f
 	inner join v_roles r on r.siren = f.siren
 	inner join etablissement0 et on et.siret = f.siret
@@ -226,6 +227,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 			&e.Visible,
 			&e.InZone,
 			&e.Followed,
+			&e.Siege,
 		)
 		if err != nil {
 			return nil, errorToJSON(500, err)

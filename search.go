@@ -100,7 +100,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		count(*) over (),
 		coalesce(r.roles && $1 and vs.siret is not null, false) as visible,
 		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed
+		f.id is not null as followed,
+		et.siege
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
@@ -174,6 +175,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&r.Visible,
 			&r.InZone,
 			&r.Followed,
+			&r.Siege,
 		)
 		if err != nil {
 			return searchResult{}, errorToJSON(500, err)

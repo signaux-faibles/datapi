@@ -73,6 +73,7 @@ type Etablissement struct {
 	Siret      string      `json:"siret"`
 	Entreprise *Entreprise `json:"entreprise,omitempty"`
 	VisiteFCE  *bool       `json:"visiteFCE"`
+	Siege      *bool       `json:"siege,omitempty"`
 	Sirene     struct {
 		ComplementAdresse    *string    `json:"-"`
 		NumVoie              *string    `json:"-"`
@@ -293,7 +294,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		et.visite_fce, n.libelle_n1, n.code_n1, n.libelle_n5, et.code_activite, n.libelle_n2,
 		n.libelle_n3, n.libelle_n4,	f.id is not null as followed,	ro.roles && $4 as visible,
 		s.siret is not null as alert,	en.prenom1, en.prenom2, en.prenom3, en.prenom4, 
-		en.nom, en.nom_usage, en.creation
+		en.nom, en.nom_usage, en.creation, et.siege
 		from etablissement0 et
 		inner join departements d on d.code = et.departement
 		inner join regions r on d.id_region = r.id
@@ -424,7 +425,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
 		coalesce(r.roles && $1 and vs.siret is not null, false) as visible,
 		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed
+		f.id is not null as followed, et.siege
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
@@ -466,6 +467,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&score.Visible,
 			&score.InZone,
 			&score.Followed,
+			&score.Siege,
 		)
 		if err != nil {
 			return err
@@ -474,7 +476,6 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 	}
 
 	for k, v := range cousins {
-		fmt.Println(k, v, "you")
 		entreprise := e.Entreprises[k[0:9]]
 		entreprise.EtablissementsSummary = v
 		e.Entreprises[k[0:9]] = entreprise
@@ -706,7 +707,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.VisiteFCE, &et.Sirene.NAF.LibelleSecteur, &et.Sirene.NAF.CodeSecteur, &et.Sirene.NAF.LibelleActivite,
 			&et.Sirene.NAF.CodeActivite, &et.Sirene.NAF.LibelleN2, &et.Sirene.NAF.LibelleN3, &et.Sirene.NAF.LibelleN4,
 			&et.Followed, &et.Visible, &et.Alert, &en.Sirene.Prenom1, &en.Sirene.Prenom2, &en.Sirene.Prenom3,
-			&en.Sirene.Prenom4, &en.Sirene.Nom, &en.Sirene.NomUsage, &en.Sirene.Creation,
+			&en.Sirene.Prenom4, &en.Sirene.Nom, &en.Sirene.NomUsage, &en.Sirene.Creation, &et.Siege,
 		)
 
 		if err != nil {
