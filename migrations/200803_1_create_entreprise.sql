@@ -17,6 +17,25 @@ create table entreprise (
   hash bytea
 );
 
+create sequence entreprise_ellisphere_id;
+create table entreprise_ellisphere (
+  id                     integer primary key default nextval('entreprise_ellisphere_id'),
+  siren                  varchar(9),
+  version                integer default 0,
+  date_add               timestamp default current_timestamp,
+  code                   text,
+	refid                  text,
+	raison_sociale         text,
+	adresse                text,
+	personne_pou_m         text,
+	niveau_detention       integer,
+	part_financiere        real,
+	code_filiere           text,
+	refid_filiere          text,
+	personne_pou_m_filiere text,
+  hash                   bytea
+);
+
 create sequence entreprise_bdf_id;
 create table entreprise_bdf (
   id integer primary key default nextval('entreprise_bdf_id'),
