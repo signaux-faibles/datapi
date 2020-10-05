@@ -1,6 +1,9 @@
 create view entreprise0 as
 select * from entreprise where version = 0;
 
+create view entreprise_ellisphere0 as
+select * from entreprise_diane where version = 0;
+
 create view entreprise_bdf0 as
 select * from entreprise_bdf where version = 0;
 

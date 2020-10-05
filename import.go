@@ -84,11 +84,12 @@ type delai struct {
 type entreprise struct {
 	ID    string `json:"_id"`
 	Value struct {
-		Sirets   []string `json:"sirets" hash:"-"`
-		Siren    string   `json:"siren"`
-		Diane    []diane  `json:"diane"`
-		BDF      []bdf    `json:"bdf"`
-		SireneUL sireneUL `json:"sirene_ul"`
+		Sirets     []string    `json:"sirets" hash:"-"`
+		Siren      string      `json:"siren"`
+		Diane      []diane     `json:"diane"`
+		BDF        []bdf       `json:"bdf"`
+		Ellisphere *ellisphere `json:"ellisphere"`
+		SireneUL   sireneUL    `json:"sirene_ul"`
 	} `bson:"value"`
 }
 
@@ -118,6 +119,21 @@ type sireneUL struct {
 	NomUsageUniteLegale string     `json:"nom_usage_unite_legale,omitempty"`
 	StatutJuridique     string     `json:"statut_juridique"`
 	Creation            *time.Time `json:"date_creation,omitempty"`
+}
+
+type ellisphere struct {
+	Siren               string
+	CodeGroupe          string  `json:"code_groupe,omitempty"`
+	SirenGroupe         string  `json:"siren_groupe,omitempty"`
+	RefIDGroupe         string  `json:"refid_groupe,omitempty"`
+	RaisocGroupe        string  `json:"raison_sociale_groupe,omitempty"`
+	AdresseGroupe       string  `json:"adresse_groupe,omitempty"`
+	PersonnePouMGroupe  string  `json:"personne_pou_m_groupe,omitempty"`
+	NiveauDetention     int     `json:"niveau_detention,omitempty"`
+	PartFinanciere      float64 `json:"part_financiere,omitempty"`
+	CodeFiliere         string  `json:"code_filiere,omitempty"`
+	RefIDFiliere        string  `json:"refid_filiere,omitempty"`
+	PersonnePouMFiliere string  `json:"personne_pou_m_filiere,omitempty"`
 }
 
 // APConso detail
@@ -276,6 +292,7 @@ type sirene struct {
 
 func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
 	htreeEntreprise := htrees["entreprise"]
+	htreeEntrepriseEllisphere := htrees["entreprise_ellisphere"]
 	htreeEntrepriseBdF := htrees["entreprise_bdf"]
 	htreeEntrepriseDiane := htrees["entreprise_diane"]
 
@@ -307,11 +324,12 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 		updates["entreprise"] = append(updates["entreprise"], id)
 	}
 
+	sqlEntrepriseBDF := `insert into entreprise_bdf
+	(siren, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme,
+	 poids_frng, dette_fiscale, frais_financier, taux_marge, hash)
+	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
+
 	for _, b := range e.Value.BDF {
-		sqlEntrepriseBDF := `insert into entreprise_bdf
-			(siren, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme,
-	 		poids_frng, dette_fiscale, frais_financier, taux_marge, hash)
-			values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
 
 		hash := structhash.Md5(b, 0)
 		if id, ok := htreeEntrepriseBdF.contains(hash); !ok {
@@ -333,31 +351,31 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 		}
 	}
 
+	sqlEntrepriseDiane := `insert into entreprise_diane
+		(siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
+	 	achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,
+	 	ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel,
+	 	charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr,
+	 	credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement,
+	 	endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
+	 	financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
+	 	liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
+	 	operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
+	 	performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
+	 	productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
+	 	rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
+	 	rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,
+	 	taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
+	 	taux_valeur_ajoutee, valeur_ajoutee, hash)
+	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+	 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
+	 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
+ 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74);`
+
 	for _, d := range e.Value.Diane {
 		if d.ArreteBilan.IsZero() {
 			continue
 		}
-
-		sqlEntrepriseDiane := `insert into entreprise_diane
-				(siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
-				 achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,
-				 ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel,
-				 charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr,
-				 credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement,
-				 endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
-				 financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
-				 liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
-				 operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
-				 performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
-				 productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
-				 rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
-				 rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,
-				 taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-				 taux_valeur_ajoutee, valeur_ajoutee, hash)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
-				 $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
-				 $43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
-				 $66, $67, $68, $69, $70, $71, $72, $73, $74);`
 
 		hash := structhash.Md5(d, 0)
 		if id, ok := htreeEntrepriseDiane.contains(hash); !ok {
@@ -382,6 +400,27 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 		} else {
 			updates["entreprise_diane"] = append(updates["entreprise_diane"], id)
 		}
+	}
+
+	if e.Value.Ellisphere != nil {
+		sqlEllisphere := `insert into entreprise_ellisphere
+		(siren, code, refid, raison_sociale,	adresse, personne_pou_m,
+		niveau_detention, part_financiere, code_filiere, refid_filiere,
+		personne_pou_m_filiere, hash) 
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+
+		el := *e.Value.Ellisphere
+		el.Siren = e.Value.SireneUL.Siren
+		hash := structhash.Md5(el, 0)
+
+		if id, ok := htreeEntrepriseEllisphere.contains(hash); !ok {
+			batch.Queue(sqlEllisphere, el.Siren, el.CodeGroupe, el.RefIDGroupe, el.RaisocGroupe,
+				el.AdresseGroupe, el.PersonnePouMGroupe, el.NiveauDetention, el.PartFinanciere,
+				el.CodeFiliere, el.RefIDFiliere, el.PersonnePouMFiliere, hash)
+		} else {
+			updates["entreprise_ellisphere"] = append(updates["entreprise_ellisphere"], id)
+		}
+
 	}
 
 	return updates
@@ -873,6 +912,7 @@ func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
 	var batch pgx.Batch
 	var tables = []string{
 		"entreprise",
+		"entreprise_ellisphere",
 		"entreprise_bdf",
 		"entreprise_diane",
 		"etablissement",
@@ -891,7 +931,7 @@ func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
 	r := (*tx).SendBatch(context.Background(), &batch)
 	for _, table := range tables {
 		tree := &htree{}
-		fmt.Printf("update table %s\n", table)
+		fmt.Printf("\033[2K\rupdate table %s\n", table)
 		rows, err := r.Query()
 		if err != nil {
 			return nil, err
