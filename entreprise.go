@@ -29,7 +29,7 @@ type Entreprise struct {
 	}
 	Diane                 []diane         `json:"diane"`
 	Bdf                   []bdf           `json:"-"`
-	EtablissementsSummary []Score         `json:"etablissementsSummary,omitempty"`
+	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
 }
 
@@ -452,9 +452,9 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 }
 
 func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
-	var cousins = make(map[string][]Score)
+	var cousins = make(map[string][]Summary)
 	for (*rows).Next() {
-		var score Score
+		var score Summary
 		err := (*rows).Scan(
 			&score.Siret, &score.Siren, &score.RaisonSociale, &score.Commune, &score.LibelleDepartement, &score.Departement,
 			&score.Score,

@@ -18,12 +18,12 @@ type searchParams struct {
 }
 
 type searchResult struct {
-	From    int     `json:"from"`
-	To      int     `json:"to"`
-	Total   int     `json:"total"`
-	PageMax int     `json:"pageMax"`
-	Page    int     `json:"page"`
-	Results []Score `json:"results"`
+	From    int       `json:"from"`
+	To      int       `json:"to"`
+	Total   int       `json:"total"`
+	PageMax int       `json:"pageMax"`
+	Page    int       `json:"page"`
+	Results []Summary `json:"results"`
 }
 
 func searchEtablissementHandler(c *gin.Context) {
@@ -150,7 +150,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 
 	var search searchResult
 	for rows.Next() {
-		var r Score
+		var r Summary
 		err := rows.Scan(&r.Siret,
 			&r.Siren,
 			&r.RaisonSociale,

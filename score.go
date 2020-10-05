@@ -31,7 +31,7 @@ type Liste struct {
 	Batch   string            `json:"batch"`
 	Algo    string            `json:"algo"`
 	Query   paramsListeScores `json:"-"`
-	Scores  []Score           `json:"scores,omitempty"`
+	Scores  []Summary         `json:"scores,omitempty"`
 	NbF1    int               `json:"nbF1"`
 	NbF2    int               `json:"nbF2"`
 	From    int               `json:"from"`
@@ -41,8 +41,8 @@ type Liste struct {
 	To      int               `json:"to"`
 }
 
-// Score d'une liste de détection
-type Score struct {
+// Summary score + élements sur l'établissement
+type Summary struct {
 	Siren              string     `json:"siren"`
 	Siret              string     `json:"siret"`
 	Score              *float64   `json:"-"`
@@ -258,9 +258,9 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		return errorToJSON(500, err)
 	}
 
-	var scores []Score
+	var scores []Summary
 	for rows.Next() {
-		var score Score
+		var score Summary
 
 		err := rows.Scan(
 			&score.Siret,
