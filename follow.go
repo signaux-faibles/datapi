@@ -10,12 +10,12 @@ import (
 
 // Follow type follow pour l'API
 type Follow struct {
-	Siret          *string   `json:"siret,omitempty"`
-	Username       *string   `json:"username,omitempty"`
-	Active         bool      `json:"active"`
-	Since          time.Time `json:"since"`
-	Comment        string    `json:"comment"`
-	Etablissements *Score    `json:"etablissements,omitempty"`
+	Siret              *string   `json:"siret,omitempty"`
+	Username           *string   `json:"username,omitempty"`
+	Active             bool      `json:"active"`
+	Since              time.Time `json:"since"`
+	Comment            string    `json:"comment"`
+	ScoreEtablissement *Score    `json:"ScoreEtablissement,omitempty"`
 }
 
 func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
@@ -232,7 +232,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 		if err != nil {
 			return nil, errorToJSON(500, err)
 		}
-		f.Etablissements = &e
+		f.ScoreEtablissement = &e
 		f.Active = true
 		follows = append(follows, f)
 	}
