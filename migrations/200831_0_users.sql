@@ -5,8 +5,3 @@ create table users (
   lastName text,
   roles text[]
 );
-
-create table roles (
-  code text,
-  description text
-);
