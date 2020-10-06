@@ -441,7 +441,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $3
 		where et.siren = any($4) 
 		and coalesce(s.libelle_liste, $5) = $5
-		order by ef.effectif desc;`,
+		order by ef.effectif desc, et.siret desc;`,
 		roles.zoneGeo(),
 		roles.zoneGeo(),
 		username,
@@ -452,7 +452,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 }
 
 func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
-	var cousins = make(map[string]Summary)
+	var cousins = make(map[string][]Summary)
 	for (*rows).Next() {
 		var score Summary
 		err := (*rows).Scan(
@@ -472,13 +472,12 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 		if err != nil {
 			return err
 		}
-		cousins[score.Siret] = score
-
+		cousins[score.Siret[0:9]] = append(cousins[score.Siret[0:9]], score)
 	}
 
 	for k, v := range cousins {
-		entreprise := e.Entreprises[k[0:9]]
-		entreprise.EtablissementsSummary = append(entreprise.EtablissementsSummary, v)
+		entreprise := e.Entreprises[k]
+		entreprise.EtablissementsSummary = v
 		e.Entreprises[k[0:9]] = entreprise
 	}
 	return nil
