@@ -452,7 +452,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 }
 
 func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
-	var cousins = make(map[string][]Summary)
+	var cousins = make(map[string]Summary)
 	for (*rows).Next() {
 		var score Summary
 		err := (*rows).Scan(
@@ -472,12 +472,13 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 		if err != nil {
 			return err
 		}
-		cousins[score.Siret] = append(cousins[score.Siret], score)
+		cousins[score.Siret] = score
+
 	}
 
 	for k, v := range cousins {
 		entreprise := e.Entreprises[k[0:9]]
-		entreprise.EtablissementsSummary = v
+		entreprise.EtablissementsSummary = append(entreprise.EtablissementsSummary, v)
 		e.Entreprises[k[0:9]] = entreprise
 	}
 	return nil
