@@ -1,4 +1,8 @@
-#!/bin/sh
+#!/bin/bash
+# script de test e2e de datapi.
+# avant de lancer ce script, il faut compiler le binaire datapi
+# pour mettre à jour les golden files, utilisez le flag -u
+
 TEST_DATA="data/testData.sql.gz"
 POSTGRES_PASSWORD="test"
 POSTGRES_DOCKERPORT="65432"
@@ -26,18 +30,17 @@ sed "s/changemypass/$POSTGRES_PASSWORD/" config.toml.source | sed "s/changemypor
 cp ../datapi workspace
 cp -r ../migrations workspace
 cd workspace
-./datapi > /dev/null rm&
+./datapi > /dev/null 2>&1 &
 DATAPI_PID=$!
 sleep 1
 
 cd ../
 
-if [ $1 = '-u' ]; then GOLDEN_UPDATE = true else GOLDEN_UPDATE = false; fi
+if [ "$1" = '-u' ]; then GOLDEN_UPDATE=true; else GOLDEN_UPDATE=false; fi
 DATAPI_PORT="12345" GOLDEN_UPDATE=$GOLDEN_UPDATE go test -v
+TEST_STATUS="$?"
 
 kill $DATAPI_PID
-
-ls
 rm -rf workspace
 
 # rm config.toml
@@ -45,3 +48,5 @@ echo "- arret conteneur"
 docker stop "$POSTGRES_CONTAINER" > /dev/null 2>&1
 echo "- suppression conteneur"
 docker rm "$POSTGRES_CONTAINER" > /dev/null 2>&1
+
+exit $TEST_STATUS

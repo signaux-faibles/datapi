@@ -78,6 +78,7 @@ func processGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 	}
 	goldenFile, err := loadGoldenFile(path)
 	if err != nil {
+		t.Errorf("golden file non disponible: %s", err.Error())
 		return "", err
 	}
 	return compare(goldenFile, data), nil
