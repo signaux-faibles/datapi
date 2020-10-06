@@ -12,6 +12,7 @@ require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-playground/validator/v10 v10.3.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.0.4 // indirect
+	github.com/jackc/pgx v3.6.2+incompatible
 	github.com/jackc/pgx/v4 v4.8.1
 	github.com/kylelemons/godebug v1.1.0
 	github.com/lib/pq v1.8.0

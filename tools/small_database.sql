@@ -1,8 +1,9 @@
 -- choisir au hasard 200 code siren
 create table limit_entreprise as
 select siren from entreprise 
-order by random()
-limit 200;
+order by id
+limit 300
+offset 1000;
 
 delete from entreprise
 where siren not in (select siren from limit_entreprise);

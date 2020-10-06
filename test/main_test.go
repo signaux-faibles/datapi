@@ -1,109 +1,10 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/json"
-	"io"
-	"io/ioutil"
-	"net/http"
-	"os"
-	"strconv"
+	"context"
+	"fmt"
 	"testing"
-
-	"github.com/pmezard/go-difflib/difflib"
 )
-
-var hostname = "http://localhost:" + os.Getenv("DATAPI_PORT")
-var update, _ = strconv.ParseBool(os.Getenv("GOLDEN_UPDATE"))
-
-func compare(golden []byte, result []byte) string {
-	diff := difflib.UnifiedDiff{
-		A:       difflib.SplitLines(string(golden)),
-		B:       difflib.SplitLines(string(result)),
-		Context: 1,
-	}
-
-	text, _ := difflib.GetUnifiedDiffString(diff)
-	return text
-}
-
-func loadGoldenFile(file string) ([]byte, error) {
-	f, err := os.Open(file)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-	gzipReader, err := gzip.NewReader(f)
-	if err != nil {
-		return nil, err
-	}
-	return ioutil.ReadAll(gzipReader)
-}
-
-func saveGoldenFile(fileName string, goldenData []byte) error {
-	f, err := os.Create(fileName)
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-	gzipWriter := gzip.NewWriter(f)
-	defer gzipWriter.Close()
-	_, err = gzipWriter.Write(goldenData)
-	if err != nil {
-		return err
-	}
-	err = gzipWriter.Flush()
-	return err
-}
-
-func indent(reader io.Reader) ([]byte, error) {
-	body, err := ioutil.ReadAll(reader)
-	if err != nil {
-		return nil, err
-	}
-	var prettyBody bytes.Buffer
-	err = json.Indent(&prettyBody, body, "", "  ")
-	return prettyBody.Bytes(), err
-}
-
-func processGoldenFile(t *testing.T, path string, data []byte) (string, error) {
-	if update {
-		err := saveGoldenFile(path, data)
-		if err != nil {
-			return "", err
-		}
-		t.Logf("mise à jour du golden file %s", path)
-		return "", nil
-	}
-	goldenFile, err := loadGoldenFile(path)
-	if err != nil {
-		t.Errorf("golden file non disponible: %s", err.Error())
-		return "", err
-	}
-	return compare(goldenFile, data), nil
-}
-
-func post(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
-	jsonValue, _ := json.Marshal(params)
-	resp, err := http.Post(hostname+path, "application/json", bytes.NewBuffer(jsonValue))
-	if err != nil {
-		t.Errorf("api non joignable: %s", err)
-		return nil, nil, err
-	}
-	indented, err := indent(resp.Body)
-	return resp, indented, err
-}
-
-func get(t *testing.T, path string) (*http.Response, []byte, error) {
-	resp, err := http.Get(hostname + path)
-	if err != nil {
-		t.Errorf("api non joignable: %s", err)
-		return nil, nil, err
-	}
-	indented, err := indent(resp.Body)
-	return resp, indented, err
-}
 
 func TestListes(t *testing.T) {
 	_, indented, _ := get(t, "/listes")
@@ -137,5 +38,37 @@ func TestSearch(t *testing.T) {
 	resp, _, _ := get(t, "/etablissement/search/t")
 	if resp.StatusCode != 400 {
 		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
+	}
+
+}
+
+func TestGetEtablissement(t *testing.T) {
+	// récupérer une liste de sirets à chercher
+	rows, err := db.Query(context.Background(), `select e.siret from etablissement e
+	inner join departements d on d.code = e.departement
+	inner join regions r on r.id = d.id_region
+	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
+	order by e.siret
+	limit 10`)
+	if err != nil {
+		t.Errorf("impossible de se connecter à la base: %s", err.Error())
+	}
+
+	i := 0
+	for rows.Next() {
+		var siret string
+		err := rows.Scan(&siret)
+		if err != nil {
+			t.Errorf("siret illisible: %s", err.Error())
+		}
+
+		t.Logf("l'établissement %s est bien de la forme attendue", siret)
+		_, indented, _ := get(t, "/etablissement/get/"+siret)
+		goldenFilePath := fmt.Sprintf("data/etablisement-%d.json.gz", i)
+		diff, _ := processGoldenFile(t, goldenFilePath, indented)
+		if diff != "" {
+			t.Errorf("differences entre le résultat et le golden file: 'data/etablisement-%d.json.gz' \n%s", i, diff)
+		}
+		i++
 	}
 }
