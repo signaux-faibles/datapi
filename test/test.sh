@@ -2,6 +2,8 @@
 # script de test e2e de datapi.
 # avant de lancer ce script, il faut compiler le binaire datapi
 # pour mettre à jour les golden files, utilisez le flag -u
+# pour mettre l'environnement en attente et lancer les tests en parallèle, utilisez le flag -w
+# les flags ne sont pas cumulables
 
 TEST_DATA="data/testData.sql.gz"
 POSTGRES_PASSWORD="test"
@@ -34,10 +36,17 @@ cd workspace
 DATAPI_PID=$!
 sleep 1
 
+if [ "$1" = '-u' ]; then GOLDEN_UPDATE=true; else GOLDEN_UPDATE=false; fi
+
+if [ "$1" = '-w' ]; 
+  then echo "Environnement en attente, commande à exécuter pour les tests"
+    echo DATAPI_PORT="$DATAPI_PORT" GOLDEN_UPDATE="$GOLDEN_UPDATE" go test -v; 
+    echo "Appuyez sur entrée pour terminer"
+    read var1
+fi
 cd ../
 
-if [ "$1" = '-u' ]; then GOLDEN_UPDATE=true; else GOLDEN_UPDATE=false; fi
-DATAPI_PORT="12345" GOLDEN_UPDATE=$GOLDEN_UPDATE go test -v
+DATAPI_PORT="$DATAPI_PORT" GOLDEN_UPDATE="$GOLDEN_UPDATE" go test -v
 TEST_STATUS="$?"
 
 kill $DATAPI_PID
