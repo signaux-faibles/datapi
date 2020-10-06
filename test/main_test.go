@@ -131,3 +131,11 @@ func TestScores(t *testing.T) {
 		t.Errorf("differences entre le résultat et le golden file: \n%s", diff)
 	}
 }
+
+func TestSearch(t *testing.T) {
+	t.Log("/etablissement/search retourne 400")
+	resp, _, _ := get(t, "/etablissement/search/t")
+	if resp.StatusCode != 400 {
+		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
+	}
+}
