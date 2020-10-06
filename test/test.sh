@@ -17,7 +17,7 @@ echo "- exécutable datapi présent"
 echo "- initialisation docker postgres"
 POSTGRES_CONTAINER=$(docker run -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" -p "$POSTGRES_DOCKERPORT":5432 -d postgres:10-alpine)
 echo "- conteneur créé: $POSTGRES_CONTAINER"
-sleep 2
+sleep 4
 echo "- creation de la base de données"
 docker exec -it "$POSTGRES_CONTAINER" /usr/local/bin/createdb -U postgres datapi_test
 echo "- insert des données de test"
@@ -34,7 +34,7 @@ cp -r ../migrations workspace
 cd workspace
 ./datapi > /dev/null 2>&1 &
 DATAPI_PID=$!
-sleep 1
+sleep 2
 
 if [ "$1" = '-u' ]; then GOLDEN_UPDATE=true; else GOLDEN_UPDATE=false; fi
 

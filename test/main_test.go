@@ -64,10 +64,10 @@ func TestGetEtablissement(t *testing.T) {
 
 		t.Logf("l'établissement %s est bien de la forme attendue", siret)
 		_, indented, _ := get(t, "/etablissement/get/"+siret)
-		goldenFilePath := fmt.Sprintf("data/etablisement-%d.json.gz", i)
+		goldenFilePath := fmt.Sprintf("data/etablissement-%d.json.gz", i)
 		diff, _ := processGoldenFile(t, goldenFilePath, indented)
 		if diff != "" {
-			t.Errorf("differences entre le résultat et le golden file: 'data/etablisement-%d.json.gz' \n%s", i, diff)
+			t.Errorf("differences entre le résultat et le golden file: 'data/etablissement-%d.json.gz' \n%s", i, diff)
 		}
 		i++
 	}
