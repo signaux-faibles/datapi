@@ -92,6 +92,34 @@ update entreprise e set
 from raisoc r where r.id = e.id;
 
 with t as (select distinct substring(siret from 1 for 9) as siren, 
+		  substring(new_siret from 1 for 9) as new_siren
+		  from translate_siret),
+seed as (
+select
+  e.id, 
+  string_agg(substr(characters, (random() * (length(characters) - 1)+1)::integer, 1), '') as seed1,
+  string_agg(substr(characters, (random() * (length(characters) - 1)+1)::integer, 1), '') as seed2,
+  string_agg(substr(characters, (random() * (length(characters) - 1)+1)::integer, 1), '') as seed3,
+  string_agg(substr(characters, (random() * (length(characters) - 1)+1)::integer, 1), '') as seed4,
+  string_agg(substr(characters, (random() * (length(characters) - 1)+1)::integer, 1), '') as seed5,
+  string_agg(substr(characters, (random() * (length(characters) - 1)+1)::integer, 1), '') as seed6
+from (values('ABCDEFGHIJKLMNOPQRSTUVWXYZ')) as symbols(characters)
+  join generate_series(1, 10) on  true
+  inner join entreprise_ellisphere e on true
+group by e.id)
+update entreprise_ellisphere e set siren = t.new_siren,
+code = s.seed1,
+refid = s.seed2,
+raison_sociale = s.seed3,
+adresse = s.seed4,
+part_financiere = round((random() * 100)::numeric, 2),
+code_filiere = s.seed5,
+refid_filiere = s.seed6
+from t 
+inner join seed s on true
+where t.siren = e.siren and s.id = e.id;
+
+with t as (select distinct substring(siret from 1 for 9) as siren, 
 		  substring(new_siret from 1 for 9) as new_siren 
 		  from translate_siret)
 update entreprise_bdf e set siren = t.new_siren,
