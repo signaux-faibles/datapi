@@ -120,14 +120,17 @@ create table etablissement_procol (
 
 create sequence etablissemment_follow_id;
 create table etablissement_follow (
-  id       integer primary key default nextval('etablissemment_follow_id'),
-  siret    varchar(14),
-  siren    varchar(9),
-  username  text,
-  active   boolean,
-  since    timestamp,
-  until    timestamp,
-  comment  text  
+  id                integer primary key default nextval('etablissemment_follow_id'),
+  siret             varchar(14),
+  siren             varchar(9),
+  username          text,
+  active            boolean,
+  since             timestamp,
+  until             timestamp,
+  comment           text,
+  category          text,
+  unfollow_comment  text,
+  unfollow_category text
 );
 
 create sequence etablissement_comment_id;
@@ -136,7 +139,7 @@ create table etablissement_comments (
   id_parent       int references etablissement_comments,
   siret           varchar(14),
   siren           varchar(9),
-  username         text,
+  username        text,
   date_history    timestamp[] default array[current_timestamp],
   message_history text[]
 );
