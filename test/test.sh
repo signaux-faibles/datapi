@@ -19,7 +19,7 @@ POSTGRES_CONTAINER=$(docker run -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" -p "$P
 echo "- conteneur créé: $POSTGRES_CONTAINER"
 sleep 4
 echo "- creation de la base de données"
-docker exec -it "$POSTGRES_CONTAINER" /usr/local/bin/createdb -U postgres datapi_test
+docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/createdb -U postgres datapi_test
 echo "- insert des données de test"
 zcat "$TEST_DATA" | docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/psql -U postgres datapi_test > /dev/null 2>&1
 
