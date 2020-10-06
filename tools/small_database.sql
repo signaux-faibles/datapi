@@ -1,4 +1,4 @@
-// choisir au hasard 200 code siren
+-- choisir au hasard 200 code siren
 create table limit_entreprise as
 select siren from entreprise 
 order by random()
