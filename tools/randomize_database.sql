@@ -45,7 +45,6 @@ indice_repetition = (select indice_repetition from etablissement order by random
 type_voie = 'RUE',
 voie = substring(a.seed1 from 1 for 6),
 commune_etranger = null,
-code_commune = null,
 code_cedex = null,
 code_pays_etranger = null,
 pays_etranger = null, 
@@ -264,7 +263,8 @@ from translate_siret t
 where t.siret = e.siret;
 
 update score e set siret = t.new_siret,
-siren = substring(t.new_siret from 1 for 9)
+siren = substring(t.new_siret from 1 for 9),
+score = greatest(score * random()*2, 0.99)
 from translate_siret t
 where t.siret = e.siret;
 

@@ -31,6 +31,7 @@ type Entreprise struct {
 	Bdf                   []bdf           `json:"-"`
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
+	Groupe                ellisphere      `json:"groupe,omitempty"`
 }
 
 // EtablissementSummary …
@@ -294,7 +295,17 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		et.visite_fce, n.libelle_n1, n.code_n1, n.libelle_n5, et.code_activite, n.libelle_n2,
 		n.libelle_n3, n.libelle_n4,	f.id is not null as followed,	ro.roles && $4 as visible,
 		s.siret is not null as alert,	en.prenom1, en.prenom2, en.prenom3, en.prenom4, 
-		en.nom, en.nom_usage, en.creation, et.siege
+		en.nom, en.nom_usage, en.creation, et.siege,
+		coalesce(g.code, ''), 
+		coalesce(g.refid, ''), 
+		coalesce(g.raison_sociale, ''), 
+		coalesce(g.adresse, ''), 
+		coalesce(g.personne_pou_m, ''), 
+		coalesce(g.niveau_detention, 0), 
+		coalesce(g.part_financiere, 0), 
+		coalesce(g.code_filiere, ''),
+		coalesce(g.refid_filiere, ''),
+		coalesce(g.personne_pou_m_filiere, '')
 		from etablissement0 et
 		inner join departements d on d.code = et.departement
 		inner join regions r on d.id_region = r.id
@@ -306,6 +317,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		left join categorie_juridique j2 on substring(j.code from 0 for 3) = j2.code
 		left join categorie_juridique j1 on substring(j.code from 0 for 2) = j1.code
 		left join v_alert_etablissement s on s.siret = et.siret
+		left join entreprise_ellisphere0 g on g.siren = et.siren
 		where 
 		(et.siret=any($1) or et.siren=any($2))
 		and coalesce($1, $2) is not null;
@@ -425,7 +437,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
 		coalesce(r.roles && $1 and vs.siret is not null, false) as visible,
 		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed, et.siege
+		f.id is not null as followed, et.siege, g.siren is not null
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
@@ -439,6 +451,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		left join v_last_procol ep on ep.siret = et.siret
 		left join v_diane_variation_ca di on di.siren = s.siren
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $3
+		left join entreprise_ellisphere0 g on g.siren = et.siren
 		where et.siren = any($4) 
 		and coalesce(s.libelle_liste, $5) = $5
 		order by ef.effectif desc, et.siret desc;`,
@@ -468,6 +481,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&score.InZone,
 			&score.Followed,
 			&score.Siege,
+			&score.Groupe,
 		)
 		if err != nil {
 			return err
@@ -708,6 +722,9 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NAF.CodeActivite, &et.Sirene.NAF.LibelleN2, &et.Sirene.NAF.LibelleN3, &et.Sirene.NAF.LibelleN4,
 			&et.Followed, &et.Visible, &et.Alert, &en.Sirene.Prenom1, &en.Sirene.Prenom2, &en.Sirene.Prenom3,
 			&en.Sirene.Prenom4, &en.Sirene.Nom, &en.Sirene.NomUsage, &en.Sirene.Creation, &et.Siege,
+			&en.Groupe.CodeGroupe, &en.Groupe.RefIDGroupe, &en.Groupe.RaisocGroupe, &en.Groupe.AdresseGroupe,
+			&en.Groupe.PersonnePouMGroupe, &en.Groupe.NiveauDetention, &en.Groupe.PartFinanciere,
+			&en.Groupe.CodeFiliere, &en.Groupe.RefIDFiliere, &en.Groupe.PersonnePouMFiliere,
 		)
 
 		if err != nil {
