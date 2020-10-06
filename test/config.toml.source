@@ -1,0 +1,18 @@
+bind = ":changemyport"
+postgres = "host=127.0.0.1 user=postgres password=changemypass dbname=datapi_test port=changemypgport sslmode=disable"
+prod = false
+
+enableKeycloak = false
+
+fakeUsernameKeycloak = "dummy@crash.test"
+fakeKeycloakRoles = [
+  "import",
+  "Bourgogne-Franche-Comté",
+  "Auvergne-Rhône-Alpes",
+  "detection",
+  "dgefp",
+  "urssaf",
+  "bdf",
+]
+
+searchPageLength=10

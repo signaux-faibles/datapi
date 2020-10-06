@@ -11,7 +11,7 @@ if [ -d workspace ]; then
     echo "supprimer le répertoire workspace avant de commencer"
     exit 1
 fi
-
+ 
 # Checkout git
 mkdir workspace
 cd workspace
@@ -30,7 +30,7 @@ CGO_ENABLED=0 go build
 
 # Build docker
 cd ../..
-docker build -t datapi --build-arg binary="./workspace/datapi-$1/datapi" . 
+docker build -t datapi --build-arg datapiDir="./workspace/datapi-$1/" . 
 docker save datapi | gzip > datapi.tar.gz
 
 # Cleanup

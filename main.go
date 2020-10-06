@@ -1,153 +1,112 @@
 package main
 
 import (
-	"flag"
 	"fmt"
 	"log"
-	"strings"
 
-	gocloak "github.com/Nerzal/gocloak/v3"
-	jwt "github.com/dgrijalva/jwt-go"
+	gocloak "github.com/Nerzal/gocloak/v6"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v4/pgxpool"
 
-	_ "github.com/signaux-faibles/datapi/docs"
-	dalib "github.com/signaux-faibles/datapi/lib"
 	"github.com/spf13/viper"
 
-	ginSwagger "github.com/swaggo/gin-swagger"
-	"github.com/swaggo/gin-swagger/swaggerFiles"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var keycloak gocloak.GoCloak
+var db *pgxpool.Pool
+var ref reference
 
 func main() {
-	api := flag.Bool("api", false, "Runs API")
-	createdb := flag.Bool("createschema", false, "Initialize postgres schema in a pre-existing database, role must have sufficient privileges")
+	loadConfig()
+	db = connectDB()
+	keycloak = connectKC()
+	runAPI()
+}
 
-	flag.Parse()
-
+func loadConfig() {
+	viper.SetDefault("MigrationsDir", "./migrations")
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(".")
 	viper.ReadInConfig()
-
-	postgres := viper.GetString("postgres")
-
-	bind := viper.GetString("bind")
-
-	if *createdb {
-		dalib.CreateDB(postgres)
-		return
-	}
-
-	if *api {
-		log.Println("starting api, listening " + bind)
-		keycloak = gocloak.NewClient(viper.GetString("keycloakHostname"))
-
-		runAPI(bind, postgres, &keycloak)
-		return
-	}
-
-	fmt.Println(`use "datapi -help" for help`)
-
 }
 
-func runAPI(bind, postgres string, keycloak *gocloak.GoCloak) {
-
-	dalib.Warmup(postgres)
-
-	gin.SetMode(gin.ReleaseMode)
+func runAPI() {
+	if viper.GetBool("prod") {
+		gin.SetMode(gin.ReleaseMode)
+	}
 	router := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"*"}
+	config.AllowOrigins = []string{"http://localhost:8081"}
 	config.AddAllowHeaders("Authorization")
-	config.AddAllowMethods("GET", "POST")
+	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 
-	router.POST("/login", loginHandler)
-	router.POST("/connectionEmail", connectionEmailHandler)
-	router.POST("/refreshToken", refreshTokenHandler)
-	router.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
-	router.GET("/prepare", prepare)
-	router.GET("/refresh")
-	// router.GET("/ws/:token", wsTokenMiddleWare, authMiddleware.MiddlewareFunc(), wsHandler)
+	entreprise := router.Group("/entreprise", getKeycloakMiddleware())
+	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
+	entreprise.GET("/get/:siren", validSiren, getEntreprise)
+	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
 
-	data := router.Group("data")
+	etablissement := router.Group("/etablissement", getKeycloakMiddleware())
+	etablissement.GET("/viewers/:siret", validSiret, getEtablissementViewers)
+	etablissement.GET("/get/:siret", validSiret, getEtablissement)
+	etablissement.GET("/comments/:siret", validSiret, getEntrepriseComments)
+	etablissement.POST("/comments/:siret", validSiret, addEntrepriseComment)
+	etablissement.PUT("/comments/:id", updateEntrepriseComment)
+	etablissement.GET("/search/:search", searchEtablissementHandler)
 
-	data.Use(keycloakMiddleware)
-	data.POST("/get/:bucket", get)
-	data.POST("/put/:bucket", put)
+	follow := router.Group("/follow", getKeycloakMiddleware())
+	follow.GET("", getEtablissementsFollowedByCurrentUser)
+	follow.POST("/:siret", validSiret, followEtablissement)
+	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
 
-	data.POST("/cache/:bucket", cache)
+	listes := router.Group("/listes", getKeycloakMiddleware())
+	listes.GET("", getListes)
 
-	err := router.Run(bind)
+	scores := router.Group("/scores", getKeycloakMiddleware())
+	scores.POST("/liste", getLastListeScores)
+	scores.POST("/liste/:id", getListeScores)
+	scores.POST("/xls/:id", getXLSListeScores)
+
+	reference := router.Group("/reference", getKeycloakMiddleware())
+	reference.GET("/naf", getCodesNaf)
+	reference.GET("/departements", getDepartements)
+	reference.GET("/regions", getRegions)
+
+	utils := router.Group("/utils", getAdminAuthMiddleware())
+	utils.GET("/import", importHandler)
+	utils.GET("/keycloak", getKeycloakUsers)
+	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	log.Print("Running API on " + viper.GetString("bind"))
+	err := router.Run(viper.GetString("bind"))
 	if err != nil {
 		fmt.Println(err.Error())
 	}
 }
 
-func keycloakMiddleware(c *gin.Context) {
-	header := c.Request.Header["Authorization"][0]
-	rawToken := strings.Split(header, " ")[1]
-
-	token, claims, err := keycloak.DecodeAccessToken(rawToken, viper.GetString("keycloakRealm"))
-	if errValid := claims.Valid(); err != nil && errValid != nil {
-		c.AbortWithStatus(401)
+func getKeycloakMiddleware() gin.HandlerFunc {
+	if viper.GetBool("enableKeycloak") {
+		return keycloakMiddleware
 	}
-	var emailString, nameString, firstNameString string
-
-	email, ok := (*claims)["email"]
-	if ok {
-		emailString = email.(string)
-	}
-	name, ok := (*claims)["family_name"]
-	if ok {
-		nameString = name.(string)
-	}
-	firstName, ok := (*claims)["given_name"]
-	if ok {
-		firstNameString = firstName.(string)
-	}
-
-	user := dalib.User{
-		Email:     emailString,
-		Name:      nameString,
-		FirstName: firstNameString,
-		Scope:     scopeFromClaims(claims),
-	}
-	c.Set("token", token)
-	c.Set("claims", claims)
-	c.Set("user", &user)
-
-	c.Next()
+	return fakeCloakMiddleware
 }
 
-func scopeFromClaims(claims *jwt.MapClaims) dalib.Tags {
-	var resourceAccess = make(map[string]interface{})
-	var client = make(map[string]interface{})
-	var scope []interface{}
-
-	resourceAccessInterface, ok := (*claims)["resource_access"]
-	if ok {
-		resourceAccess, _ = resourceAccessInterface.(map[string]interface{})
+func getAdminAuthMiddleware() gin.HandlerFunc {
+	var whitelist = viper.GetStringSlice("adminWhitelist")
+	var wlmap = make(map[string]bool)
+	for _, ip := range whitelist {
+		wlmap[ip] = true
 	}
 
-	clientInterface, ok := (resourceAccess)["signauxfaibles"]
-	if ok {
-		client, _ = clientInterface.(map[string]interface{})
+	return func(c *gin.Context) {
+		if !wlmap[c.ClientIP()] {
+			log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
+			c.AbortWithStatus(403)
+			return
+		}
 	}
-
-	scopeInterface, ok := (client)["roles"]
-	if ok {
-		scope, _ = scopeInterface.([]interface{})
-	}
-
-	var tags dalib.Tags
-	for _, tag := range scope {
-		tags = append(tags, tag.(string))
-	}
-
-	return tags
 }
