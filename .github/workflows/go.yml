@@ -26,8 +26,11 @@ jobs:
       run: go build -v .
 
     - name: Ls
-      run: ls
+      run: |
+        ls
+        pwd
       
     - name: Test
-      run: test/test.sh
-      working-directory: test
+      run: |
+        cd test
+        bash ./test.sh
