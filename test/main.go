@@ -160,7 +160,8 @@ func getSiret(t *testing.T, visible, inzone, alert, follow bool, n int) []string
 	inner join etablissement_follow f on true
 	inner join etablissement_inzone i on true
 	inner join etablissement_visible v on true
-	inner join etablissement_alert a on true)
+	inner join etablissement_alert a on true
+	where e.departement != '20')
 	select siret from etablissement_bool
 	where visible=$1 and inzone=$2 and alert=$3 and follow=$4
 	order by siret
@@ -189,4 +190,11 @@ func getSiret(t *testing.T, visible, inzone, alert, follow bool, n int) []string
 		sirets = append(sirets, siret)
 	}
 	return sirets
+}
+
+type etablissementVIAF struct {
+	Visible  bool `json:"visible"`
+	InZone   bool `json:"inZone"`
+	Alert    bool `json:"alert"`
+	Followed bool `json:"followed"`
 }

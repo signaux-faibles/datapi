@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"testing"
 )
@@ -71,20 +72,20 @@ func TestSearch(t *testing.T) {
 
 func TestFollow(t *testing.T) {
 	// récupérer une liste de sirets à suivre de toutes les typologies d'établissements
-	sirets := getSiret(t, false, false, false, false, 2)
-	sirets = append(sirets, getSiret(t, false, false, true, false, 2)...)
-	sirets = append(sirets, getSiret(t, false, true, false, false, 2)...)
-	sirets = append(sirets, getSiret(t, false, true, true, false, 2)...)
-	sirets = append(sirets, getSiret(t, true, false, false, false, 2)...)
-	sirets = append(sirets, getSiret(t, true, false, true, false, 2)...)
-	sirets = append(sirets, getSiret(t, true, true, false, false, 2)...)
-	sirets = append(sirets, getSiret(t, true, true, true, false, 2)...)
+	sirets := getSiret(t, false, false, false, false, 4)
+	sirets = append(sirets, getSiret(t, false, false, true, false, 4)...)
+	sirets = append(sirets, getSiret(t, false, true, false, false, 4)...)
+	sirets = append(sirets, getSiret(t, false, true, true, false, 4)...)
+	sirets = append(sirets, getSiret(t, true, false, false, false, 4)...)
+	sirets = append(sirets, getSiret(t, true, false, true, false, 4)...)
+	sirets = append(sirets, getSiret(t, true, true, false, false, 4)...)
+	sirets = append(sirets, getSiret(t, true, true, true, false, 4)...)
 
 	params := map[string]interface{}{
 		"comment":  "test",
 		"category": "test",
 	}
-	fmt.Println(sirets)
+
 	for _, siret := range sirets {
 		t.Logf("suivi de l'établissement %s", siret)
 		resp, _, _ := post(t, "/follow/"+siret, params)
@@ -102,34 +103,46 @@ func TestFollow(t *testing.T) {
 	}
 }
 
-func testEtablissement(t *testing.T, siret string, goldenFilePath string) {
+func testEtablissementVIAF(t *testing.T, siret string, viaf string) {
+	goldenFilePath := fmt.Sprintf("data/getEtablissement-%s-%s.json.gz", viaf, siret)
 	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
 	_, indented, _ := get(t, "/etablissement/get/"+siret)
 	diff, _ := processGoldenFile(t, goldenFilePath, indented)
 	if diff != "" {
 		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
 	}
+
+	visible := viaf[0] == 'V'
+	inZone := viaf[1] == 'I'
+	// alert := viaf[2] == 'A'
+	followed := viaf[3] == 'F'
+	var e etablissementVIAF
+	json.Unmarshal(indented, &e)
+	if !(e.Visible == visible && e.InZone == inZone && e.Followed == followed) {
+		fmt.Println(e)
+		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, viaf)
+	}
+
 }
 
 func TestVIAF(t *testing.T) {
 	t.Log("absence d'etablissement vI[aA][fF]")
-	if len(getSiret(t, false, true, false, false, 2))+
-		len(getSiret(t, false, true, false, true, 2))+
-		len(getSiret(t, false, true, true, false, 2))+
-		len(getSiret(t, false, true, true, true, 2)) > 0 {
+	if len(getSiret(t, false, true, false, false, 4))+
+		len(getSiret(t, false, true, false, true, 4))+
+		len(getSiret(t, false, true, true, false, 4))+
+		len(getSiret(t, false, true, true, true, 4)) > 0 {
 		t.Error("il existe des établissements qui ne devraient pas être là")
 	}
 
-	for _, c := range []string{"viaf", "viaF", "viAf", "viAF", "Viaf", "ViaF", "ViAf", "ViAF"} {
-		visible := c[0] == 'V'
-		inZone := c[1] == 'I'
-		alert := c[2] == 'A'
-		follow := c[3] == 'F'
+	for _, viaf := range []string{"viaf", "viaF", "viAf", "viAF", "Viaf", "ViaF", "ViAf", "ViAF"} {
+		visible := viaf[0] == 'V'
+		inZone := viaf[1] == 'I'
+		alert := viaf[2] == 'A'
+		followed := viaf[3] == 'F'
 
-		sirets := getSiret(t, visible, inZone, alert, follow, 2)
+		sirets := getSiret(t, visible, inZone, alert, followed, 4)
 		for _, siret := range sirets {
-			goldenFilePath := fmt.Sprintf("getEtablissement-%s-%s.json.gz", c, siret)
-			testEtablissement(t, siret, goldenFilePath)
+			testEtablissementVIAF(t, siret, viaf)
 		}
 	}
 }

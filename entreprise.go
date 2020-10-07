@@ -294,7 +294,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		coalesce(et.nomen_activite, 'NAFRev2'), et.creation,	et.latitude, et.longitude, 
 		et.visite_fce, n.libelle_n1, n.code_n1, n.libelle_n5, et.code_activite, n.libelle_n2,
 		n.libelle_n3, n.libelle_n4,	f.id is not null as followed,	ro.roles && $4 as visible,
-		s.siret is not null as alert,	en.prenom1, en.prenom2, en.prenom3, en.prenom4, 
+		s.siren is not null as alert,	en.prenom1, en.prenom2, en.prenom3, en.prenom4, 
 		en.nom, en.nom_usage, en.creation, et.siege,
 		coalesce(g.code, ''), 
 		coalesce(g.refid, ''), 
@@ -311,12 +311,12 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		inner join regions r on d.id_region = r.id
 		inner join v_roles ro on ro.siren = et.siren
 		left join v_naf n on n.code_n5 = et.code_activite
-		left join etablissement_follow f on f.siret = et.siret and f.active = true and f.username = $3
+		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $3
 		left join entreprise0 en on en.siren = et.siren
 		left join categorie_juridique j on j.code = en.statut_juridique
 		left join categorie_juridique j2 on substring(j.code from 0 for 3) = j2.code
 		left join categorie_juridique j1 on substring(j.code from 0 for 2) = j1.code
-		left join v_alert_etablissement s on s.siret = et.siret
+		left join v_alert_entreprise s on s.siren = et.siren
 		left join entreprise_ellisphere0 g on g.siren = et.siren
 		where 
 		(et.siret=any($1) or et.siren=any($2))
