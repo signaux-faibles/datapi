@@ -122,7 +122,7 @@ type sireneUL struct {
 }
 
 type ellisphere struct {
-	Siren               string
+	Siren               string  `json:"-"`
 	CodeGroupe          string  `json:"code_groupe,omitempty"`
 	SirenGroupe         string  `json:"siren_groupe,omitempty"`
 	RefIDGroupe         string  `json:"refid_groupe,omitempty"`

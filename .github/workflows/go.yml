@@ -24,11 +24,6 @@ jobs:
 
     - name: Build
       run: go build -v .
-
-    - name: Ls
-      run: |
-        ls
-        pwd
       
     - name: Test
       run: |
