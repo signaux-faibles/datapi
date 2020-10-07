@@ -103,26 +103,23 @@ func TestFollow(t *testing.T) {
 	}
 }
 
-func testEtablissementVIAF(t *testing.T, siret string, viaf string) {
-	goldenFilePath := fmt.Sprintf("data/getEtablissement-%s-%s.json.gz", viaf, siret)
-	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
-	_, indented, _ := get(t, "/etablissement/get/"+siret)
+func testSearchVIAF(t *testing.T, siret string, viaf string) {
+	goldenFilePath := fmt.Sprintf("data/getSearch-%s-%s.json.gz", viaf, siret)
+	t.Logf("la recherche renvoie l'établissement %s sous la forme attendue (ref %s)", siret, goldenFilePath)
+	_, indented, _ := get(t, "/etablissement/search/"+siret+"?ignorezone=true&ignoreroles=true")
 	diff, _ := processGoldenFile(t, goldenFilePath, indented)
 	if diff != "" {
 		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
 	}
-
 	visible := viaf[0] == 'V'
 	inZone := viaf[1] == 'I'
-	// alert := viaf[2] == 'A'
 	followed := viaf[3] == 'F'
-	var e etablissementVIAF
+	var e searchVIAF
 	json.Unmarshal(indented, &e)
-	if !(e.Visible == visible && e.InZone == inZone && e.Followed == followed) {
+	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].InZone == inZone && e.Results[0].Followed == followed) {
 		fmt.Println(e)
-		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, viaf)
+		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, viaf)
 	}
-
 }
 
 func TestVIAF(t *testing.T) {
@@ -143,6 +140,11 @@ func TestVIAF(t *testing.T) {
 		sirets := getSiret(t, visible, inZone, alert, followed, 4)
 		for _, siret := range sirets {
 			testEtablissementVIAF(t, siret, viaf)
+			testSearchVIAF(t, siret, viaf)
 		}
 	}
+}
+
+type searchVIAF struct {
+	Results []etablissementVIAF `json:"results"`
 }
