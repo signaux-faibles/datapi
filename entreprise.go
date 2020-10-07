@@ -435,7 +435,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
 		else null end as hausseUrssaf,
 		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
-		coalesce(r.roles && $1 and vs.siret is not null, false) as visible,
+		r.roles && $1  as visible,
 		coalesce(et.departement = any($2), false) as in_zone,
 		f.id is not null as followed, et.siege, g.siren is not null
 		from etablissement0 et

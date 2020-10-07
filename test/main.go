@@ -198,3 +198,23 @@ type etablissementVIAF struct {
 	Alert    bool `json:"alert"`
 	Followed bool `json:"followed"`
 }
+
+func testEtablissementVIAF(t *testing.T, siret string, viaf string) {
+	goldenFilePath := fmt.Sprintf("data/getEtablissement-%s-%s.json.gz", viaf, siret)
+	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
+	_, indented, _ := get(t, "/etablissement/get/"+siret)
+	diff, _ := processGoldenFile(t, goldenFilePath, indented)
+	if diff != "" {
+		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
+	}
+
+	visible := viaf[0] == 'V'
+	inZone := viaf[1] == 'I'
+	followed := viaf[3] == 'F'
+	var e etablissementVIAF
+	json.Unmarshal(indented, &e)
+	if !(e.Visible == visible && e.InZone == inZone && e.Followed == followed) {
+		fmt.Println(e)
+		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, viaf)
+	}
+}
