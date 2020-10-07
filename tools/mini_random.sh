@@ -1,3 +1,4 @@
+#!/noshell
 # aide mémoire
 docker exec -it postgres /usr/local/bin/dropdb -U postgres datapi; docker exec -it postgres /usr/local/bin/createdb -U postgres datapi
 killall datapi

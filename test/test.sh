@@ -41,8 +41,7 @@ if [ "$1" = '-u' ]; then pwd; rm ../data/*.json.gz; GOLDEN_UPDATE=true; else GOL
 if [ "$1" = '-w' ]; 
   then echo "Environnement en attente, commande à exécuter pour les tests"
     echo DATAPI_PORT="$DATAPI_PORT" GOLDEN_UPDATE="$GOLDEN_UPDATE" go test -v; 
-    echo "Appuyez sur entrée pour terminer"
-    read var1
+    read -p "Appuyez sur entrée pour continuer"
 fi
 cd ../
 
