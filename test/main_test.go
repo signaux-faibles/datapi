@@ -69,85 +69,67 @@ func TestSearch(t *testing.T) {
 	}
 }
 
-func TestGetEtablissement(t *testing.T) {
-	// récupérer une liste de sirets à chercher
-	rows, err := db.Query(context.Background(), `select e.siret from etablissement e
-	inner join departements d on d.code = e.departement
-	inner join regions r on r.id = d.id_region
-	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
-	order by e.siret
-	limit 10`)
-	if err != nil {
-		t.Errorf("impossible de se connecter à la base: %s", err.Error())
-	}
-
-	i := 0
-	for rows.Next() {
-		var siret string
-		err := rows.Scan(&siret)
-		if err != nil {
-			t.Errorf("siret illisible: %s", err.Error())
-		}
-
-		t.Logf("l'établissement %s est bien de la forme attendue", siret)
-		_, indented, _ := get(t, "/etablissement/get/"+siret)
-		goldenFilePath := fmt.Sprintf("data/etablissement-%d.json.gz", i)
-		diff, _ := processGoldenFile(t, goldenFilePath, indented)
-		if diff != "" {
-			t.Errorf("differences entre le résultat et le golden file: 'data/etablissement-%d.json.gz' \n%s", i, diff)
-		}
-		i++
-	}
-}
-
 func TestFollow(t *testing.T) {
-	// récupérer une liste de sirets à suivre
-	rows, err := db.Query(context.Background(), `select e.siret from etablissement e
-	order by e.siret desc
-	limit 10`)
-	if err != nil {
-		t.Errorf("impossible de se connecter à la base: %s", err.Error())
-	}
+	// récupérer une liste de sirets à suivre de toutes les typologies d'établissements
+	sirets := getSiret(t, false, false, false, false, 2)
+	sirets = append(sirets, getSiret(t, false, false, true, false, 2)...)
+	sirets = append(sirets, getSiret(t, false, true, false, false, 2)...)
+	sirets = append(sirets, getSiret(t, false, true, true, false, 2)...)
+	sirets = append(sirets, getSiret(t, true, false, false, false, 2)...)
+	sirets = append(sirets, getSiret(t, true, false, true, false, 2)...)
+	sirets = append(sirets, getSiret(t, true, true, false, false, 2)...)
+	sirets = append(sirets, getSiret(t, true, true, true, false, 2)...)
 
 	params := map[string]interface{}{
 		"comment":  "test",
 		"category": "test",
 	}
-
-	for rows.Next() {
-		var siret string
-		err := rows.Scan(&siret)
-		if err != nil {
-			t.Errorf("siret illisible: %s", err.Error())
-		}
-
+	fmt.Println(sirets)
+	for _, siret := range sirets {
 		t.Logf("suivi de l'établissement %s", siret)
-
 		resp, _, _ := post(t, "/follow/"+siret, params)
 		if resp.StatusCode != 201 {
 			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 		}
 	}
 
-	rows, err = db.Query(context.Background(), `select e.siret from etablissement e
-	order by e.siret desc
-	limit 10`)
-	if err != nil {
-		t.Errorf("impossible de se connecter à la base: %s", err.Error())
-	}
-
-	for rows.Next() {
-		var siret string
-		err := rows.Scan(&siret)
-		if err != nil {
-			t.Errorf("siret illisible: %s", err.Error())
-		}
-
+	for _, siret := range sirets {
 		t.Logf("suivi doublon de l'établissement %s", siret)
-
 		resp, _, _ := post(t, "/follow/"+siret, params)
 		if resp.StatusCode != 204 {
 			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
+		}
+	}
+}
+
+func testEtablissement(t *testing.T, siret string, goldenFilePath string) {
+	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
+	_, indented, _ := get(t, "/etablissement/get/"+siret)
+	diff, _ := processGoldenFile(t, goldenFilePath, indented)
+	if diff != "" {
+		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
+	}
+}
+
+func TestVIAF(t *testing.T) {
+	t.Log("absence d'etablissement vI[aA][fF]")
+	if len(getSiret(t, false, true, false, false, 2))+
+		len(getSiret(t, false, true, false, true, 2))+
+		len(getSiret(t, false, true, true, false, 2))+
+		len(getSiret(t, false, true, true, true, 2)) > 0 {
+		t.Error("il existe des établissements qui ne devraient pas être là")
+	}
+
+	for _, c := range []string{"viaf", "viaF", "viAf", "viAF", "Viaf", "ViaF", "ViAf", "ViAF"} {
+		visible := c[0] == 'V'
+		inZone := c[1] == 'I'
+		alert := c[2] == 'A'
+		follow := c[3] == 'F'
+
+		sirets := getSiret(t, visible, inZone, alert, follow, 2)
+		for _, siret := range sirets {
+			goldenFilePath := fmt.Sprintf("getEtablissement-%s-%s.json.gz", c, siret)
+			testEtablissement(t, siret, goldenFilePath)
 		}
 	}
 }

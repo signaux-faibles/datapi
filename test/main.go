@@ -123,7 +123,70 @@ func connect() *pgxpool.Pool {
 	pgConnStr := viper.GetString("postgres")
 	db, err := pgxpool.Connect(context.Background(), pgConnStr)
 	if err != nil {
-		log.Fatal("database connexion:" + err.Error())
+		log.Fatalf("database connexion: %s", err.Error())
 	}
+	// Suppression des éventuels suivi d'un test précédent
+	_, err = db.Exec(context.Background(), `delete from etablissement_follow;`)
+	if err != nil {
+		log.Fatalf("erreur lors de la suppression des suivis: %s", err.Error())
+	}
+
 	return db
+}
+
+func getSiret(t *testing.T, visible, inzone, alert, follow bool, n int) []string {
+	sql := `with etablissement_follow as (
+		select coalesce(array_agg(distinct siret), '{}'::text[]) as f from etablissement_follow
+	),
+	etablissement_inzone as (
+		select array_agg(distinct siret) as i from etablissement where
+		departement in ('70','39','58','71','89','21','90','25','69','73','43','38','26','07','15','63','01','74','42','03')
+	),
+	etablissement_visible as (
+		select array_agg(siret) as v from etablissement0 e
+		inner join v_roles r on r.siren = e.siren
+		where roles && array['70','39','58','71','89','21','90','25','69','73','43','38','26','07','15','63','01','74','42','03']
+	),
+	etablissement_alert as (
+		select array_agg(siret) as a from etablissement0 e
+		inner join v_alert_entreprise a on a.siren = e.siren
+	),
+	etablissement_bool as (select e.siret,
+		e.siret = any(v.v) as visible,
+		e.siret = any(i.i) as inzone,
+		e.siret = any(a.a) as alert,
+		e.siret = any(f.f) as follow
+	from etablissement e
+	inner join etablissement_follow f on true
+	inner join etablissement_inzone i on true
+	inner join etablissement_visible v on true
+	inner join etablissement_alert a on true)
+	select siret from etablissement_bool
+	where visible=$1 and inzone=$2 and alert=$3 and follow=$4
+	order by siret
+	limit $5`
+	rows, err := db.Query(
+		context.Background(),
+		sql,
+		visible,
+		inzone,
+		alert,
+		follow,
+		n,
+	)
+	if err != nil {
+		t.Errorf("problème d'accès à la base de données: %s", err.Error())
+		return nil
+	}
+	var sirets []string
+	for rows.Next() {
+		var siret string
+		err := rows.Scan(&siret)
+		if err != nil {
+			t.Errorf("problème d'accès à la base de données: %s", err.Error())
+			return nil
+		}
+		sirets = append(sirets, siret)
+	}
+	return sirets
 }
