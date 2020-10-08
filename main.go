@@ -1,7 +1,10 @@
 package main
 
 import (
+	"bytes"
+	"context"
 	"fmt"
+	"io/ioutil"
 	"log"
 
 	gocloak "github.com/Nerzal/gocloak/v6"
@@ -45,12 +48,12 @@ func runAPI() {
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 
-	entreprise := router.Group("/entreprise", getKeycloakMiddleware())
+	entreprise := router.Group("/entreprise", getKeycloakMiddleware(), logMiddleware)
 	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
 	entreprise.GET("/get/:siren", validSiren, getEntreprise)
 	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
 
-	etablissement := router.Group("/etablissement", getKeycloakMiddleware())
+	etablissement := router.Group("/etablissement", getKeycloakMiddleware(), logMiddleware)
 	etablissement.GET("/viewers/:siret", validSiret, getEtablissementViewers)
 	etablissement.GET("/get/:siret", validSiret, getEtablissement)
 	etablissement.GET("/comments/:siret", validSiret, getEntrepriseComments)
@@ -58,20 +61,20 @@ func runAPI() {
 	etablissement.PUT("/comments/:id", updateEntrepriseComment)
 	etablissement.GET("/search/:search", searchEtablissementHandler)
 
-	follow := router.Group("/follow", getKeycloakMiddleware())
+	follow := router.Group("/follow", getKeycloakMiddleware(), logMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
 
-	listes := router.Group("/listes", getKeycloakMiddleware())
+	listes := router.Group("/listes", getKeycloakMiddleware(), logMiddleware)
 	listes.GET("", getListes)
 
-	scores := router.Group("/scores", getKeycloakMiddleware())
+	scores := router.Group("/scores", getKeycloakMiddleware(), logMiddleware)
 	scores.POST("/liste", getLastListeScores)
 	scores.POST("/liste/:id", getListeScores)
 	scores.POST("/xls/:id", getXLSListeScores)
 
-	reference := router.Group("/reference", getKeycloakMiddleware())
+	reference := router.Group("/reference", getKeycloakMiddleware(), logMiddleware)
 	reference.GET("/naf", getCodesNaf)
 	reference.GET("/departements", getDepartements)
 	reference.GET("/regions", getRegions)
@@ -109,4 +112,32 @@ func getAdminAuthMiddleware() gin.HandlerFunc {
 			return
 		}
 	}
+}
+
+func logMiddleware(c *gin.Context) {
+	path := c.Request.URL.Path
+	method := c.Request.Method
+	body, _ := ioutil.ReadAll(c.Request.Body)
+	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+
+	var token []string
+	var err error
+	if viper.GetBool("enableKeycloak") {
+		token, err = getRawToken(c)
+		if err != nil {
+			c.AbortWithStatus(500)
+			return
+		}
+	} else {
+		token = []string{"", "fakeKeycloak"}
+	}
+
+	_, err = db.Exec(context.Background(), `insert into logs (path, method, body, token) 
+	values ($1, $2, $3, $4);`, path, method, string(body), token[1])
+	if err != nil {
+		c.AbortWithStatus(500)
+		return
+	}
+
+	c.Next()
 }

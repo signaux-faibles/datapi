@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"log"
 	"strings"
 
@@ -57,21 +58,25 @@ func connectKC() gocloak.GoCloak {
 	return keycloak
 }
 
-func keycloakMiddleware(c *gin.Context) {
+func getRawToken(c *gin.Context) ([]string, error) {
 	if len(c.Request.Header["Authorization"]) == 0 {
-		log.Println("no authorization header")
-		c.AbortWithStatus(401)
-		return
+		return nil, errors.New("no authorization header")
 	}
 	header := c.Request.Header["Authorization"][0]
-
 	rawToken := strings.Split(header, " ")
 	if len(rawToken) != 2 {
-		log.Println("malformed authorization header")
+		return nil, errors.New("malformed authorization header")
+	}
+	return rawToken, nil
+}
+
+func keycloakMiddleware(c *gin.Context) {
+	rawToken, err := getRawToken(c)
+	if err != nil {
+		log.Println(err.Error())
 		c.AbortWithStatus(401)
 		return
 	}
-
 	_, claims, err := keycloak.DecodeAccessToken(context.Background(), rawToken[1], viper.GetString("keycloakRealm"))
 
 	if err != nil {
