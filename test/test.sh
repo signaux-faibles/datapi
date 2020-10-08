@@ -32,7 +32,10 @@ sed "s/changemypass/$POSTGRES_PASSWORD/" config.toml.source | sed "s/changemypor
 cp ../datapi workspace
 cp -r ../migrations workspace
 cd workspace
-./datapi > /dev/null 2>&1 &
+if [ "$1" = '-w' ]; 
+  then ./datapi &
+  else ./datapi > /dev/null 2>&1 &
+fi
 DATAPI_PID=$!
 sleep 2
 
