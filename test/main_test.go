@@ -2,36 +2,25 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"testing"
 )
 
 func TestListes(t *testing.T) {
 	_, indented, _ := get(t, "/listes")
-	diff, _ := processGoldenFile(t, "data/listes.json.gz", indented)
-	if diff != "" {
-		t.Errorf("differences entre le résultat et le golden file: \n%s", diff)
-	}
+	processGoldenFile(t, "data/listes.json.gz", indented)
 }
 
 func TestScores(t *testing.T) {
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
 	_, indented, _ := post(t, "/scores/liste", nil)
-	diff, _ := processGoldenFile(t, "data/scores.json.gz", indented)
-	if diff != "" {
-		t.Errorf("differences entre le résultat et le golden file: \n%s", diff)
-	}
-
+	processGoldenFile(t, "data/scores.json.gz", indented)
 	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true")
 	params := map[string]interface{}{
 		"ignoreZone": true,
 	}
 	_, indented, _ = post(t, "/scores/liste", params)
-	diff, _ = processGoldenFile(t, "data/scores-ignoreZone.json.gz", indented)
-	if diff != "" {
-		t.Errorf("differences entre le résultat et le golden file: \n%s", diff)
-	}
+	processGoldenFile(t, "data/scores-ignoreZone.json.gz", indented)
 }
 
 func TestSearch(t *testing.T) {
@@ -62,24 +51,21 @@ func TestSearch(t *testing.T) {
 		t.Logf("la recherche %s est bien de la forme attendue", siret)
 		_, indented, _ := get(t, "/etablissement/search/"+siret)
 		goldenFilePath := fmt.Sprintf("data/search-%d.json.gz", i)
-		diff, _ := processGoldenFile(t, goldenFilePath, indented)
-		if diff != "" {
-			t.Errorf("differences entre le résultat et le golden file: 'data/search-%d.json.gz' \n%s", i, diff)
-		}
+		processGoldenFile(t, goldenFilePath, indented)
 		i++
 	}
 }
 
 func TestFollow(t *testing.T) {
 	// récupérer une liste de sirets à suivre de toutes les typologies d'établissements
-	sirets := getSiret(t, false, false, false, false, 4)
-	sirets = append(sirets, getSiret(t, false, false, true, false, 4)...)
-	sirets = append(sirets, getSiret(t, false, true, false, false, 4)...)
-	sirets = append(sirets, getSiret(t, false, true, true, false, 4)...)
-	sirets = append(sirets, getSiret(t, true, false, false, false, 4)...)
-	sirets = append(sirets, getSiret(t, true, false, true, false, 4)...)
-	sirets = append(sirets, getSiret(t, true, true, false, false, 4)...)
-	sirets = append(sirets, getSiret(t, true, true, true, false, 4)...)
+	sirets := getSiret(t, VIAF{false, false, false, false}, 4)
+	sirets = append(sirets, getSiret(t, VIAF{false, false, true, false}, 4)...)
+	sirets = append(sirets, getSiret(t, VIAF{false, true, false, false}, 4)...)
+	sirets = append(sirets, getSiret(t, VIAF{false, true, true, false}, 4)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, false, false, false}, 4)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, false, true, false}, 4)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, true, false, false}, 4)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, true, true, false}, 4)...)
 
 	params := map[string]interface{}{
 		"comment":  "test",
@@ -101,50 +87,30 @@ func TestFollow(t *testing.T) {
 			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
 		}
 	}
+
+	db.Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	_, indented, _ := get(t, "/follow")
+	processGoldenFile(t, "data/follow.json.gz", indented)
 }
 
-func testSearchVIAF(t *testing.T, siret string, viaf string) {
-	goldenFilePath := fmt.Sprintf("data/getSearch-%s-%s.json.gz", viaf, siret)
-	t.Logf("la recherche renvoie l'établissement %s sous la forme attendue (ref %s)", siret, goldenFilePath)
-	_, indented, _ := get(t, "/etablissement/search/"+siret+"?ignorezone=true&ignoreroles=true")
-	diff, _ := processGoldenFile(t, goldenFilePath, indented)
-	if diff != "" {
-		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
-	}
-	visible := viaf[0] == 'V'
-	inZone := viaf[1] == 'I'
-	followed := viaf[3] == 'F'
-	var e searchVIAF
-	json.Unmarshal(indented, &e)
-	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].InZone == inZone && e.Results[0].Followed == followed) {
-		fmt.Println(e)
-		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, viaf)
-	}
-}
-
+// TestVIAF traite la problématique du respect des traitements des droits utilisateurs
 func TestVIAF(t *testing.T) {
 	t.Log("absence d'etablissement vI[aA][fF]")
-	if len(getSiret(t, false, true, false, false, 4))+
-		len(getSiret(t, false, true, false, true, 4))+
-		len(getSiret(t, false, true, true, false, 4))+
-		len(getSiret(t, false, true, true, true, 4)) > 0 {
+	if len(getSiret(t, VIAF{false, true, false, false}, 4))+
+		len(getSiret(t, VIAF{false, true, false, true}, 4))+
+		len(getSiret(t, VIAF{false, true, true, false}, 4))+
+		len(getSiret(t, VIAF{false, true, true, true}, 4)) > 0 {
 		t.Error("il existe des établissements qui ne devraient pas être là")
 	}
 
 	for _, viaf := range []string{"viaf", "viaF", "viAf", "viAF", "Viaf", "ViaF", "ViAf", "ViAF"} {
-		visible := viaf[0] == 'V'
-		inZone := viaf[1] == 'I'
-		alert := viaf[2] == 'A'
-		followed := viaf[3] == 'F'
+		v := VIAF{}
+		v.read(viaf)
 
-		sirets := getSiret(t, visible, inZone, alert, followed, 4)
+		sirets := getSiret(t, v, 4)
 		for _, siret := range sirets {
 			testEtablissementVIAF(t, siret, viaf)
 			testSearchVIAF(t, siret, viaf)
 		}
 	}
-}
-
-type searchVIAF struct {
-	Results []etablissementVIAF `json:"results"`
 }
