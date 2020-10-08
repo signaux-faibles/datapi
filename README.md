@@ -10,20 +10,17 @@ L'utilisateur voit toutes les données de toutes les entreprises
 ### bdf
 L'utilisateur doit impérativement disposer du role `bdf` (niveau A)
 L'entreprise devient alors visible dès lors que
-
-- l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
-- ou l'entreprise est suivie par l'utilisateur
+-  l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
+-  ou l'entreprise est suivie par l'utilisateur
 
 ### cotisations / débits / majorations / délais
 L'utilisateur doit impérativement disposer du role `urssaf` (niveau A)
 L'entreprise devient alors visible dès lors que, au choix
-
-- l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
-- l'entreprise est suivie par l'utilisateur
+-  l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
+-  l'entreprise est suivie par l'utilisateur
 
 ### Demande et consommation d'activité partielle
 L'utilisateur doit impérativement disposer du role `dgefp` (niveau A)
 L'entreprise devient alors visible dès lors que, au choix
-
-- l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
-- l'entreprise est suivie par l'utilisateur
+-  l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
+-  l'entreprise est suivie par l'utilisateur
