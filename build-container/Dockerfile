@@ -1,4 +1,4 @@
-FROM alpine
+FROM alpine:3.12.0
 ARG datapiDir
 COPY ./$datapiDir/datapi /app/datapi
 COPY ./$datapiDir/migrations/ /app/migrations
