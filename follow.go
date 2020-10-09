@@ -199,7 +199,8 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
     et.departement = any($1) as in_zone,
     true as followed,
     et.siege,
-    g.siren is not null
+		g.siren is not null,
+		ti.code_commune is not null
     from etablissement_follow f
     inner join v_roles r on r.siren = f.siren
     inner join etablissement0 et on et.siret = f.siret
@@ -212,7 +213,8 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
     left join v_last_procol ep on ep.siret = f.siret
     left join v_diane_variation_ca di on di.siren = f.siren
     left join score s on s.siret = f.siret and s.libelle_liste = $2
-    left join entreprise_ellisphere0 g on g.siren = en.siren
+		left join entreprise_ellisphere0 g on g.siren = en.siren
+		left join terrind ti on ti.code_commune = et.code_commune
     where f.username = $3 and f.active
     `
 
@@ -254,6 +256,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 			&e.Followed,
 			&e.Siege,
 			&e.Groupe,
+			&e.TerrInd,
 		)
 		if err != nil {
 			return nil, errorToJSON(500, err)

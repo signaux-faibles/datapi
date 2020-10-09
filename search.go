@@ -102,7 +102,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		coalesce(et.departement = any($2), false) as in_zone,
 		f.id is not null as followed,
 		et.siege,
-		g.siren is not null
+		g.siren is not null,
+		ti.code_commune is not null
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
@@ -117,6 +118,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		left join v_diane_variation_ca di on di.siren = s.siren
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $10
 		left join entreprise_ellisphere0 g on g.siren = et.siren
+		left join terrind ti on ti.code_commune = et.code_commune
 		where (et.siret ilike $6 or en.raison_sociale ilike $7)
 		and (r.roles && $1 or $8)
 		and (et.departement=any($2) or $9)
@@ -179,6 +181,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&r.Followed,
 			&r.Siege,
 			&r.Groupe,
+			&r.TerrInd,
 		)
 		if err != nil {
 			return searchResult{}, errorToJSON(500, err)
