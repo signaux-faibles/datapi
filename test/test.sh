@@ -5,6 +5,16 @@
 # pour mettre l'environnement en attente et lancer les tests en parallèle, utilisez le flag -w
 # les flags ne sont pas cumulables
 
+cd ..
+go build
+build_state=$?
+if [ $build_state -ne 0 ]; then
+  echo "echec de la compilation, abandon"
+  exit $build_state
+fi
+
+cd test 
+
 TEST_DATA="data/testData.sql.gz"
 POSTGRES_PASSWORD="test"
 POSTGRES_DOCKERPORT="65432"

@@ -11,18 +11,6 @@ func TestListes(t *testing.T) {
 	processGoldenFile(t, "data/listes.json.gz", indented)
 }
 
-func TestScores(t *testing.T) {
-	t.Log("/scores/liste retourne le même résultat qu'attendu")
-	_, indented, _ := post(t, "/scores/liste", nil)
-	processGoldenFile(t, "data/scores.json.gz", indented)
-	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true")
-	params := map[string]interface{}{
-		"ignoreZone": true,
-	}
-	_, indented, _ = post(t, "/scores/liste", params)
-	processGoldenFile(t, "data/scores-ignoreZone.json.gz", indented)
-}
-
 func TestSearch(t *testing.T) {
 	t.Log("/etablissement/search retourne 400")
 	resp, _, _ := get(t, "/etablissement/search/t")
@@ -93,6 +81,24 @@ func TestFollow(t *testing.T) {
 	processGoldenFile(t, "data/follow.json.gz", indented)
 }
 
+func TestScores(t *testing.T) {
+	t.Log("/scores/liste retourne le même résultat qu'attendu")
+	_, indented, _ := post(t, "/scores/liste", nil)
+	processGoldenFile(t, "data/scores.json.gz", indented)
+
+	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true")
+	params := map[string]interface{}{
+		"ignoreZone": true,
+	}
+	_, indented, _ = post(t, "/scores/liste", params)
+	processGoldenFile(t, "data/scores-ignoreZone.json.gz", indented)
+
+	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true et exclureSuivi=true")
+	params["exclureSuivi"] = true
+	_, indented, _ = post(t, "/scores/liste", params)
+	processGoldenFile(t, "data/scores-exclureSuivi.json.gz", indented)
+}
+
 // TestVIAF traite la problématique du respect des traitements des droits utilisateurs
 func TestVIAF(t *testing.T) {
 	t.Log("absence d'etablissement vI[aA][fF]")
@@ -108,6 +114,9 @@ func TestVIAF(t *testing.T) {
 		v.read(viaf)
 
 		sirets := getSiret(t, v, 4)
+		if len(sirets) == 0 {
+			t.Error("aucun siret pour tester la catégorie, test faible")
+		}
 		for _, siret := range sirets {
 			testEtablissementVIAF(t, siret, viaf)
 			testSearchVIAF(t, siret, viaf)

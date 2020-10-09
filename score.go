@@ -21,6 +21,7 @@ type paramsListeScores struct {
 	EffectifMin  *int     `json:"effectifMin"`
 	EffectifMax  *int     `json:"effectifMax"`
 	IgnoreZone   *bool    `json:"ignorezone"`
+	ExclureSuivi bool     `json:"ExclureSuivi"`
 	Page         int      `json:"page"`
 	Filter       string   `json:"filter"`
 }
@@ -246,6 +247,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	and (et.departement=any($1) or $8 = true)
 	and s.alert != 'Pas d''alerte'
 	and (et.siret ilike $11 or en.raison_sociale ilike $12)
+	and (f.id is null or $14 = false)
 	order by s.score desc, s.siret asc
 	limit $9 offset $10;`
 	rows, err := db.Query(context.Background(), sqlScores,
@@ -254,7 +256,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		liste.Query.EffectifMin, liste.Query.EffectifMax, // $6…
 		liste.Query.IgnoreZone, limit, offset, // $8…
 		liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", // $11
-		username,
+		username, liste.Query.ExclureSuivi, // $13
 	)
 	if err != nil {
 		return errorToJSON(500, err)
