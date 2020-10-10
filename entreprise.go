@@ -31,7 +31,7 @@ type Entreprise struct {
 	Bdf                   []bdf           `json:"-"`
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
-	Groupe                ellisphere      `json:"groupe,omitempty"`
+	Groupe                *ellisphere     `json:"groupe,omitempty"`
 }
 
 // EtablissementSummary …
@@ -118,6 +118,13 @@ type Etablissement struct {
 	Visible       bool                       `json:"visible"`
 	InZone        bool                       `json:"inZone"`
 	Alert         bool                       `json:"alert,omitempty"`
+	TerrInd       *EtablissementTerrInd      `json:"territoireIndustrie,omitempty"`
+}
+
+// EtablissementTerrInd …
+type EtablissementTerrInd struct {
+	Code    string `json:"code"`
+	Libelle string `json:"libelle"`
 }
 
 // EtablissementPeriodeUrssaf …
@@ -305,7 +312,8 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		coalesce(g.part_financiere, 0), 
 		coalesce(g.code_filiere, ''),
 		coalesce(g.refid_filiere, ''),
-		coalesce(g.personne_pou_m_filiere, '')
+		coalesce(g.personne_pou_m_filiere, ''),
+		coalesce(ti.code_terrind,''), coalesce(ti.libelle_terrind,'')
 		from etablissement0 et
 		inner join departements d on d.code = et.departement
 		inner join regions r on d.id_region = r.id
@@ -318,6 +326,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		left join categorie_juridique j1 on substring(j.code from 0 for 2) = j1.code
 		left join v_alert_entreprise s on s.siren = et.siren
 		left join entreprise_ellisphere0 g on g.siren = et.siren
+		left join terrind ti on ti.code_commune = et.code_commune
 		where 
 		(et.siret=any($1) or et.siren=any($2))
 		and coalesce($1, $2) is not null;
@@ -437,7 +446,8 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
 		r.roles && $1  as visible,
 		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed, et.siege, g.siren is not null
+		f.id is not null as followed, et.siege, g.siren is not null,
+		ti.code_commune is not null as terrind
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
@@ -452,6 +462,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		left join v_diane_variation_ca di on di.siren = s.siren
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $3
 		left join entreprise_ellisphere0 g on g.siren = et.siren
+		left join terrind ti on ti.code_commune = et.code_commune
 		where et.siren = any($4) 
 		and coalesce(s.libelle_liste, $5) = $5
 		order by ef.effectif desc, et.siret desc;`,
@@ -482,6 +493,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&score.Followed,
 			&score.Siege,
 			&score.Groupe,
+			&score.TerrInd,
 		)
 		if err != nil {
 			return err
@@ -711,6 +723,8 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 	for (*rows).Next() {
 		var et Etablissement
 		var en Entreprise
+		var ti EtablissementTerrInd
+		var el ellisphere
 		err := (*rows).Scan(&et.Siret, &et.Siren, &en.Siren,
 			&en.Sirene.RaisonSociale, &en.Sirene.StatutJuridique, &en.Sirene.StatutJuridiqueN2, &en.Sirene.StatutJuridiqueN1,
 			&et.Sirene.ComplementAdresse, &et.Sirene.NumVoie, &et.Sirene.IndRep, &et.Sirene.TypeVoie, &et.Sirene.Voie,
@@ -722,18 +736,23 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NAF.CodeActivite, &et.Sirene.NAF.LibelleN2, &et.Sirene.NAF.LibelleN3, &et.Sirene.NAF.LibelleN4,
 			&et.Followed, &et.Visible, &et.Alert, &en.Sirene.Prenom1, &en.Sirene.Prenom2, &en.Sirene.Prenom3,
 			&en.Sirene.Prenom4, &en.Sirene.Nom, &en.Sirene.NomUsage, &en.Sirene.Creation, &et.Siege,
-			&en.Groupe.CodeGroupe, &en.Groupe.RefIDGroupe, &en.Groupe.RaisocGroupe, &en.Groupe.AdresseGroupe,
-			&en.Groupe.PersonnePouMGroupe, &en.Groupe.NiveauDetention, &en.Groupe.PartFinanciere,
-			&en.Groupe.CodeFiliere, &en.Groupe.RefIDFiliere, &en.Groupe.PersonnePouMFiliere,
+			&el.CodeGroupe, &el.RefIDGroupe, &el.RaisocGroupe, &el.AdresseGroupe,
+			&el.PersonnePouMGroupe, &el.NiveauDetention, &el.PartFinanciere,
+			&el.CodeFiliere, &el.RefIDFiliere, &el.PersonnePouMFiliere, &ti.Code, &ti.Libelle,
 		)
 
 		if err != nil {
 			return err
 		}
 		et.setAdresse()
+		if ti.Code != "" {
+			et.TerrInd = &ti
+		}
+		if el.CodeGroupe != "" {
+			en.Groupe = &el
+		}
 		e.Etablissements[et.Siret] = et
 		e.Entreprises[en.Siren] = en
-
 	}
 	return nil
 }

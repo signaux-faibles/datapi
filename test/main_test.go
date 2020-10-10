@@ -47,13 +47,13 @@ func TestSearch(t *testing.T) {
 func TestFollow(t *testing.T) {
 	// récupérer une liste de sirets à suivre de toutes les typologies d'établissements
 	sirets := getSiret(t, VIAF{false, false, false, false}, 4)
-	sirets = append(sirets, getSiret(t, VIAF{false, false, true, false}, 4)...)
-	sirets = append(sirets, getSiret(t, VIAF{false, true, false, false}, 4)...)
-	sirets = append(sirets, getSiret(t, VIAF{false, true, true, false}, 4)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, false, false, false}, 4)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, false, true, false}, 4)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, true, false, false}, 4)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, true, true, false}, 4)...)
+	sirets = append(sirets, getSiret(t, VIAF{false, false, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{false, true, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{false, true, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, false, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, false, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, true, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, true, true, false}, 1)...)
 
 	params := map[string]interface{}{
 		"comment":  "test",
@@ -102,10 +102,10 @@ func TestScores(t *testing.T) {
 // TestVIAF traite la problématique du respect des traitements des droits utilisateurs
 func TestVIAF(t *testing.T) {
 	t.Log("absence d'etablissement vI[aA][fF]")
-	if len(getSiret(t, VIAF{false, true, false, false}, 4))+
-		len(getSiret(t, VIAF{false, true, false, true}, 4))+
-		len(getSiret(t, VIAF{false, true, true, false}, 4))+
-		len(getSiret(t, VIAF{false, true, true, true}, 4)) > 0 {
+	if len(getSiret(t, VIAF{false, true, false, false}, 1))+
+		len(getSiret(t, VIAF{false, true, false, true}, 1))+
+		len(getSiret(t, VIAF{false, true, true, false}, 1))+
+		len(getSiret(t, VIAF{false, true, true, true}, 1)) > 0 {
 		t.Error("il existe des établissements qui ne devraient pas être là")
 	}
 
@@ -113,9 +113,9 @@ func TestVIAF(t *testing.T) {
 		v := VIAF{}
 		v.read(viaf)
 
-		sirets := getSiret(t, v, 4)
+		sirets := getSiret(t, v, 1)
 		if len(sirets) == 0 {
-			t.Error("aucun siret pour tester la catégorie, test faible")
+			t.Errorf("aucun siret pour tester la catégorie, test faible (%s)", viaf)
 		}
 		for _, siret := range sirets {
 			testEtablissementVIAF(t, siret, viaf)

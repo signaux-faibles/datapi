@@ -265,6 +265,7 @@ func testSearchVIAF(t *testing.T, siret string, viaf string) {
 	var e searchVIAF
 	json.Unmarshal(indented, &e)
 	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].InZone == inZone && e.Results[0].Followed == followed) {
+		fmt.Println(viaf, visible, inZone, followed)
 		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, viaf)
 	}
 }
