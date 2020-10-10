@@ -11,13 +11,13 @@ if [ -d workspace ]; then
     echo "supprimer le répertoire workspace avant de commencer"
     exit 1
 fi
-
+ 
 # Checkout git
 mkdir workspace
 cd workspace
 curl -LOs "https://github.com/signaux-faibles/datapi/archive/$1.zip"
 
-if [ $(openssl dgst -md5 $1.zip |awk '{print $2}') = '3be7b8b182ccd96e48989b4e57311193' ]; then
+if [ $(openssl dgst -md5 "$1.zip" |awk '{print $2}') = '3be7b8b182ccd96e48989b4e57311193' ]; then
    echo "sources manquantes, branche probablement inexistante"
    exit
 fi
@@ -30,8 +30,8 @@ CGO_ENABLED=0 go build
 
 # Build docker
 cd ../..
-docker build -t datapi --build-arg binary="./workspace/datapi-$1/datapi" . 
+docker build -t datapi --build-arg datapiDir="./workspace/datapi-$1/" . 
 docker save datapi | gzip > datapi.tar.gz
 
 # Cleanup
-rm -rf workspace
+# rm -rf workspace
