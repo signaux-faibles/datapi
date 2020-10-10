@@ -31,7 +31,7 @@ type Entreprise struct {
 	Bdf                   []bdf           `json:"-"`
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
-	Groupe                ellisphere      `json:"groupe,omitempty"`
+	Groupe                *ellisphere     `json:"groupe,omitempty"`
 }
 
 // EtablissementSummary …
@@ -724,6 +724,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 		var et Etablissement
 		var en Entreprise
 		var ti EtablissementTerrInd
+		var el ellisphere
 		err := (*rows).Scan(&et.Siret, &et.Siren, &en.Siren,
 			&en.Sirene.RaisonSociale, &en.Sirene.StatutJuridique, &en.Sirene.StatutJuridiqueN2, &en.Sirene.StatutJuridiqueN1,
 			&et.Sirene.ComplementAdresse, &et.Sirene.NumVoie, &et.Sirene.IndRep, &et.Sirene.TypeVoie, &et.Sirene.Voie,
@@ -735,9 +736,9 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NAF.CodeActivite, &et.Sirene.NAF.LibelleN2, &et.Sirene.NAF.LibelleN3, &et.Sirene.NAF.LibelleN4,
 			&et.Followed, &et.Visible, &et.Alert, &en.Sirene.Prenom1, &en.Sirene.Prenom2, &en.Sirene.Prenom3,
 			&en.Sirene.Prenom4, &en.Sirene.Nom, &en.Sirene.NomUsage, &en.Sirene.Creation, &et.Siege,
-			&en.Groupe.CodeGroupe, &en.Groupe.RefIDGroupe, &en.Groupe.RaisocGroupe, &en.Groupe.AdresseGroupe,
-			&en.Groupe.PersonnePouMGroupe, &en.Groupe.NiveauDetention, &en.Groupe.PartFinanciere,
-			&en.Groupe.CodeFiliere, &en.Groupe.RefIDFiliere, &en.Groupe.PersonnePouMFiliere, &ti.Code, &ti.Libelle,
+			&el.CodeGroupe, &el.RefIDGroupe, &el.RaisocGroupe, &el.AdresseGroupe,
+			&el.PersonnePouMGroupe, &el.NiveauDetention, &el.PartFinanciere,
+			&el.CodeFiliere, &el.RefIDFiliere, &el.PersonnePouMFiliere, &ti.Code, &ti.Libelle,
 		)
 
 		if err != nil {
@@ -747,7 +748,9 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 		if ti.Code != "" {
 			et.TerrInd = &ti
 		}
-
+		if el.CodeGroupe != "" {
+			en.Groupe = &el
+		}
 		e.Etablissements[et.Siret] = et
 		e.Entreprises[en.Siren] = en
 	}
