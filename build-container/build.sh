@@ -34,4 +34,4 @@ docker build -t datapi --build-arg datapiDir="./workspace/datapi-$1/" .
 docker save datapi | gzip > datapi.tar.gz
 
 # Cleanup
-# rm -rf workspace
+rm -rf workspace

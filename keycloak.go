@@ -180,6 +180,7 @@ func getKeycloakUsers(c *gin.Context) {
 	if err != nil {
 		log.Print(err.Error())
 		c.JSON(err.Code(), err.Error())
+		return
 	}
 	c.JSON(200, "utilisateurs mis à jour")
 }
