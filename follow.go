@@ -199,7 +199,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
     et.departement = any($1) as in_zone,
     true as followed,
     et.siege,
-		g.siren is not null,
+		coalesce(g.raison_sociale, ''), 
 		ti.code_commune is not null
     from etablissement_follow f
     inner join v_roles r on r.siren = f.siren

@@ -69,7 +69,7 @@ type Summary struct {
 	Followed           *bool      `json:"followed,omitempty"`
 	FirstAlert         *bool      `json:"firstAlert"`
 	Siege              *bool      `json:"siege"`
-	Groupe             *bool      `json:"groupe"`
+	Groupe             *string    `json:"groupe"`
 	TerrInd            *bool      `json:"territoireIndustrie,omitempty"`
 }
 
@@ -222,7 +222,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		f.id is not null as followed,
 		r.roles && $1 as visible,
 		vs.first_list = $2 as firstAlert,
-		et.siege, g.siren is not null,
+		et.siege, coalesce(g.raison_sociale, ''),
 		ti.code_commune is not null
 	from score0 s
 	inner join v_alert_etablissement vs on vs.siret = s.siret
