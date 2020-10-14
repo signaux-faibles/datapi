@@ -97,6 +97,11 @@ func TestScores(t *testing.T) {
 	params["exclureSuivi"] = true
 	_, indented, _ = post(t, "/scores/liste", params)
 	processGoldenFile(t, "data/scores-exclureSuivi.json.gz", indented)
+
+	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true, exclureSuivi=true et siegeUniquement=true")
+	params["siegeUniquement"] = true
+	_, indented, _ = post(t, "/scores/liste", params)
+	processGoldenFile(t, "data/scores-siegeUniquement.json.gz", indented)
 }
 
 // TestVIAF traite la problématique du respect des traitements des droits utilisateurs
