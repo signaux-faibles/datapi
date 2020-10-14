@@ -37,6 +37,7 @@ func searchEtablissementHandler(c *gin.Context) {
 		params.search = search
 	} else {
 		c.JSON(400, "search string length < 3")
+		return
 	}
 
 	if page, ok := c.GetQuery("page"); ok {

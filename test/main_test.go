@@ -11,6 +11,48 @@ func TestListes(t *testing.T) {
 	processGoldenFile(t, "data/listes.json.gz", indented)
 }
 
+func TestFollow(t *testing.T) {
+	_, err := db.Exec(context.Background(), "delete from etablissement_follow;")
+	if err != nil {
+		t.Errorf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
+	}
+	// récupérer une liste de sirets à suivre de toutes les typologies d'établissements
+	sirets := getSiret(t, VIAF{false, false, false, false}, 4)
+	sirets = append(sirets, getSiret(t, VIAF{false, false, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{false, true, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{false, true, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, false, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, false, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, true, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VIAF{true, true, true, false}, 1)...)
+
+	params := map[string]interface{}{
+		"comment":  "test",
+		"category": "test",
+	}
+
+	for _, siret := range sirets {
+		t.Logf("suivi de l'établissement %s", siret)
+		resp, _, _ := post(t, "/follow/"+siret, params)
+		if resp.StatusCode != 201 {
+			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
+		}
+	}
+
+	for _, siret := range sirets {
+		t.Logf("suivi doublon de l'établissement %s", siret)
+		resp, _, _ := post(t, "/follow/"+siret, params)
+		if resp.StatusCode != 204 {
+			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
+		}
+	}
+
+	t.Log("Vérification de /follow")
+	db.Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	_, indented, _ := get(t, "/follow")
+	processGoldenFile(t, "data/follow.json.gz", indented)
+}
+
 func TestSearch(t *testing.T) {
 	t.Log("/etablissement/search retourne 400")
 	resp, _, _ := get(t, "/etablissement/search/t")
@@ -43,44 +85,6 @@ func TestSearch(t *testing.T) {
 		i++
 	}
 }
-
-func TestFollow(t *testing.T) {
-	// récupérer une liste de sirets à suivre de toutes les typologies d'établissements
-	sirets := getSiret(t, VIAF{false, false, false, false}, 4)
-	sirets = append(sirets, getSiret(t, VIAF{false, false, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{false, true, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{false, true, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, false, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, false, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, true, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, true, true, false}, 1)...)
-
-	params := map[string]interface{}{
-		"comment":  "test",
-		"category": "test",
-	}
-
-	for _, siret := range sirets {
-		t.Logf("suivi de l'établissement %s", siret)
-		resp, _, _ := post(t, "/follow/"+siret, params)
-		if resp.StatusCode != 201 {
-			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
-		}
-	}
-
-	for _, siret := range sirets {
-		t.Logf("suivi doublon de l'établissement %s", siret)
-		resp, _, _ := post(t, "/follow/"+siret, params)
-		if resp.StatusCode != 204 {
-			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
-		}
-	}
-
-	db.Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
-	_, indented, _ := get(t, "/follow")
-	processGoldenFile(t, "data/follow.json.gz", indented)
-}
-
 func TestScores(t *testing.T) {
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
 	_, indented, _ := post(t, "/scores/liste", nil)
@@ -127,4 +131,155 @@ func TestVIAF(t *testing.T) {
 			testSearchVIAF(t, siret, viaf)
 		}
 	}
+}
+
+func TestPermissions(t *testing.T) {
+	t.Log("test de la fonction permissions")
+	type test struct {
+		rolesUser            []string
+		rolesEntreprise      []string
+		firstAlertEntreprise *string
+		departement          string
+		followed             bool
+	}
+
+	type result struct {
+		visible bool
+		inZone  bool
+		score   bool
+		urssaf  bool
+		dgefp   bool
+		bdf     bool
+	}
+
+	type useCase struct {
+		description string
+		test        test
+		result      result
+	}
+
+	firstAlert := "firstAlert"
+	tests := []useCase{
+		{"entreprise hors zone, visible, avec alerte et tous les roles",
+			test{
+				rolesUser:            []string{"01", "urssaf", "dgefp", "bdf", "score"},
+				rolesEntreprise:      []string{"01", "02", "03"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			result{
+				visible: true,
+				inZone:  false,
+				score:   true,
+				urssaf:  true,
+				dgefp:   true,
+				bdf:     true,
+			},
+		},
+		{"entreprise hors zone, hors visible, avec alerte et tous les roles",
+			test{
+				rolesUser:            []string{"05", "urssaf", "dgefp", "bdf", "score"},
+				rolesEntreprise:      []string{"01", "02", "03"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			result{
+				visible: false,
+				inZone:  false,
+				score:   false,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role score",
+			test{
+				rolesUser:            []string{"01", "02", "score"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			result{
+				visible: true,
+				inZone:  true,
+				score:   true,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, sans alerte avec droits",
+			test{
+				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
+				rolesEntreprise:      []string{"01", "02", "03"},
+				firstAlertEntreprise: nil,
+				departement:          "02",
+				followed:             false,
+			},
+			result{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise hors zone, avec alerte, avec droits et suivi",
+			test{
+				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
+				rolesEntreprise:      []string{"05"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "05",
+				followed:             true,
+			},
+			result{
+				visible: false,
+				inZone:  false,
+				score:   true,
+				urssaf:  true,
+				dgefp:   true,
+				bdf:     true,
+			},
+		},
+		{"entreprise hors zone, sans alerte, avec droits et suivi",
+			test{
+				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
+				rolesEntreprise:      []string{"05"},
+				firstAlertEntreprise: nil,
+				departement:          "05",
+				followed:             true,
+			},
+			result{
+				visible: false,
+				inZone:  false,
+				score:   true,
+				urssaf:  true,
+				dgefp:   true,
+				bdf:     true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		var r result
+		t.Log(tt.description)
+		err := db.QueryRow(context.Background(), "select * from permissions($1, $2, $3, $4, $5)",
+			tt.test.rolesUser, tt.test.rolesEntreprise, tt.test.firstAlertEntreprise,
+			tt.test.departement, tt.test.followed,
+		).Scan(&r.visible, &r.inZone, &r.score, &r.urssaf, &r.dgefp, &r.bdf)
+		if err != nil {
+			t.Errorf("ne peut exécuter la fonction permissions: %s", err.Error())
+		}
+		if tt.result != r {
+			t.Error("le résultat est incorrect")
+			fmt.Println("attendu", tt.result)
+			fmt.Println("obtenu", r)
+
+		}
+	}
+
 }

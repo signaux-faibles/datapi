@@ -2,7 +2,6 @@ create function permissions (
 	in roles_user text[], 
 	in roles_enterprise text[],
 	in first_alert_entreprise text, 
-	in first_alert_etablissement text, 
 	in departement text, 
 	in followed boolean,
 	out visible boolean,
@@ -13,11 +12,11 @@ create function permissions (
 	out bdf boolean
 ) as $$
 select 
-	$2 && $1 as visible,
-	$5 = any($1) as in_zone,
-	(($2 && $1 and $3 is not null) or $6) and 'score' = any($1) score,
-	(($2 && $1 and $3 is not null) or $6) and 'urssaf' = any($1) urssaf,
-	(($2 && $1 and $3 is not null) or $6) and 'dgefp' = any($1) dgefp,
-	(($2 && $1 and $3 is not null) or $6) and 'bdf' = any($1) bdf
+	coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) as visible,
+	coalesce($4 = any(coalesce($1, '{}'::text[])), false) as in_zone,
+	((coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) and $3 is not null) or coalesce($5, false)) and 'score' = any(coalesce($1, '{}'::text[])) score,
+	((coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) and $3 is not null) or coalesce($5, false)) and 'urssaf' = any(coalesce($1, '{}'::text[])) urssaf,
+	((coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) and $3 is not null) or coalesce($5, false)) and 'dgefp' = any(coalesce($1, '{}'::text[])) dgefp,
+	((coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) and $3 is not null) or coalesce($5, false)) and 'bdf' = any(coalesce($1, '{}'::text[])) bdf
 $$ language sql immutable
 
