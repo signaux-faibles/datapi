@@ -199,7 +199,7 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
     et.departement = any($1) as in_zone,
     true as followed,
     et.siege,
-		coalesce(g.raison_sociale, ''), 
+		g.raison_sociale, 
 		ti.code_commune is not null
     from etablissement_follow f
     inner join v_roles r on r.siren = f.siren
@@ -215,7 +215,8 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
     left join score s on s.siret = f.siret and s.libelle_liste = $2
 		left join entreprise_ellisphere0 g on g.siren = en.siren
 		left join terrind ti on ti.code_commune = et.code_commune
-    where f.username = $3 and f.active
+		where f.username = $3 and f.active
+		order by f.id
     `
 
 	rows, err := db.Query(context.Background(), sqlFollow, roles, liste[0].ID, f.Username)

@@ -446,7 +446,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
 		r.roles && $1  as visible,
 		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed, et.siege, coalesce(g.raison_sociale, ''),
+		f.id is not null as followed, et.siege, g.raison_sociale,
 		ti.code_commune is not null as terrind
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren

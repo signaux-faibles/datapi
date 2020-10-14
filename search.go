@@ -102,7 +102,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		coalesce(et.departement = any($2), false) as in_zone,
 		f.id is not null as followed,
 		et.siege,
-		coalesce(g.raison_sociale, ''),
+		g.raison_sociale,
 		ti.code_commune is not null
 		from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
