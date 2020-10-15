@@ -9,12 +9,13 @@ import (
 )
 
 type searchParams struct {
-	search      string
-	page        int
-	ignoreRoles bool
-	ignoreZone  bool
-	roles       scope
-	username    string
+	search          string
+	page            int
+	ignoreRoles     bool
+	ignoreZone      bool
+	siegeUniquement bool
+	roles           scope
+	username        string
 }
 
 type searchResult struct {
@@ -36,6 +37,7 @@ func searchEtablissementHandler(c *gin.Context) {
 		params.search = search
 	} else {
 		c.JSON(400, "search string length < 3")
+		return
 	}
 
 	if page, ok := c.GetQuery("page"); ok {
@@ -57,7 +59,15 @@ func searchEtablissementHandler(c *gin.Context) {
 	if ignoreZone, ok := c.GetQuery("ignorezone"); ok {
 		params.ignoreZone, err = strconv.ParseBool(ignoreZone)
 		if err != nil {
-			c.JSON(400, "roles is either `true` or `false`")
+			c.JSON(400, "roles is either  `true` or `false`")
+			return
+		}
+	}
+
+	if siegeUniquement, ok := c.GetQuery("siegeUniquement"); ok {
+		params.siegeUniquement, err = strconv.ParseBool(siegeUniquement)
+		if err != nil {
+			c.JSON(400, "siegeUniquement is either `true` or `false`")
 			return
 		}
 	}
@@ -123,6 +133,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		and (r.roles && $1 or $8)
 		and (et.departement=any($2) or $9)
 		and coalesce(s.libelle_liste, $5) = $5
+		and (et.siege or $11)
 		order by en.raison_sociale, siret
 		limit $3 offset $4
 		;`
@@ -146,6 +157,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		params.ignoreRoles,
 		params.ignoreZone,
 		params.username,
+		!params.siegeUniquement,
 	)
 
 	if err != nil {

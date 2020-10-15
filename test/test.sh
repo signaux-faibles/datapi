@@ -43,7 +43,7 @@ echo "- insert des données de test"
 zcat < "$TEST_DATA" | docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/psql -U postgres datapi_test > /dev/null 2>&1
 
 echo "- generation configuration de test"
-mkdir workspace
+mkdir workspace 
 sed "s/changemypass/$POSTGRES_PASSWORD/" config.toml.source | sed "s/changemyport/$DATAPI_PORT/" | sed "s/changemypgport/$POSTGRES_DOCKERPORT/" > workspace/config.toml
 
 cp ../datapi workspace
@@ -56,7 +56,7 @@ fi
 DATAPI_PID=$!
 sleep 2
 
-if [ "$1" = '-u' ]; then pwd; rm ../data/*.json.gz; GOLDEN_UPDATE=true; else GOLDEN_UPDATE=false; fi
+if [ "$1" = '-u' ]; then rm ../data/*.json.gz; GOLDEN_UPDATE=true; else GOLDEN_UPDATE=false; fi
 
 if [ "$1" = '-w' ]; 
   then echo "Environnement en attente, commande à exécuter pour les tests"
