@@ -119,7 +119,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		inner join entreprise0 en on en.siren = r.siren
 		inner join departements d on d.code = et.departement
 		left join v_naf n on n.code_n5 = et.code_activite
-		left join score s on et.siret = s.siret
+		left join score s on et.siret = s.siret and coalesce(s.libelle_liste, $5) = $5
 		left join v_alert_etablissement vs on vs.siret = et.siret
 		left join v_last_effectif ef on ef.siret = et.siret
 		left join v_hausse_urssaf u on u.siret = et.siret
@@ -132,7 +132,6 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		where (et.siret ilike $6 or en.raison_sociale ilike $7)
 		and (r.roles && $1 or $8)
 		and (et.departement=any($2) or $9)
-		and coalesce(s.libelle_liste, $5) = $5
 		and (et.siege or $11)
 		order by en.raison_sociale, siret
 		limit $3 offset $4
