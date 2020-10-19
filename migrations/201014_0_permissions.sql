@@ -3,7 +3,7 @@ create function permissions (
 	in roles_enterprise text[],
 	in first_alert_entreprise text, 
 	in departement text, 
-	in followed boolean,
+	in followed_entreprise boolean,
 	out visible boolean,
 	out in_zone boolean,
 	out score boolean,

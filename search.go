@@ -84,58 +84,31 @@ func searchEtablissementHandler(c *gin.Context) {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `select 
-		et.siret,
-		et.siren,
-		en.raison_sociale, 
-		et.commune, 
-		d.libelle, 
-		d.code,
-		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.score else null end,
-		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.diff else null end,
-		di.chiffre_affaire,
-		di.arrete_bilan,
-		di.variation_ca,
-		di.resultat_expl,
-		ef.effectif,
-		n.libelle_n5,
-		n.libelle_n1,
-		et.code_activite,
-		coalesce(ep.last_procol, 'in_bonis') as last_procol,
-		case when 'dgefp' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then coalesce(ap.ap, false) else null end as activite_partielle ,
-		case when 'urssaf' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then 
-			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
-		else null end as hausseUrssaf,
-		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
-		count(*) over (),
-		r.roles && $1 as visible,
-		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed,
-		et.siege,
-		g.raison_sociale,
-		ti.code_commune is not null
-		from etablissement0 et
-		inner join v_roles r on et.siren = r.siren
-		inner join entreprise0 en on en.siren = r.siren
-		inner join departements d on d.code = et.departement
-		left join v_naf n on n.code_n5 = et.code_activite
-		left join score s on et.siret = s.siret
-		left join v_alert_etablissement vs on vs.siret = et.siret
-		left join v_last_effectif ef on ef.siret = et.siret
-		left join v_hausse_urssaf u on u.siret = et.siret
-		left join v_apdemande ap on ap.siret = et.siret
-		left join v_last_procol ep on ep.siret = et.siret
-		left join v_diane_variation_ca di on di.siren = s.siren
-		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $10
-		left join entreprise_ellisphere0 g on g.siren = et.siren
-		left join terrind ti on ti.code_commune = et.code_commune
-		where (et.siret ilike $6 or en.raison_sociale ilike $7)
-		and (r.roles && $1 or $8)
-		and (et.departement=any($2) or $9)
-		and coalesce(s.libelle_liste, $5) = $5
-		and (et.siege or $11)
-		order by en.raison_sociale, siret
-		limit $3 offset $4
+	sqlSearch := `
+	with summaries as (
+		select 
+			v.siret, v.siren,	v.raison_sociale, v.commune, v.libelle_departement, v.code_departement,
+			v.chiffre_affaire, v.arrete_bilan, v.variation_ca, v.resultat_expl, v.effectif, v.libelle_n5,
+			v.libelle_n1, v.code_activite, v.last_procol,	v.activite_partielle,	f.id is not null as followed,
+			v.siege, v.raison_sociale, v.territoire_industrie
+			from v_summary v
+			left join etablissement_follow f on f.siret = v.siret and f.active and f.username = $10
+			where (v.siret ilike $6 or v.raison_sociale ilike $7)
+			and coalesce(v.libelle_liste, $5) = $5
+			and (v.siege or $11)
+			order by v.raison_sociale, v.siret
+	), perms as (
+		select  from sumarries
+	),
+	select v.hausse_urssaf, v.alert, 
+	, count(*) over (),	true as visible, true as in_zone,
+	
+	from summaries s
+	inner join perms p on p.siret = s.siret
+	where
+	and (v.roles_entreprise && $1 or $8)
+	and (v.code_departement=any($2) or $9)
+	limit $3 offset $4
 		;`
 
 	liste, err := findAllListes()

@@ -343,7 +343,7 @@ func findAllListes() ([]Liste, error) {
 	}
 
 	if len(listes) == 0 {
-		return nil, errors.New("no list found")
+		return nil, errors.New("findAllListes: no list found")
 	}
 	return listes, nil
 }
