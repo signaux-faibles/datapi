@@ -9,6 +9,7 @@ set -e
 
 function cleanup()
 {
+set +e
 if [ "$DATAPI_PID" != "" ]; then
   echo "- arret datapi"
   kill "$DATAPI_PID"

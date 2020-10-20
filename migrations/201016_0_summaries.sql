@@ -45,9 +45,13 @@ create function get_summary (
 		visible bool,
 		in_zone bool,
 		followed bool,
+    followed_enterprise bool,
 		siege bool,
 		raison_sociale_groupe text,
-		territoire_industrie bool
+		territoire_industrie bool,
+    urssaf bool,
+    dgefp bool,
+    
 ) as $$
 with open_summary as (
 	select 
@@ -71,12 +75,13 @@ with open_summary as (
 		coalesce(ap.ap, false) activite_partielle,
 		u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] as hausse_urssaf,
 		s.alert,
-		f.siren is not null as followed,
+		f.id is not null as followed,
+    fe.siren is not null as followed_entreprise,
 		count(*) over () as nb_total,
 		et.siege,
 		g.raison_sociale as raison_sociale_groupe,
 		ti.code_commune is not null as territoire_industrie,
-		(permissions($1, r.roles, aen.first_list, d.code, f.siren is not null)).*
+		(permissions($1, r.roles, aen.first_list, d.code, fe.siren is not null)).*
 	from etablissement0 et
 		inner join v_roles r on et.siren = r.siren
 		inner join entreprise0 en on en.siren = r.siren
@@ -92,7 +97,8 @@ with open_summary as (
 		left join v_diane_variation_ca di on di.siren = s.siren
 		left join entreprise_ellisphere0 g on g.siren = et.siren
 		left join terrind ti on ti.code_commune = et.code_commune
-		left join v_entreprise_follow f on f.siren = s.siren and f.username = $9
+		left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $9
+    left join etablissement_follow f on f.siret = s.siret and f.username = $9
 	where 
 		(en.raison_sociale like $6 or et.siret like $5)
 	    and (r.roles && $1 or $7)
@@ -126,8 +132,14 @@ with open_summary as (
 	visible, 
 	in_zone, 
 	followed, 
+  followed_entreprise,
 	siege, 
-	raison_sociale_groupe, territoire_industrie from open_summary
+	raison_sociale_groupe, 
+  territoire_industrie,
+  urssaf,
+  dgefp,
+  score,
+  bdf from open_summary
 $$ language sql immutable
 
 

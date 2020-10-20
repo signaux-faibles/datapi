@@ -68,10 +68,15 @@ type Summary struct {
 	Visible            *bool      `json:"visible,omitempty"`
 	InZone             *bool      `json:"inZone,omitempty"`
 	Followed           *bool      `json:"followed,omitempty"`
+	FollowedEntreprise *bool      `json:"followedEntreprise,omitempty"`
 	FirstAlert         *bool      `json:"firstAlert"`
 	Siege              *bool      `json:"siege"`
 	Groupe             *string    `json:"groupe,omitempty"`
 	TerrInd            *bool      `json:"territoireIndustrie,omitempty"`
+	PermUrssaf         *bool      `json:"permUrssaf,omitempty"`
+	PermDGEFP          *bool      `json:"permDGEFP,omitempty"`
+	PermScore          *bool      `json:"permScore,omitempty"`
+	PermBDF            *bool      `json:"permBDF,omitempty"`
 }
 
 func getListes(c *gin.Context) {

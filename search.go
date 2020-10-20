@@ -139,9 +139,14 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&r.Visible,
 			&r.InZone,
 			&r.Followed,
+			&r.FollowedEntreprise,
 			&r.Siege,
 			&r.Groupe,
 			&r.TerrInd,
+			&r.PermUrssaf,
+			&r.PermDGEFP,
+			&r.PermScore,
+			&r.PermBDF,
 		)
 		if err != nil {
 			return searchResult{}, errorToJSON(500, err)
