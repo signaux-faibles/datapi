@@ -108,8 +108,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	where
 	and (v.roles_entreprise && $1 or $8)
 	and (v.code_departement=any($2) or $9)
-	limit $3 offset $4
-		;`
+	limit $3 offset $4;`
 
 	liste, err := findAllListes()
 	if err != nil {
