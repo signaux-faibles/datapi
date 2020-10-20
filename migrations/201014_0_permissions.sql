@@ -19,3 +19,4 @@ select
 	((coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) and $3 is not null) or coalesce($5, false)) and 'dgefp' = any(coalesce($1, '{}'::text[])) dgefp,
 	((coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) and $3 is not null) or coalesce($5, false)) and 'bdf' = any(coalesce($1, '{}'::text[])) bdf
 $$ language sql immutable
+
