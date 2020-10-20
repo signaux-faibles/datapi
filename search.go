@@ -84,31 +84,7 @@ func searchEtablissementHandler(c *gin.Context) {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `
-	with summaries as (
-		select 
-			v.siret, v.siren,	v.raison_sociale, v.commune, v.libelle_departement, v.code_departement,
-			v.chiffre_affaire, v.arrete_bilan, v.variation_ca, v.resultat_expl, v.effectif, v.libelle_n5,
-			v.libelle_n1, v.code_activite, v.last_procol,	v.activite_partielle,	f.id is not null as followed,
-			v.siege, v.raison_sociale, v.territoire_industrie
-			from v_summary v
-			left join etablissement_follow f on f.siret = v.siret and f.active and f.username = $10
-			where (v.siret ilike $6 or v.raison_sociale ilike $7)
-			and coalesce(v.libelle_liste, $5) = $5
-			and (v.siege or $11)
-			order by v.raison_sociale, v.siret
-	), perms as (
-		select  from sumarries
-	),
-	select v.hausse_urssaf, v.alert, 
-	, count(*) over (),	true as visible, true as in_zone,
-	
-	from summaries s
-	inner join perms p on p.siret = s.siret
-	where
-	and (v.roles_entreprise && $1 or $8)
-	and (v.code_departement=any($2) or $9)
-	limit $3 offset $4;`
+	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`
 
 	liste, err := findAllListes()
 	if err != nil {
@@ -118,8 +94,6 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	limit := viper.GetInt("searchPageLength")
 
 	rows, err := db.Query(context.Background(), sqlSearch,
-
-		zoneGeo,
 		zoneGeo,
 		limit,
 		params.page*limit,
@@ -130,6 +104,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		params.ignoreZone,
 		params.username,
 		!params.siegeUniquement,
+		"raison_sociale",
+		false,
 	)
 
 	if err != nil {
