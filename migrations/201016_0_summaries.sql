@@ -20,7 +20,7 @@ create function get_summary (
 		in order_by text,                  -- $11
     in alert_only boolean,             -- $12
 		in last_procol text[],             -- $13
-		in departement text[],             -- $14
+		in departements text[],            -- $14
 		in exclure_suivi boolean,          -- $15
 		in effectif_min int,               -- $16
 		in effectif_max int                -- $17
@@ -33,6 +33,7 @@ create function get_summary (
 		code_departement text,
 		valeur_score real,
 		detail_score jsonb,
+		first_alert boolean,
 		chiffre_affaire real,
 		arrete_bilan date,
 		variation_ca real,
@@ -58,7 +59,7 @@ create function get_summary (
     urssaf boolean,
     dgefp boolean,
     score boolean,
-		bdf bool
+		bdf boolean
 ) as $$
 with open_summary as (
 	select 
@@ -70,6 +71,7 @@ with open_summary as (
 		d.code as code_departement,
 		s.score as valeur_score,
 		s.detail as detail_score,
+		aet.first_list = $4 as first_alert,
 		di.chiffre_affaire,
 		di.arrete_bilan,
 		di.variation_ca,
@@ -120,7 +122,7 @@ with open_summary as (
 		and (ef.effectif <= $17 or $17 is null)
 	order by case when $11 = 'score' then s.score end desc,
 	         case when $11 = 'raison_sociale' then en.raison_sociale end, 
-			 case when $11 = 'raison_sociale' then et.siret end
+			     et.siret
 	limit $2 offset $3
 ) select siret, 
 	siren, 
@@ -130,6 +132,7 @@ with open_summary as (
 	code_departement, 
 	valeur_score, 
 	detail_score,
+	first_alert,
 	chiffre_affaire,
 	arrete_bilan,
 	variation_ca,

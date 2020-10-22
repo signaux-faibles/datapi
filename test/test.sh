@@ -25,6 +25,7 @@ docker rm "$POSTGRES_CONTAINER" > /dev/null 2>&1
 
 trap cleanup EXIT
 
+echo "- compilation du binaire datapi"
 cd ..
 go build
 

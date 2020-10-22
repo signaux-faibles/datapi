@@ -45,38 +45,39 @@ type Liste struct {
 
 // Summary score + élements sur l'établissement
 type Summary struct {
-	Siren              string     `json:"siren"`
-	Siret              string     `json:"siret"`
-	Score              *float64   `json:"-"`
-	Diff               *float64   `json:"-"`
-	RaisonSociale      *string    `json:"raison_sociale"`
-	Commune            *string    `json:"commune"`
-	LibelleActivite    *string    `json:"libelle_activite"`
-	LibelleActiviteN1  *string    `json:"libelle_activite_n1"`
-	CodeActivite       *string    `json:"code_activite"`
-	Departement        *string    `json:"departement"`
-	LibelleDepartement *string    `json:"libelleDepartement"`
-	DernierEffectif    *float64   `json:"dernier_effectif"`
-	HausseUrssaf       *bool      `json:"urssaf,omitempty"`
-	ActivitePartielle  *bool      `json:"activite_partielle,omitempty"`
-	DernierCA          *float64   `json:"ca"`
-	VariationCA        *float64   `json:"variation_ca"`
-	ArreteBilan        *time.Time `json:"arrete_bilan"`
-	DernierREXP        *float64   `json:"resultat_expl"`
-	EtatProcol         *string    `json:"etat_procol,omitempty"`
-	Alert              *string    `json:"alert,omitempty"`
-	Visible            *bool      `json:"visible,omitempty"`
-	InZone             *bool      `json:"inZone,omitempty"`
-	Followed           *bool      `json:"followed,omitempty"`
-	FollowedEntreprise *bool      `json:"followedEntreprise,omitempty"`
-	FirstAlert         *bool      `json:"firstAlert"`
-	Siege              *bool      `json:"siege"`
-	Groupe             *string    `json:"groupe,omitempty"`
-	TerrInd            *bool      `json:"territoireIndustrie,omitempty"`
-	PermUrssaf         *bool      `json:"permUrssaf,omitempty"`
-	PermDGEFP          *bool      `json:"permDGEFP,omitempty"`
-	PermScore          *bool      `json:"permScore,omitempty"`
-	PermBDF            *bool      `json:"permBDF,omitempty"`
+	Siren              string             `json:"siren"`
+	Siret              string             `json:"siret"`
+	Score              *float64           `json:"-"`
+	Detail             map[string]float64 `json:"-"`
+	Diff               *float64           `json:"-"`
+	RaisonSociale      *string            `json:"raison_sociale"`
+	Commune            *string            `json:"commune"`
+	LibelleActivite    *string            `json:"libelle_activite"`
+	LibelleActiviteN1  *string            `json:"libelle_activite_n1"`
+	CodeActivite       *string            `json:"code_activite"`
+	Departement        *string            `json:"departement"`
+	LibelleDepartement *string            `json:"libelleDepartement"`
+	DernierEffectif    *float64           `json:"dernier_effectif"`
+	HausseUrssaf       *bool              `json:"urssaf,omitempty"`
+	ActivitePartielle  *bool              `json:"activite_partielle,omitempty"`
+	DernierCA          *float64           `json:"ca"`
+	VariationCA        *float64           `json:"variation_ca"`
+	ArreteBilan        *time.Time         `json:"arrete_bilan"`
+	DernierREXP        *float64           `json:"resultat_expl"`
+	EtatProcol         *string            `json:"etat_procol,omitempty"`
+	Alert              *string            `json:"alert,omitempty"`
+	Visible            *bool              `json:"visible,omitempty"`
+	InZone             *bool              `json:"inZone,omitempty"`
+	Followed           *bool              `json:"followed,omitempty"`
+	FollowedEntreprise *bool              `json:"followedEntreprise,omitempty"`
+	FirstAlert         *bool              `json:"firstAlert"`
+	Siege              *bool              `json:"siege"`
+	Groupe             *string            `json:"groupe,omitempty"`
+	TerrInd            *bool              `json:"territoireIndustrie,omitempty"`
+	PermUrssaf         *bool              `json:"permUrssaf,omitempty"`
+	PermDGEFP          *bool              `json:"permDGEFP,omitempty"`
+	PermScore          *bool              `json:"permScore,omitempty"`
+	PermBDF            *bool              `json:"permBDF,omitempty"`
 }
 
 func getListes(c *gin.Context) {
@@ -198,75 +199,12 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	} else {
 		offset = page * *limit
 	}
-	sqlScores := `select 
-		et.siret,
-		et.siren,
-		en.raison_sociale, 
-		et.commune, 
-		d.libelle, 
-		d.code,
-		s.score,
-		s.diff,
-		di.chiffre_affaire,
-		di.arrete_bilan,
-		di.variation_ca,
-		di.resultat_expl,
-		ef.effectif,
-		n.libelle_n5,
-		n.libelle_n1,
-		et.code_activite,
-		coalesce(ep.last_procol, 'in_bonis') as last_procol,
-		case when 'dgefp' = any($1) then coalesce(ap.ap, false) else null end as activite_partielle,
-		case when 'urssaf' = any($1) then 
-			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
-		else null end as hausseUrssaf,
-		s.alert,
-		count(case when s.alert='Alerte seuil F1' then 1 else null end) over (),
-		count(case when s.alert='Alerte seuil F2' then 1 else null end) over (),
-		count(*) over (),
-		et.departement=any($1) as inZone,
-		f.id is not null as followed,
-		r.roles && $1 as visible,
-		vs.first_list = $2 as firstAlert,
-		et.siege, g.raison_sociale,
-		ti.code_commune is not null
-	from score0 s
-	inner join v_alert_etablissement vs on vs.siret = s.siret
-	inner join v_roles r on r.siren = s.siren
-	inner join etablissement0 et on et.siret = s.siret
-	inner join entreprise0 en on en.siren = s.siren
-	inner join departements d on d.code = et.departement
-	left join v_naf n on n.code_n5 = et.code_activite
-	left join v_last_effectif ef on ef.siret = s.siret
-	left join v_hausse_urssaf u on u.siret = s.siret
-	left join v_apdemande ap on ap.siret = s.siret
-	left join v_last_procol ep on ep.siret = s.siret
-	left join v_diane_variation_ca di on di.siren = s.siren
-	left join etablissement_follow f on f.siret = s.siret and f.active = true and f.username = $13
-	left join entreprise_ellisphere0 g on g.siren = s.siren
-	left join terrind ti on ti.code_commune = et.code_commune
-	where 
-	(r.roles && $1 or f.id is not null)
-	and s.libelle_liste = $2
-	and (coalesce(ep.last_procol, 'in_bonis')=any($3) or $3 is null)
-	and (et.departement=any($4) or $4 is null)
-	and (n.code_n1=any($5) or $5 is null)
-	and (ef.effectif >= $6 or $6 is null)
-	and (ef.effectif <= $7 or $7 is null)
-	and (et.departement=any($1) or $8 = true)
-	and s.alert != 'Pas d''alerte'
-	and (et.siret ilike $11 or en.raison_sociale ilike $12)
-	and (f.id is null or $14 = false)
-	and (et.siege or $15)
-	order by s.score desc, s.siret asc
-	limit $9 offset $10;`
+	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
+
 	rows, err := db.Query(context.Background(), sqlScores,
-		roles.zoneGeo(), liste.ID, liste.Query.EtatsProcol, // $1…
-		liste.Query.Departements, liste.Query.Activites, // $4…
-		liste.Query.EffectifMin, liste.Query.EffectifMax, // $6…
-		liste.Query.IgnoreZone, limit, offset, // $8…
-		liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", // $11
-		username, liste.Query.ExclureSuivi, !liste.Query.SiegeUniquement, // $13
+		roles.zoneGeo(), limit, offset, liste.ID, liste.Query.Filter+"%", "%"+liste.Query.Filter+"%",
+		nil, liste.Query.IgnoreZone, username, !liste.Query.SiegeUniquement, "score", true, liste.Query.EtatsProcol,
+		liste.Query.Departements, liste.Query.ExclureSuivi, liste.Query.EffectifMin, liste.Query.EffectifMax,
 	)
 	if err != nil {
 		return errorToJSON(500, err)
@@ -276,6 +214,14 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	for rows.Next() {
 		var score Summary
 
+		// siege boolean,
+		// raison_sociale_groupe text,
+		// territoire_industrie boolean,
+		// urssaf boolean,
+		// dgefp boolean,
+		// score boolean,
+		// bdf boolean
+
 		err := rows.Scan(
 			&score.Siret,
 			&score.Siren,
@@ -284,7 +230,8 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			&score.LibelleDepartement,
 			&score.Departement,
 			&score.Score,
-			&score.Diff,
+			&score.Detail,
+			&score.FirstAlert,
 			&score.DernierCA,
 			&score.ArreteBilan,
 			&score.VariationCA,
@@ -297,16 +244,20 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			&score.ActivitePartielle,
 			&score.HausseUrssaf,
 			&score.Alert,
+			&liste.Total,
 			&liste.NbF1,
 			&liste.NbF2,
-			&liste.Total,
+			&score.Visible,
 			&score.InZone,
 			&score.Followed,
-			&score.Visible,
-			&score.FirstAlert,
+			&score.FollowedEntreprise,
 			&score.Siege,
 			&score.Groupe,
 			&score.TerrInd,
+			&score.PermUrssaf,
+			&score.PermDGEFP,
+			&score.PermScore,
+			&score.PermBDF,
 		)
 		if err != nil {
 			return errorToJSON(500, err)
