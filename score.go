@@ -214,14 +214,6 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	for rows.Next() {
 		var score Summary
 
-		// siege boolean,
-		// raison_sociale_groupe text,
-		// territoire_industrie boolean,
-		// urssaf boolean,
-		// dgefp boolean,
-		// score boolean,
-		// bdf boolean
-
 		err := rows.Scan(
 			&score.Siret,
 			&score.Siren,
