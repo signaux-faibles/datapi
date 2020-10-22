@@ -86,7 +86,7 @@ func searchEtablissementHandler(c *gin.Context) {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
+	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
 
 	liste, err := findAllListes()
 	if err != nil {
@@ -113,6 +113,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		nil,
 		nil,
 		nil,
+		false,
 	)
 
 	if err != nil {
@@ -120,6 +121,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	}
 
 	var search searchResult
+	var throwAway interface{}
 	for rows.Next() {
 		var r Summary
 		err := rows.Scan(&r.Siret,
@@ -153,6 +155,9 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&r.Siege,
 			&r.Groupe,
 			&r.TerrInd,
+			&throwAway,
+			&throwAway,
+			&throwAway,
 			&r.PermUrssaf,
 			&r.PermDGEFP,
 			&r.PermScore,

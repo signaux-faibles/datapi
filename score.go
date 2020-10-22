@@ -199,12 +199,12 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	} else {
 		offset = page * *limit
 	}
-	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
+	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
 
 	rows, err := db.Query(context.Background(), sqlScores,
 		roles.zoneGeo(), limit, offset, liste.ID, liste.Query.Filter+"%", "%"+liste.Query.Filter+"%",
 		nil, liste.Query.IgnoreZone, username, !liste.Query.SiegeUniquement, "score", true, liste.Query.EtatsProcol,
-		liste.Query.Departements, liste.Query.ExclureSuivi, liste.Query.EffectifMin, liste.Query.EffectifMax,
+		liste.Query.Departements, liste.Query.ExclureSuivi, liste.Query.EffectifMin, liste.Query.EffectifMax, false,
 	)
 	if err != nil {
 		return errorToJSON(500, err)
@@ -213,7 +213,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	var scores []Summary
 	for rows.Next() {
 		var score Summary
-
+		var throwAway interface{}
 		err := rows.Scan(
 			&score.Siret,
 			&score.Siren,
@@ -246,6 +246,9 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			&score.Siege,
 			&score.Groupe,
 			&score.TerrInd,
+			&throwAway,
+			&throwAway,
+			&throwAway,
 			&score.PermUrssaf,
 			&score.PermDGEFP,
 			&score.PermScore,
