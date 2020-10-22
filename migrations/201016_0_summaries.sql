@@ -6,7 +6,6 @@ create view v_entreprise_follow as
 	where active
 	group by siren, username;
 
-
 create function get_summary (
 		in roles_users text[],             -- $1
 		in nblimit int,                    -- $2
@@ -19,7 +18,12 @@ create function get_summary (
 		in username text,                  -- $9
 		in siege_uniquement boolean,       -- $10
 		in order_by text,                  -- $11
-    in alert_only boolean              -- $12
+    in alert_only boolean,             -- $12
+		in last_procol text[],             -- $13
+		in departement text[],             -- $14
+		in exclure_suivi boolean,          -- $15
+		in effectif_min int,               -- $16
+		in effectif_max int                -- $17
 	) returns table (
 		siret text,
 		siren text,
@@ -27,7 +31,7 @@ create function get_summary (
 		commune text,
 		libelle_departement text,
 		code_departement text,
-		score real,
+		valeur_score real,
 		detail_score jsonb,
 		chiffre_affaire real,
 		arrete_bilan date,
@@ -38,20 +42,23 @@ create function get_summary (
 		libelle_n1 text,
 		code_activite text,
 		last_procol text,
-		activite_partielle bool,
-		hausse_urssaf bool,
+		activite_partielle boolean,
+		hausse_urssaf boolean,
 		alert text,
 		nb_total bigint,
-		visible bool,
-		in_zone bool,
-		followed bool,
-    followed_enterprise bool,
-		siege bool,
+		nb_f1 bigint,
+		nb_f2 bigint,
+		visible boolean,
+		in_zone boolean,
+		followed boolean,
+    followed_enterprise boolean,
+		siege boolean,
 		raison_sociale_groupe text,
-		territoire_industrie bool,
-    urssaf bool,
-    dgefp bool,
-    
+		territoire_industrie boolean,
+    urssaf boolean,
+    dgefp boolean,
+    score boolean,
+		bdf bool
 ) as $$
 with open_summary as (
 	select 
@@ -75,8 +82,10 @@ with open_summary as (
 		coalesce(ap.ap, false) activite_partielle,
 		u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] as hausse_urssaf,
 		s.alert,
-		f.id is not null as followed,
+		f.id is not null as followed_etablissement,
     fe.siren is not null as followed_entreprise,
+		count(case when s.alert='Alerte seuil F1' then 1 else null end) over () as nb_f1,
+		count(case when s.alert='Alerte seuil F2' then 1 else null end) over () as nb_f2,
 		count(*) over () as nb_total,
 		et.siege,
 		g.raison_sociale as raison_sociale_groupe,
@@ -97,13 +106,18 @@ with open_summary as (
 		left join v_diane_variation_ca di on di.siren = s.siren
 		left join entreprise_ellisphere0 g on g.siren = et.siren
 		left join terrind ti on ti.code_commune = et.code_commune
-		left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $9
-    left join etablissement_follow f on f.siret = s.siret and f.username = $9
+		left join v_entreprise_follow fe on fe.siren = et.siren and fe.username = $9
+    left join etablissement_follow f on f.siret = et.siret and f.username = $9 and f.active
 	where 
 		(en.raison_sociale like $6 or et.siret like $5)
-	    and (r.roles && $1 or $7)
-        and (et.departement=any($1) or $8)
+	  and (r.roles && $1 or $7)
+    and (et.departement=any($1) or $8)
 		and (et.siege or $10)
+		and (s.alert != 'Pas d''alerte' or not $12)
+		and (coalesce(ep.last_procol, 'in_bonis') = any($13) or $13 is null)
+		and (et.departement=any($14) or $14 is null)
+		and (ef.effectif >= $16 or $16 is null)
+		and (ef.effectif <= $17 or $17 is null)
 	order by case when $11 = 'score' then s.score end desc,
 	         case when $11 = 'raison_sociale' then en.raison_sociale end, 
 			 case when $11 = 'raison_sociale' then et.siret end
@@ -129,9 +143,11 @@ with open_summary as (
 	case when urssaf then hausse_urssaf else null end as hausse_urssaf, 
 	case when score then alert else null end, 
 	nb_total,
+	nb_f1,
+	nb_f2,
 	visible, 
 	in_zone, 
-	followed, 
+	followed_etablissement, 
   followed_entreprise,
 	siege, 
 	raison_sociale_groupe, 
@@ -142,5 +158,3 @@ with open_summary as (
   bdf from open_summary
 $$ language sql immutable
 
-
- 

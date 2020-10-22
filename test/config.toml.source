@@ -10,6 +10,7 @@ fakeKeycloakRoles = [
   "Bourgogne-Franche-Comté",
   "Auvergne-Rhône-Alpes",
   "detection",
+  "score",
   "dgefp",
   "urssaf",
   "bdf",

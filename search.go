@@ -22,6 +22,8 @@ type searchResult struct {
 	From    int       `json:"from"`
 	To      int       `json:"to"`
 	Total   int       `json:"total"`
+	NBF1    int       `json:"nbF1"`
+	NBF2    int       `json:"nbF2"`
 	PageMax int       `json:"pageMax"`
 	Page    int       `json:"page"`
 	Results []Summary `json:"results"`
@@ -84,7 +86,7 @@ func searchEtablissementHandler(c *gin.Context) {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12);`
+	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17);`
 
 	liste, err := findAllListes()
 	if err != nil {
@@ -106,6 +108,11 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		!params.siegeUniquement,
 		"raison_sociale",
 		false,
+		nil,
+		nil,
+		nil,
+		nil,
+		nil,
 	)
 
 	if err != nil {
@@ -136,6 +143,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&r.HausseUrssaf,
 			&r.Alert,
 			&search.Total,
+			&search.NBF1,
+			&search.NBF2,
 			&r.Visible,
 			&r.InZone,
 			&r.Followed,
