@@ -24,7 +24,8 @@ create function get_summary (
 		in exclure_suivi boolean,          -- $15
 		in effectif_min int,               -- $16
 		in effectif_max int,               -- $17
-		in suivi_uniquement boolean        -- $18
+		in suivi_uniquement boolean,       -- $18
+		in sirens text[]                   -- $19
 	) returns table (
 		siret text,
 		siren text,
@@ -116,22 +117,23 @@ with open_summary as (
 		left join v_entreprise_follow fe on fe.siren = et.siren and fe.username = $9
     left join etablissement_follow f on f.siret = et.siret and f.username = $9 and f.active
 	where 
-		(en.raison_sociale like $6 or et.siret like $5)
+		(en.raison_sociale like $6 or et.siret like $5 or coalesce($5, $6) is null)
 	  and (r.roles && $1 or $7)
     and (et.departement=any($1) or $8)
-		and (et.siege or $10)
+		and (et.siege or not $10)
 		and (s.alert != 'Pas d''alerte' or not $12)
 		and (coalesce(ep.last_procol, 'in_bonis') = any($13) or $13 is null)
 		and (et.departement=any($14) or $14 is null)
 		and (ef.effectif >= $16 or $16 is null)
 		and (ef.effectif <= $17 or $17 is null)
 		and (f.username = $9 and f.active or not $18)
+		and (en.siren = any($19) or $19 is null)
 	order by case when $11 = 'score' then s.score end desc,
 	         case when $11 = 'raison_sociale' then en.raison_sociale end,
 					 case when $11 = 'follow' then f.id end,
+					 case when $11 = 'effectif_desc' then ef.effectif end desc, 
 			     et.siret
-	limit case when not $18 then $2 end 
-	offset case when not $18 then $3 end
+	limit $2 offset $3
 ) select siret, 
 		siren, 
 		raison_sociale, 

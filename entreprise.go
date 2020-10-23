@@ -433,44 +433,30 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		sirens = append(sirens, i[0:9])
 	}
 
-	batch.Queue(`select 
-		et.siret, et.siren, en.raison_sociale,  et.commune, d.libelle, d.code,
-		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.score else null end,
-		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.diff else null end,
-		di.chiffre_affaire,	di.arrete_bilan, di.variation_ca, di.resultat_expl,	ef.effectif,
-		n.libelle_n5,	n.libelle_n1,	et.code_activite,	coalesce(ep.last_procol, 'in_bonis') as last_procol,
-		case when 'dgefp' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then coalesce(ap.ap, false) else null end as activite_partielle ,
-		case when 'urssaf' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then 
-			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
-		else null end as hausseUrssaf,
-		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
-		r.roles && $1  as visible,
-		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed, et.siege, g.raison_sociale,
-		ti.code_commune is not null as terrind
-		from etablissement0 et
-		inner join v_roles r on et.siren = r.siren
-		inner join entreprise0 en on en.siren = r.siren
-		inner join departements d on d.code = et.departement
-		inner join v_naf n on n.code_n5 = et.code_activite
-		left join score s on et.siret = s.siret
-		left join v_alert_etablissement vs on vs.siret = et.siret
-		left join v_last_effectif ef on ef.siret = et.siret
-		left join v_hausse_urssaf u on u.siret = et.siret
-		left join v_apdemande ap on ap.siret = et.siret
-		left join v_last_procol ep on ep.siret = et.siret
-		left join v_diane_variation_ca di on di.siren = s.siren
-		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $3
-		left join entreprise_ellisphere0 g on g.siren = et.siren
-		left join terrind ti on ti.code_commune = et.code_commune
-		where et.siren = any($4) 
-		and coalesce(s.libelle_liste, $5) = $5
-		order by ef.effectif desc, et.siret desc;`,
-		roles.zoneGeo(),
-		roles.zoneGeo(),
-		username,
-		sirens,
-		listes[0].ID,
+	// in roles_users text[],             -- $1
+	// in nblimit int,                    -- $2
+	// in nboffset int,                   -- $3
+	// in libelle_liste text,             -- $4
+	// in siret_expression text,          -- $5
+	// in raison_sociale_expression text, -- $6
+	// in ignore_roles boolean,           -- $7
+	// in ignore_zone boolean,            -- $8
+	// in username text,                  -- $9
+	// in siege_uniquement boolean,       -- $10
+	// in order_by text,                  -- $11
+	// in alert_only boolean,             -- $12
+	// in last_procol text[],             -- $13
+	// in departements text[],            -- $14
+	// in exclure_suivi boolean,          -- $15
+	// in effectif_min int,               -- $16
+	// in effectif_max int, 	            -- $17
+	// in suivi_uniquement boolean        -- $18
+	// in sirens text[]                   -- $19
+
+	batch.Queue(`select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`,
+		roles.zoneGeo(), nil, nil, listes[0].ID, nil, nil,
+		true, true, username, false, "effectif_desc", false, nil,
+		nil, false, nil, nil, false, sirens,
 	)
 	return &batch
 }
@@ -478,27 +464,52 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 	var cousins = make(map[string][]Summary)
 	for (*rows).Next() {
-		var score Summary
+		var e Summary
+		var throwAway interface{}
 		err := (*rows).Scan(
-			&score.Siret, &score.Siren, &score.RaisonSociale, &score.Commune, &score.LibelleDepartement, &score.Departement,
-			&score.Score,
-			&score.Diff,
-			&score.DernierCA, &score.ArreteBilan, &score.VariationCA, &score.DernierREXP, &score.DernierEffectif,
-			&score.LibelleActivite, &score.LibelleActiviteN1, &score.CodeActivite, &score.EtatProcol,
-			&score.ActivitePartielle,
-			&score.HausseUrssaf,
-			&score.Alert,
-			&score.Visible,
-			&score.InZone,
-			&score.Followed,
-			&score.Siege,
-			&score.Groupe,
-			&score.TerrInd,
+			&e.Siret,
+			&e.Siren,
+			&e.RaisonSociale,
+			&e.Commune,
+			&e.LibelleDepartement,
+			&e.Departement,
+			&e.Score,
+			&e.Detail,
+			&e.FirstAlert,
+			&e.DernierCA,
+			&e.ArreteBilan,
+			&e.VariationCA,
+			&e.DernierREXP,
+			&e.DernierEffectif,
+			&e.LibelleActivite,
+			&e.LibelleActiviteN1,
+			&e.CodeActivite,
+			&e.EtatProcol,
+			&e.ActivitePartielle,
+			&e.HausseUrssaf,
+			&e.Alert,
+			&throwAway,
+			&throwAway,
+			&throwAway,
+			&e.Visible,
+			&e.InZone,
+			&e.Followed,
+			&e.FollowedEntreprise,
+			&e.Siege,
+			&e.Groupe,
+			&e.TerrInd,
+			&throwAway,
+			&throwAway,
+			&throwAway,
+			&e.PermUrssaf,
+			&e.PermDGEFP,
+			&e.PermScore,
+			&e.PermBDF,
 		)
 		if err != nil {
 			return err
 		}
-		cousins[score.Siret[0:9]] = append(cousins[score.Siret[0:9]], score)
+		cousins[e.Siret[0:9]] = append(cousins[e.Siret[0:9]], e)
 	}
 
 	for k, v := range cousins {

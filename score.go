@@ -199,12 +199,12 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	} else {
 		offset = page * *limit
 	}
-	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
+	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
 
 	rows, err := db.Query(context.Background(), sqlScores,
-		roles.zoneGeo(), limit, offset, liste.ID, liste.Query.Filter+"%", "%"+liste.Query.Filter+"%",
-		nil, liste.Query.IgnoreZone, username, !liste.Query.SiegeUniquement, "score", true, liste.Query.EtatsProcol,
-		liste.Query.Departements, liste.Query.ExclureSuivi, liste.Query.EffectifMin, liste.Query.EffectifMax, false,
+		roles.zoneGeo(), limit, offset, liste.ID, liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", nil,
+		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", true, liste.Query.EtatsProcol,
+		liste.Query.Departements, liste.Query.ExclureSuivi, liste.Query.EffectifMin, liste.Query.EffectifMax, false, nil,
 	)
 	if err != nil {
 		return errorToJSON(500, err)

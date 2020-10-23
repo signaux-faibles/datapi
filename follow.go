@@ -169,31 +169,12 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 		return nil, errorToJSON(500, err)
 	}
 
-	sqlFollow := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18);`
-
-	// in roles_users text[],             -- $1
-	// in nblimit int,                    -- $2
-	// in nboffset int,                   -- $3
-	// in libelle_liste text,             -- $4
-	// in siret_expression text,          -- $5
-	// in raison_sociale_expression text, -- $6
-	// in ignore_roles boolean,           -- $7
-	// in ignore_zone boolean,            -- $8
-	// in username text,                  -- $9
-	// in siege_uniquement boolean,       -- $10
-	// in order_by text,                  -- $11
-	// in alert_only boolean,             -- $12
-	// in last_procol text[],             -- $13
-	// in departements text[],            -- $14
-	// in exclure_suivi boolean,          -- $15
-	// in effectif_min int,               -- $16
-	// in effectif_max int,               -- $17
-	// in suivi_uniquement boolean        -- $18
+	sqlFollow := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
 
 	rows, err := db.Query(context.Background(), sqlFollow,
-		roles.zoneGeo(), 0, 0, liste[0].ID, "%%", "%%",
+		roles.zoneGeo(), nil, nil, liste[0].ID, "%%", "%%",
 		true, true, f.Username, false, "follow", false, nil,
-		nil, false, nil, nil, true,
+		nil, false, nil, nil, true, nil,
 	)
 	if err != nil {
 		return nil, errorToJSON(500, err)
