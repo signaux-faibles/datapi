@@ -433,26 +433,6 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		sirens = append(sirens, i[0:9])
 	}
 
-	// in roles_users text[],             -- $1
-	// in nblimit int,                    -- $2
-	// in nboffset int,                   -- $3
-	// in libelle_liste text,             -- $4
-	// in siret_expression text,          -- $5
-	// in raison_sociale_expression text, -- $6
-	// in ignore_roles boolean,           -- $7
-	// in ignore_zone boolean,            -- $8
-	// in username text,                  -- $9
-	// in siege_uniquement boolean,       -- $10
-	// in order_by text,                  -- $11
-	// in alert_only boolean,             -- $12
-	// in last_procol text[],             -- $13
-	// in departements text[],            -- $14
-	// in exclure_suivi boolean,          -- $15
-	// in effectif_min int,               -- $16
-	// in effectif_max int, 	            -- $17
-	// in suivi_uniquement boolean        -- $18
-	// in sirens text[]                   -- $19
-
 	batch.Queue(`select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`,
 		roles.zoneGeo(), nil, nil, listes[0].ID, nil, nil,
 		true, true, username, false, "effectif_desc", false, nil,
