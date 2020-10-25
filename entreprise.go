@@ -108,17 +108,18 @@ type Etablissement struct {
 			NomenActivite   *string `json:"nomenActivite"`
 		} `json:"naf"`
 	} `json:"sirene"`
-	PeriodeUrssaf EtablissementPeriodeUrssaf `json:"periodeUrssaf,omitempty"`
-	Delai         []EtablissementDelai       `json:"delai,omitempty"`
-	APDemande     []EtablissementAPDemande   `json:"apDemande,omitempty"`
-	APConso       []EtablissementAPConso     `json:"apConso,omitempty"`
-	Procol        []EtablissementProcol      `json:"procol,omitempty"`
-	Scores        []EtablissementScore       `json:"scores,omitempty"`
-	Followed      bool                       `json:"followed"`
-	Visible       bool                       `json:"visible"`
-	InZone        bool                       `json:"inZone"`
-	Alert         bool                       `json:"alert,omitempty"`
-	TerrInd       *EtablissementTerrInd      `json:"territoireIndustrie,omitempty"`
+	PeriodeUrssaf      EtablissementPeriodeUrssaf `json:"periodeUrssaf,omitempty"`
+	Delai              []EtablissementDelai       `json:"delai,omitempty"`
+	APDemande          []EtablissementAPDemande   `json:"apDemande,omitempty"`
+	APConso            []EtablissementAPConso     `json:"apConso,omitempty"`
+	Procol             []EtablissementProcol      `json:"procol,omitempty"`
+	Scores             []EtablissementScore       `json:"scores,omitempty"`
+	Followed           bool                       `json:"followed"`
+	FollowedEntreprise bool                       `json:"followedEntreprise"`
+	Visible            bool                       `json:"visible"`
+	InZone             bool                       `json:"inZone"`
+	Alert              bool                       `json:"alert,omitempty"`
+	TerrInd            *EtablissementTerrInd      `json:"territoireIndustrie,omitempty"`
 }
 
 // EtablissementTerrInd …
@@ -300,7 +301,9 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		et.code_postal, et.departement, d.libelle, r.libelle, 
 		coalesce(et.nomen_activite, 'NAFRev2'), et.creation,	et.latitude, et.longitude, 
 		et.visite_fce, n.libelle_n1, n.code_n1, n.libelle_n5, et.code_activite, n.libelle_n2,
-		n.libelle_n3, n.libelle_n4,	f.id is not null as followed,	ro.roles && $4 as visible,
+		n.libelle_n3, n.libelle_n4,	
+		f.id is not null as followed,
+		followed as followed_entreprise, visible,
 		s.siren is not null as alert,	en.prenom1, en.prenom2, en.prenom3, en.prenom4, 
 		en.nom, en.nom_usage, en.creation, et.siege,
 		coalesce(g.code, ''), 
@@ -315,11 +318,12 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		coalesce(g.personne_pou_m_filiere, ''),
 		coalesce(ti.code_terrind,''), coalesce(ti.libelle_terrind,'')
 		from etablissement0 et
+		inner join f_etablissement_permissions($1, $2) p on p.id = et.id
 		inner join departements d on d.code = et.departement
 		inner join regions r on d.id_region = r.id
 		inner join v_roles ro on ro.siren = et.siren
 		left join v_naf n on n.code_n5 = et.code_activite
-		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $3
+		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $2
 		left join entreprise0 en on en.siren = et.siren
 		left join categorie_juridique j on j.code = en.statut_juridique
 		left join categorie_juridique j2 on substring(j.code from 0 for 3) = j2.code
@@ -327,10 +331,8 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		left join v_alert_entreprise s on s.siren = et.siren
 		left join entreprise_ellisphere0 g on g.siren = et.siren
 		left join terrind ti on ti.code_commune = et.code_commune
-		where 
-		(et.siret=any($1) or et.siren=any($2))
-		and coalesce($1, $2) is not null;
-	`, e.Query.Sirets, e.Query.Sirens, username, roles.zoneGeo())
+		where (et.siret=any($3) or et.siren=any($4));
+	`, roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select en.siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
 		achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,
@@ -353,76 +355,64 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		e.sirensFromQuery(),
 	)
 
-	batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
-		dette_fiscale, frais_financier, taux_marge
-		from entreprise_bdf0 en
-		left join v_alert_entreprise s on s.siren = en.siren
-		left join (select distinct siren from etablissement_follow where username=$3 and active) f on f.siren = en.siren
-		inner join v_roles ro on ro.siren = en.siren and $2 @> array['bdf'] and (s.siren is not null and (ro.roles && $2) or f.siren is not null) 
-		where en.siren=any($1)
-		order by arrete_bilan_bdf;`,
-		e.sirensFromQuery(),
-		roles.zoneGeo(),
-		username,
-	)
+	// batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
+	// 	dette_fiscale, frais_financier, taux_marge
+	// 	from entreprise_bdf0 en
+	// 	left join v_alert_entreprise s on s.siren = en.siren
+	// 	left join (select distinct siren from etablissement_follow where username=$3 and active) f on f.siren = en.siren
+	// 	inner join v_roles ro on ro.siren = en.siren and $2 @> array['bdf'] and (s.siren is not null and (ro.roles && $2) or f.siren is not null)
+	// 	where en.siren=any($1)
+	// 	order by arrete_bilan_bdf;`,
+	// 	e.sirensFromQuery(),
+	// 	roles.zoneGeo(),
+	// 	username,
+	// )
 
-	batch.Queue(`select e.siret, libelle_liste, batch, algo, periode, score, diff, alert
-		from score0 e
-		inner join v_roles ro on ro.siren = e.siren and ro.roles && $1
-		left join v_alert_etablissement s on s.siret = e.siret
-		left join etablissement_follow f on f.siret = e.siret and f.active and f.username = $4
-		where (e.siret=any($2) or e.siren=any($3)) and coalesce($2, $3) is not null and coalesce(s.siret, f.siret) is not null
-		order by siret, batch desc, score desc;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
+	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert
+		from score0 s
+		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
+		where (p.siret=any($3) or p.siren=any($4))
+		order by s.siret, s.batch desc, s.score desc;`,
+		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
 		from etablissement_apconso0 e
-		left join v_alert_etablissement s on s.siret = e.siret
-		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 and s.siret is not null or f.id is not null) and $1 @> array['dgefp']
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and dgefp
+		where (e.siret=any($3) or e.siren=any($4))
 		order by siret, periode;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
+		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, 
 		periode_end, hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme
 		from etablissement_apdemande0 e
-		left join v_alert_etablissement s on s.siret = e.siret
-		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 and s.siret is not null or f.id is not null) and $1 @> array['dgefp']
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and dgefp
+		where e.siret=any($3) or e.siren=any($4)
 		order by siret, periode_start;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
+		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, e.periode, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) and cotisation != 0 then 
-			cotisation else null
-		end, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) then part_patronale else null end, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) then part_salariale else null end, 
-		case when 'urssaf' = any($1) and (ro.roles && $1 and s.siret is not null or f.id is not null) then montant_majorations else null end, 
+		case when urssaf and cotisation != 0 then cotisation end, 
+		case when urssaf then part_patronale end, 
+		case when urssaf then part_salariale end, 
+		case when urssaf then montant_majorations end, 
 		effectif
 		from etablissement_periode_urssaf0 e
-		left join v_alert_etablissement s on s.siret = e.siret
-		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret
+		where e.siret=any($3) or e.siren=any($4)
 		order by siret, periode;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
+		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, action, annee_creation, date_creation, date_echeance, denomination,
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
 		from etablissement_delai0 e
-		left join v_alert_etablissement s on s.siret = e.siret
-		left join etablissement_follow f on f.siret = e.siret and f.username = $4 and f.active
-		inner join v_roles ro on ro.siren = e.siren and (ro.roles && $1 and s.siret is not null or f.id is not null) and $1 @> array['urssaf']
-		where e.siret=any($2) or e.siren=any($3) and coalesce($2, $3) is not null
+		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and urssaf
+		where e.siret=any($3) or e.siren=any($4)
 		order by e.siret, date_creation;`,
-		roles.zoneGeo(), e.Query.Sirets, e.Query.Sirens, username)
+		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, date_effet, action_procol, stade_procol
 		from etablissement_procol0 e
-		where e.siret=any($1) or e.siren=any($2) and coalesce($1, $2) is not null
+		where e.siret=any($1) or e.siren=any($2)
 		order by e.siret, date_effet;`,
 		e.Query.Sirets, e.Query.Sirens)
 
@@ -725,7 +715,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&et.Sirene.NAF.NomenActivite, &et.Sirene.Creation, &et.Sirene.Latitude, &et.Sirene.Longitude,
 			&et.VisiteFCE, &et.Sirene.NAF.LibelleSecteur, &et.Sirene.NAF.CodeSecteur, &et.Sirene.NAF.LibelleActivite,
 			&et.Sirene.NAF.CodeActivite, &et.Sirene.NAF.LibelleN2, &et.Sirene.NAF.LibelleN3, &et.Sirene.NAF.LibelleN4,
-			&et.Followed, &et.Visible, &et.Alert, &en.Sirene.Prenom1, &en.Sirene.Prenom2, &en.Sirene.Prenom3,
+			&et.Followed, &et.FollowedEntreprise, &et.Visible, &et.Alert, &en.Sirene.Prenom1, &en.Sirene.Prenom2, &en.Sirene.Prenom3,
 			&en.Sirene.Prenom4, &en.Sirene.Nom, &en.Sirene.NomUsage, &en.Sirene.Creation, &et.Siege,
 			&el.CodeGroupe, &el.RefIDGroupe, &el.RaisocGroupe, &el.AdresseGroupe,
 			&el.PersonnePouMGroupe, &el.NiveauDetention, &el.PartFinanciere,
@@ -784,15 +774,15 @@ func (e *Etablissements) load(roles scope, username string) error {
 		return err
 	}
 
-	// bdf
-	rows, err = b.Query()
-	if err != nil {
-		return err
-	}
-	err = e.loadBDF(&rows)
-	if err != nil {
-		return err
-	}
+	// // bdf
+	// rows, err = b.Query()
+	// if err != nil {
+	// 	return err
+	// }
+	// err = e.loadBDF(&rows)
+	// if err != nil {
+	// 	return err
+	// }
 
 	// scores
 	rows, err = b.Query()

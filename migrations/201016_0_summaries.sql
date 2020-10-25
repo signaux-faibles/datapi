@@ -1,10 +1,39 @@
 alter table score add detail jsonb;
 
+create index idx_entreprise_ellisphere_siren on entreprise_ellisphere (siren) where version = 0;
+create index idx_entreprise_diane_siren on entreprise_diane (siren) where version = 0;
+create index idx_entreprise_bdf_siren on entreprise_bdf (siren) where version = 0;
+create index idx_etablissement_follow_siret_username on etablissement_follow (siret, username);
+create index idx_entreprise_v_follow_siren_username on etablissement_follow (siren, username);
+
 create view v_entreprise_follow as 
 	select siren, username 
 	from etablissement_follow 
 	where active
 	group by siren, username;
+
+create or replace function f_etablissement_permissions (
+	in roles_user text[], 
+	in username text
+) returns table (
+	id int,
+	siren varchar(9),
+	siret varchar(14),
+	followed boolean,
+	visible boolean,
+	in_zone boolean,
+	score boolean,
+	urssaf boolean,
+	dgefp boolean,
+	bdf boolean
+) as $$
+select e.id, e.siren, e.siret, f.siren is not null as followed,
+(permissions($1, r.roles, a.first_list, e.departement, f.siren is not null)).*
+from etablissement0 e
+inner join v_roles r on r.siren = e.siren
+left join v_entreprise_follow f on f.siren = e.siren and f.username = $2
+left join v_alert_entreprise a on a.siren = e.siren
+$$ language sql immutable;
 
 create function get_summary (
 		in roles_users text[],             -- $1
@@ -172,4 +201,4 @@ with open_summary as (
 		dgefp,
 		score,
 		bdf from open_summary
-$$ language sql immutable
+$$ language sql immutable;
