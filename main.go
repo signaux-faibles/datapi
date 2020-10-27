@@ -33,7 +33,10 @@ func loadConfig() {
 	viper.SetConfigName("config")
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(".")
-	viper.ReadInConfig()
+	err := viper.ReadInConfig()
+	if err != nil {
+		panic(err)
+	}
 }
 
 func runAPI() {

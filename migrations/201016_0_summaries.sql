@@ -1,10 +1,40 @@
+drop materialized view v_alert_etablissement;
+drop materialized view v_alert_entreprise;
+
 alter table score add detail jsonb;
 
+drop view score0;
+create view score0 as
+select * from score where version = 0;
+
+create materialized view v_alert_etablissement as
+select siret, min(libelle_liste) as first_list
+from score0
+where alert in ('Alerte seuil F1', 'Alerte seuil F2')
+group by siret;
+create unique index idx_v_alert_etablissement_siret
+  on v_alert_etablissement (siret);
+
+create materialized view v_alert_entreprise as
+select siren, min(libelle_liste) as first_list
+from score0
+where alert in ('Alerte seuil F1', 'Alerte seuil F2')
+group by siren;
+create index idx_v_alert_entreprise_siren
+  on v_alert_entreprise (siren);
+
+create materialized view v_etablissement_raison_sociale as 
+select et.id as id_etablissement, en.id as id_entreprise, en.raison_sociale, et.siret
+from entreprise0 en
+inner join etablissement0 et on en.siren=et.siren;
+
+create extension pg_trgm;
+create index idx_entreprise_raison_sociale on v_etablissement_raison_sociale using gin (siret gin_trgm_ops, raison_sociale gin_trgm_ops);
 create index idx_entreprise_ellisphere_siren on entreprise_ellisphere (siren) where version = 0;
 create index idx_entreprise_diane_siren on entreprise_diane (siren) where version = 0;
 create index idx_entreprise_bdf_siren on entreprise_bdf (siren) where version = 0;
-create index idx_etablissement_follow_siret_username on etablissement_follow (siret, username);
-create index idx_entreprise_v_follow_siren_username on etablissement_follow (siren, username);
+create index idx_etablissement_follow_siret_username_active on etablissement_follow (siret, siren, username, active);
+create index idx_score_siret_liste on score (siret, libelle_liste, alert) where version = 0;
 
 create view v_entreprise_follow as 
 	select siren, username 
@@ -35,7 +65,7 @@ left join v_entreprise_follow f on f.siren = e.siren and f.username = $2
 left join v_alert_entreprise a on a.siren = e.siren
 $$ language sql immutable;
 
-create function get_summary (
+create or replace function get_summary (
 		in roles_users text[],             -- $1
 		in nblimit int,                    -- $2
 		in nboffset int,                   -- $3
@@ -102,7 +132,7 @@ with open_summary as (
 		en.raison_sociale,
 		et.commune,
 		d.libelle as libelle_departement,
-		d.code as code_departement,
+		et.departement as code_departement,
 		s.score as valeur_score,
 		s.detail as detail_score,
 		aet.first_list = $4 as first_alert,
@@ -129,24 +159,25 @@ with open_summary as (
 		f.comment, f.category, f.since,
 		(permissions($1, r.roles, aen.first_list, d.code, fe.siren is not null)).*
 	from etablissement0 et
+		inner join entreprise0 en on en.siren = et.siren
+		inner join v_etablissement_raison_sociale etrs on etrs.id_etablissement = et.id
 		inner join v_roles r on et.siren = r.siren
-		inner join entreprise0 en on en.siren = r.siren
 		inner join departements d on d.code = et.departement
+        left join etablissement_follow f on f.active and f.siret = et.siret and f.username = $9
+		left join v_entreprise_follow fe on fe.siren = et.siren and fe.username = $9
 		left join v_naf n on n.code_n5 = et.code_activite
-		left join score s on et.siret = s.siret and	coalesce(s.libelle_liste, $4) = $4
+		left join score0 s on et.siret = s.siret and s.libelle_liste = $4
 		left join v_alert_etablissement aet on aet.siret = et.siret
 		left join v_alert_entreprise aen on aen.siren = et.siren
 		left join v_last_effectif ef on ef.siret = et.siret
 		left join v_hausse_urssaf u on u.siret = et.siret
 		left join v_apdemande ap on ap.siret = et.siret
 		left join v_last_procol ep on ep.siret = et.siret
-		left join v_diane_variation_ca di on di.siren = s.siren
+		left join v_diane_variation_ca di on di.siren = et.siren
 		left join entreprise_ellisphere0 g on g.siren = et.siren
 		left join terrind ti on ti.code_commune = et.code_commune
-		left join v_entreprise_follow fe on fe.siren = et.siren and fe.username = $9
-    left join etablissement_follow f on f.siret = et.siret and f.username = $9 and f.active
 	where 
-		(en.raison_sociale like $6 or et.siret like $5 or coalesce($5, $6) is null)
+		(etrs.raison_sociale ilike $6 or etrs.siret ilike $5 or coalesce($5, $6) is null)
 	  and (r.roles && $1 or $7)
     and (et.departement=any($1) or $8)
 		and (et.siege or not $10)
@@ -155,13 +186,14 @@ with open_summary as (
 		and (et.departement=any($14) or $14 is null)
 		and (ef.effectif >= $16 or $16 is null)
 		and (ef.effectif <= $17 or $17 is null)
-		and (f.username = $9 and f.active or not $18)
+		and (f.username is not null or not $18)
+		and (f.username is null or not $15)
 		and (en.siren = any($19) or $19 is null)
 	order by case when $11 = 'score' then s.score end desc,
 	         case when $11 = 'raison_sociale' then en.raison_sociale end,
-					 case when $11 = 'follow' then f.id end,
-					 case when $11 = 'effectif_desc' then ef.effectif end desc, 
-			     et.siret
+		 	 case when $11 = 'follow' then f.id end,
+			 case when $11 = 'effectif_desc' then ef.effectif end desc, 
+			 et.siret
 	limit $2 offset $3
 ) select siret, 
 		siren, 
