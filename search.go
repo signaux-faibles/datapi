@@ -86,7 +86,7 @@ func searchEtablissementHandler(c *gin.Context) {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
+	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', false, null, null, null, null, null, null);`
 
 	liste, err := findAllListes()
 	if err != nil {
@@ -106,15 +106,6 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		params.ignoreZone,
 		params.username,
 		params.siegeUniquement,
-		"raison_sociale",
-		false,
-		nil,
-		nil,
-		nil,
-		nil,
-		nil,
-		false,
-		nil,
 	)
 
 	if err != nil {

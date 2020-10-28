@@ -169,12 +169,12 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 		return nil, errorToJSON(500, err)
 	}
 
-	sqlFollow := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
+	sqlFollow := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as follow;`
 
 	rows, err := db.Query(context.Background(), sqlFollow,
 		roles.zoneGeo(), nil, nil, liste[0].ID, nil, nil,
 		true, true, f.Username, false, "follow", false, nil,
-		nil, false, nil, nil, true, nil,
+		nil, true, nil, nil, nil,
 	)
 	if err != nil {
 		return nil, errorToJSON(500, err)

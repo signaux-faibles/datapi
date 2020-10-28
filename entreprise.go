@@ -423,10 +423,10 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		sirens = append(sirens, i[0:9])
 	}
 
-	batch.Queue(`select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`,
+	batch.Queue(`select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as brothers;`,
 		roles.zoneGeo(), nil, nil, listes[0].ID, nil, nil,
 		true, true, username, false, "effectif_desc", false, nil,
-		nil, false, nil, nil, false, sirens,
+		nil, nil, nil, nil, sirens,
 	)
 	return &batch
 }

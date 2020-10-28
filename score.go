@@ -21,7 +21,7 @@ type paramsListeScores struct {
 	EffectifMin     *int     `json:"effectifMin"`
 	EffectifMax     *int     `json:"effectifMax"`
 	IgnoreZone      *bool    `json:"ignorezone"`
-	ExclureSuivi    bool     `json:"exclureSuivi"`
+	ExclureSuivi    *bool    `json:"exclureSuivi"`
 	SiegeUniquement bool     `json:"siegeUniquement"`
 	Page            int      `json:"page"`
 	Filter          string   `json:"filter"`
@@ -199,12 +199,19 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	} else {
 		offset = page * *limit
 	}
-	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19);`
+	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as scores;`
 
+	var suivi *bool
+	if liste.Query.ExclureSuivi != nil {
+		if *liste.Query.ExclureSuivi {
+			s := false
+			suivi = &s
+		}
+	}
 	rows, err := db.Query(context.Background(), sqlScores,
 		roles.zoneGeo(), limit, offset, liste.ID, liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", nil,
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", true, liste.Query.EtatsProcol,
-		liste.Query.Departements, liste.Query.ExclureSuivi, liste.Query.EffectifMin, liste.Query.EffectifMax, false, nil,
+		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil,
 	)
 	if err != nil {
 		return errorToJSON(500, err)

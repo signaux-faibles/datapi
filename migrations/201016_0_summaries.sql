@@ -34,6 +34,7 @@ create index idx_entreprise_ellisphere_siren on entreprise_ellisphere (siren) wh
 create index idx_entreprise_diane_siren on entreprise_diane (siren) where version = 0;
 create index idx_entreprise_bdf_siren on entreprise_bdf (siren) where version = 0;
 create index idx_etablissement_follow_siret_username_active on etablissement_follow (siret, siren, username, active);
+create index idx_etablissement_follow_siren_username on etablissement_follow (active, siren, username);
 create index idx_score_siret_liste on score (siret, libelle_liste, alert) where version = 0;
 
 create view v_entreprise_follow as 
@@ -80,11 +81,10 @@ create or replace function get_summary (
     in alert_only boolean,             -- $12
 		in last_procol text[],             -- $13
 		in departements text[],            -- $14
-		in exclure_suivi boolean,          -- $15
+		in suivi boolean,                  -- $15
 		in effectif_min int,               -- $16
 		in effectif_max int,               -- $17
-		in suivi_uniquement boolean,       -- $18
-		in sirens text[]                   -- $19
+		in sirens text[]                   -- $18
 	) returns table (
 		siret text,
 		siren text,
@@ -163,7 +163,7 @@ with open_summary as (
 		inner join v_etablissement_raison_sociale etrs on etrs.id_etablissement = et.id
 		inner join v_roles r on et.siren = r.siren
 		inner join departements d on d.code = et.departement
-        left join etablissement_follow f on f.active and f.siret = et.siret and f.username = $9
+    left join etablissement_follow f on f.active and f.siret = et.siret and f.username = $9
 		left join v_entreprise_follow fe on fe.siren = et.siren and fe.username = $9
 		left join v_naf n on n.code_n5 = et.code_activite
 		left join score0 s on et.siret = s.siret and s.libelle_liste = $4
@@ -186,9 +186,8 @@ with open_summary as (
 		and (et.departement=any($14) or $14 is null)
 		and (ef.effectif >= $16 or $16 is null)
 		and (ef.effectif <= $17 or $17 is null)
-		and (f.username is not null or not $18)
-		and (f.username is null or not $15)
-		and (en.siren = any($19) or $19 is null)
+		and (f.username is not null = $15 or $15 is null)
+		and (en.siren = any($18) or $18 is null)
 	order by case when $11 = 'score' then s.score end desc,
 	         case when $11 = 'raison_sociale' then en.raison_sociale end,
 		 	 case when $11 = 'follow' then f.id end,

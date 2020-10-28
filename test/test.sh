@@ -67,3 +67,9 @@ fi
 cd ../
 
 DATAPI_PORT="$DATAPI_PORT" GOLDEN_UPDATE="$GOLDEN_UPDATE" go test -v
+
+if [ "$1" = '-w' ]; 
+  then echo "Environnement en attente"
+    read -p "Appuyez sur entrée pour continuer"
+fi
+
