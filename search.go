@@ -22,6 +22,8 @@ type searchResult struct {
 	From    int       `json:"from"`
 	To      int       `json:"to"`
 	Total   int       `json:"total"`
+	NBF1    int       `json:"nbF1"`
+	NBF2    int       `json:"nbF2"`
 	PageMax int       `json:"pageMax"`
 	Page    int       `json:"page"`
 	Results []Summary `json:"results"`
@@ -84,58 +86,7 @@ func searchEtablissementHandler(c *gin.Context) {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `select 
-		et.siret,
-		et.siren,
-		en.raison_sociale, 
-		et.commune, 
-		d.libelle, 
-		d.code,
-		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.score else null end,
-		case when (r.roles && $1 and vs.siret is not null) or f.id is not null then s.diff else null end,
-		di.chiffre_affaire,
-		di.arrete_bilan,
-		di.variation_ca,
-		di.resultat_expl,
-		ef.effectif,
-		n.libelle_n5,
-		n.libelle_n1,
-		et.code_activite,
-		coalesce(ep.last_procol, 'in_bonis') as last_procol,
-		case when 'dgefp' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then coalesce(ap.ap, false) else null end as activite_partielle ,
-		case when 'urssaf' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then 
-			case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
-		else null end as hausseUrssaf,
-		case when 'detection' = any($1) and ((r.roles && $1 and vs.siret is not null) or f.id is not null) then s.alert else null end,
-		count(*) over (),
-		r.roles && $1 as visible,
-		coalesce(et.departement = any($2), false) as in_zone,
-		f.id is not null as followed,
-		et.siege,
-		g.raison_sociale,
-		ti.code_commune is not null
-		from etablissement0 et
-		inner join v_roles r on et.siren = r.siren
-		inner join entreprise0 en on en.siren = r.siren
-		inner join departements d on d.code = et.departement
-		left join v_naf n on n.code_n5 = et.code_activite
-		left join score s on et.siret = s.siret and coalesce(s.libelle_liste, $5) = $5
-		left join v_alert_etablissement vs on vs.siret = et.siret
-		left join v_last_effectif ef on ef.siret = et.siret
-		left join v_hausse_urssaf u on u.siret = et.siret
-		left join v_apdemande ap on ap.siret = et.siret
-		left join v_last_procol ep on ep.siret = et.siret
-		left join v_diane_variation_ca di on di.siren = s.siren
-		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $10
-		left join entreprise_ellisphere0 g on g.siren = et.siren
-		left join terrind ti on ti.code_commune = et.code_commune
-		where (et.siret ilike $6 or en.raison_sociale ilike $7)
-		and (r.roles && $1 or $8)
-		and (et.departement=any($2) or $9)
-		and (et.siege or $11)
-		order by en.raison_sociale, siret
-		limit $3 offset $4
-		;`
+	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', false, null, null, null, null, null, null);`
 
 	liste, err := findAllListes()
 	if err != nil {
@@ -145,8 +96,6 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	limit := viper.GetInt("searchPageLength")
 
 	rows, err := db.Query(context.Background(), sqlSearch,
-
-		zoneGeo,
 		zoneGeo,
 		limit,
 		params.page*limit,
@@ -156,7 +105,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		params.ignoreRoles,
 		params.ignoreZone,
 		params.username,
-		!params.siegeUniquement,
+		params.siegeUniquement,
 	)
 
 	if err != nil {
@@ -164,6 +113,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	}
 
 	var search searchResult
+	var throwAway interface{}
 	for rows.Next() {
 		var r Summary
 		err := rows.Scan(&r.Siret,
@@ -173,7 +123,8 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&r.LibelleDepartement,
 			&r.Departement,
 			&r.Score,
-			&r.Diff,
+			&r.Detail,
+			&r.FirstAlert,
 			&r.DernierCA,
 			&r.ArreteBilan,
 			&r.VariationCA,
@@ -187,12 +138,22 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 			&r.HausseUrssaf,
 			&r.Alert,
 			&search.Total,
+			&search.NBF1,
+			&search.NBF2,
 			&r.Visible,
 			&r.InZone,
 			&r.Followed,
+			&r.FollowedEntreprise,
 			&r.Siege,
 			&r.Groupe,
 			&r.TerrInd,
+			&throwAway,
+			&throwAway,
+			&throwAway,
+			&r.PermUrssaf,
+			&r.PermDGEFP,
+			&r.PermScore,
+			&r.PermBDF,
 		)
 		if err != nil {
 			return searchResult{}, errorToJSON(500, err)

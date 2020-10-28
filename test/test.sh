@@ -9,6 +9,7 @@ set -e
 
 function cleanup()
 {
+set +e
 if [ "$DATAPI_PID" != "" ]; then
   echo "- arret datapi"
   kill "$DATAPI_PID"
@@ -24,6 +25,7 @@ docker rm "$POSTGRES_CONTAINER" > /dev/null 2>&1
 
 trap cleanup EXIT
 
+echo "- compilation du binaire datapi"
 cd ..
 go build
 
@@ -49,10 +51,9 @@ sed "s/changemypass/$POSTGRES_PASSWORD/" config.toml.source | sed "s/changemypor
 cp ../datapi workspace
 cp -r ../migrations workspace
 cd workspace
-if [ "$1" = '-w' ]; 
-  then ./datapi &
-  else ./datapi > /dev/null 2>&1 &
-fi
+
+./datapi &
+
 DATAPI_PID=$!
 sleep 2
 
@@ -66,3 +67,9 @@ fi
 cd ../
 
 DATAPI_PORT="$DATAPI_PORT" GOLDEN_UPDATE="$GOLDEN_UPDATE" go test -v
+
+if [ "$1" = '-w' ]; 
+  then echo "Environnement en attente"
+    read -p "Appuyez sur entrée pour continuer"
+fi
+

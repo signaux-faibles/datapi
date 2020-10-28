@@ -169,69 +169,23 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 		return nil, errorToJSON(500, err)
 	}
 
-	sqlFollow := `select
-    f.comment,
-    f.category,
-    f.since,
-    et.siret,
-    et.siren,
-    en.raison_sociale, 
-    et.commune, 
-    d.libelle, 
-    d.code,
-    s.score,
-    s.diff,
-    di.chiffre_affaire,
-    di.arrete_bilan,
-    di.variation_ca,
-    di.resultat_expl,
-    ef.effectif,
-    n.libelle_n5,
-    n.libelle_n1,
-    et.code_activite,
-    coalesce(ep.last_procol, 'in_bonis') as last_procol,
-    case when 'dgefp' = any($1) then coalesce(ap.ap, false) else null end as activite_partielle ,
-    case when 'urssaf' = any($1) then 
-        case when u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] then true else false end 
-    else null end as hausseUrssaf,
-    s.alert,
-    r.roles && $1 as visible,
-    et.departement = any($1) as in_zone,
-    true as followed,
-    et.siege,
-		g.raison_sociale, 
-		ti.code_commune is not null
-    from etablissement_follow f
-    inner join v_roles r on r.siren = f.siren
-    inner join etablissement0 et on et.siret = f.siret
-    inner join entreprise0 en on en.siren = f.siren
-    inner join departements d on d.code = et.departement
-    left join v_naf n on n.code_n5 = et.code_activite
-    left join v_last_effectif ef on ef.siret = f.siret
-    left join v_hausse_urssaf u on u.siret = f.siret
-    left join v_apdemande ap on ap.siret = f.siret
-    left join v_last_procol ep on ep.siret = f.siret
-    left join v_diane_variation_ca di on di.siren = f.siren
-    left join score s on s.siret = f.siret and s.libelle_liste = $2
-		left join entreprise_ellisphere0 g on g.siren = en.siren
-		left join terrind ti on ti.code_commune = et.code_commune
-		where f.username = $3 and f.active
-		order by f.id
-    `
+	sqlFollow := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as follow;`
 
-	rows, err := db.Query(context.Background(), sqlFollow, roles, liste[0].ID, f.Username)
+	rows, err := db.Query(context.Background(), sqlFollow,
+		roles.zoneGeo(), nil, nil, liste[0].ID, nil, nil,
+		true, true, f.Username, false, "follow", false, nil,
+		nil, true, nil, nil, nil,
+	)
 	if err != nil {
 		return nil, errorToJSON(500, err)
 	}
 
 	var follows []Follow
+	var throwAway interface{}
 	for rows.Next() {
 		var f Follow
 		var e Summary
 		err := rows.Scan(
-			&f.Comment,
-			&f.Category,
-			&f.Since,
 			&e.Siret,
 			&e.Siren,
 			&e.RaisonSociale,
@@ -239,7 +193,8 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 			&e.LibelleDepartement,
 			&e.Departement,
 			&e.Score,
-			&e.Diff,
+			&e.Detail,
+			&e.FirstAlert,
 			&e.DernierCA,
 			&e.ArreteBilan,
 			&e.VariationCA,
@@ -252,12 +207,23 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 			&e.ActivitePartielle,
 			&e.HausseUrssaf,
 			&e.Alert,
+			&throwAway,
+			&throwAway,
+			&throwAway,
 			&e.Visible,
 			&e.InZone,
 			&e.Followed,
+			&e.FollowedEntreprise,
 			&e.Siege,
 			&e.Groupe,
 			&e.TerrInd,
+			&f.Comment,
+			&f.Category,
+			&f.Since,
+			&e.PermUrssaf,
+			&e.PermDGEFP,
+			&e.PermScore,
+			&e.PermBDF,
 		)
 		if err != nil {
 			return nil, errorToJSON(500, err)
