@@ -564,7 +564,7 @@ func (e *Etablissements) loadDelai(rows *pgx.Rows) error {
 
 		var dl EtablissementDelai
 		var siret string
-		err := (*rows).Scan(&siret, &dl.Action, &dl.AnneeCreation, &dl.DateCreation, &dl.DateCreation, &dl.Denomination,
+		err := (*rows).Scan(&siret, &dl.Action, &dl.AnneeCreation, &dl.DateCreation, &dl.DateEcheance, &dl.Denomination,
 			&dl.DureeDelai, &dl.Indic6m, &dl.MontantEcheancier, &dl.NoCompte, &dl.NoContentieux, &dl.Stade)
 		if err != nil {
 			return err
