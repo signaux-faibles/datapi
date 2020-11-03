@@ -241,7 +241,7 @@ func testSearchVAF(t *testing.T, siret string, vaf string) {
 	}
 	visible := vaf[0] == 'V'
 	followed := vaf[2] == 'F'
-	var e searchVIAF
+	var e searchVAF
 	json.Unmarshal(indented, &e)
 	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].Followed == followed) {
 		fmt.Println(vaf, visible, followed)
@@ -249,11 +249,11 @@ func testSearchVAF(t *testing.T, siret string, vaf string) {
 	}
 }
 
-type searchVIAF struct {
+type searchVAF struct {
 	Results []etablissementVAF `json:"results"`
 }
 
-// VAF hyperbool
+// VAF encode le statut d'une entreprise selon la classification VAF
 type VAF struct {
 	visible  bool
 	alert    bool

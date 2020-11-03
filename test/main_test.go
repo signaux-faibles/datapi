@@ -106,8 +106,15 @@ func TestScores(t *testing.T) {
 	processGoldenFile(t, "data/scores-siegeUniquement.json.gz", indented)
 }
 
-// TestVIAF traite la problématique du respect des traitements des droits utilisateurs
-func TestVIAF(t *testing.T) {
+// TestVAF traite la problématique du respect des traitements des droits utilisateurs
+// le test échantillonne des entreprises en fonction de leur statut VAF (pour visible / alert / followed) afin de tester toutes les combinaisons
+// le test de base sur des golden files pour vérifier que les propriétés ne changent pas, mais va également valider la présence effective des données
+// les entreprises échantillonnées disposent toutes de données confidentielles pour éviter les faux positifs.
+// le sigle vaf encode le statut de l'entreprise:
+// V = entreprise visible, v = entreprise non visible
+// A = entreprise dont un établissement a déjà été en alerte, a = entreprise sans aucune alerte
+// F = entreprise dont un établissement est suivi par l'utilisateur du test, f = enterprise non suivie
+func TestVAF(t *testing.T) {
 	for _, vaf := range []string{"vaf", "vaF", "vAf", "vAF", "Vaf", "VaF", "VAf", "VAF"} {
 		v := VAF{}
 		v.read(vaf)
