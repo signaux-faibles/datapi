@@ -21,9 +21,6 @@ func TestFollow(t *testing.T) {
 	sirets = append(sirets, getSiret(t, VAF{false, true, false}, 1)...)
 	sirets = append(sirets, getSiret(t, VAF{true, false, false}, 1)...)
 	sirets = append(sirets, getSiret(t, VAF{true, true, false}, 1)...)
-
-	fmt.Println(sirets)
-
 	params := map[string]interface{}{
 		"comment":  "test",
 		"category": "test",
