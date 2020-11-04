@@ -55,7 +55,6 @@ func runAPI() {
 	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
 	entreprise.GET("/get/:siren", validSiren, getEntreprise)
 	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
-	entreprise.GET("/rapportCRP/:siren", validSiren, getEntrepriseRapportCRP)
 
 	etablissement := router.Group("/etablissement", getKeycloakMiddleware(), logMiddleware)
 	etablissement.GET("/viewers/:siret", validSiret, getEtablissementViewers)
