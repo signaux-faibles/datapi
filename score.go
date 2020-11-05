@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -41,43 +40,6 @@ type Liste struct {
 	Page    int               `json:"page"`
 	PageMax int               `json:"pageMax"`
 	To      int               `json:"to"`
-}
-
-// Summary score + élements sur l'établissement
-type Summary struct {
-	Siren              string             `json:"siren"`
-	Siret              string             `json:"siret"`
-	Score              *float64           `json:"-"`
-	Detail             map[string]float64 `json:"-"`
-	Diff               *float64           `json:"-"`
-	RaisonSociale      *string            `json:"raison_sociale"`
-	Commune            *string            `json:"commune"`
-	LibelleActivite    *string            `json:"libelle_activite"`
-	LibelleActiviteN1  *string            `json:"libelle_activite_n1"`
-	CodeActivite       *string            `json:"code_activite"`
-	Departement        *string            `json:"departement"`
-	LibelleDepartement *string            `json:"libelleDepartement"`
-	DernierEffectif    *float64           `json:"dernier_effectif"`
-	HausseUrssaf       *bool              `json:"urssaf,omitempty"`
-	ActivitePartielle  *bool              `json:"activite_partielle,omitempty"`
-	DernierCA          *float64           `json:"ca"`
-	VariationCA        *float64           `json:"variation_ca"`
-	ArreteBilan        *time.Time         `json:"arrete_bilan"`
-	DernierREXP        *float64           `json:"resultat_expl"`
-	EtatProcol         *string            `json:"etat_procol,omitempty"`
-	Alert              *string            `json:"alert,omitempty"`
-	Visible            *bool              `json:"visible,omitempty"`
-	InZone             *bool              `json:"inZone,omitempty"`
-	Followed           *bool              `json:"followed,omitempty"`
-	FollowedEntreprise *bool              `json:"followedEntreprise,omitempty"`
-	FirstAlert         *bool              `json:"firstAlert"`
-	Siege              *bool              `json:"siege"`
-	Groupe             *string            `json:"groupe,omitempty"`
-	TerrInd            *bool              `json:"territoireIndustrie,omitempty"`
-	PermUrssaf         *bool              `json:"permUrssaf,omitempty"`
-	PermDGEFP          *bool              `json:"permDGEFP,omitempty"`
-	PermScore          *bool              `json:"permScore,omitempty"`
-	PermBDF            *bool              `json:"permBDF,omitempty"`
 }
 
 func getListes(c *gin.Context) {
@@ -227,15 +189,15 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			&score.RaisonSociale,
 			&score.Commune,
 			&score.LibelleDepartement,
-			&score.Departement,
-			&score.Score,
-			&score.Detail,
+			&score.CodeDepartement,
+			&score.ValeurScore,
+			&score.DetailScore,
 			&score.FirstAlert,
-			&score.DernierCA,
+			&score.ChiffreAffaire,
 			&score.ArreteBilan,
 			&score.VariationCA,
-			&score.DernierREXP,
-			&score.DernierEffectif,
+			&score.ResultatExploitation,
+			&score.Effectif,
 			&score.LibelleActivite,
 			&score.LibelleActiviteN1,
 			&score.CodeActivite,
@@ -348,9 +310,9 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 		row.AddCell().Value = fmt.Sprintf("%s", liste.ID)
 		row.AddCell().Value = fmt.Sprintf("%s", score.Siren)
 		row.AddCell().Value = fmt.Sprintf("%s", score.Siret)
-		row.AddCell().Value = fmt.Sprintf("%s", *score.Departement)
+		row.AddCell().Value = fmt.Sprintf("%s", *score.CodeDepartement)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.RaisonSociale)
-		row.AddCell().Value = fmt.Sprintf("%f", *score.DernierEffectif)
+		row.AddCell().Value = fmt.Sprintf("%f", *score.Effectif)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.CodeActivite)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.LibelleActivite)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.Alert)

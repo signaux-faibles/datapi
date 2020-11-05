@@ -68,6 +68,7 @@ func runAPI() {
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
+	follow.GET("/xls", getXLSFollowedByCurrentUser)
 
 	listes := router.Group("/listes", getKeycloakMiddleware(), logMiddleware)
 	listes.GET("", getListes)
@@ -144,3 +145,12 @@ func logMiddleware(c *gin.Context) {
 
 	c.Next()
 }
+
+// True made global to ease pointers
+var True = true
+
+// False made global to ease pointers
+var False = false
+
+// EmptyString made global to ease pointers
+var EmptyString = ""

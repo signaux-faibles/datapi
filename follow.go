@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/tealeg/xlsx"
 )
 
 // Follow type follow pour l'API
@@ -15,8 +19,8 @@ type Follow struct {
 	Since                time.Time `json:"since"`
 	Comment              string    `json:"comment"`
 	Category             string    `json:"category"`
-	UnfollowComment      string    `json:"unfollowComment"`
-	UnfollowCategory     string    `json:"unfollowCategory"`
+	UnfollowComment      string    `json:"unfollowComment,omitempty"`
+	UnfollowCategory     string    `json:"unfollowCategory,omitempty"`
 	EtablissementSummary *Summary  `json:"etablissementSummary,omitempty"`
 }
 
@@ -32,6 +36,24 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 	}
 
 	c.JSON(200, follows)
+}
+
+func getXLSFollowedByCurrentUser(c *gin.Context) {
+	username := c.GetString("username")
+	scope := scopeFromContext(c)
+	follow := Follow{Username: &username}
+	follows, err := follow.list(scope)
+	if err != nil {
+		c.JSON(err.Code(), err.Error())
+		return
+	}
+
+	xls, err := follows.toXLS()
+	if err != nil {
+		c.JSON(err.Code(), err.Error())
+		return
+	}
+	c.JSON(200, xls)
 }
 
 func followEtablissement(c *gin.Context) {
@@ -163,72 +185,28 @@ func (f *Follow) deactivate() Jerror {
 	return nil
 }
 
-func (f *Follow) list(roles scope) ([]Follow, Jerror) {
+func (f *Follow) list(roles scope) (Follows, Jerror) {
 	liste, err := findAllListes()
 	if err != nil {
 		return nil, errorToJSON(500, err)
 	}
 
-	sqlFollow := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as follow;`
+	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, nil,
+		&True, &True, *f.Username, false, "follow", &False, nil,
+		nil, &True, nil, nil, nil}
 
-	rows, err := db.Query(context.Background(), sqlFollow,
-		roles.zoneGeo(), nil, nil, liste[0].ID, nil, nil,
-		true, true, f.Username, false, "follow", false, nil,
-		nil, true, nil, nil, nil,
-	)
+	sms, err := getSummaries(params)
 	if err != nil {
 		return nil, errorToJSON(500, err)
 	}
+	var follows Follows
 
-	var follows []Follow
-	var throwAway interface{}
-	for rows.Next() {
+	for _, s := range sms.summaries {
 		var f Follow
-		var e Summary
-		err := rows.Scan(
-			&e.Siret,
-			&e.Siren,
-			&e.RaisonSociale,
-			&e.Commune,
-			&e.LibelleDepartement,
-			&e.Departement,
-			&e.Score,
-			&e.Detail,
-			&e.FirstAlert,
-			&e.DernierCA,
-			&e.ArreteBilan,
-			&e.VariationCA,
-			&e.DernierREXP,
-			&e.DernierEffectif,
-			&e.LibelleActivite,
-			&e.LibelleActiviteN1,
-			&e.CodeActivite,
-			&e.EtatProcol,
-			&e.ActivitePartielle,
-			&e.HausseUrssaf,
-			&e.Alert,
-			&throwAway,
-			&throwAway,
-			&throwAway,
-			&e.Visible,
-			&e.InZone,
-			&e.Followed,
-			&e.FollowedEntreprise,
-			&e.Siege,
-			&e.Groupe,
-			&e.TerrInd,
-			&f.Comment,
-			&f.Category,
-			&f.Since,
-			&e.PermUrssaf,
-			&e.PermDGEFP,
-			&e.PermScore,
-			&e.PermBDF,
-		)
-		if err != nil {
-			return nil, errorToJSON(500, err)
-		}
-		f.EtablissementSummary = &e
+		f.Comment = *coalescepString(s.Comment, &EmptyString)
+		f.Category = *coalescepString(s.Category, &EmptyString)
+		f.Since = *coalescepTime(s.Since, &time.Time{})
+		f.EtablissementSummary = s
 		f.Active = true
 		follows = append(follows, f)
 	}
@@ -238,4 +216,52 @@ func (f *Follow) list(roles scope) ([]Follow, Jerror) {
 	}
 
 	return follows, nil
+}
+
+// Follows is a slice of Follows
+type Follows []Follow
+
+func (follows Follows) toXLS() ([]byte, Jerror) {
+	xlFile := xlsx.NewFile()
+	xlSheet, err := xlFile.AddSheet("extract")
+	if err != nil {
+		return nil, errorToJSON(500, err)
+	}
+
+	row := xlSheet.AddRow()
+	row.AddCell().Value = "siren"
+	row.AddCell().Value = "siret"
+	row.AddCell().Value = "departement"
+	row.AddCell().Value = "raison_sociale"
+	row.AddCell().Value = "dernier_effectif"
+	row.AddCell().Value = "code_activite"
+	row.AddCell().Value = "libelle_activite"
+	row.AddCell().Value = "alert"
+	row.AddCell().Value = "depuis"
+	row.AddCell().Value = "categorie"
+	row.AddCell().Value = "commentaire"
+
+	for _, f := range follows {
+		row := xlSheet.AddRow()
+		if err != nil {
+			return nil, errorToJSON(500, err)
+		}
+		row.AddCell().Value = fmt.Sprintf("%s", f.EtablissementSummary.Siren)
+		row.AddCell().Value = fmt.Sprintf("%s", f.EtablissementSummary.Siret)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeDepartement)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.RaisonSociale)
+		row.AddCell().Value = fmt.Sprintf("%f", *f.EtablissementSummary.Effectif)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeActivite)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.LibelleActivite)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Alert)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Since)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Category)
+		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Comment)
+	}
+
+	data := bytes.NewBuffer(nil)
+	file := bufio.NewWriter(data)
+	xlFile.Write(file)
+	file.Flush()
+	return data.Bytes(), nil
 }
