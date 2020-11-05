@@ -48,12 +48,13 @@ func getXLSFollowedByCurrentUser(c *gin.Context) {
 		return
 	}
 
-	xls, err := follows.toXLS()
+	file, err := follows.toXLS()
 	if err != nil {
 		c.JSON(err.Code(), err.Error())
 		return
 	}
-	c.JSON(200, xls)
+	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract.xls")
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file)
 }
 
 func followEtablissement(c *gin.Context) {
@@ -253,7 +254,7 @@ func (follows Follows) toXLS() ([]byte, Jerror) {
 		row.AddCell().Value = fmt.Sprintf("%f", *f.EtablissementSummary.Effectif)
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeActivite)
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.LibelleActivite)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Alert)
+		row.AddCell().Value = fmt.Sprintf("%s", *coalescepString(f.EtablissementSummary.Alert, &EmptyString))
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Since)
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Category)
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Comment)
