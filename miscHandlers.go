@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"regexp"
+	"time"
 
 	"github.com/gin-gonic/gin"
 )
@@ -89,8 +90,17 @@ func validSiret(c *gin.Context) {
 	c.Next()
 }
 
-func coalescepString(o ...*string) *string {
-	for _, i := range o {
+func coalescepString(pointers ...*string) *string {
+	for _, i := range pointers {
+		if i != nil {
+			return i
+		}
+	}
+	return nil
+}
+
+func coalescepTime(pointers ...*time.Time) *time.Time {
+	for _, i := range pointers {
 		if i != nil {
 			return i
 		}
