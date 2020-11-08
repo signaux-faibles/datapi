@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
@@ -19,14 +18,14 @@ type searchParams struct {
 }
 
 type searchResult struct {
-	From    int       `json:"from"`
-	To      int       `json:"to"`
-	Total   int       `json:"total"`
-	NBF1    int       `json:"nbF1"`
-	NBF2    int       `json:"nbF2"`
-	PageMax int       `json:"pageMax"`
-	Page    int       `json:"page"`
-	Results []Summary `json:"results"`
+	From    int        `json:"from"`
+	To      int        `json:"to"`
+	Total   int        `json:"total"`
+	NBF1    int        `json:"nbF1"`
+	NBF2    int        `json:"nbF2"`
+	PageMax int        `json:"pageMax"`
+	Page    int        `json:"page"`
+	Results []*Summary `json:"results"`
 }
 
 func searchEtablissementHandler(c *gin.Context) {
@@ -86,8 +85,6 @@ func searchEtablissementHandler(c *gin.Context) {
 }
 
 func searchEtablissement(params searchParams) (searchResult, Jerror) {
-	sqlSearch := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', false, null, null, null, null, null, null);`
-
 	liste, err := findAllListes()
 	if err != nil {
 		return searchResult{}, errorToJSON(500, err)
@@ -95,80 +92,32 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	zoneGeo := params.roles.zoneGeo()
 	limit := viper.GetInt("searchPageLength")
 
-	rows, err := db.Query(context.Background(), sqlSearch,
-		zoneGeo,
-		limit,
-		params.page*limit,
-		liste[0].ID,
-		params.search+"%",
-		"%"+params.search+"%",
-		params.ignoreRoles,
-		params.ignoreZone,
-		params.username,
-		params.siegeUniquement,
-	)
+	offset := params.page * limit
 
+	summaryparams := summaryParams{
+		zoneGeo, &limit, &offset, &liste[0].ID, &params.search, &params.ignoreRoles, &params.ignoreZone,
+		params.username, params.siegeUniquement, "raison_sociale", &False, nil, nil, nil, nil, nil, nil,
+	}
+
+	summaries, err := getSummaries(summaryparams)
 	if err != nil {
 		return searchResult{}, errorToJSON(500, err)
 	}
 
 	var search searchResult
-	var throwAway interface{}
-	for rows.Next() {
-		var r Summary
-		err := rows.Scan(&r.Siret,
-			&r.Siren,
-			&r.RaisonSociale,
-			&r.Commune,
-			&r.LibelleDepartement,
-			&r.CodeDepartement,
-			&r.ValeurScore,
-			&r.DetailScore,
-			&r.FirstAlert,
-			&r.ChiffreAffaire,
-			&r.ArreteBilan,
-			&r.VariationCA,
-			&r.ResultatExploitation,
-			&r.Effectif,
-			&r.LibelleActivite,
-			&r.LibelleActiviteN1,
-			&r.CodeActivite,
-			&r.EtatProcol,
-			&r.ActivitePartielle,
-			&r.HausseUrssaf,
-			&r.Alert,
-			&search.Total,
-			&search.NBF1,
-			&search.NBF2,
-			&r.Visible,
-			&r.InZone,
-			&r.Followed,
-			&r.FollowedEntreprise,
-			&r.Siege,
-			&r.Groupe,
-			&r.TerrInd,
-			&throwAway,
-			&throwAway,
-			&throwAway,
-			&r.PermUrssaf,
-			&r.PermDGEFP,
-			&r.PermScore,
-			&r.PermBDF,
-		)
-		if err != nil {
-			return searchResult{}, errorToJSON(500, err)
-		}
-		search.Results = append(search.Results, r)
-	}
 
-	if viper.GetInt("searchPageLength")*params.page >= search.Total {
-		return searchResult{}, newJSONerror(204, "empty page")
-	}
-
+	search.Results = summaries.summaries
+	search.Total = *summaries.global.count
+	search.NBF1 = *summaries.global.countF1
+	search.NBF2 = *summaries.global.countF2
 	search.From = limit*params.page + 1
 	search.To = limit*params.page + len(search.Results)
 	search.Page = params.page
 	search.PageMax = (search.Total - 1) / limit
+
+	if len(search.Results) == 0 {
+		return searchResult{}, newJSONerror(204, "empty page")
+	}
 
 	return search, nil
 }
