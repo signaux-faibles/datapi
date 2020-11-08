@@ -181,9 +181,11 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 
 	scores := summaries.summaries
 	// TODO: harmoniser les types de sorties pour éviter les remaniements
-	liste.Total = *summaries.global.count
-	liste.NbF1 = *summaries.global.countF1
-	liste.NbF2 = *summaries.global.countF2
+	if summaries.global.count != nil {
+		liste.Total = *summaries.global.count
+		liste.NbF1 = *summaries.global.countF1
+		liste.NbF2 = *summaries.global.countF2
+	}
 	if limit == nil {
 		i := 1
 		limit = &i

@@ -107,9 +107,11 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	var search searchResult
 
 	search.Results = summaries.summaries
-	search.Total = *summaries.global.count
-	search.NBF1 = *summaries.global.countF1
-	search.NBF2 = *summaries.global.countF2
+	if summaries.global.count != nil {
+		search.Total = *summaries.global.count
+		search.NBF1 = *summaries.global.countF1
+		search.NBF2 = *summaries.global.countF2
+	}
 	search.From = limit*params.page + 1
 	search.To = limit*params.page + len(search.Results)
 	search.Page = params.page
