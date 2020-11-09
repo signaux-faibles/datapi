@@ -207,6 +207,7 @@ func findAllListes() ([]Liste, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var l Liste
