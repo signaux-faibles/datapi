@@ -17,15 +17,10 @@ func TestFollow(t *testing.T) {
 		t.Errorf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
 	}
 	// récupérer une liste de sirets à suivre de toutes les typologies d'établissements
-	sirets := getSiret(t, VIAF{false, false, false, false}, 4)
-	sirets = append(sirets, getSiret(t, VIAF{false, false, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{false, true, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{false, true, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, false, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, false, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, true, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VIAF{true, true, true, false}, 1)...)
-
+	sirets := getSiret(t, VAF{false, false, false}, 1)
+	sirets = append(sirets, getSiret(t, VAF{false, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VAF{true, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VAF{true, true, false}, 1)...)
 	params := map[string]interface{}{
 		"comment":  "test",
 		"category": "test",
@@ -108,27 +103,26 @@ func TestScores(t *testing.T) {
 	processGoldenFile(t, "data/scores-siegeUniquement.json.gz", indented)
 }
 
-// TestVIAF traite la problématique du respect des traitements des droits utilisateurs
-func TestVIAF(t *testing.T) {
-	t.Log("absence d'etablissement vI[aA][fF]")
-	if len(getSiret(t, VIAF{false, true, false, false}, 1))+
-		len(getSiret(t, VIAF{false, true, false, true}, 1))+
-		len(getSiret(t, VIAF{false, true, true, false}, 1))+
-		len(getSiret(t, VIAF{false, true, true, true}, 1)) > 0 {
-		t.Error("il existe des établissements qui ne devraient pas être là")
-	}
-
-	for _, viaf := range []string{"viaf", "viaF", "viAf", "viAF", "Viaf", "ViaF", "ViAf", "ViAF"} {
-		v := VIAF{}
-		v.read(viaf)
+// TestVAF traite la problématique du respect des traitements des droits utilisateurs
+// le test échantillonne des entreprises en fonction de leur statut VAF (pour visible / alert / followed) afin de tester toutes les combinaisons
+// le test de base sur des golden files pour vérifier que les propriétés ne changent pas, mais va également valider la présence effective des données
+// les entreprises échantillonnées disposent toutes de données confidentielles pour éviter les faux positifs.
+// le sigle vaf encode le statut de l'entreprise:
+// V = entreprise visible, v = entreprise non visible
+// A = entreprise dont un établissement a déjà été en alerte, a = entreprise sans aucune alerte
+// F = entreprise dont un établissement est suivi par l'utilisateur du test, f = enterprise non suivie
+func TestVAF(t *testing.T) {
+	for _, vaf := range []string{"vaf", "vaF", "vAf", "vAF", "Vaf", "VaF", "VAf", "VAF"} {
+		v := VAF{}
+		v.read(vaf)
 
 		sirets := getSiret(t, v, 1)
 		if len(sirets) == 0 {
-			t.Errorf("aucun siret pour tester la catégorie, test faible (%s)", viaf)
+			t.Errorf("aucun siret pour tester la catégorie, test faible (%s)", vaf)
 		}
 		for _, siret := range sirets {
-			testEtablissementVIAF(t, siret, viaf)
-			testSearchVIAF(t, siret, viaf)
+			testEtablissementVAF(t, siret, vaf)
+			testSearchVAF(t, siret, vaf)
 		}
 	}
 }
@@ -209,6 +203,57 @@ func TestPermissions(t *testing.T) {
 				urssaf:  false,
 				dgefp:   false,
 				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role urssaf",
+			test{
+				rolesUser:            []string{"01", "02", "urssaf"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			result{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  true,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role dgefp",
+			test{
+				rolesUser:            []string{"01", "02", "dgefp"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			result{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  false,
+				dgefp:   true,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role bdf",
+			test{
+				rolesUser:            []string{"01", "02", "bdf"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			result{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     true,
 			},
 		},
 		{"entreprise dans la zone, sans alerte avec droits",
