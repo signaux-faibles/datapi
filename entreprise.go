@@ -324,7 +324,8 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		p.score as permScore,
 		p.urssaf as permUrssaf,
 		p.dgefp as permDGEFP,
-		p.bdf as permBDF
+		p.bdf as permBDF,
+		p.in_zone as in_zone
 		from etablissement0 et
 		inner join f_etablissement_permissions($1, $2) p on p.id = et.id
 		inner join departements d on d.code = et.departement
@@ -724,7 +725,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&el.CodeGroupe, &el.RefIDGroupe, &el.RaisocGroupe, &el.AdresseGroupe,
 			&el.PersonnePouMGroupe, &el.NiveauDetention, &el.PartFinanciere,
 			&el.CodeFiliere, &el.RefIDFiliere, &el.PersonnePouMFiliere, &ti.Code, &ti.Libelle,
-			&et.PermScore, &et.PermUrssaf, &et.PermDGEFP, &et.PermBDF,
+			&et.PermScore, &et.PermUrssaf, &et.PermDGEFP, &et.PermBDF, &et.InZone,
 		)
 
 		if err != nil {
