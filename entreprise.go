@@ -120,6 +120,10 @@ type Etablissement struct {
 	InZone             bool                       `json:"inZone"`
 	Alert              bool                       `json:"alert,omitempty"`
 	TerrInd            *EtablissementTerrInd      `json:"territoireIndustrie,omitempty"`
+	PermScore          bool                       `json:"permScore"`
+	PermUrssaf         bool                       `json:"permUrssaf"`
+	PermDGEFP          bool                       `json:"permDGEFP"`
+	PermBDF            bool                       `json:"permBDF"`
 }
 
 // EtablissementTerrInd …
@@ -316,7 +320,12 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		coalesce(g.code_filiere, ''),
 		coalesce(g.refid_filiere, ''),
 		coalesce(g.personne_pou_m_filiere, ''),
-		coalesce(ti.code_terrind,''), coalesce(ti.libelle_terrind,'')
+		coalesce(ti.code_terrind,''), coalesce(ti.libelle_terrind,''),
+		p.score as permScore,
+		p.urssaf as permUrssaf,
+		p.dgefp as permDGEFP,
+		p.bdf as permBDF,
+		p.in_zone as in_zone
 		from etablissement0 et
 		inner join f_etablissement_permissions($1, $2) p on p.id = et.id
 		inner join departements d on d.code = et.departement
@@ -355,6 +364,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		e.sirensFromQuery(),
 	)
 
+	// A remettre en service lorsque nous aurons des données BDF
 	// batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
 	// 	dette_fiscale, frais_financier, taux_marge
 	// 	from entreprise_bdf0 en
@@ -536,7 +546,7 @@ func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
 		if sumPFloats(pu.cotisation, pu.partPatronale, pu.partSalariale, pu.montantMajoration) != 0 || pu.effectif != nil {
 			effectifs[pu.siret] = append(effectifs[pu.siret], pu.effectif)
 			periodes[pu.siret] = append(periodes[pu.siret], pu.periode)
-			if roles.containsRole("urssaf") && (e.Etablissements[pu.siret].Visible && e.Etablissements[pu.siret].Alert || e.Etablissements[pu.siret].Followed) {
+			if e.Etablissements[pu.siret].PermUrssaf {
 				cotisations[pu.siret] = append(cotisations[pu.siret], pu.cotisation)
 				partPatronales[pu.siret] = append(partPatronales[pu.siret], pu.partPatronale)
 				partSalariales[pu.siret] = append(partSalariales[pu.siret], pu.partSalariale)
@@ -599,27 +609,27 @@ func (e *Etablissements) loadProcol(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadBDF(rows *pgx.Rows) error {
-	var bdfs = make(map[string][]bdf)
-	for (*rows).Next() {
-
-		var bd bdf
-		var siren string
-		err := (*rows).Scan(&siren, &bd.Annee, &bd.ArreteBilan, &bd.DelaiFournisseur, &bd.FinancierCourtTerme,
-			&bd.PoidsFrng, &bd.DetteFiscale, &bd.FraisFinancier, &bd.TauxMarge,
-		)
-		if err != nil {
-			return err
-		}
-		bdfs[siren] = append(bdfs[siren], bd)
-	}
-	for k, v := range bdfs {
-		entreprise := e.Entreprises[k]
-		entreprise.Bdf = v
-		e.Entreprises[k] = entreprise
-	}
-	return nil
-}
+// À réactiver lorsque nous aurons plus de données BDF
+// func (e *Etablissements) loadBDF(rows *pgx.Rows) error {
+// 	var bdfs = make(map[string][]bdf)
+// 	for (*rows).Next() {
+// 		var bd bdf
+// 		var siren string
+// 		err := (*rows).Scan(&siren, &bd.Annee, &bd.ArreteBilan, &bd.DelaiFournisseur, &bd.FinancierCourtTerme,
+// 			&bd.PoidsFrng, &bd.DetteFiscale, &bd.FraisFinancier, &bd.TauxMarge,
+// 		)
+// 		if err != nil {
+// 			return err
+// 		}
+// 		bdfs[siren] = append(bdfs[siren], bd)
+// 	}
+// 	for k, v := range bdfs {
+// 		entreprise := e.Entreprises[k]
+// 		entreprise.Bdf = v
+// 		e.Entreprises[k] = entreprise
+// 	}
+// 	return nil
+// }
 
 func (e *Etablissements) loadAPDemande(rows *pgx.Rows, roles scope) error {
 	var apdemandes = make(map[string][]EtablissementAPDemande)
@@ -632,9 +642,7 @@ func (e *Etablissements) loadAPDemande(rows *pgx.Rows, roles scope) error {
 		if err != nil {
 			return err
 		}
-		if len(e.Etablissements[siret].Scores) > 0 && roles.containsRole("dgefp") {
-			apdemandes[siret] = append(apdemandes[siret], ap)
-		}
+		apdemandes[siret] = append(apdemandes[siret], ap)
 	}
 	for k, v := range apdemandes {
 		etablissement := e.Etablissements[k]
@@ -653,9 +661,7 @@ func (e *Etablissements) loadAPConso(rows *pgx.Rows, roles scope) error {
 		if err != nil {
 			return err
 		}
-		if len(e.Etablissements[siret].Scores) > 0 && roles.containsRole("dgefp") {
-			apconsos[siret] = append(apconsos[siret], ap)
-		}
+		apconsos[siret] = append(apconsos[siret], ap)
 	}
 	for k, v := range apconsos {
 		etablissement := e.Etablissements[k]
@@ -668,7 +674,6 @@ func (e *Etablissements) loadAPConso(rows *pgx.Rows, roles scope) error {
 func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
 	var dianes = make(map[string][]diane)
 	for (*rows).Next() {
-
 		var di diane
 		var siren string
 		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.ChiffreAffaire, &di.CreditClient, &di.ResultatExploitation, &di.AchatMarchandises,
@@ -720,6 +725,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&el.CodeGroupe, &el.RefIDGroupe, &el.RaisocGroupe, &el.AdresseGroupe,
 			&el.PersonnePouMGroupe, &el.NiveauDetention, &el.PartFinanciere,
 			&el.CodeFiliere, &el.RefIDFiliere, &el.PersonnePouMFiliere, &ti.Code, &ti.Libelle,
+			&et.PermScore, &et.PermUrssaf, &et.PermDGEFP, &et.PermBDF, &et.InZone,
 		)
 
 		if err != nil {

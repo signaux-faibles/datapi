@@ -139,50 +139,30 @@ func connect() *pgxpool.Pool {
 	return db
 }
 
-func getSiret(t *testing.T, v VIAF, n int) []string {
-	sql := `with etablissement_follow as (
-		select coalesce(array_agg(distinct siret), '{}'::text[]) as f from etablissement_follow
-	),
-	etablissement_inzone as (
-		select array_agg(distinct siret) as i from etablissement where
-		departement in ('70','39','58','71','89','21','90','25','69','73','43','38','26','07','15','63','01','74','42','03')
-	),
-	etablissement_visible as (
-		select array_agg(siret) as v from etablissement0 e
-		inner join v_roles r on r.siren = e.siren
-		where roles && array['70','39','58','71','89','21','90','25','69','73','43','38','26','07','15','63','01','74','42','03']
-	),
-	etablissement_alert as (
-		select array_agg(siret) as a from etablissement0 e
-		inner join v_alert_entreprise a on a.siren = e.siren
-	),
-	etablissement_data_confidentielle as (
+func getSiret(t *testing.T, v VAF, n int) []string {
+	sql := `with etablissement_data_confidentielle as (
 		select distinct e.siret, et.departement
 		from etablissement_periode_urssaf e
 		inner join etablissement et on et.siret = e.siret
 		inner join etablissement_apdemande ap on ap.siret = e.siret
-		where part_patronale+part_salariale != 0 
-	),
-	etablissement_bool as (select e.siret,
-		e.siret = any(v.v) as visible,
-		e.siret = any(i.i) as inzone,
-		e.siret = any(a.a) as alert,
-		e.siret = any(f.f) as follow
-	from etablissement_data_confidentielle e
-	inner join etablissement_follow f on true
-	inner join etablissement_inzone i on true
-	inner join etablissement_visible v on true
-	inner join etablissement_alert a on true
-	where e.departement != '20')
-	select siret from etablissement_bool
-	where visible=$1 and inzone=$2 and alert=$3 and follow=$4
-	order by siret
-	limit $5`
+		where part_patronale+part_salariale != 0
+	)
+	select e.siret from etablissement e
+	inner join etablissement_data_confidentielle d on d.siret = e.siret
+	left join v_roles r on r.siren = e.siren and roles && array['70','39','58','71','89','21','90','25','69','73','43','38','26','07','15','63','01','74','42','03']
+	left join v_entreprise_follow f on f.siren = e.siren
+	left join v_alert_entreprise a on a.siren = e.siren
+	where 
+		e.departement != '20' and
+		(r.siren is not null)=$1 and -- roles
+		(a.siren is not null)=$2 and -- alert
+		(f.siren is not null)=$3     -- follow
+	order by e.siret
+	limit $4`
 	rows, err := db.Query(
 		context.Background(),
 		sql,
 		v.visible,
-		v.inZone,
 		v.alert,
 		v.followed,
 		n,
@@ -204,19 +184,19 @@ func getSiret(t *testing.T, v VIAF, n int) []string {
 	return sirets
 }
 
-func testEtablissementVIAF(t *testing.T, siret string, viaf string) {
-	v := VIAF{}
-	v.read(viaf)
+func testEtablissementVAF(t *testing.T, siret string, vaf string) {
+	v := VAF{}
+	v.read(vaf)
 
-	goldenFilePath := fmt.Sprintf("data/getEtablissement-%s-%s.json.gz", viaf, siret)
+	goldenFilePath := fmt.Sprintf("data/getEtablissement-%s-%s.json.gz", vaf, siret)
 	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
 	_, indented, _ := get(t, "/etablissement/get/"+siret)
 	processGoldenFile(t, goldenFilePath, indented)
 
-	var e etablissementVIAF
+	var e etablissementVAF
 	json.Unmarshal(indented, &e)
-	if !(e.Visible == v.visible && e.InZone == v.inZone && e.Followed == v.followed) {
-		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, viaf)
+	if !(e.Visible == v.visible && e.Followed == v.followed) {
+		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, vaf)
 	}
 
 	if !((v.visible && v.alert) || v.followed) {
@@ -251,47 +231,43 @@ func testEtablissementVIAF(t *testing.T, siret string, viaf string) {
 	}
 }
 
-func testSearchVIAF(t *testing.T, siret string, viaf string) {
-	goldenFilePath := fmt.Sprintf("data/getSearch-%s-%s.json.gz", viaf, siret)
+func testSearchVAF(t *testing.T, siret string, vaf string) {
+	goldenFilePath := fmt.Sprintf("data/getSearch-%s-%s.json.gz", vaf, siret)
 	t.Logf("la recherche renvoie l'établissement %s sous la forme attendue (ref %s)", siret, goldenFilePath)
 	_, indented, _ := get(t, "/etablissement/search/"+siret+"?ignorezone=true&ignoreroles=true")
 	diff, _ := processGoldenFile(t, goldenFilePath, indented)
 	if diff != "" {
 		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
 	}
-	visible := viaf[0] == 'V'
-	inZone := viaf[1] == 'I'
-	followed := viaf[3] == 'F'
-	var e searchVIAF
+	visible := vaf[0] == 'V'
+	followed := vaf[2] == 'F'
+	var e searchVAF
 	json.Unmarshal(indented, &e)
-	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].InZone == inZone && e.Results[0].Followed == followed) {
-		fmt.Println(viaf, visible, inZone, followed)
-		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, viaf)
+	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].Followed == followed) {
+		fmt.Println(vaf, visible, followed)
+		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, vaf)
 	}
 }
 
-type searchVIAF struct {
-	Results []etablissementVIAF `json:"results"`
+type searchVAF struct {
+	Results []etablissementVAF `json:"results"`
 }
 
-// VIAF hyperbool
-type VIAF struct {
+// VAF encode le statut d'une entreprise selon la classification VAF
+type VAF struct {
 	visible  bool
-	inZone   bool
 	alert    bool
 	followed bool
 }
 
-func (v *VIAF) read(viaf string) {
-	v.visible = viaf[0] == 'V'
-	v.inZone = viaf[1] == 'I'
-	v.alert = viaf[2] == 'A'
-	v.followed = viaf[3] == 'F'
+func (v *VAF) read(vaf string) {
+	v.visible = vaf[0] == 'V'
+	v.alert = vaf[1] == 'A'
+	v.followed = vaf[2] == 'F'
 }
 
-type etablissementVIAF struct {
+type etablissementVAF struct {
 	Visible       bool `json:"visible"`
-	InZone        bool `json:"inZone"`
 	Alert         bool `json:"alert"`
 	Followed      bool `json:"followed"`
 	PeriodeUrssaf struct {

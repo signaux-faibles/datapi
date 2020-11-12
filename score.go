@@ -32,7 +32,7 @@ type Liste struct {
 	Batch   string            `json:"batch"`
 	Algo    string            `json:"algo"`
 	Query   paramsListeScores `json:"-"`
-	Scores  []Summary         `json:"scores,omitempty"`
+	Scores  []*Summary        `json:"scores,omitempty"`
 	NbF1    int               `json:"nbF1"`
 	NbF2    int               `json:"nbF2"`
 	From    int               `json:"from"`
@@ -161,8 +161,6 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	} else {
 		offset = page * *limit
 	}
-	sqlScores := `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as scores;`
-
 	var suivi *bool
 	if liste.Query.ExclureSuivi != nil {
 		if *liste.Query.ExclureSuivi {
@@ -170,65 +168,24 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 			suivi = &s
 		}
 	}
-	rows, err := db.Query(context.Background(), sqlScores,
-		roles.zoneGeo(), limit, offset, liste.ID, liste.Query.Filter+"%", "%"+liste.Query.Filter+"%", nil,
-		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", true, liste.Query.EtatsProcol,
+
+	params := summaryParams{
+		roles.zoneGeo(), limit, &offset, &liste.ID, &liste.Query.Filter, nil,
+		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil,
-	)
+	}
+	summaries, err := getSummaries(params)
 	if err != nil {
 		return errorToJSON(500, err)
 	}
 
-	var scores []Summary
-	for rows.Next() {
-		var score Summary
-		var throwAway interface{}
-		err := rows.Scan(
-			&score.Siret,
-			&score.Siren,
-			&score.RaisonSociale,
-			&score.Commune,
-			&score.LibelleDepartement,
-			&score.CodeDepartement,
-			&score.ValeurScore,
-			&score.DetailScore,
-			&score.FirstAlert,
-			&score.ChiffreAffaire,
-			&score.ArreteBilan,
-			&score.VariationCA,
-			&score.ResultatExploitation,
-			&score.Effectif,
-			&score.LibelleActivite,
-			&score.LibelleActiviteN1,
-			&score.CodeActivite,
-			&score.EtatProcol,
-			&score.ActivitePartielle,
-			&score.HausseUrssaf,
-			&score.Alert,
-			&liste.Total,
-			&liste.NbF1,
-			&liste.NbF2,
-			&score.Visible,
-			&score.InZone,
-			&score.Followed,
-			&score.FollowedEntreprise,
-			&score.Siege,
-			&score.Groupe,
-			&score.TerrInd,
-			&throwAway,
-			&throwAway,
-			&throwAway,
-			&score.PermUrssaf,
-			&score.PermDGEFP,
-			&score.PermScore,
-			&score.PermBDF,
-		)
-		if err != nil {
-			return errorToJSON(500, err)
-		}
-		scores = append(scores, score)
+	scores := summaries.summaries
+	// TODO: harmoniser les types de sorties pour éviter les remaniements
+	if summaries.global.count != nil {
+		liste.Total = *summaries.global.count
+		liste.NbF1 = *summaries.global.countF1
+		liste.NbF2 = *summaries.global.countF2
 	}
-
 	if limit == nil {
 		i := 1
 		limit = &i
@@ -238,11 +195,9 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	liste.PageMax = (liste.Total - 1) / *limit
 	liste.From = *limit*page + 1
 	liste.To = *limit*page + len(scores)
-
 	if *limit*page > liste.Total || liste.Total == 0 {
 		return newJSONerror(204, "empty page")
 	}
-
 	return nil
 }
 
@@ -252,6 +207,7 @@ func findAllListes() ([]Liste, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	for rows.Next() {
 		var l Liste

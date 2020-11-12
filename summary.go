@@ -129,7 +129,7 @@ func (p summaryParams) toSQLParams() []interface{} {
 	var expressionRaisonSociale *string
 
 	if p.filter != nil {
-		eSiret := "%" + *p.filter
+		eSiret := *p.filter + "%"
 		eRaisonSociale := "%" + *p.filter + "%"
 		expressionSiret = &eSiret
 		expressionRaisonSociale = &eRaisonSociale
@@ -163,7 +163,7 @@ func getSummaries(params summaryParams) (summaries, error) {
 	if err != nil {
 		return summaries{}, err
 	}
-
+	defer rows.Close()
 	sms := summaries{}
 	for rows.Next() {
 		s := sms.newSummary()
