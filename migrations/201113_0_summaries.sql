@@ -1,5 +1,5 @@
 drop index idx_score_score;
-create index idx_score_score on score (score desc) where version=0;
+create index idx_score_score on score (score desc, siret) where version=0;
 
 create function get_score (
     in roles_users text[],             -- $1
@@ -124,6 +124,6 @@ create function get_score (
     and (ef.effectif <= $17 or $17 is null)
     and (f.username is not null = $15 or $15 is null)
     and (en.siren = any($18) or $18 is null)
-	order by s.score desc, et.siret
+	order by s.score desc, s.siret
 	limit $2 offset $3
 $$ language sql immutable;
