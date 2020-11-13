@@ -888,14 +888,17 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 
 func refreshMaterializedViews(tx *pgx.Tx) error {
 	views := []string{
-		"v_roles",
+		"v_alert_entreprise",
+		"v_alert_etablissement",
+		"v_apdemande",
 		"v_diane_variation_ca",
+		"v_etablissement_raison_sociale",
+		"v_hausse_urssaf",
 		"v_last_effectif",
 		"v_last_procol",
-		"v_hausse_urssaf",
-		"v_apdemande",
-		"v_alert_etablissement",
-		"v_alert_entreprise"}
+		"v_naf",
+		"v_roles",
+	}
 	for _, v := range views {
 		fmt.Printf("\033[2K\rrefreshing %s", v)
 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))
