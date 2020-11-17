@@ -716,7 +716,7 @@ func (s score) toLibelle() string {
 	}
 	year := "20" + s.Batch[0:2]
 	month := s.Batch[2:4]
-	return s.Batch[0:4] + " - " + months[month] + " " + year
+	return months[month] + " " + year
 }
 
 func scoreToListe() pgx.Batch {
