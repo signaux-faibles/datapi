@@ -21,8 +21,13 @@ type Summary struct {
 	CodeDepartement      *string            `json:"departement"`
 	LibelleDepartement   *string            `json:"libelleDepartement"`
 	Effectif             *float64           `json:"dernier_effectif"`
+	MontantDetteUrssaf   *float64           `json:"montantDetteUrssaf,omitempty"`
 	HausseUrssaf         *bool              `json:"urssaf,omitempty"`
 	ActivitePartielle    *bool              `json:"activite_partielle,omitempty"`
+	APConsoHeureConsomme *float64           `json:"apconsoHeureConsomme,omitEmpty"`
+	APConsoMontant       *float64           `json:"apconsoMontant,omitEmpty"`
+	APConsoEffectif      *int               `json:"apconsoEffectif,omitEmpty"`
+	APConsoPeriode       *time.Time         `json:"apconsoPeriode,omitEmpty"`
 	ChiffreAffaire       *float64           `json:"ca"`
 	VariationCA          *float64           `json:"variation_ca"`
 	ArreteBilan          *time.Time         `json:"arrete_bilan"`
@@ -82,6 +87,10 @@ func (summaries *summaries) newSummary() []interface{} {
 		&s.CodeActivite,
 		&s.EtatProcol,
 		&s.ActivitePartielle,
+		&s.APConsoHeureConsomme,
+		&s.APConsoMontant,
+		&s.APConsoEffectif,
+		&s.APConsoPeriode,
 		&s.HausseUrssaf,
 		&s.Alert,
 		&summaries.global.count,
@@ -161,11 +170,13 @@ func (p summaryParams) toSQLParams() []interface{} {
 func getSummaries(params summaryParams) (summaries, error) {
 	var sql string
 
-	if params.orderBy == "score" {
-		sql = `select * from get_score($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as scores;`
-	} else {
-		sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as %s;", params.orderBy)
-	}
+	// if params.orderBy == "score" {
+	// 	sql = `select * from get_score($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as scores;`
+	// } else {
+	// 	sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as %s;", params.orderBy)
+	// }
+
+	sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as %s;", params.orderBy)
 
 	rows, err := db.Query(context.Background(), sql, params.toSQLParams()...)
 	if err != nil {
