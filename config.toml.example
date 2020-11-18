@@ -1,15 +1,44 @@
-bind = "1.2.3.4:5678"                                                         # network binding
-postgres = "user=postgres dbname=datapi"                                      # postgres connection string
-keycloakHostname = "http://foo.bar:8080/"                                     # where datapi gets realm certs
-keycloakClientID = "clientId"                                                 # application id
-keycloakClientSecret = "clientSecret"                                         # application secret
-keycloakRealm = "master"                                                      # likely master, see your keycloak instance for details
-keycloakAdmin = "admin"                                                       # keycloak admin username
-keycloakPassword = "password"                                                 # keycloak admin password
-keycloakAdminRealm = "master"                                                 # likely master, see your keycloak instance for details
+# Configuration générale
+bind = ":3000"
+prod = true # limite les logs
+
+# Base de données
+postgres = "user=postgres dbname=datapi"
+
+# Paramètres de l'API
+searchPageLength = 20
+
+# Authentification
+enableKeycloak = true
+keycloakHostname = "localhost"
+keycloakClient = "signauxfaibles"
+keycloakRealm = "master"
+keycloakAdminUsername = "adminUsername"
+keycloakAdminPassword = "adminPassword"
+# Options pour développer sans keycloak
+# enableKeycloak = false
+# keycloakClient = "signauxfaibles"
+# fakeUsernameKeycloak = "john.doe@zone51.gov"
+# fakeKeycloakRole = [
+#   "Bourgogne-Franche-Comté",
+#   "urssaf",
+#   "dgefp",
+#   "bdf",
+# ]
+
+# Sécurité de /utils
+# Ne nécessite pas d'authentification, mais accès sur whitelist uniquement
+adminWhiteList = ["127.0.0.1"]
+
+# Import des données
+sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json.gz"
+sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json.gz"
+algoIgnore = ["algo_sans_urssaf"]
+batchIgnore = ["1910_8", "1906_7", "1901_interim"]
+
+# Connexion à l'API entreprise pour récupération des bilans
 apiEntrepriseToken = "token"                                                  # API Entreprise token
 apiEntrepriseContext = "context"                                              # 3 mandatory paremeters for traceability
 apiEntrepriseRecipient = "recipient"
 apiEntrepriseObject = "object"
 apiEntrepriseBilansInpiUrl = "https://entreprise.api.gouv.fr/v2/bilans_inpi/" # API Entreprise URL
-fileCachePath = "/var/lib/filecache"                                          # path where datapi stores cached files

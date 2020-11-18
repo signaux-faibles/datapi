@@ -21,7 +21,7 @@ fi
 
 echo ""
 echo "🚚 Importation temporaire des SIRETs de fce-download.csv dans la base de données ..."
-cat fce-download.csv | PGPASSWORD="${DB_PASSWORD}" psql -U "${DB_USER}" "${DB_NAME:-datapi}" -c "CREATE TABLE tmp_fce_sirets (siret VARCHAR(14)); COPY tmp_fce_sirets FROM stdin WITH (FORMAT csv);"
+PGPASSWORD="${DB_PASSWORD}" psql -U "${DB_USER}" "${DB_NAME:-datapi}" -c "CREATE TABLE tmp_fce_sirets (siret VARCHAR(14)); COPY tmp_fce_sirets FROM stdin WITH (FORMAT csv);" < fce-download.csv
 
 echo ""
 echo "📬 Mise à jour du champ visite_fce des etablissements ..."
