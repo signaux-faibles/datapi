@@ -1,76 +1,43 @@
-# datAPI - simple API for data distribution with security
+# datAPI - API des applications web signaux-faibles
 
-/!\ datAPI is in its early development stages, use with caution (and I would be please if you report me issues)
-/!\ outdated readme
+## Installation/Prise en main
+-   Cloner le repository: `git clone git@github.com:signaux-faibles/datapi.git`  
+-   Compiler: `go build`  
+-   Préparer une base de données vierge
+-   Copier `config.toml.example` en `config.toml` et configurer les valeurs qu'il contient
+-   Exécuter le binaire
 
-## What does datAPI do ?
-The main purpose of datAPI is to provide a simple mechanism to distribute data through an API with security concerns.  
+## Conteneur
+-   `cd build-container`
+-   `./build.sh`
+-   le conteneur est généré sous forme d'image compressée sous le nom `datapi.tar.gz`
+-   l'image est dépourvue de configuration, elle devra être fournie à l'exécution avec l'option `-v /foo/volume/config.toml:/app/config.toml`
 
-datAPI offers a REST datastore with an embedded authentication mechanism and rules to distribute/recieve data to/from authorized users.  
+## Tests
+-   `cd test/`
+-   `./test.sh`
 
-datAPI offers the possibility to execute queries in the past, publish data in the future and browse evolutions of data in time while continuing to apply all the rules that evolved in this time.
+## Gestion des droits
+### zone d'attribution
+Une entreprise et tous ses établissements sont visibles dans la zone d'un utilisateur dès lors qu'au moins un établissement est dans un de ses départements ou région d'attribution.
 
-## How does it work ?
-datAPI is a Go program that works uppon PostgreSQL RDBMS. Objects are constructed around a key and a scope and can are constructed by accumulation of json data. All data and rules are timestamped making it possible to evaluate all rules at any time.
+### diane / bilans / siren / effectifs / procol
+L'utilisateur voit toutes les données de toutes les entreprises
 
-### Keys and Subkeys
-Keys are `map[string]string` variables stored as a postgresql `hstore`.  
-A subkey is part of a more complete key and is used in queries to select more than one object in a single query.  
+### bdf
+L'utilisateur doit impérativement disposer du role `bdf` (niveau A)
+L'entreprise devient alors visible dès lors que
+-   l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
+-   ou l'entreprise est suivie par l'utilisateur
 
-#### Example
-Given 3 objects' keys:
+### cotisations / débits / majorations / délais
+L'utilisateur doit impérativement disposer du role `urssaf` (niveau A)
+L'entreprise devient alors visible dès lors que, au choix
+-   l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
+-   l'entreprise est suivie par l'utilisateur
 
-`{'type': 'invoice', 'id': 'I201901041'}`  
-`{'type': 'invoice', 'id': 'I201902091'}`  
-`{'type': 'command', 'id': 'I201902091'}`
-
-`{'type': 'invoice'}` subkey can query the two invoices with one single query.
-`{'id': 'I201902091'}` subkey can query `I201902091` command and invoice at one time .
-
-`{}` is the mother of all subkeys and query everything at one time.
-
-### Scope
-A scope is a collection of tags. Users and objects have scopes.  
-A user can only get access to data if his scope contains every tags of the object scopes.  
-
-#### Example
-John Doe has a scope `['ohio', 'california', 'florida']`  
-Jane Doe has another scope `['ohio', 'arizona', 'montana']`  
-
-Both John and Jane can get data that have only `['ohio']` scope.  
-John can get data that have `['california', 'florida']` scope but Jane can't.  
-Neither John or Jane can get data that have `['ohio', 'utah']` scope.
-
-### Buckets and policies
-Every objects are associated with a bucket and a key. Buckets are virtual entities that carry security policies. Theses policies are associated to one or more buckets (given a posix regexp), a subkey, and apply to read and write operations.
-- read: policy scope is added to object scopes, like a minimal access scope.
-- write: additional scope tags are needed in user scope in order to write data.
-
-In order to store administrative objects like users and policies, datAPI uses the auth bucket. A default policy is configured by default to protect auth bucket from external reads, but nothing will prevent you to break it or create a user that has this privilege... :)
-
-
-## Installation
-
-Note: You can find detailed instructions on how to install datAPI, its underlying services and the [signauxfaibles-web](https://github.com/signaux-faibles/signauxfaibles-web) UI in the following page of our documentation repository: [Prise en main](https://github.com/signaux-faibles/documentation/blob/master/prise-en-main.md).
-
-### Dependencies
-At the time, I'm using go 1.10.4 and postgresql 10. No other versions have been tested.
-
-- [postgresql](https://www.postgresql.org/)
-- [gin-gonic](https://github.com/gin-gonic/gin)
-- [gin-jwt](https://github.com/appleboy/gin-jwt)
-- [viper](https://github.com/spf13/viper)
-- [bcrypt](https://golang.org/x/crypto/bcrypt)
-
-### Daemon
-- Install postgresql and postgresql-commons.
-- Create database, roles etc. The role you create needs to be dbowner.
-- `go get github.com/signaux-faibles/datapi`
-- Create a working directory to store config.toml
-- Copy config.toml.example to config.toml from source and edit values
-- run `$GOPATH/bin/datapi`
-
-### Client
-A minimal UI designed essentially to test auth, get and puts can be found in sources in the client subdirectory.  
-To run it, you'll need to `yarn install` and `yarn serve`
-
+### Demande et consommation d'activité partielle
+L'utilisateur doit impérativement disposer du role `dgefp` (niveau A)
+L'entreprise devient alors visible dès lors que, au choix
+-   l'entreprise figure sur au moins une liste d'alerte (niveau F1 ou F2) et se situe dans la zone d'attribution
+-   l'entreprise est suivie par l'utilisateur

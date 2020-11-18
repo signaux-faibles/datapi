@@ -6,18 +6,17 @@ permettre l'inclusion d'évènements sur les entreprises dans un modèle relatio
 ## Modèle
 ### entreprise
 - siren
-- scope
 - siret_siege
-- business_data…
-
-### entreprise_archive
-- siren
-- date_archive
 - business_data…
 
 ### entreprise_scope
 - siren
 - scope
+
+### entreprise_archive
+- siren
+- date_archive
+- business_data…
 
 ### etablissement
 - siren
@@ -27,11 +26,8 @@ permettre l'inclusion d'évènements sur les entreprises dans un modèle relatio
 ### etablissement_archive
 - siret
 - date_archive
-- business_data…
-
-### etablissement_scope
-- siret
 - scope
+- business_data…
 
 ### etablissement_scope_archive
 - siret
@@ -74,11 +70,11 @@ permettre l'inclusion d'évènements sur les entreprises dans un modèle relatio
 
 ## api
 ### entreprises/établissements
-#### GET /entreprise/{siren}
+#### GET /entreprise/get/siren}
 récupère les données d'une entreprise (et de l'établissement siège)
-#### GET /etablissement/{siret}
+#### GET /etablissement/get/{siret}
 récupère les données d'un établissement (et de l'entreprise parente)
-#### GET /etablissements/{siren}
+#### GET /etablissements/get/{siren}
 récupère les données de tous les établissements d'une entreprise
 
 ### suivi d'enterprise
@@ -257,7 +253,7 @@ sirene.ape
 sirene.code_postal
 sirene.commune
 sirene.departement
-sirene.lattitude
+sirene.latitude
 sirene.longitude
 sirene.nature_juridique
 sirene.nic
