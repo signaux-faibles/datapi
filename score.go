@@ -28,18 +28,19 @@ type paramsListeScores struct {
 
 // Liste de détection
 type Liste struct {
-	ID      string            `json:"id"`
-	Batch   string            `json:"batch"`
-	Algo    string            `json:"algo"`
-	Query   paramsListeScores `json:"-"`
-	Scores  []*Summary        `json:"scores,omitempty"`
-	NbF1    int               `json:"nbF1"`
-	NbF2    int               `json:"nbF2"`
-	From    int               `json:"from"`
-	Total   int               `json:"total"`
-	Page    int               `json:"page"`
-	PageMax int               `json:"pageMax"`
-	To      int               `json:"to"`
+	ID          string            `json:"id"`
+	Batch       string            `json:"batch"`
+	Algo        string            `json:"algo"`
+	Description *string           `json:"description,omitempty"`
+	Query       paramsListeScores `json:"-"`
+	Scores      []*Summary        `json:"scores,omitempty"`
+	NbF1        int               `json:"nbF1,omitempty"`
+	NbF2        int               `json:"nbF2,omitempty"`
+	From        int               `json:"from,omitempty"`
+	Total       int               `json:"total,omitempty"`
+	Page        int               `json:"page,omitempty"`
+	PageMax     int               `json:"pageMax,omitempty"`
+	To          int               `json:"to,omitempty"`
 }
 
 func getListes(c *gin.Context) {
@@ -203,7 +204,11 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 
 func findAllListes() ([]Liste, error) {
 	var listes []Liste
-	rows, err := db.Query(context.Background(), "select algo, batch, libelle from liste order by batch desc, algo asc")
+	rows, err := db.Query(context.Background(), `
+		select algo, batch, libelle, description from liste l
+		left join liste_description d on d.libelle_liste = l.libelle
+		where version=0 order by batch desc, algo asc
+	`)
 	if err != nil {
 		return nil, err
 	}
@@ -211,7 +216,7 @@ func findAllListes() ([]Liste, error) {
 
 	for rows.Next() {
 		var l Liste
-		err := rows.Scan(&l.Algo, &l.Batch, &l.ID)
+		err := rows.Scan(&l.Algo, &l.Batch, &l.ID, &l.Description)
 		if err != nil {
 			return nil, err
 		}
