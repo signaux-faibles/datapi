@@ -24,10 +24,8 @@ type Summary struct {
 	MontantDetteUrssaf   *float64           `json:"montantDetteUrssaf,omitempty"`
 	HausseUrssaf         *bool              `json:"urssaf,omitempty"`
 	ActivitePartielle    *bool              `json:"activite_partielle,omitempty"`
-	APConsoHeureConsomme *float64           `json:"apconsoHeureConsomme,omitEmpty"`
-	APConsoMontant       *float64           `json:"apconsoMontant,omitEmpty"`
-	APConsoEffectif      *int               `json:"apconsoEffectif,omitEmpty"`
-	APConsoPeriode       *time.Time         `json:"apconsoPeriode,omitEmpty"`
+	APConsoHeureConsomme *float64           `json:"apconsoHeureConsomme,omitempty"`
+	APConsoMontant       *float64           `json:"apconsoMontant,omitempty"`
 	ChiffreAffaire       *float64           `json:"ca"`
 	VariationCA          *float64           `json:"variation_ca"`
 	ArreteBilan          *time.Time         `json:"arrete_bilan"`
@@ -89,8 +87,6 @@ func (summaries *summaries) newSummary() []interface{} {
 		&s.ActivitePartielle,
 		&s.APConsoHeureConsomme,
 		&s.APConsoMontant,
-		&s.APConsoEffectif,
-		&s.APConsoPeriode,
 		&s.HausseUrssaf,
 		&s.Alert,
 		&summaries.global.count,

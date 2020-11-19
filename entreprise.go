@@ -468,8 +468,6 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.ActivitePartielle,
 			&e.APConsoHeureConsomme,
 			&e.APConsoMontant,
-			&e.APConsoEffectif,
-			&e.APConsoPeriode,
 			&e.HausseUrssaf,
 			&e.Alert,
 			&throwAway,

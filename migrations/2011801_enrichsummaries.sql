@@ -1,16 +1,12 @@
 drop materialized view v_apdemande;
 
 create materialized view v_apdemande as
-select e.siret, count(d.id) > 0 as ap,
-last(c.id_conso order by periode) as id_conso,
-last(c.heure_consomme order by periode) as heure_consomme,
-last(c.montant order by periode) as montant,
-last(c.effectif order by periode) as effectif,
-last(c.periode order by periode) as periode
+select e.siret, 
+coalesce((select distinct true from etablissement_apdemande0 where siret = e.siret and periode_end + '1 year'::interval >= date_trunc('month', current_timestamp)), false) as ap,
+(sum(c.heure_consomme order by periode)/12)::real as heure_consomme,
+(sum(c.montant order by periode)/12)::real as montant
 from etablissement0 e
-left join etablissement_apconso0 c on c.siret = e.siret and periode + '2 year'::interval > current_timestamp
-left join etablissement_apdemande0 d on c.siret = d.siret and periode_start + '1 year'::interval > current_timestamp
-where d.id is not null or c.id is not null
+left join etablissement_apconso0 c on c.siret = e.siret and periode + '1 year'::interval >= date_trunc('month', current_timestamp)
 group by e.siret;
 
 create unique index idx_v_apdemande_siret 
@@ -58,8 +54,6 @@ create or replace function get_summary (
     activite_partielle boolean,
     apconso_heure_consomme real,
     apconso_montant real,
-    apconso_effectif integer,
-    apconso_periode date,
     hausse_urssaf boolean,
     alert text,
     nb_total bigint,
@@ -102,13 +96,11 @@ create or replace function get_summary (
     case when p.dgefp then coalesce(ap.ap, false) end activite_partielle,
     case when p.dgefp then ap.heure_consomme end as apconso_heure_consomme,
     case when p.dgefp then ap.montant end as apconso_montant,
-    case when p.dgefp then ap.effectif end as apconso_effectif,
-    case when p.dgefp then ap.periode end as apconso_periode,
     case when p.urssaf then u.dette[0] > u.dette[1] or u.dette[1] > u.dette[2] end as hausse_urssaf,
     case when p.score then s.alert end,
     count(*) over () as nb_total,
-    case when p.score then count(case when s.alert='Alerte seuil F1' then 1 else null end) over () else 0 end as nb_f1,
-    case when p.score then count(case when s.alert='Alerte seuil F2' then 1 else null end) over () else 0 end as nb_f2,
+    count(case when s.alert='Alerte seuil F1' and p.score then 1 end) over () as nb_f1,
+    count(case when s.alert='Alerte seuil F2' and p.score then 1 end) over () as nb_f2,
     p.visible,
     p.in_zone,
     f.id is not null as followed_etablissement,
