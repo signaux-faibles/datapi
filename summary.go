@@ -23,6 +23,7 @@ type Summary struct {
 	Effectif              *float64           `json:"dernier_effectif"`
 	MontantDetteUrssaf    *float64           `json:"montantDetteUrssaf,omitempty"`
 	HausseUrssaf          *bool              `json:"urssaf,omitempty"`
+	DetteUrssaf           *float64           `json:"detteUrssaf,omitempty"`
 	ActivitePartielle     *bool              `json:"activite_partielle,omitempty"`
 	APHeureConsommeAVG12m *int               `json:"apHeureConsommeAVG12m,omitempty"`
 	APMontantAVG12m       *int               `json:"apMontantAVG12m,omitempty"`
@@ -88,6 +89,7 @@ func (summaries *summaries) newSummary() []interface{} {
 		&s.APHeureConsommeAVG12m,
 		&s.APMontantAVG12m,
 		&s.HausseUrssaf,
+		&s.DetteUrssaf,
 		&s.Alert,
 		&summaries.global.count,
 		&summaries.global.countF1,
