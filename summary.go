@@ -8,42 +8,46 @@ import (
 
 // Summary score + élements sur l'établissement
 type Summary struct {
-	Siren                string             `json:"siren"`
-	Siret                string             `json:"siret"`
-	ValeurScore          *float64           `json:"-"`
-	DetailScore          map[string]float64 `json:"-"`
-	Diff                 *float64           `json:"-"`
-	RaisonSociale        *string            `json:"raison_sociale"`
-	Commune              *string            `json:"commune"`
-	LibelleActivite      *string            `json:"libelle_activite"`
-	LibelleActiviteN1    *string            `json:"libelle_activite_n1"`
-	CodeActivite         *string            `json:"code_activite"`
-	CodeDepartement      *string            `json:"departement"`
-	LibelleDepartement   *string            `json:"libelleDepartement"`
-	Effectif             *float64           `json:"dernier_effectif"`
-	HausseUrssaf         *bool              `json:"urssaf,omitempty"`
-	ActivitePartielle    *bool              `json:"activite_partielle,omitempty"`
-	ChiffreAffaire       *float64           `json:"ca"`
-	VariationCA          *float64           `json:"variation_ca"`
-	ArreteBilan          *time.Time         `json:"arrete_bilan"`
-	ResultatExploitation *float64           `json:"resultat_expl"`
-	EtatProcol           *string            `json:"etat_procol,omitempty"`
-	Alert                *string            `json:"alert,omitempty"`
-	Visible              *bool              `json:"visible,omitempty"`
-	InZone               *bool              `json:"inZone,omitempty"`
-	Followed             *bool              `json:"followed,omitempty"`
-	FollowedEntreprise   *bool              `json:"followedEntreprise,omitempty"`
-	FirstAlert           *bool              `json:"firstAlert"`
-	Siege                *bool              `json:"siege"`
-	Groupe               *string            `json:"groupe,omitempty"`
-	TerrInd              *bool              `json:"territoireIndustrie,omitempty"`
-	PermUrssaf           *bool              `json:"permUrssaf,omitempty"`
-	PermDGEFP            *bool              `json:"permDGEFP,omitempty"`
-	PermScore            *bool              `json:"permScore,omitempty"`
-	PermBDF              *bool              `json:"permBDF,omitempty"`
-	Comment              *string            `json:"-"`
-	Category             *string            `json:"-"`
-	Since                *time.Time         `json:"-"`
+	Siren                 string             `json:"siren"`
+	Siret                 string             `json:"siret"`
+	ValeurScore           *float64           `json:"-"`
+	DetailScore           map[string]float64 `json:"-"`
+	Diff                  *float64           `json:"-"`
+	RaisonSociale         *string            `json:"raison_sociale"`
+	Commune               *string            `json:"commune"`
+	LibelleActivite       *string            `json:"libelle_activite"`
+	LibelleActiviteN1     *string            `json:"libelle_activite_n1"`
+	CodeActivite          *string            `json:"code_activite"`
+	CodeDepartement       *string            `json:"departement"`
+	LibelleDepartement    *string            `json:"libelleDepartement"`
+	Effectif              *float64           `json:"dernier_effectif"`
+	MontantDetteUrssaf    *float64           `json:"montantDetteUrssaf,omitempty"`
+	HausseUrssaf          *bool              `json:"urssaf,omitempty"`
+	DetteUrssaf           *float64           `json:"detteUrssaf,omitempty"`
+	ActivitePartielle     *bool              `json:"activite_partielle,omitempty"`
+	APHeureConsommeAVG12m *int               `json:"apHeureConsommeAVG12m,omitempty"`
+	APMontantAVG12m       *int               `json:"apMontantAVG12m,omitempty"`
+	ChiffreAffaire        *float64           `json:"ca"`
+	VariationCA           *float64           `json:"variation_ca"`
+	ArreteBilan           *time.Time         `json:"arrete_bilan"`
+	ResultatExploitation  *float64           `json:"resultat_expl"`
+	EtatProcol            *string            `json:"etat_procol,omitempty"`
+	Alert                 *string            `json:"alert,omitempty"`
+	Visible               *bool              `json:"visible,omitempty"`
+	InZone                *bool              `json:"inZone,omitempty"`
+	Followed              *bool              `json:"followed,omitempty"`
+	FollowedEntreprise    *bool              `json:"followedEntreprise,omitempty"`
+	FirstAlert            *bool              `json:"firstAlert"`
+	Siege                 *bool              `json:"siege"`
+	Groupe                *string            `json:"groupe,omitempty"`
+	TerrInd               *bool              `json:"territoireIndustrie,omitempty"`
+	PermUrssaf            *bool              `json:"permUrssaf,omitempty"`
+	PermDGEFP             *bool              `json:"permDGEFP,omitempty"`
+	PermScore             *bool              `json:"permScore,omitempty"`
+	PermBDF               *bool              `json:"permBDF,omitempty"`
+	Comment               *string            `json:"-"`
+	Category              *string            `json:"-"`
+	Since                 *time.Time         `json:"-"`
 }
 
 type summaries struct {
@@ -82,7 +86,10 @@ func (summaries *summaries) newSummary() []interface{} {
 		&s.CodeActivite,
 		&s.EtatProcol,
 		&s.ActivitePartielle,
+		&s.APHeureConsommeAVG12m,
+		&s.APMontantAVG12m,
 		&s.HausseUrssaf,
+		&s.DetteUrssaf,
 		&s.Alert,
 		&summaries.global.count,
 		&summaries.global.countF1,
