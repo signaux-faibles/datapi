@@ -104,7 +104,6 @@ create or replace function get_summary (
     (permissions($1, r.roles, aen.first_list, et.departement, fe.siren is not null)).score,
     (permissions($1, r.roles, aen.first_list, et.departement, fe.siren is not null)).bdf
   from etablissement0 et
-    -- inner join f_etablissement_permissions($1, $9) p on et.id = p.id
     inner join entreprise0 en on en.siren = et.siren
     inner join v_etablissement_raison_sociale etrs on etrs.id_etablissement = et.id
     inner join v_roles r on et.siren = r.siren
