@@ -167,14 +167,28 @@ func (p summaryParams) toSQLParams() []interface{} {
 
 func getSummaries(params summaryParams) (summaries, error) {
 	var sql string
+	var sqlParams []interface{}
 
 	if params.orderBy == "score" {
-		sql = `select * from get_score($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as scores;`
+		p := params.toSQLParams()
+		sqlParams = append(sqlParams, p[0:6]...)
+		sqlParams = append(sqlParams, p[7:10]...)
+		sqlParams = append(sqlParams, p[12:]...)
+		sql = `select * from get_summary($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15) as scores;`
+	} else if params.orderBy == "raison_sociale" {
+		p := params.toSQLParams()
+		sqlParams = p[0:10]
+		sql = `select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', false, null, null, null, null, null, null) as raison_sociale;`
+	} else if params.orderBy == "follow" {
+		p := params.toSQLParams()
+		sqlParams = append(sqlParams, p[0], p[3], p[8])
+		sql = "select * from get_summary($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null) as follow;"
 	} else {
+		sqlParams = params.toSQLParams()
 		sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as %s;", params.orderBy)
 	}
 
-	rows, err := db.Query(context.Background(), sql, params.toSQLParams()...)
+	rows, err := db.Query(context.Background(), sql, sqlParams...)
 	if err != nil {
 		return summaries{}, err
 	}
