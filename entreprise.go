@@ -456,6 +456,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.FirstAlert,
 			&e.ChiffreAffaire,
 			&e.ArreteBilan,
+			&e.ExerciceDiane,
 			&e.VariationCA,
 			&e.ResultatExploitation,
 			&e.Effectif,

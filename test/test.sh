@@ -39,6 +39,10 @@ echo "- initialisation docker postgres"
 POSTGRES_CONTAINER=$(docker run -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" -p "$POSTGRES_DOCKERPORT":5432 -d postgres:10-alpine)
 echo "- conteneur créé: $POSTGRES_CONTAINER"
 sleep 4
+echo "- desactivation nestloop"
+docker cp postgresql.conf "$POSTGRES_CONTAINER":/var/lib/postgresql/data/postgresql.conf
+docker restart "$POSTGRES_CONTAINER"
+sleep 4
 echo "- creation de la base de données"
 docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/createdb -U postgres datapi_test
 echo "- insert des données de test"
