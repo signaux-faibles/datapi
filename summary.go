@@ -27,10 +27,11 @@ type Summary struct {
 	ActivitePartielle     *bool              `json:"activite_partielle,omitempty"`
 	APHeureConsommeAVG12m *int               `json:"apHeureConsommeAVG12m,omitempty"`
 	APMontantAVG12m       *int               `json:"apMontantAVG12m,omitempty"`
-	ChiffreAffaire        *float64           `json:"ca"`
-	VariationCA           *float64           `json:"variation_ca"`
-	ArreteBilan           *time.Time         `json:"arrete_bilan"`
-	ResultatExploitation  *float64           `json:"resultat_expl"`
+	ChiffreAffaire        *float64           `json:"ca,omitempty"`
+	VariationCA           *float64           `json:"variation_ca,omitempty"`
+	ArreteBilan           *time.Time         `json:"arrete_bilan,omitempty"`
+	ExerciceDiane         *int               `json:"exerciceDiane,omitempty"`
+	ResultatExploitation  *float64           `json:"resultat_expl,omitempty"`
 	EtatProcol            *string            `json:"etat_procol,omitempty"`
 	Alert                 *string            `json:"alert,omitempty"`
 	Visible               *bool              `json:"visible,omitempty"`
@@ -78,6 +79,7 @@ func (summaries *summaries) newSummary() []interface{} {
 		&s.FirstAlert,
 		&s.ChiffreAffaire,
 		&s.ArreteBilan,
+		&s.ExerciceDiane,
 		&s.VariationCA,
 		&s.ResultatExploitation,
 		&s.Effectif,
