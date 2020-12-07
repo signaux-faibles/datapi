@@ -433,10 +433,8 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		sirens = append(sirens, i[0:9])
 	}
 
-	batch.Queue(`select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as brothers;`,
-		roles.zoneGeo(), nil, nil, listes[0].ID, nil, nil,
-		true, true, username, false, "effectif_desc", false, nil,
-		nil, nil, nil, nil, sirens,
+	batch.Queue(`select * from get_summary($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4) as brothers;`,
+		roles.zoneGeo(), listes[0].ID, username, sirens,
 	)
 	return &batch
 }
@@ -458,6 +456,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.FirstAlert,
 			&e.ChiffreAffaire,
 			&e.ArreteBilan,
+			&e.ExerciceDiane,
 			&e.VariationCA,
 			&e.ResultatExploitation,
 			&e.Effectif,
@@ -466,7 +465,10 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.CodeActivite,
 			&e.EtatProcol,
 			&e.ActivitePartielle,
+			&e.APHeureConsommeAVG12m,
+			&e.APMontantAVG12m,
 			&e.HausseUrssaf,
+			&e.DetteUrssaf,
 			&e.Alert,
 			&throwAway,
 			&throwAway,

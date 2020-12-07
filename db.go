@@ -30,11 +30,6 @@ func connectDB() *pgxpool.Pool {
 		log.Fatal("database connexion:" + err.Error())
 	}
 
-	// TODO: better fix
-	db.Exec(context.Background(), `
-		SET enable_nestloop = 'off';
-	`)
-
 	log.Print("connected to postgresql database")
 	dbMigrations := listDatabaseMigrations(db)
 	dirMigrations := listDirMigrations()
