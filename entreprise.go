@@ -433,7 +433,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		sirens = append(sirens, i[0:9])
 	}
 
-	batch.Queue(`select * from get_summary($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4) as brothers;`,
+	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4) as brothers;`,
 		roles.zoneGeo(), listes[0].ID, username, sirens,
 	)
 	return &batch
