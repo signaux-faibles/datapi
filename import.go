@@ -898,6 +898,7 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 		"v_last_procol",
 		"v_naf",
 		"v_roles",
+		"v_summaries",
 	}
 	for _, v := range views {
 		fmt.Printf("\033[2K\rrefreshing %s", v)
