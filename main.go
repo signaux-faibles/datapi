@@ -83,7 +83,7 @@ func runAPI() {
 	reference.GET("/departements", getDepartements)
 	reference.GET("/regions", getRegions)
 
-	fce := router.Group("/fce", /*getKeycloakMiddleware(), logMiddleware*/)
+	fce := router.Group("/fce", getKeycloakMiddleware(), logMiddleware)
 	fce.GET("/:siret", validSiret, getFceUrl)
 
 	utils := router.Group("/utils", getAdminAuthMiddleware())
