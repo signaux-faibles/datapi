@@ -84,7 +84,7 @@ func runAPI() {
 	reference.GET("/regions", getRegions)
 
 	fce := router.Group("/fce", getKeycloakMiddleware(), logMiddleware)
-	fce.GET("/:siret", validSiret, getFceUrl)
+	fce.GET("/:siret", validSiret, getFceURL)
 
 	utils := router.Group("/utils", getAdminAuthMiddleware())
 	utils.GET("/import", importHandler)

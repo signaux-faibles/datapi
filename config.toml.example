@@ -37,6 +37,6 @@ algoIgnore = ["algo_sans_urssaf"]
 batchIgnore = ["1910_8", "1906_7", "1901_interim"]
 
 # Fiche Commune Entreprise
-apiFceUrl = "apiFceUrl"
+apiFceURL = "apiFceURL"
 apiFceKey = "apiFceKey"
-fceUrl = "fceUrl"
+fceVisitURL = "fceVisitURL"

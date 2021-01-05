@@ -11,14 +11,15 @@ import (
 	"time"
 )
 
+// API Fiche Commune Entreprise
 type Fce struct {
 	Success		bool 	`json:"success"`
 	Credential 	string 	`json:"credential"`
 }
 
 func askFceCredentials() ([]byte, error) {
-	apiFceUrl := viper.GetString("apiFceUrl")
-	req, err := http.NewRequest("GET", apiFceUrl + "askCredential", nil)
+	apiFceURL := viper.GetString("apiFceURL")
+	req, err := http.NewRequest("GET", apiFceURL + "askCredential", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -38,7 +39,7 @@ func askFceCredentials() ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func getFceUrl(c *gin.Context) {
+func getFceURL(c *gin.Context) {
 	siret := c.Param("siret")
 	if siret == "" {
 		c.JSON(400, "SIRET obligatoire")
@@ -56,14 +57,14 @@ func getFceUrl(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	fceVisitUrl := makeFceVisitUrl(siret, fce.Credential)
-	c.String(200, fceVisitUrl)
+	fceVisitURL := makeFceVisitURL(siret, fce.Credential)
+	c.String(200, fceVisitURL)
 }
 
-func makeFceVisitUrl(siret string, credential string) (string) {
-	fceVisitUrl := viper.GetString("fceUrl") + "establishment/" + siret
+func makeFceVisitURL(siret string, credential string) (string) {
+	fceVisitURL := viper.GetString("fceVisitURL") + "establishment/" + siret
 	params := url.Values{}
 	params.Add("credential", credential)
-	fceVisitUrl +=  "?" + params.Encode()
-	return fceVisitUrl
+	fceVisitURL +=  "?" + params.Encode()
+	return fceVisitURL
 }
