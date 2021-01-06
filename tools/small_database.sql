@@ -1,9 +1,12 @@
--- choisir au hasard 200 code siren
+-- choisir au hasard 300 code siren
 create table limit_entreprise as
-select siren from entreprise 
-order by id
-limit 300
-offset 1000;
+select distinct e.siren
+from etablissement_periode_urssaf e
+inner join etablissement et on et.siret = e.siret
+inner join etablissement_apdemande ap on ap.siret = e.siret
+inner join entreprise_paydex p on p.siren = e.siren
+where part_patronale+part_salariale != 0
+limit 300;
 
 delete from entreprise
 where siren not in (select siren from limit_entreprise);
@@ -15,6 +18,9 @@ delete from entreprise_diane
 where siren not in (select siren from limit_entreprise);
 
 delete from entreprise_ellisphere
+where siren not in (select siren from limit_entreprise);
+
+delete from entreprise_paydex
 where siren not in (select siren from limit_entreprise);
 
 delete from etablissement
