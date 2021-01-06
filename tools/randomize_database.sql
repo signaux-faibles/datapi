@@ -132,6 +132,13 @@ update entreprise_bdf e set siren = t.new_siren,
 from t where t.siren = e.siren;
 
 with t as (select distinct substring(siret from 1 for 9) as siren, 
+		  substring(new_siret from 1 for 9) as new_siren 
+		  from translate_siret)
+update entreprise_paydex e set siren = t.new_siren,
+  nb_jours = nb_jours * random()*2
+from t where t.siren = e.siren;
+
+with t as (select distinct substring(siret from 1 for 9) as siren, 
 		  substring(new_siret from 1 for 9) as new_siren
 		  from translate_siret)
 update entreprise_diane e set siren = t.new_siren,
@@ -268,14 +275,17 @@ score = greatest(score * random()*2, 0.99)
 from translate_siret t
 where t.siret = e.siret;
 
-refresh materialized view v_roles;
+refresh materialized view v_alert_entreprise;
+refresh materialized view v_alert_etablissement;
+refresh materialized view v_apdemande;
 refresh materialized view v_diane_variation_ca;
+refresh materialized view v_etablissement_raison_sociale;
+refresh materialized view v_hausse_urssaf;
 refresh materialized view v_last_effectif;
 refresh materialized view v_last_procol;
-refresh materialized view v_hausse_urssaf;
-refresh materialized view v_apdemande;
-refresh materialized view v_alert_etablissement;
-refresh materialized view v_alert_entreprise;
+refresh materialized view v_naf;
+refresh materialized view v_roles;
+refresh materialized view v_summaries;
 
 drop table translate_siret;
 drop table translate_ap;

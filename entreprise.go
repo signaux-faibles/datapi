@@ -27,6 +27,7 @@ type Entreprise struct {
 		NomUsage          string    `json:"nomUsage,omitempty"`
 		Creation          time.Time `json:"creation,omitempty"`
 	}
+	Paydex                *Paydex         `json:"paydex,omitempty"`
 	Diane                 []diane         `json:"diane"`
 	Bdf                   []bdf           `json:"-"`
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
@@ -51,6 +52,12 @@ type EtablissementSummary struct {
 	Inzone             *bool   `json:"zone,omitempty"`
 	Alert              *bool   `json:"alert,omitempty"`
 	Siege              *bool   `json:"siege,omitempty"`
+}
+
+// Paydex est l'index des retards de reglements de D&B
+type Paydex struct {
+	DateValeur []time.Time `json:"date_valeur"`
+	NBJours    []int       `json:"nb_jours"`
 }
 
 type findEtablissementsParams struct {
@@ -428,13 +435,14 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 
 	listes, _ := findAllListes()
 
-	sirens := e.Query.Sirens
-	for _, i := range e.Query.Sirets {
-		sirens = append(sirens, i[0:9])
-	}
+	batch.Queue(`select e.siren, e.date_valeur, e.nb_jours
+	from entreprise_paydex0 e
+	where e.siren=any($1) and date_valeur + '24 month'::interval >= current_date
+	order by e.siren, date_valeur;`,
+		e.sirensFromQuery())
 
 	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4) as brothers;`,
-		roles.zoneGeo(), listes[0].ID, username, sirens,
+		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
 	)
 	return &batch
 }
@@ -707,6 +715,32 @@ func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
 	return nil
 }
 
+func (e *Etablissements) loadPaydex(rows *pgx.Rows) error {
+	var dateValeurs = make(map[string][]time.Time)
+	var nbJours = make(map[string][]int)
+
+	for (*rows).Next() {
+		var pd paydex // resultat DB
+		err := (*rows).Scan(&pd.Siren, &pd.DateValeur, &pd.NBJours)
+		if err != nil {
+			return err
+		}
+		dateValeurs[pd.Siren] = append(dateValeurs[pd.Siren], pd.DateValeur)
+		nbJours[pd.Siren] = append(nbJours[pd.Siren], pd.NBJours)
+	}
+	for siren, v := range dateValeurs {
+		entreprise := e.Entreprises[siren]
+		p := Paydex{
+			DateValeur: v,
+			NBJours:    nbJours[siren],
+		}
+		entreprise.Paydex = &p
+		e.Entreprises[siren] = entreprise
+	}
+
+	return nil
+}
+
 func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 	for (*rows).Next() {
 		var et Etablissement
@@ -852,7 +886,17 @@ func (e *Etablissements) load(roles scope, username string) error {
 		return err
 	}
 
-	// etablissements
+	// paydex
+	rows, err = b.Query()
+	if err != nil {
+		return err
+	}
+	err = e.loadPaydex(&rows)
+	if err != nil {
+		return err
+	}
+
+	// brothers
 	rows, err = b.Query()
 	if err != nil {
 		return err
