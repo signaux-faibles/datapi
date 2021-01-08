@@ -11,7 +11,7 @@ import (
 	"time"
 )
 
-// API Fiche Commune Entreprise
+// Fce type pour l'API Fiche Commune Entreprise
 type Fce struct {
 	Success		bool 	`json:"success"`
 	Credential 	string 	`json:"credential"`
