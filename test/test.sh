@@ -46,7 +46,7 @@ sleep 4
 echo "- creation de la base de données"
 docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/createdb -U postgres datapi_test
 echo "- insert des données de test"
-zcat < "$TEST_DATA" | docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/psql -U postgres datapi_test 
+zcat < "$TEST_DATA" | docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/psql -U postgres datapi_test > /dev/null 2>&1
 
 echo "- generation configuration de test"
 mkdir workspace 
