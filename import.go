@@ -65,6 +65,12 @@ type etablissement struct {
 	Scores []score `json:"scores"`
 }
 
+type paydex struct {
+	Siren      string    `json:"-"`
+	DateValeur time.Time `json:"date_valeur"`
+	NBJours    int       `json:"nb_jours"`
+}
+
 type delai struct {
 	Siret             string    `json:"siret"`
 	Action            string    `json:"action"`
@@ -90,6 +96,7 @@ type entreprise struct {
 		BDF        []bdf       `json:"bdf"`
 		Ellisphere *ellisphere `json:"ellisphere"`
 		SireneUL   sireneUL    `json:"sirene_ul"`
+		Paydex     *[]paydex   `json:"paydex"`
 	} `bson:"value"`
 }
 
@@ -419,6 +426,24 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 				el.CodeFiliere, el.RefIDFiliere, el.PersonnePouMFiliere, hash)
 		} else {
 			updates["entreprise_ellisphere"] = append(updates["entreprise_ellisphere"], id)
+		}
+	}
+
+	if e.Value.Paydex != nil {
+		for _, p := range *e.Value.Paydex {
+			sqlPaydex := `insert into entreprise_paydex
+				(siren, date_valeur, nb_jours, hash) 
+				values ($1, $2, $3, $4)`
+
+			el := p
+			el.Siren = e.Value.SireneUL.Siren
+			hash := structhash.Md5(el, 0)
+
+			if id, ok := htreeEntrepriseEllisphere.contains(hash); !ok {
+				batch.Queue(sqlPaydex, el.Siren, el.DateValeur, el.NBJours, hash)
+			} else {
+				updates["entreprise_paydex"] = append(updates["entreprise_paydex"], id)
+			}
 		}
 
 	}
@@ -887,6 +912,7 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 }
 
 func refreshMaterializedViews(tx *pgx.Tx) error {
+	//!\ v_summaries doit être rafraichie en dernier
 	views := []string{
 		"v_alert_entreprise",
 		"v_alert_etablissement",
@@ -919,6 +945,7 @@ func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
 		"entreprise_ellisphere",
 		"entreprise_bdf",
 		"entreprise_diane",
+		"entreprise_paydex",
 		"etablissement",
 		"etablissement_apconso",
 		"etablissement_apdemande",
