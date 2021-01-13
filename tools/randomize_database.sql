@@ -1,3 +1,28 @@
+-- Nettoyage des etablissements et/ou entreprises orphelines
+drop table if exists todelete;
+create temporary table todelete as
+select en.siren as siren from entreprise0 en
+left join etablissement0 et on et.siren = en.siren
+where et.siren is null;
+
+insert into todelete (siren)
+select distinct et.siren from entreprise0 en
+right join etablissement0 et on et.siren = en.siren
+where en.siren is null;
+
+delete from etablissement where siren in (select siren from todelete);
+delete from etablissement_apconso where siren in (select siren from todelete);
+delete from etablissement_apdemande where siren in (select siren from todelete);
+delete from etablissement_delai where siren in (select siren from todelete);
+delete from etablissement_follow where siren in (select siren from todelete);
+delete from etablissement_periode_urssaf where siren in (select siren from todelete);
+delete from etablissement_procol where siren in (select siren from todelete);
+delete from entreprise where siren in (select siren from todelete);
+delete from entreprise_bdf where siren in (select siren from todelete);
+delete from entreprise_diane where siren in (select siren from todelete);
+delete from entreprise_ellisphere where siren in (select siren from todelete);
+delete from entreprise_paydex where siren in (select siren from todelete);
+
 -- generation de nouveaux sirets aléatoires
 create table translate_siret as 
 select
@@ -19,6 +44,7 @@ u as (select siren, unnest(old_sirets) as old_siret, new_siren || substring(unne
 update translate_siret t set new_siret = u.new_siret
 from u where u.old_siret = t.new_siret;
 
+-- updates aléatoires
 with seeda as (
 select
   e.id, 
@@ -287,6 +313,7 @@ refresh materialized view v_naf;
 refresh materialized view v_roles;
 refresh materialized view v_summaries;
 
+drop table todelete;
 drop table translate_siret;
 drop table translate_ap;
 drop table translate_compte;
