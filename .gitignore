@@ -2,3 +2,4 @@ config.toml
 datapi
 test.json
 fce-download.csv
+tools/randomData.sql.gz
