@@ -92,15 +92,13 @@ func TestScores(t *testing.T) {
 	_, indented, _ = post(t, "/scores/liste", params)
 	processGoldenFile(t, "data/scores-ignoreZone.json.gz", indented)
 
-	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true et exclureSuivi=true")
-	params["exclureSuivi"] = true
-	_, indented, _ = post(t, "/scores/liste", params)
-	processGoldenFile(t, "data/scores-exclureSuivi.json.gz", indented)
-
-	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true, exclureSuivi=true et siegeUniquement=true")
+	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true et siegeUniquement=true")
 	params["siegeUniquement"] = true
 	_, indented, _ = post(t, "/scores/liste", params)
 	processGoldenFile(t, "data/scores-siegeUniquement.json.gz", indented)
+
+	t.Log("/scores/liste traite correctement les établissements suivis")
+	testExclureSuivi(t)
 }
 
 // TestVAF traite la problématique du respect des traitements des droits utilisateurs
