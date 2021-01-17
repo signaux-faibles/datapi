@@ -91,6 +91,7 @@ create function get_score (
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf
   from v_summaries s
+    inner join score0 sc on sc.siret = s.siret and sc.libelle_liste = $4
     left join v_naf n on n.code_n5 = s.code_activite
     left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $9
     left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $9
@@ -98,7 +99,7 @@ create function get_score (
     (s.roles && $1 or $7)
 	  and (s.code_departement=any($1) or $8)
     and (s.siege or not $10)
-    and (s.alert != 'Pas d''alerte')
+    and (sc.alert != 'Pas d''alerte')
     and (s.last_procol = any($13) or $13 is null)
     and (s.code_departement=any($14) or $14 is null)
     and (s.effectif >= $16 or $16 is null)
@@ -107,6 +108,6 @@ create function get_score (
 	  and (s.raison_sociale ilike $6 or s.siret ilike $5 or coalesce($5, $6) is null)
     and 'score' = any($1)
     and (n.code_n1 = any($19) or $19 is null)
-  order by s.valeur_score desc, s.siret
+  order by sc.score desc, s.siret
   limit $2 offset $3
 $$ language sql immutable;
