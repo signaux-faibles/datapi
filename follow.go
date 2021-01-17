@@ -194,7 +194,7 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, nil,
 		&True, &True, *f.Username, false, "follow", &False, nil,
-		nil, &True, nil, nil, nil}
+		nil, &True, nil, nil, nil, nil}
 
 	sms, err := getSummaries(params)
 	if err != nil {

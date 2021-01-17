@@ -173,7 +173,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	params := summaryParams{
 		roles.zoneGeo(), limit, &offset, &liste.ID, &liste.Query.Filter, nil,
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
-		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil,
+		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
 	}
 	summaries, err := getSummaries(params)
 	if err != nil {

@@ -96,7 +96,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 
 	summaryparams := summaryParams{
 		zoneGeo, &limit, &offset, &liste[0].ID, &params.search, &params.ignoreRoles, &params.ignoreZone,
-		params.username, params.siegeUniquement, "raison_sociale", &False, nil, nil, nil, nil, nil, nil,
+		params.username, params.siegeUniquement, "raison_sociale", &False, nil, nil, nil, nil, nil, nil, nil,
 	}
 
 	summaries, err := getSummaries(summaryparams)
