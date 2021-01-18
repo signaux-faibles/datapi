@@ -5,9 +5,8 @@ CREATE INDEX idx_score_liste
     (siret COLLATE pg_catalog."default" ASC NULLS LAST, score ASC NULLS LAST, libelle_liste COLLATE pg_catalog."default" ASC NULLS LAST)
     TABLESPACE pg_default
     WHERE version = 0 AND alert <> 'pas d''alerte'::text;
--- FUNCTION: public.get_score(text[], integer, integer, text, text, text, boolean, boolean, text, boolean, text, boolean, text[], text[], boolean, integer, integer, text[], text[])
 
--- DROP FUNCTION public.get_score(text[], integer, integer, text, text, text, boolean, boolean, text, boolean, text, boolean, text[], text[], boolean, integer, integer, text[], text[]);
+DROP FUNCTION public.get_score(text[], integer, integer, text, text, text, boolean, boolean, text, boolean, text, boolean, text[], text[], boolean, integer, integer, text[], text[]);
 
 CREATE OR REPLACE FUNCTION public.get_score(
 	roles_users text[],
