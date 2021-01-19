@@ -83,5 +83,3 @@ select
   limit $2 offset $3
 $BODY$;
 
-ALTER FUNCTION public.get_score(text[], integer, integer, text, text, text, boolean, boolean, text, boolean, text, boolean, text[], text[], boolean, integer, integer, text[], text[])
-    OWNER TO datapi;
