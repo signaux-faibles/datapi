@@ -34,10 +34,10 @@ type Liste struct {
 	Description *string           `json:"description,omitempty"`
 	Query       paramsListeScores `json:"-"`
 	Scores      []*Summary        `json:"scores,omitempty"`
-	NbF1        int               `json:"nbF1,omitempty"`
-	NbF2        int               `json:"nbF2,omitempty"`
+	NbF1        int               `json:"nbF1"`
+	NbF2        int               `json:"nbF2"`
 	From        int               `json:"from,omitempty"`
-	Total       int               `json:"total,omitempty"`
+	Total       int               `json:"total"`
 	Page        int               `json:"page,omitempty"`
 	PageMax     int               `json:"pageMax,omitempty"`
 	To          int               `json:"to,omitempty"`
@@ -187,6 +187,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		liste.NbF1 = *summaries.global.countF1
 		liste.NbF2 = *summaries.global.countF2
 	}
+
 	if limit == nil {
 		i := 1
 		limit = &i
