@@ -19,7 +19,7 @@ where e.id is null
 union
 select 'entreprise manquante', i.siren from insert_entreprise_suivi i
 left join entreprise0 e on e.siren = i.siren
-where e.id is null
+where e.id is null;
 
 -- établissement sélectionné pour les entreprises, détection éventuelle des sieges manquants
 select i.siren, 
@@ -28,7 +28,7 @@ coalesce(case when en.siren is null then 'entreprise manquante' end,
 		 e.siret)
 from insert_entreprise_suivi i
 left join entreprise0 en on en.siren = i.siren
-left join etablissement0 e on e.siren = i.siren and e.siege
+left join etablissement0 e on e.siren = i.siren and e.siege;
 
 
 -- ajout du suivi des établissements qui ne sont pas encore (ou plus) suivis pour emmanuel.lemaux
@@ -42,4 +42,4 @@ select t.siret, substring(t.siret from 1 for 9),
 'email@user', true, current_timestamp, 'Suivi extrait du fichier de suivi CRP', 'fichier_CRP'
 from to_follow t
 left join etablissement_follow f on f.siret = t.siret and f.username = 'email@user' and until is null and active
-where f.id is null
+where f.id is null;
