@@ -1,16 +1,16 @@
 -- insert des siren à suivre
 drop table if exists insert_entreprise_suivi;
-create temporary table insert_entreprise_suivi as 
-select '123456789' as siren union
-select '234567890' as siren union
-select ...
+create temporary table insert_entreprise_suivi (siren text);
+insert into insert_entreprise_suivi values
+('123456789'),
+('234567890');
 
 -- insert des sirets à suivre
 drop table if exists insert_etablissement_suivi;
-create temporary table insert_etablissement_suivi as
-select '12345678901234' as siret union
-select '23456789012345' as siret union
-select ...
+create temporary table insert_etablissement_suivi (siret text);
+insert into insert_etablissement_suivi values
+('12345678901234'),
+('23456789012345');
 
 -- détection des établissements/entreprises absents
 select 'etablissement manquant' as motif, i.siret from insert_etablissement_suivi i
