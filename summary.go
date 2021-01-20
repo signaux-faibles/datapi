@@ -132,6 +132,7 @@ type summaryParams struct {
 	effectifMin     *int
 	effectifMax     *int
 	sirens          []string
+	activites       []string
 }
 
 func (p summaryParams) toSQLParams() []interface{} {
@@ -164,6 +165,7 @@ func (p summaryParams) toSQLParams() []interface{} {
 		p.effectifMin,
 		p.effectifMax,
 		p.sirens,
+		p.activites,
 	}
 }
 
@@ -176,7 +178,7 @@ func getSummaries(params summaryParams) (summaries, error) {
 		sqlParams = append(sqlParams, p[0:6]...)
 		sqlParams = append(sqlParams, p[7:10]...)
 		sqlParams = append(sqlParams, p[12:]...)
-		sql = `select * from get_score($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15) as scores;`
+		sql = `select * from get_score($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16) as scores;`
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
 		sqlParams = p[0:10]
@@ -186,8 +188,8 @@ func getSummaries(params summaryParams) (summaries, error) {
 		sqlParams = append(sqlParams, p[0], p[3], p[8])
 		sql = "select * from get_follow($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null) as follow;"
 	} else {
-		sqlParams = params.toSQLParams()
-		fmt.Println("pouet", params.orderBy)
+		p := params.toSQLParams()
+		sqlParams = p[0:17]
 		sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as %s;", params.orderBy)
 	}
 

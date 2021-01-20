@@ -281,3 +281,42 @@ type etablissementVAF struct {
 	APDemande []interface{} `json:"apDemande"`
 	Delai     []interface{} `json:"delai"`
 }
+
+// Liste de détection
+type Liste struct {
+	Scores []struct {
+		Siret    string `json:"siret"`
+		Followed bool   `json:"followed"`
+	} `json:"scores"`
+}
+
+func testExclureSuivi(t *testing.T) {
+	var params = make(map[string]interface{})
+	params["exclureSuivi"] = true
+	params["ignoreZone"] = true
+	_, indented, _ := post(t, "/scores/liste", params)
+	var liste Liste
+	json.Unmarshal(indented, &liste)
+	if len(liste.Scores) < 1 {
+		t.Error("pas assez d'établissements, test faible")
+	}
+
+	siret := liste.Scores[0].Siret
+	t.Logf("suivi de l'établissement %s", siret)
+	resp, _, _ := post(t, "/follow/"+siret, map[string]interface{}{
+		"comment":  "test",
+		"category": "test",
+	})
+
+	if resp.StatusCode != 201 {
+		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
+	}
+
+	_, indented, _ = post(t, "/scores/liste", params)
+	json.Unmarshal(indented, &liste)
+	for _, l := range liste.Scores {
+		if l.Followed {
+			t.Fail()
+		}
+	}
+}
