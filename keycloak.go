@@ -91,8 +91,8 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
-	if userId, ok := (*claims)["sub"]; ok {
-		c.Set("userId", userId)
+	if userID, ok := (*claims)["sub"]; ok {
+		c.Set("userID", userID)
 	} else {
 		c.AbortWithStatus(401)
 	}

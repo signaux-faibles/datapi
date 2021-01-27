@@ -37,8 +37,8 @@ type BilansInpi struct {
 
 func bilansExercicesHandler(c *gin.Context) {
 	siren := c.Param("siren")
-	userId := c.GetString("userId")
-	body, err := makeBilansInpiRequest(userId, siren)
+	userID := c.GetString("userID")
+	body, err := makeBilansInpiRequest(userID, siren)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -80,8 +80,8 @@ func bilansDocumentsHandler(c *gin.Context) {
 		data = cached
 		ok = true
 	} else {
-		userId := c.GetString("userId")
-		body, err := makeBilansInpiRequest(userId, siren)
+		userID := c.GetString("userID")
+		body, err := makeBilansInpiRequest(userID, siren)
 		if err != nil {
 			c.JSON(500, err.Error())
 			return
@@ -147,7 +147,7 @@ func bilansDocumentsHandler(c *gin.Context) {
 	}
 }
 
-func makeBilansInpiRequest(userId string, siren string) ([]byte, error) {
+func makeBilansInpiRequest(userID string, siren string) ([]byte, error) {
 	// doc: https://entreprise.api.gouv.fr/catalogue/#a-bilans_inpi
 	url := viper.GetString("apiEntrepriseBilansInpiUrl")
 	req, err := http.NewRequest("GET", url + siren, nil)
@@ -161,7 +161,7 @@ func makeBilansInpiRequest(userId string, siren string) ([]byte, error) {
 	q.Add("context", context)
 	recipient := viper.GetString("apiEntrepriseRecipient")
 	q.Add("recipient", recipient)
-	object := viper.GetString("apiEntrepriseObject") + userId
+	object := viper.GetString("apiEntrepriseObject") + userID
 	q.Add("object", object)
 	req.URL.RawQuery = q.Encode()
 	client := &http.Client{}
