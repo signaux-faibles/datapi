@@ -91,6 +91,9 @@ func runAPI() {
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
+	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
+	wekan.GET("", wekanHandler)
+
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
 	if err != nil {

@@ -40,3 +40,10 @@ batchIgnore = ["1910_8", "1906_7", "1901_interim"]
 apiFceURL = "apiFceURL"
 apiFceKey = "apiFceKey"
 fceVisitURL = "fceVisitURL"
+
+# Wekan
+wekanApiURL = "wekanApiURL"
+wekanAdminUsername = "wekanAdminUsername"
+wekanAdminPassword = "wekanAdminPassword"
+wekanTokenDays = 60
+wekanConfigFile = "wekan_config.json"
