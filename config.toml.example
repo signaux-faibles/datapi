@@ -40,3 +40,11 @@ batchIgnore = ["1910_8", "1906_7", "1901_interim"]
 apiFceURL = "apiFceURL"
 apiFceKey = "apiFceKey"
 fceVisitURL = "fceVisitURL"
+
+# API Entreprise
+apiEntrepriseToken = "token"
+apiEntrepriseContext = "context"
+apiEntrepriseRecipient = "recipient"
+apiEntrepriseObject = "object"
+apiEntrepriseBilansInpiUrl = "https://entreprise.api.gouv.fr/v2/bilans_inpi/"
+fileCachePath = "/var/lib/filecache"

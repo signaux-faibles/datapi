@@ -91,6 +91,12 @@ func keycloakMiddleware(c *gin.Context) {
 		return
 	}
 
+	if userID, ok := (*claims)["sub"]; ok {
+		c.Set("userID", userID)
+	} else {
+		c.AbortWithStatus(401)
+	}
+
 	if username, ok := (*claims)["preferred_username"]; ok {
 		c.Set("username", username)
 	} else {
