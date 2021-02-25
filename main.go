@@ -49,6 +49,7 @@ func runAPI() {
 	config.AllowOrigins = []string{"http://localhost:8081"}
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
+	config.AddExposeHeaders("Content-Disposition")
 	router.Use(cors.New(config))
 
 	entreprise := router.Group("/entreprise", getKeycloakMiddleware(), logMiddleware)
@@ -90,6 +91,10 @@ func runAPI() {
 	utils.GET("/import", importHandler)
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
+
+	bilans := router.Group("/bilans", getKeycloakMiddleware(), logMiddleware)
+	bilans.GET("/:siren/:exercice", validSiren, bilansDocumentsHandler)
+	bilans.GET("/:siren", validSiren, bilansExercicesHandler)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
