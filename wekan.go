@@ -355,7 +355,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		"customFields": customFields,
 		"startAt": now,
 	}
-	_, err = editCard(userToken.Value, boardID, listID, cardID, editionData)
+	_, err = editCard(adminToken.Value, boardID, listID, cardID, editionData)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
