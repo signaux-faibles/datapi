@@ -340,14 +340,15 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 	cardID := wekanCreateCard.Id
 	// card edition
-	var customFields = []struct {
-		Id		string	`json:"_id"`
-		Value	string	`json:"value"`
-	}{
+	var customFields = []CustomField{
 		{board.CustomFields.SiretField, siret},
-		{board.CustomFields.ActiviteField, activite},
-		{board.CustomFields.EffectifField.EffectifFieldId, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]},
 		{board.CustomFields.FicheSFField, ficheSF},
+	}
+	if (activite != "") {
+		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
+	}
+	if (effectifIndex > 0) {
+		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldId, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 	}
 	now := time.Now()
 	var editionData = map[string]interface{}{
