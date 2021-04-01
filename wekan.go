@@ -33,7 +33,7 @@ type WekanConfig struct {
 				EffectifFieldId		string		`json:"effectifFieldId"`
 				EffectifFieldItems	[]string	`json:"effectifFieldItems"`
 			}	`json:"effectifField"`
-			FicheEntrepriseField	string		`json:"ficheEntrepriseField"`
+			FicheSFField			string		`json:"ficheSFField"`
 		}	`json:"customFields"`
 	}	`json:"boards"`
 	Users	map[string]string	`json:"users"`
@@ -302,7 +302,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		return
 	}	
 	activite := formatActiviteField(etsData.CodeActivite, etsData.LibelleActivite)
-	ficheEntreprise := formatFicheEntrepriseField(etsData.Siret)
+	ficheSF := formatFicheSFField(etsData.Siret)
 	effectifIndex := getEffectifIndex(etsData.Effectif)
 	// new card
 	title := etsData.RaisonSociale
@@ -347,7 +347,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		{board.CustomFields.SiretField, siret},
 		{board.CustomFields.ActiviteField, activite},
 		{board.CustomFields.EffectifField.EffectifFieldId, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]},
-		{board.CustomFields.FicheEntrepriseField, ficheEntreprise},
+		{board.CustomFields.FicheSFField, ficheSF},
 	}
 	now := time.Now()
 	var editionData = map[string]interface{}{
@@ -396,8 +396,8 @@ func wekanImportHandler(c *gin.Context) {
 			} else {
 				commentaire := "**Difficultés rencontrées par l'entreprise**\n" + line[16] + "\n\n**Etat du climat social**\n" + line[19] + "\n\n**Etat du dossier**\n" + line[22] + "\n\n**Actions et échéances à venir**\n" + line[24] + "\n\n**Commentaires sur l'entreprise**\n" + line[25] + "\n\n**Commentaires sur la situation**\n" + line[26] + "\n\n"
 				description := line[27]
-				fiche := FicheCRP{siret, commentaire, description}
-				tableauCRP = append(tableauCRP, fiche)
+				ficheCRP := FicheCRP{siret, commentaire, description}
+				tableauCRP = append(tableauCRP, ficheCRP)
 			}
 		}
 	}
@@ -485,8 +485,8 @@ func wekanImportHandler(c *gin.Context) {
 		log.Printf("existing user token")
 	}
 	log.Printf("5. wekan cards creation")
-	for _, fiche := range tableauCRP {
-		siret := fiche.Siret
+	for _, ficheCRP := range tableauCRP {
+		siret := ficheCRP.Siret
 		log.Printf("ets %s to import...", siret)
 		// data enrichment
 		etsData, err := getEtablissementDataFromDb(siret)
@@ -514,7 +514,7 @@ func wekanImportHandler(c *gin.Context) {
 			continue
 		}
 		activite := formatActiviteField(etsData.CodeActivite, etsData.LibelleActivite)
-		ficheEntreprise := formatFicheEntrepriseField(etsData.Siret)
+		ficheSF := formatFicheSFField(etsData.Siret)
 		effectifIndex := getEffectifIndex(etsData.Effectif)
 		// new card
 		title := etsData.RaisonSociale
@@ -524,7 +524,7 @@ func wekanImportHandler(c *gin.Context) {
 			"title": title,
 			"swimlaneId": swimlaneID,
 		}
-		description := fiche.Description
+		description := ficheCRP.Description
 		if (description != "") {
 			creationData["description"] = description
 		}
@@ -543,7 +543,7 @@ func wekanImportHandler(c *gin.Context) {
 		// card edition
 		var customFields = []CustomField{
 			{board.CustomFields.SiretField, siret},
-			{board.CustomFields.FicheEntrepriseField, ficheEntreprise},
+			{board.CustomFields.FicheSFField, ficheSF},
 		}
 		if (activite != "") {
 			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
@@ -566,7 +566,7 @@ func wekanImportHandler(c *gin.Context) {
 			continue
 		}
 		// card comment
-		comment := fiche.Commentaire
+		comment := ficheCRP.Commentaire
 		commentData := map[string]string{
 			"authorId": userID,
 			"comment": comment,
@@ -756,6 +756,6 @@ func getEffectifIndex(effectif int) (int){
 	return effectifIndex
 }
 
-func formatFicheEntrepriseField(siret string) (string) {
+func formatFicheSFField(siret string) (string) {
 	return viper.GetString("webBaseURL") + "ets/" + siret
 }
