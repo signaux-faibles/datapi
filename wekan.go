@@ -70,6 +70,12 @@ type WekanCreateCard struct {
 	Id				string	`json:"_id"`
 }
 
+// CustomField type pour les champs personnalisés lors de l'édition de carte
+type CustomField struct {
+	Id				string	`json:"_id"`
+	Value			string	`json:"value"`
+}
+
 // FicheCRP type pour les fiches CRP
 type FicheCRP struct {
 	Siret			string
@@ -489,16 +495,24 @@ func wekanImportHandler(c *gin.Context) {
 			continue
 		}
 		// fields formatting
+		if siret != etsData.Siret {
+			log.Printf("unknown ets")
+			continue
+		}
 		if region != etsData.Region {
 			log.Printf("incorrect region")
 			continue
 		}
 		departement := etsData.Departement
+		if departement == "" {
+			log.Printf("unknown departement")
+			continue
+		}
 		swimlaneID, ok := board.Swimlanes[departement]
 		if !ok {
 			log.Printf("not a departement of this region")
 			continue
-		}	
+		}
 		activite := formatActiviteField(etsData.CodeActivite, etsData.LibelleActivite)
 		ficheEntreprise := formatFicheEntrepriseField(etsData.Siret)
 		effectifIndex := getEffectifIndex(etsData.Effectif)
@@ -527,14 +541,19 @@ func wekanImportHandler(c *gin.Context) {
 		}
 		cardID := wekanCreateCard.Id
 		// card edition
-		var customFields = []struct {
-			Id		string	`json:"_id"`
-			Value	string	`json:"value"`
-		}{
+		var customFields = []CustomField{
 			{board.CustomFields.SiretField, siret},
-			{board.CustomFields.ActiviteField, activite},
-			{board.CustomFields.EffectifField.EffectifFieldId, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]},
 			{board.CustomFields.FicheEntrepriseField, ficheEntreprise},
+		}
+		if (activite != "") {
+			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
+		} else {
+			log.Printf("unknown activite")
+		}
+		if (effectifIndex > 0) {
+			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldId, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
+		} else {
+			log.Printf("unknown effectif class")
 		}
 		now := time.Now()
 		var editionData = map[string]interface{}{
@@ -702,7 +721,7 @@ func indexOf(element string, array []string) (int) {
 }
 
 func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
-	sql := `select et.siret, etrs.raison_sociale, et.departement, r.libelle, ef.effectif, et.code_activite, n.libelle_n5 from etablissement0 et left join v_etablissement_raison_sociale etrs on etrs.id_etablissement = et.id left join v_last_effectif ef on ef.siret = et.siret left join v_naf n on n.code_n5 = et.code_activite left join departements d on d.code = et.departement left join regions r on r.id = d.id_region where et.siret = $1`
+	sql := `select et.siret, coalesce(etrs.raison_sociale, ''), coalesce(et.departement, ''), coalesce(r.libelle, ''), coalesce(ef.effectif, 0), coalesce(et.code_activite, ''), coalesce(n.libelle_n5, '') from etablissement0 et left join v_etablissement_raison_sociale etrs on etrs.id_etablissement = et.id left join v_last_effectif ef on ef.siret = et.siret left join v_naf n on n.code_n5 = et.code_activite left join departements d on d.code = et.departement left join regions r on r.id = d.id_region where et.siret = $1`
 	rows, err := db.Query(context.Background(), sql, siret)
 	var etsData EtablissementData
 	if err != nil {
@@ -726,7 +745,7 @@ func formatActiviteField(codeActivite string, libelleActivite string) (string) {
 }
 
 func getEffectifIndex(effectif int) (int){
-	var effectifIndex int
+	var effectifIndex int = -1
 	effectifClass := [4]int{10, 20, 50, 100}
 	for i := len(effectifClass) - 1; i >= 0; i-- {
 		if (effectif >= effectifClass[i]) {
