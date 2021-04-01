@@ -25,7 +25,7 @@
 						"<effectifFieldItem0Id>"
 					]
 				},
-				"ficheEntrepriseField": "<ficheEntrepriseFieldId>"
+				"ficheSFField": "<ficheSFFieldId>"
 			}
 		}
 	},
