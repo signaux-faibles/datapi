@@ -22,7 +22,7 @@ import (
 // WekanConfig type pour le fichier de configuration de Wekan
 type WekanConfig struct {
 	Boards	map[string]struct {
-		BoardId			string				`json:"boardId"`
+		BoardID			string				`json:"boardId"`
 		Slug			string				`json:"slug"`
 		Swimlanes		map[string]string	`json:"swimlanes"`
 		Lists			[]string			`json:"lists"`
@@ -30,7 +30,7 @@ type WekanConfig struct {
 			SiretField				string		`json:"siretField"`
 			ActiviteField			string		`json:"activiteField"`
 			EffectifField			struct {
-				EffectifFieldId		string		`json:"effectifFieldId"`
+				EffectifFieldID		string		`json:"effectifFieldId"`
 				EffectifFieldItems	[]string	`json:"effectifFieldItems"`
 			}	`json:"effectifField"`
 			FicheSFField			string		`json:"ficheSFField"`
@@ -47,32 +47,32 @@ type Token struct {
 
 // WekanLogin type pour les réponses du service de login
 type WekanLogin struct {
-	Id				string	`json:"id"`
+	ID				string	`json:"id"`
 	Token			string	`json:"token"`
 	TokenExpires	string	`json:"tokenExpires"`
 }
 
 // WekanCreateToken type pour les réponses du service de création de token
 type WekanCreateToken struct {
-	Id				string	`json:"_id"`
+	ID				string	`json:"_id"`
 	AuthToken		string	`json:"authToken"`
 }
 
 // WekanGetCard type pour les réponses du service de recherche de carte
 type WekanGetCard []struct {
-	Id				string	`json:"_id"`
-	ListId			string	`json:"listId"`
+	ID				string	`json:"_id"`
+	ListID			string	`json:"listId"`
 	Description		string	`json:"description"`
 }
 
 // WekanCreateCard type pour les réponses du service de création de carte
 type WekanCreateCard struct {
-	Id				string	`json:"_id"`
+	ID				string	`json:"_id"`
 }
 
 // CustomField type pour les champs personnalisés lors de l'édition de carte
 type CustomField struct {
-	Id				string	`json:"_id"`
+	ID				string	`json:"_id"`
 	Value			string	`json:"value"`
 }
 
@@ -177,7 +177,7 @@ func wekanGetCardHandler(c *gin.Context) {
 		c.JSON(500, "missing board in config file")
 		return
 	}	
-	boardID := board.BoardId
+	boardID := board.BoardID
 	siretField := board.CustomFields.SiretField
 	body, err := getCard(userToken.Value, boardID, siretField, siret)
 	if err != nil {
@@ -195,12 +195,12 @@ func wekanGetCardHandler(c *gin.Context) {
 		return
 	}
 	card := wekanGetCard[0]
-	cardID := card.Id
+	cardID := card.ID
 	cardDescription := card.Description
 	lists := board.Lists
-	listIndex := indexOf(card.ListId, lists)
+	listIndex := indexOf(card.ListID, lists)
 	wekanURL := viper.GetString("wekanURL")
-	cardURL := wekanURL + "b/" + board.BoardId + "/" + board.Slug + "/" + cardID
+	cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
 	cardData := map[string]interface{}{
 		"cardId": cardID,
 		"listIndex": listIndex,
@@ -292,7 +292,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		c.JSON(500, "missing board in config file")
 		return
 	}	
-	boardID := board.BoardId
+	boardID := board.BoardID
 	listID := board.Lists[0]
 	// fields formatting
 	departement := etsData.Departement
@@ -338,7 +338,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	cardID := wekanCreateCard.Id
+	cardID := wekanCreateCard.ID
 	// card edition
 	var customFields = []CustomField{
 		{board.CustomFields.SiretField, siret},
@@ -348,7 +348,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
 	}
 	if (effectifIndex > 0) {
-		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldId, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
+		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 	}
 	now := time.Now()
 	var editionData = map[string]interface{}{
@@ -422,7 +422,7 @@ func wekanImportHandler(c *gin.Context) {
 		c.JSON(500, "missing board in config file")
 		return
 	}	
-	boardID := board.BoardId
+	boardID := board.BoardID
 	listID := board.Lists[0]
 	userID, ok := config.Users[username]
 	if !ok {
@@ -540,7 +540,7 @@ func wekanImportHandler(c *gin.Context) {
 			log.Printf(err.Error())
 			continue
 		}
-		cardID := wekanCreateCard.Id
+		cardID := wekanCreateCard.ID
 		// card edition
 		var customFields = []CustomField{
 			{board.CustomFields.SiretField, siret},
@@ -552,7 +552,7 @@ func wekanImportHandler(c *gin.Context) {
 			log.Printf("unknown activite")
 		}
 		if (effectifIndex > 0) {
-			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldId, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
+			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 		} else {
 			log.Printf("unknown effectif class")
 		}
@@ -707,9 +707,8 @@ func isValidToken(token Token) (bool) {
 	days := hours / 24
 	if days < float64(viper.GetInt("wekanTokenDays")) {
 		return true
-	} else {
-		return false
-	}
+	} 
+	return false
 }
 
 func indexOf(element string, array []string) (int) {
@@ -746,7 +745,7 @@ func formatActiviteField(codeActivite string, libelleActivite string) (string) {
 }
 
 func getEffectifIndex(effectif int) (int){
-	var effectifIndex int = -1
+	var effectifIndex = -1
 	effectifClass := [4]int{10, 20, 50, 100}
 	for i := len(effectifClass) - 1; i >= 0; i-- {
 		if (effectif >= effectifClass[i]) {
