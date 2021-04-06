@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"github.com/spf13/viper"
 	"github.com/gin-gonic/gin"
 	"io/ioutil"
@@ -628,6 +629,9 @@ func getCard(userToken string, boardID string, siretField string, siret string) 
 	req.Header.Add("Authorization", "Bearer " + userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if (resp.StatusCode != http.StatusOK) {
+		err = errors.New("unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -650,6 +654,9 @@ func createCard(userToken string, boardID string, listID string, creationData ma
 	req.Header.Add("Authorization", "Bearer " + userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if (resp.StatusCode != http.StatusOK) {
+		err = errors.New("unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -672,6 +679,9 @@ func editCard(userToken string, boardID string, listID string, cardID string, ed
 	req.Header.Add("Authorization", "Bearer " + userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if (resp.StatusCode != http.StatusOK) {
+		err = errors.New("unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -694,6 +704,9 @@ func commentCard(userToken string, boardID string, cardID string, commentData ma
 	req.Header.Add("Authorization", "Bearer " + userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if (resp.StatusCode != http.StatusOK) {
+		err = errors.New("unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
