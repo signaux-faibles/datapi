@@ -1,0 +1,36 @@
+{
+	"boards": {
+		"<region0>": {
+			"boardId": "<boardId>",
+			"slug": "<slug>",
+			"swimlanes": {
+				"<departement0>": "<swimlane0Id>",
+				"<departement1>": "<swimlane1Id>"
+			},
+			"lists": [
+				"<list0Id>",
+				"<list1Id>",
+				"<list2Id>",
+				"<list3Id>"
+			],
+			"customFields": {
+				"siretField": "<siretFieldId>",
+				"activiteField": "<activiteFieldId>",
+				"effectifField": {
+					"effectifFieldId": "<effectifFieldId>",
+					"effectifFieldItems": [
+						"<effectifFieldItem0Id>",
+						"<effectifFieldItem0Id>",
+						"<effectifFieldItem0Id>",
+						"<effectifFieldItem0Id>"
+					]
+				},
+				"ficheSFField": "<ficheSFFieldId>"
+			}
+		}
+	},
+	"users": {
+		"<username0>": "<user0Id>",
+		"<username1>": "<user1Id>"
+	}
+}
