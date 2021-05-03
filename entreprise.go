@@ -350,26 +350,26 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		where (et.siret=any($3) or et.siren=any($4));
 	`, roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select en.siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
-		achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,
-		ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel,
-		charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr,
-		credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement,
-		endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
-		financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
-		liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
-		operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
-		performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
-		productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
-		rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
-		rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,
-		taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-		taux_valeur_ajoutee, valeur_ajoutee
-		from entreprise_diane0 en
-		where en.siren=any($1)
-		order by en.arrete_bilan_diane;`,
-		e.sirensFromQuery(),
-	)
+	batch.Queue(`select siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
+				autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
+				capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
+				charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation, 
+				couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
+				dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
+				endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
+				financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
+				liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
+				operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
+				performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
+				productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
+				rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
+				rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
+				taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
+				taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee
+			from entreprise_diane0 en
+			where en.siren=any($1)
+			order by en.arrete_bilan_diane;`,
+		e.sirensFromQuery())
 
 	// A remettre en service lorsque nous aurons des données BDF
 	// batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
@@ -686,11 +686,13 @@ func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
 	for (*rows).Next() {
 		var di diane
 		var siren string
-		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.ChiffreAffaire, &di.CreditClient, &di.ResultatExploitation, &di.AchatMarchandises,
-			&di.AchatMatieresPremieres, &di.AutonomieFinanciere, &di.AutresAchatsChargesExternes, &di.AutresProduitsChargesReprises,
-			&di.CAExportation, &di.CapaciteAutofinancement, &di.CapaciteRemboursement, &di.ChargeExceptionnelle, &di.ChargePersonnel,
-			&di.ChargesFinancieres, &di.ConcesBrevEtDroitsSim, &di.Consommation, &di.CouvertureCaBesoinFdr, &di.CouvertureCaFdr,
-			&di.CreditFournisseur, &di.DegreImmoCorporelle, &di.DetteFiscaleEtSociale, &di.DotationAmortissement, &di.Endettement,
+
+		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.AchatMarchandises, &di.AchatMatieresPremieres, &di.AutonomieFinanciere,
+			&di.AutresAchatsChargesExternes, &di.AutresProduitsChargesReprises, &di.BeneficeOuPerte, &di.CAExportation,
+			&di.CapaciteAutofinancement, &di.CapaciteRemboursement, &di.CAparEffectif, &di.ChargeExceptionnelle, &di.ChargePersonnel,
+			&di.ChargesFinancieres, &di.ChiffreAffaire, &di.ConcesBrevEtDroitsSim, &di.ConcoursBancaireCourant, &di.Consommation,
+			&di.CouvertureCaBesoinFdr, &di.CouvertureCaFdr, &di.CreditClient, &di.CreditFournisseur, &di.DegreImmoCorporelle,
+			&di.DetteFiscaleEtSociale, &di.DotationAmortissement, &di.EffectifConsolide, &di.EfficaciteEconomique, &di.Endettement,
 			&di.EndettementGlobal, &di.EquilibreFinancier, &di.ExcedentBrutDExploitation, &di.Exercice, &di.Exportation,
 			&di.FinancementActifCirculant, &di.FraisDeRetD, &di.ImpotBenefice, &di.ImpotsTaxes, &di.IndependanceFinanciere, &di.Interets,
 			&di.LiquiditeGenerale, &di.LiquiditeReduite, &di.MargeCommerciale, &di.NombreEtabSecondaire, &di.NombreFiliale, &di.NombreMois,
@@ -698,15 +700,16 @@ func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
 			&di.Performance, &di.PoidsBFRExploitation, &di.ProcedureCollective, &di.Production, &di.ProductiviteCapitalFinancier,
 			&di.ProductiviteCapitalInvesti, &di.ProductivitePotentielProduction, &di.ProduitExceptionnel, &di.ProduitsFinanciers,
 			&di.RendementBrutFondsPropres, &di.RendementCapitauxPropres, &di.RendementRessourcesDurables, &di.RentabiliteEconomique,
-			&di.RentabiliteNette, &di.ResultatAvantImpot, &di.RotationStocks, &di.StatutJuridique, &di.SubventionsDExploitation,
+			&di.RentabiliteNette, &di.ResultatAvantImpot, &di.ResultatExploitation, &di.RotationStocks, &di.StatutJuridique, &di.SubventionsDExploitation,
 			&di.TailleCompoGroupe, &di.TauxDInvestissementProductif, &di.TauxEndettement, &di.TauxInteretFinancier, &di.TauxInteretSurCA,
-			&di.TauxValeurAjoutee, &di.ValeurAjoutee,
+			&di.TauxMargeCommerciale, &di.TauxValeurAjoutee, &di.ValeurAjoutee,
 		)
 		if err != nil {
 			return err
 		}
 		dianes[siren] = append(dianes[siren], di)
 	}
+
 	for k, v := range dianes {
 		entreprise := e.Entreprises[k]
 		entreprise.Diane = v

@@ -4,3 +4,6 @@ alter table entreprise_diane add taux_marge_commerciale real;
 alter table entreprise_diane add concours_bancaire_courant real;
 alter table entreprise_diane add effectif_consolide real;
 alter table entreprise_diane add efficacite_economique real;
+
+create or replace view entreprise_diane0 as
+select * from entreprise_diane where version = 0;
