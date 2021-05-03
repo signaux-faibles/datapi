@@ -188,7 +188,6 @@ type bdf struct {
 type diane struct {
 	NumeroSiren                     string    `json:"numero_siren,omitempty"`
 	ArreteBilan                     time.Time `json:"arrete_bilan_diane,omitempty"`
-	CreditClient                    *float64  `json:"credit_client,omitempty"`
 	AchatMarchandises               *float64  `json:"achat_marchandises,omitempty"`
 	AchatMatieresPremieres          *float64  `json:"achat_matieres_premieres,omitempty"`
 	AutonomieFinanciere             *float64  `json:"autonomie_financiere,omitempty"`
@@ -208,6 +207,7 @@ type diane struct {
 	Consommation                    *float64  `json:"consommation,omitempty"`
 	CouvertureCaBesoinFdr           *float64  `json:"couverture_ca_besoin_fdr,omitempty"`
 	CouvertureCaFdr                 *float64  `json:"couverture_ca_fdr,omitempty"`
+	CreditClient                    *float64  `json:"credit_client,omitempty"`
 	CreditFournisseur               *float64  `json:"credit_fournisseur,omitempty"`
 	DegreImmoCorporelle             *float64  `json:"degre_immo_corporelle,omitempty"`
 	DetteFiscaleEtSociale           *float64  `json:"dette_fiscale_et_sociale,omitempty"`
@@ -359,7 +359,7 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 	}
 
 	sqlEntrepriseDiane := `insert into entreprise_diane
-		(siren, arrete_bilan_diane, achat_marchandises,achat_matieres_premieres, autonomie_financiere, 
+		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
 		autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
 		capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
 	 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation, 
@@ -378,7 +378,7 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
 	 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
 	 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
- 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74);`
+ 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80);`
 
 	for _, d := range e.Value.Diane {
 		if d.ArreteBilan.IsZero() {
