@@ -186,86 +186,86 @@ type bdf struct {
 }
 
 type diane struct {
-	ChiffreAffaire                  *float64  `json:"ca,omitempty"`
-	Exercice                        float64   `json:"exercice_diane,omitempty"`
-	NomEntreprise                   string    `json:"nom_entreprise,omitempty"`
 	NumeroSiren                     string    `json:"numero_siren,omitempty"`
-	StatutJuridique                 string    `json:"statut_juridique,omitempty"`
-	ProcedureCollective             bool      `json:"procedure_collective,omitempty"`
-	EffectifConsolide               *int      `json:"effectif_consolide,omitempty"`
-	DetteFiscaleEtSociale           *float64  `json:"dette_fiscale_et_sociale,omitempty"`
-	FraisDeRetD                     *float64  `json:"frais_de_RetD,omitempty"`
-	ConcesBrevEtDroitsSim           *float64  `json:"conces_brev_et_droits_sim,omitempty"`
-	NombreEtabSecondaire            *int      `json:"nombre_etab_secondaire,omitempty"`
-	NombreFiliale                   *int      `json:"nombre_filiale,omitempty"`
-	TailleCompoGroupe               *int      `json:"taille_compo_groupe,omitempty"`
 	ArreteBilan                     time.Time `json:"arrete_bilan_diane,omitempty"`
-	NombreMois                      *int      `json:"nombre_mois,omitempty"`
-	ConcoursBancaireCourant         *float64  `json:"concours_bancaire_courant,omitempty"`
-	EquilibreFinancier              *float64  `json:"equilibre_financier,omitempty"`
-	IndependanceFinanciere          *float64  `json:"independance_financiere,omitempty"`
-	Endettement                     *float64  `json:"endettement,omitempty"`
-	AutonomieFinanciere             *float64  `json:"autonomie_financiere,omitempty"`
-	DegreImmoCorporelle             *float64  `json:"degre_immo_corporelle,omitempty"`
-	FinancementActifCirculant       *float64  `json:"financement_actif_circulant,omitempty"`
-	LiquiditeGenerale               *float64  `json:"liquidite_generale,omitempty"`
-	LiquiditeReduite                *float64  `json:"liquidite_reduite,omitempty"`
-	RotationStocks                  *float64  `json:"rotation_stocks,omitempty"`
-	CreditClient                    *float64  `json:"credit_client,omitempty"`
-	CreditFournisseur               *float64  `json:"credit_fournisseur,omitempty"`
-	CAparEffectif                   *float64  `json:"ca_par_effectif,omitempty"`
-	TauxInteretFinancier            *float64  `json:"taux_interet_financier,omitempty"`
-	TauxInteretSurCA                *float64  `json:"taux_interet_sur_ca,omitempty"`
-	EndettementGlobal               *float64  `json:"endettement_global,omitempty"`
-	TauxEndettement                 *float64  `json:"taux_endettement,omitempty"`
-	CapaciteRemboursement           *float64  `json:"capacite_remboursement,omitempty"`
-	CapaciteAutofinancement         *float64  `json:"capacite_autofinancement,omitempty"`
-	CouvertureCaFdr                 *float64  `json:"couverture_ca_fdr,omitempty"`
-	CouvertureCaBesoinFdr           *float64  `json:"couverture_ca_besoin_fdr,omitempty"`
-	PoidsBFRExploitation            *float64  `json:"poids_bfr_exploitation,omitempty"`
-	Exportation                     *float64  `json:"exportation,omitempty"`
-	EfficaciteEconomique            *float64  `json:"efficacite_economique,omitempty"`
-	ProductivitePotentielProduction *float64  `json:"productivite_potentiel_production,omitempty"`
-	ProductiviteCapitalFinancier    *float64  `json:"productivite_capital_financier,omitempty"`
-	ProductiviteCapitalInvesti      *float64  `json:"productivite_capital_investi,omitempty"`
-	TauxDInvestissementProductif    *float64  `json:"taux_d_investissement_productif,omitempty"`
-	RentabiliteEconomique           *float64  `json:"rentabilite_economique,omitempty"`
-	Performance                     *float64  `json:"performance,omitempty"`
-	RendementBrutFondsPropres       *float64  `json:"rendement_brut_fonds_propres,omitempty"`
-	RentabiliteNette                *float64  `json:"rentabilite_nette,omitempty"`
-	RendementCapitauxPropres        *float64  `json:"rendement_capitaux_propres,omitempty"`
-	RendementRessourcesDurables     *float64  `json:"rendement_ressources_durables,omitempty"`
-	TauxMargeCommerciale            *float64  `json:"taux_marge_commerciale,omitempty"`
-	TauxValeurAjoutee               *float64  `json:"taux_valeur_ajoutee,omitempty"`
-	PartSalaries                    *float64  `json:"part_salaries,omitempty"`
-	PartEtat                        *float64  `json:"part_etat,omitempty"`
-	PartPreteur                     *float64  `json:"part_preteur,omitempty"`
-	PartAutofinancement             *float64  `json:"part_autofinancement,omitempty"`
-	CAExportation                   *float64  `json:"ca_exportation,omitempty"`
 	AchatMarchandises               *float64  `json:"achat_marchandises,omitempty"`
 	AchatMatieresPremieres          *float64  `json:"achat_matieres_premieres,omitempty"`
-	Production                      *float64  `json:"production,omitempty"`
-	MargeCommerciale                *float64  `json:"marge_commerciale,omitempty"`
-	Consommation                    *float64  `json:"consommation,omitempty"`
+	AutonomieFinanciere             *float64  `json:"autonomie_financiere,omitempty"`
 	AutresAchatsChargesExternes     *float64  `json:"autres_achats_charges_externes,omitempty"`
-	ValeurAjoutee                   *float64  `json:"valeur_ajoutee,omitempty"`
-	ChargePersonnel                 *float64  `json:"charge_personnel,omitempty"`
-	ImpotsTaxes                     *float64  `json:"impots_taxes,omitempty"`
-	SubventionsDExploitation        *float64  `json:"subventions_d_exploitation,omitempty"`
-	ExcedentBrutDExploitation       *float64  `json:"excedent_brut_d_exploitation,omitempty"`
 	AutresProduitsChargesReprises   *float64  `json:"autres_produits_charges_reprises,omitempty"`
-	DotationAmortissement           *float64  `json:"dotation_amortissement,omitempty"`
-	ResultatExploitation            *float64  `json:"resultat_expl"`
-	OperationsCommun                *float64  `json:"operations_commun,omitempty"`
-	ProduitsFinanciers              *float64  `json:"produits_financiers,omitempty"`
-	ChargesFinancieres              *float64  `json:"charges_financieres,omitempty"`
-	Interets                        *float64  `json:"interets,omitempty"`
-	ResultatAvantImpot              *float64  `json:"resultat_avant_impot,omitempty"`
-	ProduitExceptionnel             *float64  `json:"produit_exceptionnel,omitempty"`
-	ChargeExceptionnelle            *float64  `json:"charge_exceptionnelle,omitempty"`
-	ParticipationSalaries           *float64  `json:"participation_salaries,omitempty"`
-	ImpotBenefice                   *float64  `json:"impot_benefice,omitempty"`
 	BeneficeOuPerte                 *float64  `json:"benefice_ou_perte,omitempty"`
+	CAExportation                   *float64  `json:"ca_exportation,omitempty"`
+	CapaciteAutofinancement         *float64  `json:"capacite_autofinancement,omitempty"`
+	CapaciteRemboursement           *float64  `json:"capacite_remboursement,omitempty"`
+	CAparEffectif                   *float64  `json:"ca_par_effectif,omitempty"`
+	ChargeExceptionnelle            *float64  `json:"charge_exceptionnelle,omitempty"`
+	ChargePersonnel                 *float64  `json:"charge_personnel,omitempty"`
+	ChargesFinancieres              *float64  `json:"charges_financieres,omitempty"`
+	ChiffreAffaire                  *float64  `json:"ca,omitempty"`
+	ConcesBrevEtDroitsSim           *float64  `json:"conces_brev_et_droits_sim,omitempty"`
+	ConcoursBancaireCourant         *float64  `json:"concours_bancaire_courant,omitempty"`
+	Consommation                    *float64  `json:"consommation,omitempty"`
+	CouvertureCaBesoinFdr           *float64  `json:"couverture_ca_besoin_fdr,omitempty"`
+	CouvertureCaFdr                 *float64  `json:"couverture_ca_fdr,omitempty"`
+	CreditClient                    *float64  `json:"credit_client,omitempty"`
+	CreditFournisseur               *float64  `json:"credit_fournisseur,omitempty"`
+	DegreImmoCorporelle             *float64  `json:"degre_immo_corporelle,omitempty"`
+	DetteFiscaleEtSociale           *float64  `json:"dette_fiscale_et_sociale,omitempty"`
+	DotationAmortissement           *float64  `json:"dotation_amortissement,omitempty"`
+	EffectifConsolide               *int      `json:"effectif_consolide,omitempty"`
+	EfficaciteEconomique            *float64  `json:"efficacite_economique,omitempty"`
+	Endettement                     *float64  `json:"endettement,omitempty"`
+	EndettementGlobal               *float64  `json:"endettement_global,omitempty"`
+	EquilibreFinancier              *float64  `json:"equilibre_financier,omitempty"`
+	ExcedentBrutDExploitation       *float64  `json:"excedent_brut_d_exploitation,omitempty"`
+	Exercice                        float64   `json:"exercice_diane,omitempty"`
+	Exportation                     *float64  `json:"exportation,omitempty"`
+	FinancementActifCirculant       *float64  `json:"financement_actif_circulant,omitempty"`
+	FraisDeRetD                     *float64  `json:"frais_de_RetD,omitempty"`
+	ImpotBenefice                   *float64  `json:"impot_benefice,omitempty"`
+	ImpotsTaxes                     *float64  `json:"impots_taxes,omitempty"`
+	IndependanceFinanciere          *float64  `json:"independance_financiere,omitempty"`
+	Interets                        *float64  `json:"interets,omitempty"`
+	LiquiditeGenerale               *float64  `json:"liquidite_generale,omitempty"`
+	LiquiditeReduite                *float64  `json:"liquidite_reduite,omitempty"`
+	MargeCommerciale                *float64  `json:"marge_commerciale,omitempty"`
+	NombreEtabSecondaire            *int      `json:"nombre_etab_secondaire,omitempty"`
+	NombreFiliale                   *int      `json:"nombre_filiale,omitempty"`
+	NombreMois                      *int      `json:"nombre_mois,omitempty"`
+	OperationsCommun                *float64  `json:"operations_commun,omitempty"`
+	PartAutofinancement             *float64  `json:"part_autofinancement,omitempty"`
+	PartEtat                        *float64  `json:"part_etat,omitempty"`
+	PartPreteur                     *float64  `json:"part_preteur,omitempty"`
+	PartSalaries                    *float64  `json:"part_salaries,omitempty"`
+	ParticipationSalaries           *float64  `json:"participation_salaries,omitempty"`
+	Performance                     *float64  `json:"performance,omitempty"`
+	PoidsBFRExploitation            *float64  `json:"poids_bfr_exploitation,omitempty"`
+	ProcedureCollective             bool      `json:"procedure_collective,omitempty"`
+	Production                      *float64  `json:"production,omitempty"`
+	ProductiviteCapitalFinancier    *float64  `json:"productivite_capital_financier,omitempty"`
+	ProductiviteCapitalInvesti      *float64  `json:"productivite_capital_investi,omitempty"`
+	ProductivitePotentielProduction *float64  `json:"productivite_potentiel_production,omitempty"`
+	ProduitExceptionnel             *float64  `json:"produit_exceptionnel,omitempty"`
+	ProduitsFinanciers              *float64  `json:"produits_financiers,omitempty"`
+	RendementBrutFondsPropres       *float64  `json:"rendement_brut_fonds_propres,omitempty"`
+	RendementCapitauxPropres        *float64  `json:"rendement_capitaux_propres,omitempty"`
+	RendementRessourcesDurables     *float64  `json:"rendement_ressources_durables,omitempty"`
+	RentabiliteEconomique           *float64  `json:"rentabilite_economique,omitempty"`
+	RentabiliteNette                *float64  `json:"rentabilite_nette,omitempty"`
+	ResultatAvantImpot              *float64  `json:"resultat_avant_impot,omitempty"`
+	ResultatExploitation            *float64  `json:"resultat_expl"`
+	RotationStocks                  *float64  `json:"rotation_stocks,omitempty"`
+	StatutJuridique                 string    `json:"statut_juridique,omitempty"`
+	SubventionsDExploitation        *float64  `json:"subventions_d_exploitation,omitempty"`
+	TailleCompoGroupe               *int      `json:"taille_compo_groupe,omitempty"`
+	TauxDInvestissementProductif    *float64  `json:"taux_d_investissement_productif,omitempty"`
+	TauxEndettement                 *float64  `json:"taux_endettement,omitempty"`
+	TauxInteretFinancier            *float64  `json:"taux_interet_financier,omitempty"`
+	TauxInteretSurCA                *float64  `json:"taux_interet_sur_ca,omitempty"`
+	TauxMargeCommerciale            *float64  `json:"taux_marge_commerciale,omitempty"`
+	TauxValeurAjoutee               *float64  `json:"taux_valeur_ajoutee,omitempty"`
+	ValeurAjoutee                   *float64  `json:"valeur_ajoutee,omitempty"`
+	NomEntreprise                   string    `json:"nom_entreprise,omitempty"`
 }
 
 // Sirene detail
@@ -359,11 +359,12 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 	}
 
 	sqlEntrepriseDiane := `insert into entreprise_diane
-		(siren, arrete_bilan_diane, chiffre_affaire, credit_client, resultat_expl, achat_marchandises,
-	 	achat_matieres_premieres, autonomie_financiere, autres_achats_charges_externes, autres_produits_charges_reprises,
-	 	ca_exportation, capacite_autofinancement, capacite_remboursement, charge_exceptionnelle, charge_personnel,
-	 	charges_financieres, conces_brev_et_droits_sim, consommation, couverture_ca_besoin_fdr, couverture_ca_fdr,
-	 	credit_fournisseur, degre_immo_corporelle, dette_fiscale_et_sociale, dotation_amortissement, endettement,
+		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
+		autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
+		capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
+	 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation, 
+		couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
+		dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
 	 	endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
 	 	financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
 	 	liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
@@ -371,13 +372,13 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 	 	performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
 	 	productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
 	 	rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
-	 	rentabilite_nette, resultat_avant_impot, rotation_stocks, statut_juridique, subventions_d_exploitation,
+	 	rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
 	 	taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-	 	taux_valeur_ajoutee, valeur_ajoutee, hash)
+		taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee, hash)
 	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
 	 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
 	 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
- 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74);`
+ 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80);`
 
 	for _, d := range e.Value.Diane {
 		if d.ArreteBilan.IsZero() {
@@ -388,11 +389,12 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 		if id, ok := htreeEntrepriseDiane.contains(hash); !ok {
 			batch.Queue(
 				sqlEntrepriseDiane,
-				d.NumeroSiren, d.ArreteBilan, d.ChiffreAffaire, d.CreditClient, d.ResultatExploitation, d.AchatMarchandises,
-				d.AchatMatieresPremieres, d.AutonomieFinanciere, d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises,
-				d.CAExportation, d.CapaciteAutofinancement, d.CapaciteRemboursement, d.ChargeExceptionnelle, d.ChargePersonnel,
-				d.ChargesFinancieres, d.ConcesBrevEtDroitsSim, d.Consommation, d.CouvertureCaBesoinFdr, d.CouvertureCaFdr,
-				d.CreditFournisseur, d.DegreImmoCorporelle, d.DetteFiscaleEtSociale, d.DotationAmortissement, d.Endettement,
+				d.NumeroSiren, d.ArreteBilan, d.AchatMarchandises, d.AchatMatieresPremieres, d.AutonomieFinanciere,
+				d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises, d.BeneficeOuPerte, d.CAExportation,
+				d.CapaciteAutofinancement, d.CapaciteRemboursement, d.CAparEffectif, d.ChargeExceptionnelle, d.ChargePersonnel,
+				d.ChargesFinancieres, d.ChiffreAffaire, d.ConcesBrevEtDroitsSim, d.ConcoursBancaireCourant, d.Consommation,
+				d.CouvertureCaBesoinFdr, d.CouvertureCaFdr, d.CreditClient, d.CreditFournisseur, d.DegreImmoCorporelle,
+				d.DetteFiscaleEtSociale, d.DotationAmortissement, d.EffectifConsolide, d.EfficaciteEconomique, d.Endettement,
 				d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
 				d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
 				d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
@@ -400,9 +402,9 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 				d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
 				d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
 				d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
-				d.RentabiliteNette, d.ResultatAvantImpot, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
+				d.RentabiliteNette, d.ResultatAvantImpot, d.ResultatExploitation, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
 				d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
-				d.TauxValeurAjoutee, d.ValeurAjoutee, hash,
+				d.TauxMargeCommerciale, d.TauxValeurAjoutee, d.ValeurAjoutee, hash,
 			)
 		} else {
 			updates["entreprise_diane"] = append(updates["entreprise_diane"], id)
