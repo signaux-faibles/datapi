@@ -274,7 +274,7 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 		row.AddCell().Value = fmt.Sprintf("%s", score.Siret)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.CodeDepartement)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.RaisonSociale)
-		row.AddCell().Value = fmt.Sprintf("%f", *score.Effectif)
+		row.AddCell().Value = fmt.Sprintf("%i", *score.Effectif)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.CodeActivite)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.LibelleActivite)
 		row.AddCell().Value = fmt.Sprintf("%s", *score.Alert)
