@@ -199,13 +199,18 @@ type EtablissementProcol struct {
 
 // EtablissementScore …
 type EtablissementScore struct {
-	IDListe string    `json:"idListe"`
-	Batch   string    `json:"batch"`
-	Algo    string    `json:"algo"`
-	Periode time.Time `json:"periode"`
-	Score   float64   `json:"score"`
-	Diff    float64   `json:"diff"`
-	Alert   string    `json:"alert"`
+	IDListe        string             `json:"idListe"`
+	Batch          string             `json:"batch"`
+	Algo           string             `json:"algo"`
+	Periode        time.Time          `json:"periode"`
+	Score          float64            `json:"score"`
+	Diff           float64            `json:"diff"`
+	Alert          string             `json:"alert"`
+	ExplMacroRadar map[string]float64 `json:"explMacroRadar"`
+	ExplSelection  struct {
+		Concerning [][2]string `json:"concerning"`
+		Reassuring [][2]string `json:"reassuring"`
+	} `json:"explSelection"`
 }
 
 func getEntreprise(c *gin.Context) {
