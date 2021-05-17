@@ -208,9 +208,11 @@ type EtablissementScore struct {
 	Alert          string             `json:"alert"`
 	ExplMacroRadar map[string]float64 `json:"explMacroRadar"`
 	ExplSelection  struct {
-		Concerning [][2]string `json:"concerning"`
-		Reassuring [][2]string `json:"reassuring"`
+		Concerning [][2]string `json:"select_concerning"`
+		Reassuring [][2]string `json:"select_reassuring"`
 	} `json:"explSelection"`
+	ExplMacro map[string]float64 `json:"explMacro"`
+	ExplMicro map[string]float64 `json:"explMicro"`
 }
 
 func getEntreprise(c *gin.Context) {
@@ -390,7 +392,8 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	// 	username,
 	// )
 
-	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert
+	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert, 
+		s.expl_selection, s.macro_explain, s.micro_explain, s.macro_radar
 		from score0 s
 		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
 		where (p.siret=any($3) or p.siren=any($4))
@@ -520,7 +523,7 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 	for (*rows).Next() {
 		var sc EtablissementScore
 		var siret string
-		err := (*rows).Scan(&siret, &sc.IDListe, &sc.Batch, &sc.Algo, &sc.Periode, &sc.Score, &sc.Diff, &sc.Alert)
+		err := (*rows).Scan(&siret, &sc.IDListe, &sc.Batch, &sc.Algo, &sc.Periode, &sc.Score, &sc.Diff, &sc.Alert, &sc.ExplSelection, &sc.ExplMacro, &sc.ExplMicro, &sc.ExplMacroRadar)
 		if err != nil {
 			return err
 		}
