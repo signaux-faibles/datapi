@@ -197,6 +197,7 @@ type EtablissementProcol struct {
 	Stade     string    `json:"stade"`
 }
 
+// EtablissementScoreExplSelection …
 type EtablissementScoreExplSelection struct {
 	SelectConcerning [][2]string `json:"selectConcerning"`
 	SelectReassuring [][2]string `json:"-"`
