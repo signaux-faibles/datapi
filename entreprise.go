@@ -213,8 +213,8 @@ type EtablissementScore struct {
 	Alert         string                           `json:"alert"`
 	MacroRadar    map[string]float64               `json:"macroRadar,omitempty"`
 	ExplSelection *EtablissementScoreExplSelection `json:"explSelection,omitempty"`
-	ExplMacro     map[string]float64               `json:"-"`
-	ExplMicro     map[string]float64               `json:"-"`
+	MacroExpl     map[string]float64               `json:"-"`
+	MicroExpl     map[string]float64               `json:"-"`
 }
 
 func getEntreprise(c *gin.Context) {
@@ -397,7 +397,9 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert, 
 		expl_selection_concerning,			
 		s.expl_selection_reassuring, 
-		s.macro_explain, s.micro_explain, s.macro_radar
+		s.macro_expl, 
+		s.micro_expl,
+		s.macro_radar
 		from score0 s
 		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
 		where (p.siret=any($3) or p.siren=any($4))
@@ -529,7 +531,7 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 		var explSelection EtablissementScoreExplSelection
 		var siret string
 		err := (*rows).Scan(&siret, &sc.IDListe, &sc.Batch, &sc.Algo, &sc.Periode, &sc.Score, &sc.Diff, &sc.Alert,
-			&explSelection.SelectConcerning, &explSelection.SelectReassuring, &sc.ExplMacro, &sc.ExplMicro, &sc.MacroRadar)
+			&explSelection.SelectConcerning, &explSelection.SelectReassuring, &sc.MacroExpl, &sc.MicroExpl, &sc.MacroRadar)
 		if err != nil {
 			return err
 		}

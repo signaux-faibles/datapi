@@ -680,7 +680,7 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 	for _, s := range groupScores(e.Scores) {
 		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert, 
-			expl_selection_concerning, expl_selection_reassuring, macro_explain, micro_explain, macro_radar, hash)
+			expl_selection_concerning, expl_selection_reassuring, macro_expl, micro_expl, macro_radar, hash)
 		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 		s.Siret = e.Value.Key
