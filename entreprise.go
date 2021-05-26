@@ -197,22 +197,24 @@ type EtablissementProcol struct {
 	Stade     string    `json:"stade"`
 }
 
+type EtablissementScoreExplSelection struct {
+	SelectConcerning [][2]string `json:"selectConcerning"`
+	SelectReassuring [][2]string `json:"selectReassuring"`
+}
+
 // EtablissementScore …
 type EtablissementScore struct {
-	IDListe        string             `json:"idListe"`
-	Batch          string             `json:"batch"`
-	Algo           string             `json:"algo"`
-	Periode        time.Time          `json:"periode"`
-	Score          float64            `json:"score"`
-	Diff           float64            `json:"diff"`
-	Alert          string             `json:"alert"`
-	ExplMacroRadar map[string]float64 `json:"explMacroRadar"`
-	ExplSelection  struct {
-		Concerning [][2]string `json:"select_concerning"`
-		Reassuring [][2]string `json:"select_reassuring"`
-	} `json:"explSelection"`
-	ExplMacro map[string]float64 `json:"explMacro"`
-	ExplMicro map[string]float64 `json:"explMicro"`
+	IDListe       string                           `json:"idListe"`
+	Batch         string                           `json:"batch"`
+	Algo          string                           `json:"algo"`
+	Periode       time.Time                        `json:"periode"`
+	Score         float64                          `json:"score"`
+	Diff          float64                          `json:"diff"`
+	Alert         string                           `json:"alert"`
+	MacroRadar    map[string]float64               `json:"macroRadar,omitempty"`
+	ExplSelection *EtablissementScoreExplSelection `json:"explSelection,omitempty"`
+	ExplMacro     map[string]float64               `json:"-"`
+	ExplMicro     map[string]float64               `json:"-"`
 }
 
 func getEntreprise(c *gin.Context) {
@@ -393,7 +395,9 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	// )
 
 	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert, 
-		s.expl_selection, s.macro_explain, s.micro_explain, s.macro_radar
+		expl_selection_concerning,			
+		s.expl_selection_reassuring, 
+		s.macro_explain, s.micro_explain, s.macro_radar
 		from score0 s
 		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
 		where (p.siret=any($3) or p.siren=any($4))
@@ -522,10 +526,15 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 	var scores = make(map[string][]EtablissementScore)
 	for (*rows).Next() {
 		var sc EtablissementScore
+		var explSelection EtablissementScoreExplSelection
 		var siret string
-		err := (*rows).Scan(&siret, &sc.IDListe, &sc.Batch, &sc.Algo, &sc.Periode, &sc.Score, &sc.Diff, &sc.Alert, &sc.ExplSelection, &sc.ExplMacro, &sc.ExplMicro, &sc.ExplMacroRadar)
+		err := (*rows).Scan(&siret, &sc.IDListe, &sc.Batch, &sc.Algo, &sc.Periode, &sc.Score, &sc.Diff, &sc.Alert,
+			&explSelection.SelectConcerning, &explSelection.SelectReassuring, &sc.ExplMacro, &sc.ExplMicro, &sc.MacroRadar)
 		if err != nil {
 			return err
+		}
+		if len(explSelection.SelectConcerning)+len(explSelection.SelectReassuring) > 0 {
+			sc.ExplSelection = &explSelection
 		}
 		scores[siret] = append(scores[siret], sc)
 	}

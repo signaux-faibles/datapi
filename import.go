@@ -19,23 +19,23 @@ import (
 )
 
 type score struct {
-	Siret            string        `json:"-"`
-	Libelle          string        `json:"-"`
-	ID               bson.ObjectId `json:"-"`
-	Score            float64       `json:"score"`
-	Diff             float64       `json:"diff"`
-	Timestamp        time.Time     `json:"-"`
-	Alert            string        `json:"alert"`
-	Periode          string        `json:"periode"`
-	Batch            string        `json:"batch"`
-	Algo             string        `json:"algo"`
-	ExplainSelection struct {
+	Siret         string        `json:"-"`
+	Libelle       string        `json:"-"`
+	ID            bson.ObjectId `json:"-"`
+	Score         float64       `json:"score"`
+	Diff          float64       `json:"diff"`
+	Timestamp     time.Time     `json:"-"`
+	Alert         string        `json:"alert"`
+	Periode       string        `json:"periode"`
+	Batch         string        `json:"batch"`
+	Algo          string        `json:"algo"`
+	ExplSelection struct {
 		SelectConcerning [][]string `json:"select_concerning"`
 		SelectReassuring [][]string `json:"select_reassuring"`
 	} `json:"expl_selection"`
-	MacroExplain map[string]float64 `json:"macro_expl"`
-	MicroExplain map[string]float64 `json:"micro_expl"`
-	MacroRadar   map[string]float64 `json:"macro_radar"`
+	MacroExpl  map[string]float64 `json:"macro_expl"`
+	MicroExpl  map[string]float64 `json:"micro_expl"`
+	MacroRadar map[string]float64 `json:"macro_radar"`
 }
 
 // Procol donne le statut et la date de statut pour une entreprise en matière de procédures collectives
@@ -680,8 +680,8 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 	for _, s := range groupScores(e.Scores) {
 		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert, 
-			expl_selection, macro_explain, micro_explain, macro_radar, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)`
+			expl_selection_concerning, expl_selection_reassuring, macro_explain, micro_explain, macro_radar, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 		s.Siret = e.Value.Key
 		s.Libelle = s.toLibelle()
@@ -689,6 +689,21 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		if !contains(viper.GetStringSlice("algoIgnore"), s.Algo) && !contains(viper.GetStringSlice("batchIgnore"), s.Batch) {
 			hash := structhash.Md5(s, 0)
 			if id, ok := htreeScore.contains(hash); !ok {
+				if s.ExplSelection.SelectConcerning == nil {
+					s.ExplSelection.SelectConcerning = make([][]string, 0)
+				}
+				if s.ExplSelection.SelectReassuring == nil {
+					s.ExplSelection.SelectReassuring = make([][]string, 0)
+				}
+				if s.MacroExpl == nil {
+					s.MacroExpl = make(map[string]float64)
+				}
+				if s.MicroExpl == nil {
+					s.MicroExpl = make(map[string]float64)
+				}
+				if s.MacroRadar == nil {
+					s.MacroRadar = make(map[string]float64)
+				}
 				batch.Queue(sqlScore,
 					s.Siret,
 					s.Siret[:9],
@@ -699,9 +714,10 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 					s.Score,
 					s.Diff,
 					s.Alert,
-					s.ExplainSelection,
-					s.MacroExplain,
-					s.MicroExplain,
+					s.ExplSelection.SelectConcerning,
+					s.ExplSelection.SelectReassuring,
+					s.MacroExpl,
+					s.MicroExpl,
 					s.MacroRadar,
 					hash,
 				)
