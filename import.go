@@ -19,16 +19,23 @@ import (
 )
 
 type score struct {
-	Siret     string        `json:"-"`
-	Libelle   string        `json:"-"`
-	ID        bson.ObjectId `json:"-"`
-	Score     float64       `json:"score"`
-	Diff      float64       `json:"diff"`
-	Timestamp time.Time     `json:"-"`
-	Alert     string        `json:"alert"`
-	Periode   string        `json:"periode"`
-	Batch     string        `json:"batch"`
-	Algo      string        `json:"algo"`
+	Siret         string        `json:"-"`
+	Libelle       string        `json:"-"`
+	ID            bson.ObjectId `json:"-"`
+	Score         float64       `json:"score"`
+	Diff          float64       `json:"diff"`
+	Timestamp     time.Time     `json:"-"`
+	Alert         string        `json:"alert"`
+	Periode       string        `json:"periode"`
+	Batch         string        `json:"batch"`
+	Algo          string        `json:"algo"`
+	ExplSelection struct {
+		SelectConcerning [][]string `json:"select_concerning"`
+		SelectReassuring [][]string `json:"select_reassuring"`
+	} `json:"expl_selection"`
+	MacroExpl  map[string]float64 `json:"macro_expl"`
+	MicroExpl  map[string]float64 `json:"micro_expl"`
+	MacroRadar map[string]float64 `json:"macro_radar"`
 }
 
 // Procol donne le statut et la date de statut pour une entreprise en matière de procédures collectives
@@ -672,8 +679,9 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 	}
 
 	for _, s := range groupScores(e.Scores) {
-		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`
+		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert, 
+			expl_selection_concerning, expl_selection_reassuring, macro_expl, micro_expl, macro_radar, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 		s.Siret = e.Value.Key
 		s.Libelle = s.toLibelle()
@@ -681,6 +689,21 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 		if !contains(viper.GetStringSlice("algoIgnore"), s.Algo) && !contains(viper.GetStringSlice("batchIgnore"), s.Batch) {
 			hash := structhash.Md5(s, 0)
 			if id, ok := htreeScore.contains(hash); !ok {
+				if s.ExplSelection.SelectConcerning == nil {
+					s.ExplSelection.SelectConcerning = make([][]string, 0)
+				}
+				if s.ExplSelection.SelectReassuring == nil {
+					s.ExplSelection.SelectReassuring = make([][]string, 0)
+				}
+				if s.MacroExpl == nil {
+					s.MacroExpl = make(map[string]float64)
+				}
+				if s.MicroExpl == nil {
+					s.MicroExpl = make(map[string]float64)
+				}
+				if s.MacroRadar == nil {
+					s.MacroRadar = make(map[string]float64)
+				}
 				batch.Queue(sqlScore,
 					s.Siret,
 					s.Siret[:9],
@@ -691,6 +714,11 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 					s.Score,
 					s.Diff,
 					s.Alert,
+					s.ExplSelection.SelectConcerning,
+					s.ExplSelection.SelectReassuring,
+					s.MacroExpl,
+					s.MicroExpl,
+					s.MacroRadar,
 					hash,
 				)
 			} else {
@@ -941,7 +969,7 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 }
 
 func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
-	var batch pgx.Batch
+	// var batch pgx.Batch
 	var tables = []string{
 		"entreprise",
 		"entreprise_ellisphere",
@@ -957,30 +985,39 @@ func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
 		"score",
 		"liste",
 	}
-	for _, table := range tables {
-		batch.Queue(fmt.Sprintf("update %s set version = version + 1 returning id, case when version = 1 then hash else null end", table))
-	}
+	// for _, table := range tables {
+	// 	batch.Queue(fmt.Sprintf("update %s set version = version + 1 returning id, case when version = 1 then hash else null end", table))
+	// }
 	var htrees = make(map[string]*htree)
-	r := (*tx).SendBatch(context.Background(), &batch)
+
 	for _, table := range tables {
-		tree := &htree{}
-		fmt.Printf("\033[2K\rupdate table %s\n", table)
-		rows, err := r.Query()
+		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("truncate table %s;", table))
+
+		htrees[table] = &htree{}
 		if err != nil {
-			return nil, err
+			return htrees, err
 		}
-		for rows.Next() {
-			var hash []byte
-			var id int
-			err := rows.Scan(&id, &hash)
-			if err != nil {
-				return nil, err
-			}
-			if hash != nil {
-				tree.insert(hash, id)
-			}
-		}
-		htrees[table] = tree
 	}
-	return htrees, r.Close()
+	// r := (*tx).SendBatch(context.Background(), &batch)
+	// for _, table := range tables {
+	// 	tree := &htree{}
+	// 	fmt.Printf("\033[2K\rupdate table %s\n", table)
+	// 	rows, err := r.Query()
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+	// 	for rows.Next() {
+	// 		var hash []byte
+	// 		var id int
+	// 		err := rows.Scan(&id, &hash)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 		if hash != nil {
+	// 			tree.insert(hash, id)
+	// 		}
+	// 	}
+	// 	htrees[table] = tree
+	// }
+	return htrees, nil
 }
