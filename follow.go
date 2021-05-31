@@ -257,7 +257,9 @@ func (follows Follows) toXLS() ([]byte, Jerror) {
 			row.AddCell().Value = ""
 		}
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeActivite)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.LibelleActivite)
+		if f.EtablissementSummary.LibelleActivite != nil {
+			row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.LibelleActivite)
+		}
 		row.AddCell().Value = fmt.Sprintf("%s", *coalescepString(f.EtablissementSummary.Alert, &EmptyString))
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Since)
 		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Category)
