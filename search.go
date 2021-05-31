@@ -1,20 +1,21 @@
 package main
 
 import (
-	"strconv"
-
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
 
 type searchParams struct {
-	search          string
-	page            int
-	ignoreRoles     bool
-	ignoreZone      bool
-	siegeUniquement bool
-	roles           scope
+	Search          string
+	Page            int
+	Departements    []string `json:"zone,omitempty"`
+	EtatsProcol     []string `json:"procol,omitempty"`
+	Activites       []string `json:"activite,omitempty"`
+	EffectifMin     *int     `json:"effectifMin"`
+	EffectifMax     *int     `json:"effectifMax"`
+	SiegeUniquement bool     `json:"siegeUniquement`
 	username        string
+	roles           scope
 }
 
 type searchResult struct {
@@ -30,47 +31,23 @@ type searchResult struct {
 
 func searchEtablissementHandler(c *gin.Context) {
 	var params searchParams
-	var err error
+
+	err := c.Bind(&params)
+	if err != nil {
+		c.Abort()
+		return
+	}
 
 	params.username = c.GetString("username")
 
-	if search := c.Param("search"); len(search) >= 3 {
-		params.search = search
-	} else {
+	if len(params.Search) < 3 {
 		c.JSON(400, "search string length < 3")
 		return
 	}
 
-	if page, ok := c.GetQuery("page"); ok {
-		params.page, err = strconv.Atoi(page)
-		if err != nil {
-			c.JSON(400, "page has to be integer >= 0")
-			return
-		}
-	}
-
-	if ignoreRoles, ok := c.GetQuery("ignoreroles"); ok {
-		params.ignoreRoles, err = strconv.ParseBool(ignoreRoles)
-		if err != nil {
-			c.JSON(400, "france is either `true` or `false`")
-			return
-		}
-	}
-
-	if ignoreZone, ok := c.GetQuery("ignorezone"); ok {
-		params.ignoreZone, err = strconv.ParseBool(ignoreZone)
-		if err != nil {
-			c.JSON(400, "roles is either  `true` or `false`")
-			return
-		}
-	}
-
-	if siegeUniquement, ok := c.GetQuery("siegeUniquement"); ok {
-		params.siegeUniquement, err = strconv.ParseBool(siegeUniquement)
-		if err != nil {
-			c.JSON(400, "siegeUniquement is either `true` or `false`")
-			return
-		}
+	if params.Page < 0 {
+		c.JSON(400, "page has to be integer >= 0")
+		return
 	}
 
 	params.roles = scopeFromContext(c)
@@ -92,11 +69,31 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	zoneGeo := params.roles.zoneGeo()
 	limit := viper.GetInt("searchPageLength")
 
-	offset := params.page * limit
+	offset := params.Page * limit
+
+	// p.zoneGeo,
+	// p.limit,
+	// p.offset,
+	// p.libelleListe,
+	// expressionSiret,
+	// expressionRaisonSociale,
+	// p.ignoreRoles,
+	// p.ignoreZone,
+	// p.userName,
+	// p.siegeUniquement,
+	// p.orderBy,
+	// p.alertOnly,
+	// p.etatsProcol,
+	// p.departements,
+	// p.suivi,
+	// p.effectifMin,
+	// p.effectifMax,
+	// p.sirens,
+	// p.activites,
 
 	summaryparams := summaryParams{
-		zoneGeo, &limit, &offset, &liste[0].ID, &params.search, &params.ignoreRoles, &params.ignoreZone,
-		params.username, params.siegeUniquement, "raison_sociale", &False, nil, nil, nil, nil, nil, nil, nil,
+		zoneGeo, &limit, &offset, &liste[0].ID, &params.Search, &True, &True,
+		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil, params.EffectifMin, nil, nil, params.Activites,
 	}
 
 	summaries, err := getSummaries(summaryparams)
@@ -112,9 +109,9 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		search.NBF1 = *summaries.global.countF1
 		search.NBF2 = *summaries.global.countF2
 	}
-	search.From = limit*params.page + 1
-	search.To = limit*params.page + len(search.Results)
-	search.Page = params.page
+	search.From = limit*params.Page + 1
+	search.To = limit*params.Page + len(search.Results)
+	search.Page = params.Page
 	search.PageMax = (search.Total - 1) / limit
 
 	if len(search.Results) == 0 {
