@@ -64,8 +64,8 @@ type dbFollowExport struct {
 	DerniereAlerte                    string
 }
 
-func getWekanExport(sirets []string) []WekanExport {
-	var export []dbFollowExport
+func getWekanExport(sirets []string) ([]dbFollowExport, error) {
+	var exports []dbFollowExport
 	sqlExport := `select 
 			et.departement as code_departement,
 			d.libelle as libelle_departement,
@@ -104,11 +104,26 @@ func getWekanExport(sirets []string) []WekanExport {
 		left join v_last_effectif e on e.siret = et.siret
 		left join v_diane_variation_ca di on di.siren = et.siren
 		left join v_last_procol pc on pc.siret = et.siret
-		left join etablissement_follow ef on ef.siret = et.siret and active and username = 'toto'
 		left join v_alert_etablissement aet on aet.siret = et.siret
+		where et.siret = any($1)
 	`
 
-	db.Query(context.Background(), sqlExport)
-	// secteurCovid.get("coucou")
-	return export
+	rows, err := db.Query(context.Background(), sqlExport, sirets)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var e dbFollowExport
+		err := rows.Scan(&e.codeDepartement, &e.libelleDepartement, &e.commune, &e.codeTerritoireIndustrie, &e.libelleTerritoireIndustrie, &e.statutJuridiqueN3, &e.statutJuridiqueN2, &e.statutJuridiqueN2,
+			&e.dateCreationEtablissement, &e.dateCreationEntreprise, &e.dernierEffectif, &e.dateDernierEffectif, &e.dateArreteBilan,
+			&e.ExerciceDiane, &e.ChiffreAffaire, &e.ChiffreAffairePrecedent, &e.VariationCA, &e.ResultatExploitation, &e.ResultatExploitationPrecedent, &e.ExcedentBrutExploitation, &e.ExcedentBrutExploitationPrecedent,
+			&e.HistoriqueProcedureCollective, &e.CurrentListe, &e.DerniereListe, &e.DerniereAlerte)
+		if err != nil {
+			return nil, err
+		}
+		exports = append(exports, e)
+	} // secteurCovid.get("coucou")
+	return exports, nil
 }
