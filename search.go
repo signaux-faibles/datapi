@@ -11,7 +11,7 @@ type searchParams struct {
 	Departements    []string `json:"departements,omitempty"`
 	Activites       []string `json:"activite,omitempty"`
 	EffectifMin     *int     `json:"effectifMin"`
-	SiegeUniquement bool     `json:"siegeUniquement`
+	SiegeUniquement bool     `json:"siegeUniquement"`
 	username        string
 	roles           scope
 }
