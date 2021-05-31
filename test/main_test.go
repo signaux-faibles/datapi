@@ -50,7 +50,7 @@ func TestFollow(t *testing.T) {
 
 func TestSearch(t *testing.T) {
 	t.Log("/etablissement/search retourne 400")
-	resp, _, _ := get(t, "/etablissement/search/t")
+	resp, _, _ := post(t, "/etablissement/search/t", nil)
 	if resp.StatusCode != 400 {
 		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
 	}
@@ -60,7 +60,16 @@ func TestSearch(t *testing.T) {
 	inner join regions r on r.id = d.id_region
 	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
 	order by substring(e.siret from 1 for 3)
-	limit 10`)
+	limit 5
+	union all
+	select distinct substring(e.raison_sociale from 1 for 3) from etablissement e
+	inner join entreprise et on et.siren = e.siren
+	inner join departements d on d.code = e.departement
+	inner join regions r on r.id = d.id_region
+	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
+	order by substring(e.raison_sociale from 1 for 3)
+	limit 5
+	`)
 	if err != nil {
 		t.Errorf("impossible de se connecter à la base: %s", err.Error())
 	}
@@ -73,8 +82,10 @@ func TestSearch(t *testing.T) {
 			t.Errorf("siret illisible: %s", err.Error())
 		}
 
+		params := make(map[string]interface{})
+		params["search"] = siret
 		t.Logf("la recherche %s est bien de la forme attendue", siret)
-		_, indented, _ := get(t, "/etablissement/search/"+siret)
+		_, indented, _ := post(t, "/etablissement/search", params)
 		goldenFilePath := fmt.Sprintf("data/search-%d.json.gz", i)
 		processGoldenFile(t, goldenFilePath, indented)
 		i++
