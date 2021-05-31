@@ -9,9 +9,11 @@ type searchParams struct {
 	Search          string   `json:"search"`
 	Page            int      `json:"page"`
 	Departements    []string `json:"departements,omitempty"`
-	Activites       []string `json:"activite,omitempty"`
+	Activites       []string `json:"activites,omitempty"`
 	EffectifMin     *int     `json:"effectifMin"`
 	SiegeUniquement bool     `json:"siegeUniquement"`
+	IgnoreRoles     bool     `json:"ignoreRoles"`
+	IgnoreZone      bool     `json:"ignoreZone"`
 	username        string
 	roles           scope
 }
@@ -70,7 +72,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	offset := params.Page * limit
 
 	summaryparams := summaryParams{
-		zoneGeo, &limit, &offset, &liste[0].ID, &params.Search, &True, &True,
+		zoneGeo, &limit, &offset, &liste[0].ID, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
 		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil, params.EffectifMin, nil, nil, params.Activites,
 	}
 

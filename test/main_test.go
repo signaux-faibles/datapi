@@ -49,26 +49,23 @@ func TestFollow(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
+	// tester le retour 400 en cas de recherche trop courte
 	t.Log("/etablissement/search retourne 400")
-	resp, _, _ := post(t, "/etablissement/search/t", nil)
+	params := map[string]interface{}{
+		"search": "t",
+	}
+	resp, _, _ := post(t, "/etablissement/search", params)
 	if resp.StatusCode != 400 {
 		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
 	}
 
+	// tester la recherche par chaine de caractères
 	rows, err := db.Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
 	inner join departements d on d.code = e.departement
 	inner join regions r on r.id = d.id_region
 	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
 	order by substring(e.siret from 1 for 3)
-	limit 5
-	union all
-	select distinct substring(e.raison_sociale from 1 for 3) from etablissement e
-	inner join entreprise et on et.siren = e.siren
-	inner join departements d on d.code = e.departement
-	inner join regions r on r.id = d.id_region
-	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
-	order by substring(e.raison_sociale from 1 for 3)
-	limit 5
+	limit 10
 	`)
 	if err != nil {
 		t.Errorf("impossible de se connecter à la base: %s", err.Error())
@@ -84,12 +81,63 @@ func TestSearch(t *testing.T) {
 
 		params := make(map[string]interface{})
 		params["search"] = siret
+		params["ignoreZone"] = false
+		params["ignoreRoles"] = false
 		t.Logf("la recherche %s est bien de la forme attendue", siret)
 		_, indented, _ := post(t, "/etablissement/search", params)
 		goldenFilePath := fmt.Sprintf("data/search-%d.json.gz", i)
 		processGoldenFile(t, goldenFilePath, indented)
 		i++
 	}
+
+	// tester par département
+	var departements []string
+	var siret string
+	err = db.QueryRow(
+		context.Background(),
+		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) from etablissement where departement < '10' and departement != '00'`,
+	).Scan(&departements, &siret)
+	if err != nil {
+		t.Errorf("impossible de se connecter à la base: %s", err.Error())
+	}
+
+	params = map[string]interface{}{
+		"departements": departements,
+		"search":       siret,
+		"ignoreZone":   true,
+		"ignoreRoles":  true,
+	}
+
+	t.Log("la recherche filtrée par départements est bien de la forme attendue")
+	_, indented, _ := post(t, "/etablissement/search", params)
+	goldenFilePath := "data/searchDepartement.json.gz"
+	processGoldenFile(t, goldenFilePath, indented)
+	i++
+
+	// tester par activité
+	err = db.QueryRow(
+		context.Background(),
+		`select substring(first(siret) from 1 for 3)
+		 from etablissement e
+		 inner join v_naf n on n.code_n5 = e.code_activite
+		 where code_n1 in ('A', 'B', 'C')
+		`,
+	).Scan(&siret)
+	if err != nil {
+		t.Errorf("impossible de se connecter à la base: %s", err.Error())
+	}
+
+	params = map[string]interface{}{
+		"activites":   []string{"A", "B", "C"},
+		"search":      siret,
+		"ignoreZone":  true,
+		"ignoreRoles": true,
+	}
+
+	t.Log("la recherche filtrée par activites est bien de la forme attendue")
+	_, indented, _ = post(t, "/etablissement/search", params)
+	goldenFilePath = "data/searchActivites.json.gz"
+	processGoldenFile(t, goldenFilePath, indented)
 }
 func TestScores(t *testing.T) {
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
