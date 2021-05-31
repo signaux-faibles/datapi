@@ -6,13 +6,11 @@ import (
 )
 
 type searchParams struct {
-	Search          string
-	Page            int
-	Departements    []string `json:"zone,omitempty"`
-	EtatsProcol     []string `json:"procol,omitempty"`
+	Search          string   `json:"search"`
+	Page            int      `json:"page"`
+	Departements    []string `json:"departements,omitempty"`
 	Activites       []string `json:"activite,omitempty"`
 	EffectifMin     *int     `json:"effectifMin"`
-	EffectifMax     *int     `json:"effectifMax"`
 	SiegeUniquement bool     `json:"siegeUniquement`
 	username        string
 	roles           scope
@@ -70,26 +68,6 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	limit := viper.GetInt("searchPageLength")
 
 	offset := params.Page * limit
-
-	// p.zoneGeo,
-	// p.limit,
-	// p.offset,
-	// p.libelleListe,
-	// expressionSiret,
-	// expressionRaisonSociale,
-	// p.ignoreRoles,
-	// p.ignoreZone,
-	// p.userName,
-	// p.siegeUniquement,
-	// p.orderBy,
-	// p.alertOnly,
-	// p.etatsProcol,
-	// p.departements,
-	// p.suivi,
-	// p.effectifMin,
-	// p.effectifMax,
-	// p.sirens,
-	// p.activites,
 
 	summaryparams := summaryParams{
 		zoneGeo, &limit, &offset, &liste[0].ID, &params.Search, &True, &True,
