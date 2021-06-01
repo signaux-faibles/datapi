@@ -17,11 +17,27 @@ create unique index idx_v_alert_etablissement_siret
   on v_alert_etablissement (siret);
   
 create materialized view v_last_procol as
-select siret, last(action_procol order by date_effet) as last_procol,
-last(stade_procol) as last_stade_procol,
-jsonb_agg(
-	jsonb_build_object('date_effet', date_effet, 'stade', stade_procol, 'action', action_procol) order by date_effet desc
-) as procol_history
+select siret, 
+case 
+  when 'liquidation' = any(array_agg(action_procol))
+    then 'liquidation' 
+  when 'redressement' = any(array_agg(action_procol))
+    then case
+	  when 'redressement_plan_continuation' = any(array_agg(action_procol || '_' || stade_procol))
+	    then 'plan_continuation'
+	    else 'redressement'
+	  end
+  when 'sauvegarde' = any(array_agg(action_procol))
+  	then case
+	  when 'sauvegarde_plan_continuation' = any(array_agg(action_procol || '_' || stade_procol))
+	  	then 'plan_sauvegarde'
+	    else 'sauvegarde'
+	  end
+  end as last_procol,
+  max(date_effet) as date_effet,
+  jsonb_agg(
+	jsonb_build_object('date_effet', date_effet, 'action', action_procol, 'stade', stade_procol) order by date_effet desc
+  ) as procol_history
 from etablissement_procol0
 group by siret;
 
