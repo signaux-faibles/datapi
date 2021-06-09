@@ -541,7 +541,7 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 		if err != nil {
 			return err
 		}
-		if len(explSelection.SelectConcerning)+len(explSelection.SelectReassuring) > 0 {
+		if len(explSelection.SelectConcerning) > 0 {
 			sc.ExplSelection = &explSelection
 		}
 		scores[siret] = append(scores[siret], sc)
