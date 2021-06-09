@@ -33,9 +33,10 @@ type score struct {
 		SelectConcerning [][]string `json:"select_concerning"`
 		SelectReassuring [][]string `json:"select_reassuring"`
 	} `json:"expl_selection"`
-	MacroExpl  map[string]float64 `json:"macro_expl"`
-	MicroExpl  map[string]float64 `json:"micro_expl"`
-	MacroRadar map[string]float64 `json:"macro_radar"`
+	MacroExpl             map[string]float64 `json:"macro_expl"`
+	MicroExpl             map[string]float64 `json:"micro_expl"`
+	MacroRadar            map[string]float64 `json:"macro_radar"`
+	AlertPreRedressements string             `json:"alert_pre_redressements"`
 }
 
 // Procol donne le statut et la date de statut pour une entreprise en matière de procédures collectives
@@ -680,8 +681,8 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 
 	for _, s := range groupScores(e.Scores) {
 		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert, 
-			expl_selection_concerning, expl_selection_reassuring, macro_expl, micro_expl, macro_radar, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
+			expl_selection_concerning, expl_selection_reassuring, macro_expl, micro_expl, macro_radar, alert_pre_redressements, redressements, hash)
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`
 
 		s.Siret = e.Value.Key
 		s.Libelle = s.toLibelle()
@@ -704,6 +705,13 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 				if s.MacroRadar == nil {
 					s.MacroRadar = make(map[string]float64)
 				}
+				redressements := []string{}
+				if s.AlertPreRedressements == "" {
+					s.AlertPreRedressements = s.Alert
+				}
+				if s.Alert != s.AlertPreRedressements {
+					redressements = append(redressements, "detteUrssaf")
+				}
 				batch.Queue(sqlScore,
 					s.Siret,
 					s.Siret[:9],
@@ -719,6 +727,8 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 					s.MacroExpl,
 					s.MicroExpl,
 					s.MacroRadar,
+					s.AlertPreRedressements,
+					redressements,
 					hash,
 				)
 			} else {
