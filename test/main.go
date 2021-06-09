@@ -234,7 +234,12 @@ func testEtablissementVAF(t *testing.T, siret string, vaf string) {
 func testSearchVAF(t *testing.T, siret string, vaf string) {
 	goldenFilePath := fmt.Sprintf("data/getSearch-%s-%s.json.gz", vaf, siret)
 	t.Logf("la recherche renvoie l'établissement %s sous la forme attendue (ref %s)", siret, goldenFilePath)
-	_, indented, _ := get(t, "/etablissement/search/"+siret+"?ignorezone=true&ignoreroles=true")
+	params := map[string]interface{}{
+		"search":      siret,
+		"ignoreZone":  true,
+		"ignoreRoles": true,
+	}
+	_, indented, _ := post(t, "/etablissement/search", params)
 	diff, _ := processGoldenFile(t, goldenFilePath, indented)
 	if diff != "" {
 		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
