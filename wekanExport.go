@@ -35,6 +35,7 @@ type abstractProcol struct {
 	Action    string    `json:"action"`
 	Stade     string    `json:"stade"`
 }
+
 type dbFollowExport struct {
 	codeDepartement                   string
 	libelleDepartement                string
