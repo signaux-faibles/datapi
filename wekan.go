@@ -6,8 +6,6 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
-	"github.com/spf13/viper"
-	"github.com/gin-gonic/gin"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -18,81 +16,84 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // WekanConfig type pour le fichier de configuration de Wekan
 type WekanConfig struct {
-	Boards	map[string]struct {
-		BoardID			string				`json:"boardId"`
-		Slug			string				`json:"slug"`
-		Swimlanes		map[string]string	`json:"swimlanes"`
-		Lists			[]string			`json:"lists"`
-		CustomFields	struct {
-			SiretField				string		`json:"siretField"`
-			ActiviteField			string		`json:"activiteField"`
-			EffectifField			struct {
-				EffectifFieldID		string		`json:"effectifFieldId"`
-				EffectifFieldItems	[]string	`json:"effectifFieldItems"`
-			}	`json:"effectifField"`
-			FicheSFField			string		`json:"ficheSFField"`
-		}	`json:"customFields"`
-	}	`json:"boards"`
-	Users	map[string]string	`json:"users"`
+	Boards map[string]struct {
+		BoardID      string            `json:"boardId"`
+		Slug         string            `json:"slug"`
+		Swimlanes    map[string]string `json:"swimlanes"`
+		Lists        []string          `json:"lists"`
+		CustomFields struct {
+			SiretField    string `json:"siretField"`
+			ActiviteField string `json:"activiteField"`
+			EffectifField struct {
+				EffectifFieldID    string   `json:"effectifFieldId"`
+				EffectifFieldItems []string `json:"effectifFieldItems"`
+			} `json:"effectifField"`
+			FicheSFField string `json:"ficheSFField"`
+		} `json:"customFields"`
+	} `json:"boards"`
+	Users map[string]string `json:"users"`
 }
 
 // Token type pour faire persister en mémoire les tokens réutilisables
 type Token struct {
-	Value			string
-	CreationDate	time.Time
+	Value        string
+	CreationDate time.Time
 }
 
 // WekanLogin type pour les réponses du service de login
 type WekanLogin struct {
-	ID				string	`json:"id"`
-	Token			string	`json:"token"`
-	TokenExpires	string	`json:"tokenExpires"`
+	ID           string `json:"id"`
+	Token        string `json:"token"`
+	TokenExpires string `json:"tokenExpires"`
 }
 
 // WekanCreateToken type pour les réponses du service de création de token
 type WekanCreateToken struct {
-	ID				string	`json:"_id"`
-	AuthToken		string	`json:"authToken"`
+	ID        string `json:"_id"`
+	AuthToken string `json:"authToken"`
 }
 
 // WekanGetCard type pour les réponses du service de recherche de carte
 type WekanGetCard []struct {
-	ID				string	`json:"_id"`
-	ListID			string	`json:"listId"`
-	Description		string	`json:"description"`
+	ID          string `json:"_id"`
+	ListID      string `json:"listId"`
+	Description string `json:"description"`
 }
 
 // WekanCreateCard type pour les réponses du service de création de carte
 type WekanCreateCard struct {
-	ID				string	`json:"_id"`
+	ID string `json:"_id"`
 }
 
 // CustomField type pour les champs personnalisés lors de l'édition de carte
 type CustomField struct {
-	ID				string	`json:"_id"`
-	Value			string	`json:"value"`
+	ID    string `json:"_id"`
+	Value string `json:"value"`
 }
 
 // FicheCRP type pour les fiches CRP
 type FicheCRP struct {
-	Siret			string
-	Commentaire		string
-	Description		string
+	Siret       string
+	Commentaire string
+	Description string
 }
 
 // EtablissementData type pour les données de l'établissement à faire figurer sur la carte Wekan
 type EtablissementData struct {
-	Siret			string
-	RaisonSociale	string
-	Departement		string
-	Region			string
-	Effectif		int
-	CodeActivite	string
-	LibelleActivite	string
+	Siret           string
+	RaisonSociale   string
+	Departement     string
+	Region          string
+	Effectif        int
+	CodeActivite    string
+	LibelleActivite string
 }
 
 var tokens sync.Map
@@ -177,7 +178,7 @@ func wekanGetCardHandler(c *gin.Context) {
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
-	}	
+	}
 	boardID := board.BoardID
 	siretField := board.CustomFields.SiretField
 	body, err := getCard(userToken.Value, boardID, siretField, siret)
@@ -191,7 +192,7 @@ func wekanGetCardHandler(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	if (len(wekanGetCard) == 0) {
+	if len(wekanGetCard) == 0 {
 		c.JSON(404, "card not found")
 		return
 	}
@@ -203,9 +204,9 @@ func wekanGetCardHandler(c *gin.Context) {
 	wekanURL := viper.GetString("wekanURL")
 	cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
 	cardData := map[string]interface{}{
-		"cardId": cardID,
-		"listIndex": listIndex,
-		"cardURL": cardURL,
+		"cardId":          cardID,
+		"listIndex":       listIndex,
+		"cardURL":         cardURL,
 		"cardDescription": cardDescription,
 	}
 	c.JSON(200, cardData)
@@ -226,7 +227,7 @@ func wekanNewCardHandler(c *gin.Context) {
 	if !ok {
 		c.JSON(403, "not a wekan user")
 		return
-	}	
+	}
 	var adminToken Token
 	adminUsername := viper.GetString("wekanAdminUsername")
 	loadedToken, ok := tokens.Load(adminUsername)
@@ -292,7 +293,7 @@ func wekanNewCardHandler(c *gin.Context) {
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
-	}	
+	}
 	boardID := board.BoardID
 	listID := board.Lists[0]
 	// fields formatting
@@ -301,16 +302,16 @@ func wekanNewCardHandler(c *gin.Context) {
 	if !ok {
 		c.JSON(500, "not a departement of this region")
 		return
-	}	
+	}
 	activite := formatActiviteField(etsData.CodeActivite, etsData.LibelleActivite)
 	ficheSF := formatFicheSFField(etsData.Siret)
 	effectifIndex := getEffectifIndex(etsData.Effectif)
 	// new card
 	title := etsData.RaisonSociale
 	creationData := map[string]interface{}{
-		"authorId": userID,
-		"members": [1]string{userID},
-		"title": title,
+		"authorId":   userID,
+		"members":    [1]string{userID},
+		"title":      title,
 		"swimlaneId": swimlaneID,
 	}
 	body, err := ioutil.ReadAll(c.Request.Body)
@@ -325,7 +326,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		return
 	}
 	description := requestData["description"]
-	if (description != "") {
+	if description != "" {
 		creationData["description"] = description
 	}
 	body, err = createCard(userToken.Value, boardID, listID, creationData)
@@ -345,16 +346,16 @@ func wekanNewCardHandler(c *gin.Context) {
 		{board.CustomFields.SiretField, siret},
 		{board.CustomFields.FicheSFField, ficheSF},
 	}
-	if (activite != "") {
+	if activite != "" {
 		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
 	}
-	if (effectifIndex > 0) {
+	if effectifIndex > 0 {
 		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 	}
 	now := time.Now()
 	var editionData = map[string]interface{}{
 		"customFields": customFields,
-		"startAt": now,
+		"startAt":      now,
 	}
 	_, err = editCard(adminToken.Value, boardID, listID, cardID, editionData)
 	if err != nil {
@@ -388,13 +389,13 @@ func wekanImportHandler(c *gin.Context) {
 		return
 	}
 	var tableauCRP []FicheCRP
-	var invalidLines []string 
+	var invalidLines []string
 	for i, line := range csvLines {
 		if i > 1 {
 			siret := strings.ReplaceAll(line[1], " ", "")
 			match, err := regexp.MatchString("^[0-9]{14}$", siret)
 			if err != nil || !match {
-				invalidLines = append(invalidLines, "#" + strconv.Itoa(i + 1))
+				invalidLines = append(invalidLines, "#"+strconv.Itoa(i+1))
 			} else {
 				commentaire := "**Difficultés rencontrées par l'entreprise**\n" + line[16] + "\n\n**Etat du climat social**\n" + line[19] + "\n\n**Etat du dossier**\n" + line[22] + "\n\n**Actions et échéances à venir**\n" + line[24] + "\n\n**Commentaires sur l'entreprise**\n" + line[25] + "\n\n**Commentaires sur la situation**\n" + line[26] + "\n\n"
 				description := line[27]
@@ -404,7 +405,7 @@ func wekanImportHandler(c *gin.Context) {
 		}
 	}
 	log.Printf("%d lines to import", len(tableauCRP))
-	if (len(invalidLines) > 0) {
+	if len(invalidLines) > 0 {
 		log.Printf("%d invalid lines : %s", len(invalidLines), strings.Join(invalidLines, ", "))
 	} else {
 		log.Printf("no invalid lines")
@@ -422,14 +423,14 @@ func wekanImportHandler(c *gin.Context) {
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
-	}	
+	}
 	boardID := board.BoardID
 	listID := board.Lists[0]
 	userID, ok := config.Users[username]
 	if !ok {
 		c.JSON(500, "not a wekan user")
 		return
-	}	
+	}
 	log.Printf("3. admin login")
 	var adminToken Token
 	adminUsername := viper.GetString("wekanAdminUsername")
@@ -521,13 +522,13 @@ func wekanImportHandler(c *gin.Context) {
 		// new card
 		title := etsData.RaisonSociale
 		creationData := map[string]interface{}{
-			"authorId": userID,
-			"members": [1]string{userID},
-			"title": title,
+			"authorId":   userID,
+			"members":    [1]string{userID},
+			"title":      title,
 			"swimlaneId": swimlaneID,
 		}
 		description := ficheCRP.Description
-		if (description != "") {
+		if description != "" {
 			creationData["description"] = description
 		}
 		body, err := createCard(userToken.Value, boardID, listID, creationData)
@@ -547,12 +548,12 @@ func wekanImportHandler(c *gin.Context) {
 			{board.CustomFields.SiretField, siret},
 			{board.CustomFields.FicheSFField, ficheSF},
 		}
-		if (activite != "") {
+		if activite != "" {
 			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
 		} else {
 			log.Printf("unknown activite")
 		}
-		if (effectifIndex > 0) {
+		if effectifIndex > 0 {
 			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 		} else {
 			log.Printf("unknown effectif class")
@@ -560,7 +561,7 @@ func wekanImportHandler(c *gin.Context) {
 		now := time.Now()
 		var editionData = map[string]interface{}{
 			"customFields": customFields,
-			"startAt": now,
+			"startAt":      now,
 		}
 		_, err = editCard(userToken.Value, boardID, listID, cardID, editionData)
 		if err != nil {
@@ -571,7 +572,7 @@ func wekanImportHandler(c *gin.Context) {
 		comment := ficheCRP.Commentaire
 		commentData := map[string]string{
 			"authorId": userID,
-			"comment": comment,
+			"comment":  comment,
 		}
 		_, err = commentCard(userToken.Value, boardID, cardID, commentData)
 		if err != nil {
@@ -582,12 +583,94 @@ func wekanImportHandler(c *gin.Context) {
 	}
 }
 
+func wekanGetListCardsHandler(c *gin.Context) {
+	configFile := viper.GetString("wekanConfigFile")
+	fileContent, err := ioutil.ReadFile(configFile)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	var config WekanConfig
+	err = json.Unmarshal(fileContent, &config)
+	var adminToken Token
+	adminUsername := viper.GetString("wekanAdminUsername")
+	loadedToken, ok := tokens.Load(adminUsername)
+	if loadedToken != nil {
+		adminToken = loadedToken.(Token)
+		ok = isValidToken(adminToken)
+	}
+	if !ok {
+		log.Printf("no valid admin token")
+		adminPassword := viper.GetString("wekanAdminPassword")
+		body, err := adminLogin(adminUsername, adminPassword)
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+		wekanLogin := WekanLogin{}
+		err = json.Unmarshal(body, &wekanLogin)
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+		adminToken.Value = wekanLogin.Token
+		now := time.Now()
+		adminToken.CreationDate = now
+		tokens.Store(adminUsername, adminToken)
+	} else {
+		log.Printf("existing admin token")
+	}
+	region := "Auvergne-Rhône-Alpes"
+	board, ok := config.Boards[region]
+	if !ok {
+		c.JSON(500, "missing board in config file")
+		return
+	}
+	boardID := board.BoardID
+	var cardDataArray = []map[string]interface{}{}
+	for _, listID := range board.Lists[:4] {
+		log.Printf("listID=%s", listID)
+		body, err := getListCards(adminToken.Value, boardID, listID)
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+		var wekanGetCard WekanGetCard
+		err = json.Unmarshal(body, &wekanGetCard)
+		if err != nil {
+			c.JSON(500, err.Error())
+			return
+		}
+		if len(wekanGetCard) == 0 {
+			c.JSON(404, "card not found")
+			return
+		}
+		for _, card := range wekanGetCard {
+			cardID := card.ID
+			cardDescription := card.Description
+			lists := board.Lists
+			listIndex := indexOf(card.ListID, lists)
+			wekanURL := viper.GetString("wekanURL")
+			cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
+			cardData := map[string]interface{}{
+				"cardId":          cardID,
+				"listIndex":       listIndex,
+				"cardURL":         cardURL,
+				"cardDescription": cardDescription,
+			}
+			cardDataArray = append(cardDataArray, cardData)
+		}
+	}
+	log.Printf("cardDataArray=%s", len(cardDataArray))
+	c.JSON(200, "OK")
+}
+
 func adminLogin(username string, password string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
 	data := url.Values{}
 	data.Set("username", username)
 	data.Set("password", password)
-	req, err := http.NewRequest("POST", wekanURL + "users/login", strings.NewReader(data.Encode()))
+	req, err := http.NewRequest("POST", wekanURL+"users/login", strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, err
 	}
@@ -604,12 +687,12 @@ func adminLogin(username string, password string) ([]byte, error) {
 
 func createToken(userID string, adminToken string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
-	req, err := http.NewRequest("POST", wekanURL + "api/createtoken/" + userID, nil)
+	req, err := http.NewRequest("POST", wekanURL+"api/createtoken/"+userID, nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer " + adminToken)
+	req.Header.Add("Authorization", "Bearer "+adminToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if err != nil {
@@ -619,17 +702,37 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
+func getListCards(userToken string, boardID string, listID string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
-	req, err := http.NewRequest("GET", wekanURL + "api/boards/" + boardID + "/cardsByCustomField/" + siretField + "/" + siret, nil)
+	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards", nil)
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer " + userToken)
+	req.Header.Add("Authorization", "Bearer "+userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if (resp.StatusCode != http.StatusOK) {
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("unexpected wekan API response")
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
+}
+
+func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
+	wekanURL := viper.GetString("wekanURL")
+	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/cardsByCustomField/"+siretField+"/"+siret, nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+userToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if resp.StatusCode != http.StatusOK {
 		err = errors.New("unexpected wekan API response")
 	}
 	if err != nil {
@@ -645,16 +748,16 @@ func createCard(userToken string, boardID string, listID string, creationData ma
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", wekanURL + "api/boards/" + boardID + "/lists/" + listID + "/cards", bytes.NewBuffer(json))
+	req, err := http.NewRequest("POST", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards", bytes.NewBuffer(json))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer " + userToken)
+	req.Header.Add("Authorization", "Bearer "+userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if (resp.StatusCode != http.StatusOK) {
+	if resp.StatusCode != http.StatusOK {
 		err = errors.New("unexpected wekan API response")
 	}
 	if err != nil {
@@ -670,16 +773,16 @@ func editCard(userToken string, boardID string, listID string, cardID string, ed
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("PUT", wekanURL + "api/boards/" + boardID + "/lists/" + listID + "/cards/" + cardID , bytes.NewBuffer(json))
+	req, err := http.NewRequest("PUT", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards/"+cardID, bytes.NewBuffer(json))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer " + userToken)
+	req.Header.Add("Authorization", "Bearer "+userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if (resp.StatusCode != http.StatusOK) {
+	if resp.StatusCode != http.StatusOK {
 		err = errors.New("unexpected wekan API response")
 	}
 	if err != nil {
@@ -695,16 +798,16 @@ func commentCard(userToken string, boardID string, cardID string, commentData ma
 	if err != nil {
 		return nil, err
 	}
-	req, err := http.NewRequest("POST", wekanURL + "api/boards/" + boardID + "/cards/" + cardID + "/comments", bytes.NewBuffer(json))
+	req, err := http.NewRequest("POST", wekanURL+"api/boards/"+boardID+"/cards/"+cardID+"/comments", bytes.NewBuffer(json))
 	if err != nil {
 		return nil, err
 	}
 	req.Header.Add("Content-Type", "application/json")
 	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer " + userToken)
+	req.Header.Add("Authorization", "Bearer "+userToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if (resp.StatusCode != http.StatusOK) {
+	if resp.StatusCode != http.StatusOK {
 		err = errors.New("unexpected wekan API response")
 	}
 	if err != nil {
@@ -714,17 +817,17 @@ func commentCard(userToken string, boardID string, cardID string, commentData ma
 	return ioutil.ReadAll(resp.Body)
 }
 
-func isValidToken(token Token) (bool) {
+func isValidToken(token Token) bool {
 	duration := time.Since(token.CreationDate)
 	hours := duration.Hours()
 	days := hours / 24
 	if days < float64(viper.GetInt("wekanTokenDays")) {
 		return true
-	} 
+	}
 	return false
 }
 
-func indexOf(element string, array []string) (int) {
+func indexOf(element string, array []string) int {
 	for i, v := range array {
 		if element == v {
 			return i
@@ -749,19 +852,19 @@ func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
 	return etsData, nil
 }
 
-func formatActiviteField(codeActivite string, libelleActivite string) (string) {
+func formatActiviteField(codeActivite string, libelleActivite string) string {
 	var activite string
-	if (len(libelleActivite) > 0 && len(codeActivite) > 0) {
+	if len(libelleActivite) > 0 && len(codeActivite) > 0 {
 		activite = libelleActivite + " (" + codeActivite + ")"
 	}
 	return activite
 }
 
-func getEffectifIndex(effectif int) (int){
+func getEffectifIndex(effectif int) int {
 	var effectifIndex = -1
 	effectifClass := [4]int{10, 20, 50, 100}
 	for i := len(effectifClass) - 1; i >= 0; i-- {
-		if (effectif >= effectifClass[i]) {
+		if effectif >= effectifClass[i] {
 			effectifIndex = i
 			break
 		}
@@ -769,6 +872,6 @@ func getEffectifIndex(effectif int) (int){
 	return effectifIndex
 }
 
-func formatFicheSFField(siret string) (string) {
+func formatFicheSFField(siret string) string {
 	return viper.GetString("webBaseURL") + "ets/" + siret
 }

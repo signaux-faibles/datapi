@@ -1,4 +1,4 @@
--- choisir au hasard 300 code siren
+-- choisir au hasard 400 code siren
 create table limit_entreprise as
 select distinct e.siren
 from etablissement_periode_urssaf e
@@ -6,7 +6,7 @@ inner join etablissement et on et.siret = e.siret
 inner join etablissement_apdemande ap on ap.siret = e.siret
 inner join entreprise_paydex p on p.siren = e.siren
 where part_patronale+part_salariale != 0
-limit 300;
+limit 400;
 
 delete from entreprise
 where siren not in (select siren from limit_entreprise);
@@ -50,13 +50,16 @@ where siren not in (select siren from limit_entreprise);
 delete from score
 where siren not in (select siren from limit_entreprise);
 
-refresh materialized view v_roles;
+refresh materialized view v_alert_entreprise;
+refresh materialized view v_alert_etablissement;
+refresh materialized view v_apdemande;
 refresh materialized view v_diane_variation_ca;
+refresh materialized view v_etablissement_raison_sociale;
+refresh materialized view v_hausse_urssaf;
 refresh materialized view v_last_effectif;
 refresh materialized view v_last_procol;
-refresh materialized view v_hausse_urssaf;
-refresh materialized view v_apdemande;
-refresh materialized view v_alert_etablissement;
-refresh materialized view v_alert_entreprise;
+refresh materialized view v_naf;
+refresh materialized view v_roles;
+refresh materialized view v_summaries;
 
 drop table limit_entreprise;

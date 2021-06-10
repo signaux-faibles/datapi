@@ -149,7 +149,7 @@ func getSiret(t *testing.T, v VAF, n int) []string {
 	)
 	select e.siret from etablissement e
 	inner join etablissement_data_confidentielle d on d.siret = e.siret
-	left join v_roles r on r.siren = e.siren and roles && array['70','39','58','71','89','21','90','25','69','73','43','38','26','07','15','63','01','74','42','03']
+	left join v_roles r on r.siren = e.siren and roles && array['75','77','78','91','92','93','94']
 	left join v_entreprise_follow f on f.siren = e.siren
 	left join v_alert_entreprise a on a.siren = e.siren
 	where 

@@ -91,6 +91,7 @@ func runAPI() {
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	utils.GET("/wekanImport", wekanImportHandler)
+	utils.GET("/wekanListCards", wekanGetListCardsHandler)
 
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", wekanGetCardHandler)

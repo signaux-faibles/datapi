@@ -7,8 +7,7 @@ enableKeycloak = false
 fakeUsernameKeycloak = "dummy@crash.test"
 fakeKeycloakRoles = [
   "import",
-  "Bourgogne-Franche-Comté",
-  "Auvergne-Rhône-Alpes",
+  "Île-de-France",
   "detection",
   "score",
   "dgefp",
