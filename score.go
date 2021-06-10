@@ -269,52 +269,52 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 		if err != nil {
 			return nil, errorToJSON(500, err)
 		}
-		row.AddCell().Value = fmt.Sprintf("%s", liste.ID)
-		row.AddCell().Value = fmt.Sprintf("%s", score.Siren)
-		row.AddCell().Value = fmt.Sprintf("%s", score.Siret)
-		row.AddCell().Value = fmt.Sprintf("%s", *score.CodeDepartement)
-		row.AddCell().Value = fmt.Sprintf("%s", *score.RaisonSociale)
+		row.AddCell().Value = liste.ID
+		row.AddCell().Value = score.Siren
+		row.AddCell().Value = score.Siret
+		row.AddCell().Value = *score.CodeDepartement
+		row.AddCell().Value = *score.RaisonSociale
 		row.AddCell().Value = fmt.Sprintf("%d", int(*score.Effectif))
-		row.AddCell().Value = fmt.Sprintf("%s", *score.CodeActivite)
+		row.AddCell().Value = *score.CodeActivite
 		if score.LibelleActivite != nil {
-			row.AddCell().Value = fmt.Sprintf("%s", *score.LibelleActivite)
+			row.AddCell().Value = *score.LibelleActivite
 		}
-		row.AddCell().Value = fmt.Sprintf("%s", *score.Alert)
+		row.AddCell().Value = *score.Alert
 	}
 
-	sheetParams, err := xlFile.AddSheet("parameters")
+	sheetParams, _ := xlFile.AddSheet("parameters")
 	row = sheetParams.AddRow()
-	s, err := json.Marshal(params.Activites)
+	s, _ := json.Marshal(params.Activites)
 	row.AddCell().Value = "activites"
 	row.AddCell().Value = string(s)
 
 	row = sheetParams.AddRow()
-	s, err = json.Marshal(params.Departements)
+	s, _ = json.Marshal(params.Departements)
 	row.AddCell().Value = "departements"
 	row.AddCell().Value = string(s)
 
 	row = sheetParams.AddRow()
-	s, err = json.Marshal(params.EffectifMin)
+	s, _ = json.Marshal(params.EffectifMin)
 	row.AddCell().Value = "effectifMin"
 	row.AddCell().Value = string(s)
 
 	row = sheetParams.AddRow()
-	s, err = json.Marshal(params.EffectifMax)
+	s, _ = json.Marshal(params.EffectifMax)
 	row.AddCell().Value = "effectifMax"
 	row.AddCell().Value = string(s)
 
 	row = sheetParams.AddRow()
-	s, err = json.Marshal(params.EtatsProcol)
+	s, _ = json.Marshal(params.EtatsProcol)
 	row.AddCell().Value = "etatsProcol"
 	row.AddCell().Value = string(s)
 
 	row = sheetParams.AddRow()
-	s, err = json.Marshal(params.Filter)
+	s, _ = json.Marshal(params.Filter)
 	row.AddCell().Value = "filter"
 	row.AddCell().Value = string(s)
 
 	row = sheetParams.AddRow()
-	s, err = json.Marshal(params.IgnoreZone)
+	s, _ = json.Marshal(params.IgnoreZone)
 	row.AddCell().Value = "ignorezone"
 	row.AddCell().Value = string(s)
 

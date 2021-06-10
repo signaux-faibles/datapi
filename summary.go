@@ -52,8 +52,8 @@ type Summary struct {
 }
 
 type summaries struct {
-	summaryParams summaryParams
-	global        struct {
+	//summaryParams summaryParams
+	global struct {
 		count    *int
 		countF1  *int
 		countF2  *int

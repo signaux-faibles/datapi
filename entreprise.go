@@ -60,11 +60,6 @@ type Paydex struct {
 	NBJours    []int       `json:"nb_jours"`
 }
 
-type findEtablissementsParams struct {
-	Sirets []string `json:"sirets"`
-	Sirens []string `json:"sirens"`
-}
-
 // Etablissements Collection d'établissements
 type Etablissements struct {
 	Query struct {

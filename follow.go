@@ -247,23 +247,23 @@ func (follows Follows) toXLS() ([]byte, Jerror) {
 		if err != nil {
 			return nil, errorToJSON(500, err)
 		}
-		row.AddCell().Value = fmt.Sprintf("%s", f.EtablissementSummary.Siren)
-		row.AddCell().Value = fmt.Sprintf("%s", f.EtablissementSummary.Siret)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeDepartement)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.RaisonSociale)
+		row.AddCell().Value = f.EtablissementSummary.Siren
+		row.AddCell().Value = f.EtablissementSummary.Siret
+		row.AddCell().Value = *f.EtablissementSummary.CodeDepartement
+		row.AddCell().Value = *f.EtablissementSummary.RaisonSociale
 		if f.EtablissementSummary.Effectif != nil {
 			row.AddCell().Value = fmt.Sprintf("%f", *f.EtablissementSummary.Effectif)
 		} else {
 			row.AddCell().Value = ""
 		}
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeActivite)
+		row.AddCell().Value = *f.EtablissementSummary.CodeActivite
 		if f.EtablissementSummary.LibelleActivite != nil {
-			row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.LibelleActivite)
+			row.AddCell().Value = *f.EtablissementSummary.LibelleActivite
 		}
-		row.AddCell().Value = fmt.Sprintf("%s", *coalescepString(f.EtablissementSummary.Alert, &EmptyString))
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Since)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Category)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Comment)
+		row.AddCell().Value = *coalescepString(f.EtablissementSummary.Alert, &EmptyString)
+		row.AddCell().Value = f.EtablissementSummary.Since.String()
+		row.AddCell().Value = *f.EtablissementSummary.Category
+		row.AddCell().Value = *f.EtablissementSummary.Comment
 	}
 
 	data := bytes.NewBuffer(nil)

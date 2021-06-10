@@ -23,32 +23,32 @@ type keycloakUser struct {
 	roles     scope
 }
 
-func (sc scope) containsRole(role string) bool {
-	for _, s := range sc {
-		if role == s {
-			return true
-		}
-	}
-	return false
-}
+// func (sc scope) containsRole(role string) bool {
+// 	for _, s := range sc {
+// 		if role == s {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
-func (sc scope) containsScope(roles scope) bool {
-	for _, r := range roles {
-		if !sc.containsRole(r) {
-			return false
-		}
-	}
-	return true
-}
+// func (sc scope) containsScope(roles scope) bool {
+// 	for _, r := range roles {
+// 		if !sc.containsRole(r) {
+// 			return false
+// 		}
+// 	}
+// 	return true
+// }
 
-func (sc scope) overlapsScope(roles scope) bool {
-	for _, r := range roles {
-		if sc.containsRole(r) {
-			return true
-		}
-	}
-	return false
-}
+// func (sc scope) overlapsScope(roles scope) bool {
+// 	for _, r := range roles {
+// 		if sc.containsRole(r) {
+// 			return true
+// 		}
+// 	}
+// 	return false
+// }
 
 func connectKC() gocloak.GoCloak {
 	keycloak := gocloak.NewClient(viper.GetString("keycloakHostname"))
@@ -161,7 +161,7 @@ func scopeFromContext(c *gin.Context) scope {
 func (sc scope) zoneGeo() []string {
 	var zone []string
 	for _, role := range sc {
-		departements, _ := ref.zones[role]
+		departements := ref.zones[role]
 		zone = append(zone, departements...)
 	}
 	for _, s := range sc {
@@ -261,6 +261,10 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, Jerror) 
 		jwt.AccessToken,
 		realm,
 		*clients[0].ID)
+
+	if err != nil {
+		return nil, nil, errorToJSON(500, err)
+	}
 
 	roleMap := make(map[string]*string)
 	for _, r := range roles {

@@ -1,38 +1,38 @@
 package main
 
 import (
+	"crypto/aes"
+	"crypto/cipher"
+	"crypto/rand"
 	"encoding/json"
-	"github.com/spf13/viper"
-	"github.com/gin-gonic/gin"
+	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
 	"time"
-	"io"
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/rand"
-	"encoding/hex"
-	"fmt"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // Fce type pour l'API Fiche Commune Entreprise
 type Fce struct {
-	Success		bool 	`json:"success"`
-	Credential 	string 	`json:"credential"`
+	Success    bool   `json:"success"`
+	Credential string `json:"credential"`
 }
 
 func askFceCredentials() ([]byte, error) {
 	apiFceURL := viper.GetString("apiFceURL")
-	req, err := http.NewRequest("GET", apiFceURL + "askCredential", nil)
+	req, err := http.NewRequest("GET", apiFceURL+"askCredential", nil)
 	if err != nil {
 		return nil, err
 	}
 	q := req.URL.Query()
-	now := time.Now() 
+	now := time.Now()
 	ts := strconv.FormatInt(now.Unix(), 10)
-    q.Add("ts", ts)
+	q.Add("ts", ts)
 	apiKey := viper.GetString("apiFceKey")
 	q.Add("api_key", apiKey)
 	req.URL.RawQuery = q.Encode()
@@ -91,25 +91,26 @@ func encrypt(stringToEncrypt string, key string) (string, error) {
 	return fmt.Sprintf("%x", encryptedBytes), nil
 }
 
-func decrypt(encryptedString string, key string) (string, error) {
-	encryptedBytes, _ := hex.DecodeString(encryptedString)
-	keyBytes := []byte(key)
-	cipherBlock, err := aes.NewCipher(keyBytes)
-	if err != nil {
-		return "", err
-	}
-	aesGCM, err := cipher.NewGCM(cipherBlock)
-	if err != nil {
-		return "", err
-	}
-	nonceSize := aesGCM.NonceSize()
-	nonce, data := encryptedBytes[:nonceSize], encryptedBytes[nonceSize:]
-	decryptedBytes, err := aesGCM.Open(nil, nonce, data, nil)
-	if err != nil {
-		return "", err
-	}
-	return fmt.Sprintf("%s", decryptedBytes), nil
-}
+// TODO: unused function ? cleanup ?
+// func decrypt(encryptedString string, key string) (string, error) {
+// 	encryptedBytes, _ := hex.DecodeString(encryptedString)
+// 	keyBytes := []byte(key)
+// 	cipherBlock, err := aes.NewCipher(keyBytes)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	aesGCM, err := cipher.NewGCM(cipherBlock)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	nonceSize := aesGCM.NonceSize()
+// 	nonce, data := encryptedBytes[:nonceSize], encryptedBytes[nonceSize:]
+// 	decryptedBytes, err := aesGCM.Open(nil, nonce, data, nil)
+// 	if err != nil {
+// 		return "", err
+// 	}
+// 	return fmt.Sprintf("%s", decryptedBytes), nil
+// }
 
 func makeFceVisitURL(siret string, credential string, username string) (string, error) {
 	fceVisitURL := viper.GetString("fceVisitURL") + "establishment/" + siret
@@ -122,6 +123,6 @@ func makeFceVisitURL(siret string, credential string, username string) (string, 
 	if err != nil {
 		return "", err
 	}
-	fceVisitURL +=  "?" + params.Encode()
+	fceVisitURL += "?" + params.Encode()
 	return fceVisitURL, nil
 }
