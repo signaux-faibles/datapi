@@ -41,22 +41,31 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 func getXLSFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
-	follow := Follow{Username: &username}
-	follows, err := follow.list(scope)
-	if err != nil {
-		c.JSON(err.Code(), err.Error())
-		return
+	var file []byte
+
+	if contains(scope, "wekan") {
+
+	} else {
+		follow := Follow{Username: &username}
+		follows, err := follow.list(scope)
+		if err != nil {
+			c.JSON(err.Code(), err.Error())
+			return
+		}
+		file, err = follows.toXLS()
+		if err != nil {
+			c.JSON(err.Code(), err.Error())
+			return
+		}
 	}
 
-	file, err := follows.toXLS()
-	if err != nil {
-		c.JSON(err.Code(), err.Error())
-		return
-	}
 	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract.xls")
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file)
 }
 
+func getDOCXFollowedByCurrentUser(c *gin.Context) {
+
+}
 func followEtablissement(c *gin.Context) {
 	siret := c.Param("siret")
 	username := c.GetString("username")

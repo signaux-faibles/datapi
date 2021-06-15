@@ -69,6 +69,7 @@ func runAPI() {
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
 	follow.GET("/xls", getXLSFollowedByCurrentUser)
+	follow.GET("/docx", getDOCXFollowedByCurrentUser)
 
 	listes := router.Group("/listes", getKeycloakMiddleware(), logMiddleware)
 	listes.GET("", getListes)

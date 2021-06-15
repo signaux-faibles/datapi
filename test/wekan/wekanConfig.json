@@ -1,0 +1,178 @@
+{
+	"boards": {
+		"Template": {
+			"boardId": "pD2tt44d9w4br3vsn",
+			"slug": "template-tableau-crp",
+			"swimlanes": {
+				"Département": "DdwGuNCf98B6fCxvb"
+			},
+			"lists": [
+				"TSoXAMevRWP8mik74",
+				"926ZxMPxebrjxmAzx",
+				"Xb5yHazuFXEbEfcHS",
+				"CHZf5RrW42CrPxqL3"
+			],
+			"customFields": {
+				"siretField": "DYfv4rwHRaagZkjz8",
+				"activiteField": "5grSHhSySPr9dvDhf",
+				"effectifField": {
+					"effectifFieldId": "WZBsMQhN5DaYRvnKS",
+					"effectifFieldItems": [
+						"nMCSM8",
+						"TrNuew",
+						"3X8ba8",
+						"bxxs4c"
+					]
+				},
+				"ficheSFField": "Gytf5FSr5sMaE6CpW"
+			}
+		},
+		"Bac à sable": {
+			"boardId": "jxFQWnxCANKJ7hsPP",
+			"slug": "bac-a-sable",
+			"swimlanes": {
+				"01": "wRmxYnMFmJTNPbuYs",
+				"03": "gqphXt6yQ4LWy64XK",
+				"07": "E4BJfx6gMrJbDGe5P",
+				"15": "YddbKDteog74bCagb",
+				"26": "ZfANPwATFNZjCk7zo",
+				"38": "biSf5CvegzkmAWEHA",
+				"42": "MEqTLxysZ9RQareP7",
+				"43": "zm2QfZo8xe5LZway5",
+				"63": "qcvEm5mkLSLGSz3LD",
+				"69": "68kAAFxZxoSCiRx4L",
+				"73": "jZpRpiWQqxiJhLhpN",
+				"74": "uJxZZM67o6ByyHb6b"
+			},
+			"lists": [
+				"rq9WzTJpYgPNYNmsy",
+				"nw8RFxNGj67jYAtNS",
+				"MgPZMk9zG4KiWhvtc",
+				"wnBYBSYBbRE6DBNte"
+			],
+			"customFields": {
+				"siretField": "CxjCjBxLWoAPhm8hC",
+				"activiteField": "fZgjgiqJcekfSXNgG",
+				"effectifField": {
+					"effectifFieldId": "fpFphhidRNF8TiuNQ",
+					"effectifFieldItems": [
+						"nMCSM8",
+						"TrNuew",
+						"3X8ba8",
+						"bxxs4c"
+					]
+				},
+				"ficheSFField": "THqzLFBGm65HiQnZW"
+			}
+		},
+		"Auvergne-Rhône-Alpes": {
+			"boardId": "tzoHFLmrZ6eJWa5xz",
+			"slug": "tableau-crp-ara",
+			"swimlanes": {
+				"01": "HQCxrAqQncKBSdono",
+				"03": "typsdRkambF8Lqcja",
+				"07": "efYD28fscToyCLAkf",
+				"15": "7LH8RJ9xvJBvBSu9v",
+				"26": "hPGkbgjJGuLYaBW3g",
+				"38": "hDmG2h2BYpnKfzsMP",
+				"42": "4WMjsrDsQArSab6HY",
+				"43": "rr73hSS7XW7iM553i",
+				"63": "645pa9WtRA6c2FHhA",
+				"69": "KYZHuweTqgiNDNbuW",
+				"73": "oDEaioD4wu9496qgQ",
+				"74": "NxJjBFXi22XwqtoWT"
+			},
+			"lists": [
+				"JMidbEtFfHyH6wFyk",
+				"u3Rh3r7oSjnPhqXjz",
+				"rprY8YhHTxjaif6ia",
+				"dL4LRpPKYxSo6NSee"
+			],
+			"customFields": {
+				"siretField": "3vL6E3qYNPrWR6Pgo",
+				"activiteField": "Q5tSYyxteERffmq9q",
+				"effectifField": {
+					"effectifFieldId": "F9NvMsmgRzKFE6Awb",
+					"effectifFieldItems": [
+						"nMCSM8",
+						"TrNuew",
+						"3X8ba8",
+						"bxxs4c"
+					]
+				},
+				"ficheSFField": "zzEtCz3rg23oxqc7a"
+			}
+		},
+		"Bourgogne-Franche-Comté": {
+			"boardId": "Y8pBt9X3Prz4XzELa",
+			"slug": "tableau-crp-bfc",
+			"swimlanes": {
+				"21": "uWBd9W9RKmrCvJ789",
+				"25": "6ipLKNQNEQHHaacR8",
+				"39": "sMoh79TQe72aqdG7y",
+				"58": "qW2sEwdFKuozdLsFB",
+				"70": "9N5CeXqhBF8QsLvZ2",
+				"71": "3n7z267hX45PEB39a",
+				"89": "xCaCd6dNpmos2tpzz",
+				"90": "7aymBjBtJLQ7gkq6v"
+			},
+			"lists": [
+				"eQZ73GRhdKoDodWT5",
+				"5L87SAj7ko9QFDrZH",
+				"SC4tgwxrgMe5CJHGk",
+				"QygfG3SrJyz7CrqKE"
+			],
+			"customFields": {
+				"siretField": "ghmuSQBZFf3BxQipg",
+				"activiteField": "3oE6hbhH5w9BbqHrP",
+				"effectifField": {
+					"effectifFieldId": "N9CyED6L5nvaeJvKP",
+					"effectifFieldItems": [
+						"nMCSM8",
+						"TrNuew",
+						"3X8ba8",
+						"bxxs4c"
+					]
+				},
+				"ficheSFField": "MJBh3z8bqZZoGRpFr"
+			}
+		},
+		"Bretagne": null,
+		"Centre-Val de Loire": null,
+		"Corse": null,
+		"Grand Est": null,
+		"Hauts-de-France": null,
+		"Île-de-France": null,
+		"Normandie": null,
+		"Nouvelle-Aquitaine": null,
+		"Occitanie": null,
+		"Pays de la Loire": null,
+		"Provence-Alpes-Côte d'Azur": null
+	},
+	"users": {
+		"george washington": "PywswfR6wubr7L9Fr",
+		"john adams": "XMGYxEBSi2qepLYk5",
+		"thomas jefferson": "fmaJPm7NuYLvNv5Qt",
+		"james madison": "Twn7Swyay5KRjRPZN",
+		"james monroe": "cqBzNsn2EgqWTKKRp",
+		"john quincy adams": "beNirWiJzZgt2FiKS",
+		"andrew jackson": "GGdtxD6hK7X2x9m5g",
+		"martin van buren": "NTSQdvwEjJz5va5WP",
+		"william heny harrison": "FMumeTnAL7kS6pLgT",
+		"john tyler": "QfcnTjAb8KsCmL8Xm",
+		"james k. polk": "eemyjEPdHMLrcAfwu",
+		"zachary taylor": "PuRayjPpT45GFAurR",
+		"millard fillmore": "7zYczEfCa5bKvcQSH",
+		"franklin pierce": "n8BicmT67Db8JHobi",
+		"james buchanan": "3b9kMqXwbdMiuFs3s",
+		"abraham lincoln": "jPd6qKDqCdtLWfDoZ",
+		"andrew johnson": "wvzqH6Kkg2KX6iawh",
+		"ulysses s. grant": "w4F5wtfJgZLFoqYkZ",
+		"rutherford b. hayes": "tHd7ZCNgn4N8LW9Mq",
+		"james a. garfield": "ntiNPbaoZGiWsvR4r",
+		"chester a. arthur": "b5xSuDJ9FzwSKpHBB",
+		"grover cleveland": "aqQgHhLkYkPR9s2zw",
+		"benjamin harrison": "78tMfqsqDj8mYB79a",
+		"william mckinley": "RwaGbEBYmvgAnSEXz"
+	}
+}
