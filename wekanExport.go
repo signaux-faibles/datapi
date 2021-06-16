@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"fmt"
 	"log"
 	"time"
+
+	"github.com/tealeg/xlsx"
 )
 
 type WekanExports []WekanExport
@@ -106,7 +110,75 @@ func getExport(wekan bool, sirets []string) (WekanExports, error) {
 }
 
 func (we WekanExports) xlsx() ([]byte, error) {
-	return nil, nil
+	xlFile := xlsx.NewFile()
+	xlSheet, err := xlFile.AddSheet("extract")
+	if err != nil {
+		return nil, errorToJSON(500, err)
+	}
+
+	row := xlSheet.AddRow()
+	row.AddCell().Value = "Raison sociale"
+	row.AddCell().Value = "Siret"
+	row.AddCell().Value = "Type Etablissement"
+	row.AddCell().Value = "Tête de groupe"
+	row.AddCell().Value = "Département"
+	row.AddCell().Value = "Commune"
+	row.AddCell().Value = "Territoire d'industrie"
+	row.AddCell().Value = "Secteur d'activité"
+	row.AddCell().Value = "Activité"
+	row.AddCell().Value = "Secteur Covid"
+	row.AddCell().Value = "Statut Juridique"
+	row.AddCell().Value = "Date Ouverture Établissement"
+	row.AddCell().Value = "Date Création Entreprise"
+	row.AddCell().Value = "Effectif"
+	row.AddCell().Value = "Activité Partielle"
+	row.AddCell().Value = "Dette Sociale"
+	row.AddCell().Value = "Part Salariale"
+	row.AddCell().Value = "Année Exercice"
+	row.AddCell().Value = "Chiffre Affaire"
+	row.AddCell().Value = "E.B.E."
+	row.AddCell().Value = "Résultat d'Exploitation"
+	row.AddCell().Value = "Procédure Collective"
+	row.AddCell().Value = "Détection Signaux-Faibles"
+	row.AddCell().Value = "Date Début Suivi"
+	row.AddCell().Value = "Description"
+
+	for _, e := range we {
+		row := xlSheet.AddRow()
+		if err != nil {
+			return nil, errorToJSON(500, err)
+		}
+		row.AddCell().Value = e.RaisonSociale
+		row.AddCell().Value = e.Siret
+		row.AddCell().Value = e.TypeEtablissement
+		row.AddCell().Value = e.TeteDeGroupe
+		row.AddCell().Value = e.Departement
+		row.AddCell().Value = e.Commune
+		row.AddCell().Value = e.TerritoireIndustrie
+		row.AddCell().Value = e.SecteurActivite
+		row.AddCell().Value = e.Activite
+		row.AddCell().Value = e.SecteursCovid
+		row.AddCell().Value = e.StatutJuridique
+		row.AddCell().Value = e.DateOuvertureEtablissement
+		row.AddCell().Value = e.DateCreationEntreprise
+		row.AddCell().Value = e.Effectif
+		row.AddCell().Value = e.ActivitePartielle
+		row.AddCell().Value = e.DetteSociale
+		row.AddCell().Value = e.PartSalariale
+		row.AddCell().Value = e.AnneeExercice
+		row.AddCell().Value = e.ChiffreAffaire
+		row.AddCell().Value = e.ExcedentBrutExploitation
+		row.AddCell().Value = e.ResultatExploitation
+		row.AddCell().Value = e.ProcedureCollective
+		row.AddCell().Value = e.DetectionSF
+		row.AddCell().Value = e.DateDebutSuivi
+		row.AddCell().Value = e.DescriptionWekan
+	}
+	data := bytes.NewBuffer(nil)
+	file := bufio.NewWriter(data)
+	xlFile.Write(file)
+	file.Flush()
+	return data.Bytes(), nil
 }
 
 func (we WekanExports) docx() ([]byte, error) {
