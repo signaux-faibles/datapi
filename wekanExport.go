@@ -7,6 +7,8 @@ import (
 	"time"
 )
 
+type WekanExports []WekanExport
+
 // WekanExport fournit les champs nécessaires pour l'export Wekan
 type WekanExport struct {
 	RaisonSociale              string `json:"raison_sociale"`
@@ -42,8 +44,8 @@ type abstractProcol struct {
 	Stade     string    `json:"stade"`
 }
 
-type dbFollowExports []dbFollowExport
-type dbFollowExport struct {
+type dbExports []dbExport
+type dbExport struct {
 	Siret                             string           `json:"siret"`
 	RaisonSociale                     string           `json:"raisonSociale"`
 	CodeDepartement                   string           `json:"codeDepartement"`
@@ -83,12 +85,40 @@ type dbFollowExport struct {
 	DateDebutSuivi                    time.Time        `json:"dateDebutSuivi"`
 }
 
-func getXLSWekanExport(wekanExport []WekanExport) []byte {
-	return nil
+func getExport(wekan bool, sirets []string) (WekanExports, error) {
+	exports, err := getDbExport(sirets)
+	if err != nil {
+		return nil, err
+	}
+	var cards WekanCards
+	if wekan {
+		cards, err = getDbWekanCards(sirets)
+		if err != nil {
+			return nil, err
+		}
+	}
+	var wc WekanConfig
+	err = wc.load()
+	if err != nil {
+		return nil, err
+	}
+	return joinExports(wc, exports, cards), nil
 }
 
-func getDbFollowExport(sirets []string) ([]dbFollowExport, error) {
-	var exports []dbFollowExport
+func (we WekanExports) xlsx() ([]byte, error) {
+	return nil, nil
+}
+
+func (we WekanExports) docx() ([]byte, error) {
+	return nil, nil
+}
+
+func getDbWekanCards(sirets []string) (WekanCards, error) {
+	return nil, nil
+}
+
+func getDbExport(sirets []string) ([]dbExport, error) {
+	var exports []dbExport
 	sqlExport := `select siret,
 			et.departement as code_departement,
 			d.libelle as libelle_departement,
@@ -144,7 +174,7 @@ func getDbFollowExport(sirets []string) ([]dbFollowExport, error) {
 	defer rows.Close()
 
 	for rows.Next() {
-		var e dbFollowExport
+		var e dbExport
 		err := rows.Scan(&e.CodeDepartement, &e.LibelleDepartement, &e.Commune, &e.CodeTerritoireIndustrie, &e.LibelleTerritoireIndustrie,
 			&e.StatutJuridiqueN3, &e.StatutJuridiqueN2, &e.StatutJuridiqueN2, &e.DateOuvertureEtablissement, &e.DateCreationEntreprise,
 			&e.DernierEffectif, &e.DateDernierEffectif, &e.DateArreteBilan, &e.ExerciceDiane, &e.ChiffreAffaire, &e.ChiffreAffairePrecedent,
@@ -159,7 +189,7 @@ func getDbFollowExport(sirets []string) ([]dbFollowExport, error) {
 	return exports, nil
 }
 
-func joinExports(wc WekanConfig, exports dbFollowExports, cards dbWekanCards) []WekanExport {
+func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) []WekanExport {
 	idx := indexCards(cards, wc)
 	var wekanExports []WekanExport
 
@@ -251,7 +281,7 @@ func libelleFinancier(val float64, valPrec float64, threshold float64) string {
 	return fmt.Sprintf("%.0f", val)
 }
 
-func indexCards(cards dbWekanCards, wc WekanConfig) map[string]int {
+func indexCards(cards WekanCards, wc WekanConfig) map[string]int {
 	index := make(map[string]int)
 	boards := wc.boards()
 	for i, c := range cards {

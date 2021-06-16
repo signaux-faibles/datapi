@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func loadCardsFromFile(cards *dbWekanCards, path string) error {
+func loadCardsFromFile(cards *WekanCards, path string) error {
 	fileContent, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -16,7 +16,7 @@ func loadCardsFromFile(cards *dbWekanCards, path string) error {
 	return err
 }
 
-func loadFollowExportsFromFile(exports *dbFollowExports, path string) error {
+func loadFollowExportsFromFile(exports *dbExports, path string) error {
 	fileContent, err := ioutil.ReadFile(path)
 	if err != nil {
 		return err
@@ -32,13 +32,13 @@ func Test_ExportWekan(t *testing.T) {
 		t.Error("can't read wekan config")
 	}
 
-	var cards dbWekanCards
+	var cards WekanCards
 	err = loadCardsFromFile(&cards, "test/wekan/cards.json")
 	if err != nil {
 		t.Error("can't read wekan cards")
 	}
 
-	var exports dbFollowExports
+	var exports dbExports
 	err = loadFollowExportsFromFile(&exports, "test/wekan/followExports.json")
 	if err != nil {
 		t.Error("can't read follow exports: " + err.Error())

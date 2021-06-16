@@ -49,6 +49,11 @@ func (wc WekanConfig) boards() map[string]string {
 	return boards
 }
 
+func (wc *WekanConfig) load() error {
+	configFile := viper.GetString("wekanConfigFile")
+	return wc.loadFile(configFile)
+}
+
 func (wc *WekanConfig) loadFile(path string) error {
 	fileContent, err := ioutil.ReadFile(path)
 	if err != nil {
@@ -63,9 +68,9 @@ type wekanDbCustomFields struct {
 	Value string `json:"value" bson:"value"`
 }
 
-type dbWekanCards []dbWekanCard
+type WekanCards []WekanCard
 
-type dbWekanCard struct {
+type WekanCard struct {
 	ID               string                `json:"_id" bson:"_id"`
 	Title            string                `json:"title" bson:"title"`
 	BoardID          string                `json:"boardId" bson:"boardId"`
