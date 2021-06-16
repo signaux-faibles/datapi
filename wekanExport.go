@@ -4,8 +4,10 @@ import (
 	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
+	"os/exec"
 	"time"
 
 	"github.com/tealeg/xlsx"
@@ -182,7 +184,18 @@ func (we WekanExports) xlsx() ([]byte, error) {
 }
 
 func (we WekanExports) docx() ([]byte, error) {
-	return nil, nil
+	data, err := json.Marshal(we)
+
+	if err != nil {
+		return nil, err
+	}
+	cmd := exec.Command("cat")
+	cmd.Stdin = bytes.NewReader(data)
+	var out bytes.Buffer
+	cmd.Stdout = &out
+	cmd.Run()
+	file := out.Bytes()
+	return file, nil
 }
 
 func getDbWekanCards(sirets []string) (WekanCards, error) {
@@ -261,7 +274,7 @@ func getDbExport(sirets []string) ([]dbExport, error) {
 	return exports, nil
 }
 
-func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) []WekanExport {
+func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExports {
 	idx := indexCards(cards, wc)
 	var wekanExports []WekanExport
 

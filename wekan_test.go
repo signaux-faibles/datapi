@@ -44,6 +44,10 @@ func Test_ExportWekan(t *testing.T) {
 		t.Error("can't read follow exports: " + err.Error())
 	}
 
-	s, _ := json.Marshal(joinExports(wc, exports, cards))
-	fmt.Println(string(s))
+	wekanExports := joinExports(wc, exports, cards)
+	file, err := wekanExports.docx()
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(string(file))
 }
