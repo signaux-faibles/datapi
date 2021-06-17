@@ -171,3 +171,13 @@ create index idx_v_summaries_score on v_summaries (
   effectif,
   code_departement,
   last_procol) where alert != 'Pas d''alerte';
+
+DROP INDEX public.idx_score_liste;
+
+CREATE INDEX idx_score_liste
+    ON public.score USING btree
+    (siret COLLATE pg_catalog."default" ASC NULLS LAST, 
+    score DESC NULLS LAST, 
+    libelle_liste COLLATE pg_catalog."default" ASC NULLS LAST)
+    TABLESPACE pg_default
+    WHERE version = 0 AND alert <> 'pas d''alerte'::text;
