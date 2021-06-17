@@ -37,12 +37,9 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 func getXLSFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
-	sirets, err := getFollowedSirets(username)
-	if err != nil {
-		c.AbortWithError(500, err)
-	}
+
 	wekan := contains(scope, "wekan")
-	export, err := getExport(wekan, sirets)
+	export, err := getExport(scope, username, wekan, nil)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -75,11 +72,12 @@ func getFollowedSirets(username string) ([]string, error) {
 }
 
 func getDOCXFromSiret(c *gin.Context) {
+	username := c.GetString("username")
 	scope := scopeFromContext(c)
 	sirets := append([]string{}, c.Param("siret"))
 
 	wekan := contains(scope, "wekan")
-	export, err := getExport(wekan, sirets)
+	export, err := getExport(scope, username, wekan, sirets)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -101,7 +99,7 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 		c.AbortWithError(500, err)
 	}
 	wekan := contains(scope, "wekan")
-	export, err := getExport(wekan, sirets)
+	export, err := getExport(scope, username, wekan, sirets)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return

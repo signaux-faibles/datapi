@@ -44,57 +44,56 @@ type WekanExport struct {
 	DescriptionWekan           string `json:"description_wekan"`
 }
 
-type abstractProcol struct {
-	DateEffet time.Time `json:"date_effet"`
-	Action    string    `json:"action"`
-	Stade     string    `json:"stade"`
-}
-
 type dbExports []dbExport
 type dbExport struct {
-	Siret                             string           `json:"siret"`
-	RaisonSociale                     string           `json:"raisonSociale"`
-	CodeDepartement                   string           `json:"codeDepartement"`
-	LibelleDepartement                string           `json:"libelleDepartement"`
-	Commune                           string           `json:"commune"`
-	CodeTerritoireIndustrie           string           `json:"codeTerritoireIndustrie"`
-	LibelleTerritoireIndustrie        string           `json:"libelleTerritoireIndustrie"`
-	Siege                             bool             `json:"siege"`
-	TeteDeGroupe                      string           `json:"teteDeGroupe"`
-	CodeActivite                      string           `json:"codeActivite"`
-	LibelleActivite                   string           `json:"libelleActivite"`
-	SecteurActivite                   string           `json:"secteurActivite"`
-	StatutJuridiqueN1                 string           `json:"statutJuridiqueN1"`
-	StatutJuridiqueN2                 string           `json:"statutJuridiqueN2"`
-	StatutJuridiqueN3                 string           `json:"statutJuridiqueN3"`
-	DateOuvertureEtablissement        time.Time        `json:"dateOuvertureEtablissement"`
-	DateCreationEntreprise            time.Time        `json:"dateCreationEntreprise"`
-	DernierEffectif                   int              `json:"dernierEffecti"`
-	DateDernierEffectif               time.Time        `json:"dateDernierEffectif"`
-	DateArreteBilan                   time.Time        `json:"dateArreteBilan"`
-	ExerciceDiane                     int              `json:"exerciceDiane"`
-	ChiffreAffaire                    float64          `json:"chiffreAffaire"`
-	ChiffreAffairePrecedent           float64          `json:"chiffreAffairePrecedent"`
-	VariationCA                       float64          `json:"variationCA"`
-	ResultatExploitation              float64          `json:"resultatExploitation"`
-	ResultatExploitationPrecedent     float64          `json:"resultatExploitationPrecedent"`
-	ExcedentBrutExploitation          float64          `json:"excedentBrutExploitation"`
-	ExcedentBrutExploitationPrecedent float64          `json:"excedentBrutExploitationPrecedent"`
-	HistoriqueProcedureCollective     []abstractProcol `json:"historiqueProcedureCollective"`
-	DerniereListe                     string           `json:"derniereListe"`
-	DerniereAlerte                    string           `json:"derniereAlerte"`
-	ActivitePartielle                 bool             `json:"activitePartielle"`
-	DetteSociale                      bool             `json:"detteSociale"`
-	PartSalariale                     bool             `json:"partSalariale"`
-	DateUrssaf                        time.Time        `json:"dateUrssaf"`
-	ProcedureCollective               string           `json:"procedureCollective"`
-	DateDebutSuivi                    time.Time        `json:"dateDebutSuivi"`
+	Siret                             string    `json:"siret"`
+	RaisonSociale                     string    `json:"raisonSociale"`
+	CodeDepartement                   string    `json:"codeDepartement"`
+	LibelleDepartement                string    `json:"libelleDepartement"`
+	Commune                           string    `json:"commune"`
+	CodeTerritoireIndustrie           string    `json:"codeTerritoireIndustrie"`
+	LibelleTerritoireIndustrie        string    `json:"libelleTerritoireIndustrie"`
+	Siege                             bool      `json:"siege"`
+	TeteDeGroupe                      string    `json:"teteDeGroupe"`
+	CodeActivite                      string    `json:"codeActivite"`
+	LibelleActivite                   string    `json:"libelleActivite"`
+	SecteurActivite                   string    `json:"secteurActivite"`
+	StatutJuridiqueN1                 string    `json:"statutJuridiqueN1"`
+	StatutJuridiqueN2                 string    `json:"statutJuridiqueN2"`
+	StatutJuridiqueN3                 string    `json:"statutJuridiqueN3"`
+	DateOuvertureEtablissement        time.Time `json:"dateOuvertureEtablissement"`
+	DateCreationEntreprise            time.Time `json:"dateCreationEntreprise"`
+	DernierEffectif                   int       `json:"dernierEffecti"`
+	DateDernierEffectif               time.Time `json:"dateDernierEffectif"`
+	DateArreteBilan                   time.Time `json:"dateArreteBilan"`
+	ExerciceDiane                     int       `json:"exerciceDiane"`
+	ChiffreAffaire                    float64   `json:"chiffreAffaire"`
+	ChiffreAffairePrecedent           float64   `json:"chiffreAffairePrecedent"`
+	VariationCA                       float64   `json:"variationCA"`
+	ResultatExploitation              float64   `json:"resultatExploitation"`
+	ResultatExploitationPrecedent     float64   `json:"resultatExploitationPrecedent"`
+	ExcedentBrutExploitation          float64   `json:"excedentBrutExploitation"`
+	ExcedentBrutExploitationPrecedent float64   `json:"excedentBrutExploitationPrecedent"`
+	DerniereListe                     string    `json:"derniereListe"`
+	DerniereAlerte                    string    `json:"derniereAlerte"`
+	ActivitePartielle                 bool      `json:"activitePartielle"`
+	DetteSociale                      bool      `json:"detteSociale"`
+	PartSalariale                     bool      `json:"partSalariale"`
+	DateUrssaf                        time.Time `json:"dateUrssaf"`
+	ProcedureCollective               string    `json:"procedureCollective"`
+	DateProcedureCollective           time.Time `json:"dateProcedureCollective"`
+	DateDebutSuivi                    time.Time `json:"dateDebutSuivi"`
+	CommentSuivi                      string    `json:"commentSuivi"`
+	InZone                            bool      `json:"inZone"`
 }
 
-func getExport(wekan bool, sirets []string) (WekanExports, error) {
-	exports, err := getDbExport(sirets)
+func getExport(roles scope, username string, wekan bool, sirets []string) (WekanExports, error) {
+	exports, err := getDbExport(roles, username, sirets)
 	if err != nil {
 		return nil, err
+	}
+	for _, c := range exports {
+		sirets = append(sirets, c.Siret)
 	}
 	var cards WekanCards
 	if wekan {
@@ -202,57 +201,24 @@ func getDbWekanCards(sirets []string) (WekanCards, error) {
 	return nil, nil
 }
 
-func getDbExport(sirets []string) ([]dbExport, error) {
+func getDbExport(roles scope, username string, sirets []string) ([]dbExport, error) {
 	var exports []dbExport
-	sqlExport := `select siret,
-			et.departement as code_departement,
-			d.libelle as libelle_departement,
-			et.commune,
-			ti.code_terrind, 
-			ti.libelle_terrind,
-			cj.libelle, cj2.libelle, cj1.libelle,
-			et.creation as creation_etablissement, 
-			en.creation as creation_entreprise,
-			e.effectif as last_effectif, 
-			e.periode as effectif_periode,
-			di.arrete_bilan,
-			di.exercice_diane,
-			di.chiffre_affaire,
-			di.prev_chiffre_affaire,
-			di.variation_ca,
-			di.resultat_expl,
-			di.prev_resultat_expl,
-			di.excedent_brut_d_exploitation,
-			di.prev_excedent_brut_d_exploitation,
-			pc.procol_history,
-			b.batch as current_list,
-			aet.first_list,
-			aet.last_list,
-			aet.last_alert,
-			et.siege,
-			et.code_activite,
-			ee.raison_sociale as tete_de_groupe,
-			n.libelle_n1 as secteur_activite,
-			n.libelle_n5 as libelle_activite
-		from etablissement0 et
-		inner join entreprise0 en on en.siren = et.siren
-		inner join v_naf n on n.code_n5 = et.code_activite
-		inner join departements d on d.code = et.departement
-		left join (select max(batch) as batch from liste) as b on true
-		left join v_hausse_urssaf hu on hu.siret = et.siret
-		left join categorie_juridique cj on cj.code = en.statut_juridique
-		left join categorie_juridique cj2 on substring(cj.code from 0 for 3) = cj2.code
-		left join categorie_juridique cj1 on substring(cj.code from 0 for 2) = cj1.code
-		left join terrind ti on ti.code_commune = et.code_commune
-		left join v_last_effectif e on e.siret = et.siret
-		left join v_diane_variation_ca di on di.siren = et.siren
-		left join v_last_procol pc on pc.siret = et.siret
-		left join v_alert_etablissement aet on aet.siret = et.siret
-		left join entreprise_ellisphere0 on ee.siren = et.siren
-		where et.siret = any($1)
+	sqlExport := `select v.siret, v.raison_sociale,	v.code_departement,	v.libelle_departement, v.commune,
+		coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
+		v.code_activite, v.libelle_n5, v.libelle_n1, v.statut_juridique_n1,	v.statut_juridique_n2,
+		v.statut_juridique_n3, v.date_ouverture_etablissement, v.date_creation_entreprise, v.effectif,
+		v.date_effectif, v.arrete_bilan, v.exercice_diane,	v.chiffre_affaire, v.prev_chiffre_affaire,
+		v.variation_ca,	v.resultat_expl, v.prev_resultat_expl, v.excedent_brut_d_exploitation,
+		v.prev_excedent_brut_d_exploitation, v.last_list, v.last_alert, v.activite_partielle,
+		v.hausse_urssaf, v.presence_part_salariale, v.periode_urssaf, v.last_procol, v.date_last_procol,
+		f.since, f.comment,
+		(permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
+	from v_summaries v
+	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
+	where v.siret = any($3) or ($3 is null and f.id is not null)
 	`
 
-	rows, err := db.Query(context.Background(), sqlExport, sirets)
+	rows, err := db.Query(context.Background(), sqlExport, roles.zoneGeo(), username, sirets)
 	if err != nil {
 		return nil, err
 	}
@@ -260,12 +226,15 @@ func getDbExport(sirets []string) ([]dbExport, error) {
 
 	for rows.Next() {
 		var e dbExport
-		err := rows.Scan(&e.CodeDepartement, &e.LibelleDepartement, &e.Commune, &e.CodeTerritoireIndustrie, &e.LibelleTerritoireIndustrie,
-			&e.StatutJuridiqueN3, &e.StatutJuridiqueN2, &e.StatutJuridiqueN2, &e.DateOuvertureEtablissement, &e.DateCreationEntreprise,
-			&e.DernierEffectif, &e.DateDernierEffectif, &e.DateArreteBilan, &e.ExerciceDiane, &e.ChiffreAffaire, &e.ChiffreAffairePrecedent,
-			&e.VariationCA, &e.ResultatExploitation, &e.ResultatExploitationPrecedent, &e.ExcedentBrutExploitation, &e.ExcedentBrutExploitationPrecedent,
-			&e.HistoriqueProcedureCollective, &e.DerniereListe, &e.DerniereAlerte, &e.Siege, &e.CodeActivite, &e.TeteDeGroupe,
-			&e.SecteurActivite, &e.LibelleActivite)
+		err := rows.Scan(&e.Siret, &e.RaisonSociale, &e.CodeDepartement, &e.LibelleDepartement, &e.Commune,
+			&e.CodeTerritoireIndustrie, &e.LibelleTerritoireIndustrie, &e.Siege, &e.TeteDeGroupe,
+			&e.CodeActivite, &e.LibelleActivite, &e.SecteurActivite, &e.StatutJuridiqueN1, &e.StatutJuridiqueN2,
+			&e.StatutJuridiqueN3, &e.DateOuvertureEtablissement, &e.DateCreationEntreprise, &e.DernierEffectif,
+			&e.DateDernierEffectif, &e.DateArreteBilan, &e.ExerciceDiane, &e.ChiffreAffaire, &e.ChiffreAffairePrecedent,
+			&e.VariationCA, &e.ResultatExploitation, &e.ResultatExploitationPrecedent, &e.ExcedentBrutExploitation,
+			&e.ExcedentBrutExploitationPrecedent, &e.DerniereListe, &e.DerniereAlerte, &e.ActivitePartielle,
+			&e.DetteSociale, &e.PartSalariale, &e.DateUrssaf, &e.ProcedureCollective, &e.DateProcedureCollective,
+			&e.DateDebutSuivi, &e.CommentSuivi, &e.InZone)
 		if err != nil {
 			return nil, err
 		}
@@ -334,6 +303,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			we.DescriptionWekan = cards[i].Description
 		} else {
 			we.DateDebutSuivi = e.DateDebutSuivi.Format("02/01/2006")
+			we.DescriptionWekan = e.CommentSuivi
 		}
 
 		wekanExports = append(wekanExports, we)
@@ -355,12 +325,15 @@ func libelleAlerte(liste string, alerte string) string {
 }
 
 func libelleFinancier(val float64, valPrec float64, threshold float64) string {
+	if val == 0 {
+		return "n/c"
+	}
 	if valPrec == 0 {
 		return fmt.Sprintf("%.0f", val)
 	}
-	if val/valPrec > 1+threshold {
+	if (val-valPrec)/val > threshold {
 		return fmt.Sprintf("%.0f (en hausse)", val)
-	} else if val/valPrec < 1-threshold {
+	} else if (val-valPrec)/val < threshold {
 		return fmt.Sprintf("%.0f (en baisse)", val)
 	}
 	return fmt.Sprintf("%.0f", val)
