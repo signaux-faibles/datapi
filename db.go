@@ -11,6 +11,8 @@ import (
 
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/spf13/viper"
 
@@ -202,4 +204,21 @@ func loadReferences(db *pgxpool.Pool) reference {
 	}
 
 	return result
+}
+
+func connectWekanDB() *mongo.Database {
+	mongoURI := viper.GetString("wekanMgoURL")
+	if mongoURI != "" {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = client.Connect(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+		mgoDb := client.Database(viper.GetString("wekanMgoDB"))
+		return mgoDb
+	}
+	return nil
 }

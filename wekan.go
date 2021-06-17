@@ -41,12 +41,20 @@ type WekanConfig struct {
 	Users map[string]string `json:"users"`
 }
 
-func (wc WekanConfig) boards() map[string]string {
-	boards := make(map[string]string)
-	for r, b := range wc.Boards {
-		boards[b.BoardID] = r
+// func (wc WekanConfig) boards() map[string]string {
+// 	boards := make(map[string]string)
+// 	for r, b := range wc.Boards {
+// 		boards[b.BoardID] = r
+// 	}
+// 	return boards
+// }
+
+func (wc WekanConfig) siretFields() []string {
+	var siretFields []string
+	for _, b := range wc.Boards {
+		siretFields = append(siretFields, b.CustomFields.SiretField)
 	}
-	return boards
+	return siretFields
 }
 
 func (wc *WekanConfig) load() error {
@@ -63,37 +71,44 @@ func (wc *WekanConfig) loadFile(path string) error {
 	return err
 }
 
-type wekanDbCustomFields struct {
-	ID    string `json:"_id" bson:"_id"`
-	Value string `json:"value" bson:"value"`
-}
+// type wekanDbCustomFields struct {
+// 	ID    string `json:"_id" bson:"_id"`
+// 	Value string `json:"value" bson:"value"`
+// }
 
 type WekanCards []WekanCard
 
+// type WekanCard struct {
+// 	ID               string                `json:"_id" bson:"_id"`
+// 	Title            string                `json:"title" bson:"title"`
+// 	BoardID          string                `json:"boardId" bson:"boardId"`
+// 	ListID           string                `json:"listID" bson:"listID"`
+// 	Description      string                `json:"description" bson:"description"`
+// 	UserID           string                `json:"userId" bson:"userId"`
+// 	SwimlaneId       string                `json:"swimlaneId" bson:"swinlaneId"`
+// 	Sort             int                   `json:"sort" bson:"sort"`
+// 	Members          []string              `json:"members" bson:"members"`
+// 	Archived         bool                  `json:"archived" bson:"archived"`
+// 	ParentID         string                `json:"parentId" bson:"parentId"`
+// 	CoverId          string                `json:"coverID" bson:"coverId"`
+// 	CreatedAt        time.Time             `json:"createdAt" bson:"createdAt"`
+// 	ModifiedAt       time.Time             `json:"modifiedAt" bson:"modifiedAt"`
+// 	CustomFieds      []wekanDbCustomFields `json:"customFields" bson:"customFields"`
+// 	DateLastActivity time.Time             `json:"dateLastActivity" bson:"dateLastActivity"`
+// 	RequestedBy      string                `json:"requestedBy" bson:"requestedBy"`
+// 	AssignedBy       string                `json:"assignedBy" bson:"assignedBy"`
+// 	LabelIds         []string              `json:"labelIds" bson:"labelIds"`
+// 	Assignees        []string              `json:"assignees" bson:"assignees"`
+// 	SpentTime        int                   `json:"spentTime" bson:"spentTime"`
+// 	IsOverTime       bool                  `json:"isOverTime" bson:"isOverTime"`
+// 	Type             string                `json:"type" bson:"type"`
+// }
+
 type WekanCard struct {
-	ID               string                `json:"_id" bson:"_id"`
-	Title            string                `json:"title" bson:"title"`
-	BoardID          string                `json:"boardId" bson:"boardId"`
-	ListID           string                `json:"listID" bson:"listID"`
-	Description      string                `json:"description" bson:"description"`
-	UserID           string                `json:"userId" bson:"userId"`
-	SwimlaneId       string                `json:"swimlaneId" bson:"swinlaneId"`
-	Sort             int                   `json:"sort" bson:"sort"`
-	Members          []string              `json:"members" bson:"members"`
-	Archived         bool                  `json:"archived" bson:"archived"`
-	ParentID         string                `json:"parentId" bson:"parentId"`
-	CoverId          string                `json:"coverID" bson:"coverId"`
-	CreatedAt        time.Time             `json:"createdAt" bson:"createdAt"`
-	ModifiedAt       time.Time             `json:"modifiedAt" bson:"modifiedAt"`
-	CustomFieds      []wekanDbCustomFields `json:"customFields" bson:"customFields"`
-	DateLastActivity time.Time             `json:"dateLastActivity" bson:"dateLastActivity"`
-	RequestedBy      string                `json:"requestedBy" bson:"requestedBy"`
-	AssignedBy       string                `json:"assignedBy" bson:"assignedBy"`
-	LabelIds         []string              `json:"labelIds" bson:"labelIds"`
-	Assignees        []string              `json:"assignees" bson:"assignees"`
-	SpentTime        int                   `json:"spentTime" bson:"spentTime"`
-	IsOverTime       bool                  `json:"isOverTime" bson:"isOverTime"`
-	Type             string                `json:"type" bson:"type"`
+	ID          string    `json:"_id" bson:"_id"`
+	Description string    `json:"description" bson:"description"`
+	StartAt     time.Time `json:"startAt" bson:"startAt"`
+	Siret       string    `json:"siret" bson:"siret"`
 }
 
 // Token type pour faire persister en mémoire les tokens réutilisables
@@ -153,6 +168,7 @@ type EtablissementData struct {
 
 var tokens sync.Map
 
+//TODO: factorisation
 func wekanGetCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
 	configFile := viper.GetString("wekanConfigFile")

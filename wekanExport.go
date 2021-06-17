@@ -10,7 +10,9 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/tealeg/xlsx"
+	"go.mongodb.org/mongo-driver/bson"
 )
 
 type WekanExports []WekanExport
@@ -88,29 +90,32 @@ type dbExport struct {
 }
 
 func getExport(roles scope, username string, wekan bool, sirets []string) (WekanExports, error) {
+	var wc WekanConfig
+	err := wc.load()
+	if err != nil {
+		return nil, err
+	}
 	exports, err := getDbExport(roles, username, sirets)
 	if err != nil {
 		return nil, err
 	}
 	for _, c := range exports {
-		sirets = append(sirets, c.Siret)
+		if c.InZone {
+			sirets = append(sirets, c.Siret)
+		}
 	}
 	var cards WekanCards
 	if wekan {
-		cards, err = getDbWekanCards(sirets)
+		cards, err = getDbWekanCards(sirets, wc.siretFields())
 		if err != nil {
 			return nil, err
 		}
 	}
-	var wc WekanConfig
-	err = wc.load()
-	if err != nil {
-		return nil, err
-	}
+
 	return joinExports(wc, exports, cards), nil
 }
 
-func (we WekanExports) xlsx() ([]byte, error) {
+func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
 	if err != nil {
@@ -142,7 +147,9 @@ func (we WekanExports) xlsx() ([]byte, error) {
 	row.AddCell().Value = "Procédure Collective"
 	row.AddCell().Value = "Détection Signaux-Faibles"
 	row.AddCell().Value = "Date Début Suivi"
-	row.AddCell().Value = "Description"
+	if wekan {
+		row.AddCell().Value = "Description"
+	}
 
 	for _, e := range we {
 		row := xlSheet.AddRow()
@@ -173,7 +180,9 @@ func (we WekanExports) xlsx() ([]byte, error) {
 		row.AddCell().Value = e.ProcedureCollective
 		row.AddCell().Value = e.DetectionSF
 		row.AddCell().Value = e.DateDebutSuivi
-		row.AddCell().Value = e.DescriptionWekan
+		if wekan {
+			row.AddCell().Value = e.DescriptionWekan
+		}
 	}
 	data := bytes.NewBuffer(nil)
 	file := bufio.NewWriter(data)
@@ -197,8 +206,40 @@ func (we WekanExports) docx() ([]byte, error) {
 	return file, nil
 }
 
-func getDbWekanCards(sirets []string) (WekanCards, error) {
-	return nil, nil
+func getDbWekanCards(sirets []string, siretFields []string) (WekanCards, error) {
+	pipeline := []bson.M{
+		{
+			"$match": bson.M{"type": "cardType-card"},
+		}, {
+			"$project": bson.M{
+				"description":  1,
+				"customFields": 1,
+				"startAt":      1,
+			},
+		}, {
+			"$unwind": "$customFields",
+		}, {
+			"$match": bson.M{
+				"customFields._id":   bson.M{"$in": siretFields},
+				"customFields.value": bson.M{"$in": sirets},
+			},
+		}, {
+			"$project": bson.M{
+				"description": 1,
+				"startAt":     1,
+				"siret":       "$customFields.value",
+			},
+		},
+	}
+
+	cur, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	var res WekanCards
+	err = cur.All(context.Background(), &res)
+	spew.Dump(res, err)
+	return res, err
 }
 
 func getDbExport(roles scope, username string, sirets []string) ([]dbExport, error) {
@@ -244,7 +285,8 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 }
 
 func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExports {
-	idx := indexCards(cards, wc)
+	idx := indexCards(cards)
+	fmt.Println(idx)
 	var wekanExports []WekanExport
 
 	apartSwitch := map[bool]string{
@@ -291,19 +333,16 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			DetteSociale:               urssafSwitch[e.DetteSociale],
 			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], e.DateUrssaf.Format("01/2006")),
 			AnneeExercice:              fmt.Sprintf("%d", e.ExerciceDiane),
-			ChiffreAffaire:             libelleFinancier(e.ChiffreAffaire, e.ChiffreAffairePrecedent, 0.05),
-			ExcedentBrutExploitation:   fmt.Sprintf("%.0f", e.ExcedentBrutExploitation),
-			ResultatExploitation:       fmt.Sprintf("%.0f", e.ResultatExploitation),
+			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, 0.05),
+			ExcedentBrutExploitation:   libelleFin(e.ExcedentBrutExploitation),
+			ResultatExploitation:       libelleFin(e.ResultatExploitation),
 			ProcedureCollective:        procolSwitch[e.ProcedureCollective],
 			DetectionSF:                libelleAlerte(e.DerniereListe, e.DerniereAlerte),
 		}
 
 		if i, ok := idx[e.Siret]; ok {
-			we.DateDebutSuivi = cards[i].CreatedAt.Format("02/01/2006")
+			we.DateDebutSuivi = cards[i].StartAt.Format("02/01/2006")
 			we.DescriptionWekan = cards[i].Description
-		} else {
-			we.DateDebutSuivi = e.DateDebutSuivi.Format("02/01/2006")
-			we.DescriptionWekan = e.CommentSuivi
 		}
 
 		wekanExports = append(wekanExports, we)
@@ -324,34 +363,34 @@ func libelleAlerte(liste string, alerte string) string {
 	return "Hors périmètre"
 }
 
-func libelleFinancier(val float64, valPrec float64, threshold float64) string {
+func libelleFin(val float64) string {
+	if val == 0 {
+		return "n/c"
+	}
+	return fmt.Sprintf("%.0f €", val)
+}
+
+func libelleCA(val float64, valPrec float64, threshold float64) string {
 	if val == 0 {
 		return "n/c"
 	}
 	if valPrec == 0 {
-		return fmt.Sprintf("%.0f", val)
+		return fmt.Sprintf("%.0f €", val)
 	}
 	if (val-valPrec)/val > threshold {
-		return fmt.Sprintf("%.0f (en hausse)", val)
+		return fmt.Sprintf("%.0f € (en hausse)", val)
 	} else if (val-valPrec)/val < threshold {
-		return fmt.Sprintf("%.0f (en baisse)", val)
+		return fmt.Sprintf("%.0f € (en baisse)", val)
 	}
-	return fmt.Sprintf("%.0f", val)
+	return fmt.Sprintf("%.0f €", val)
 }
 
-func indexCards(cards WekanCards, wc WekanConfig) map[string]int {
+func indexCards(cards WekanCards) map[string]int {
 	index := make(map[string]int)
-	boards := wc.boards()
+
 	for i, c := range cards {
-		var siret string
-		siretField := wc.Boards[boards[c.BoardID]].CustomFields.SiretField
-		for _, cf := range c.CustomFieds {
-			if cf.ID == siretField {
-				siret = cf.Value
-			}
-		}
-		if siret != "" {
-			index[siret] = i
+		if c.Siret != "" {
+			index[c.Siret] = i
 		} else {
 			log.Printf("no siret for card %s", c.ID)
 		}

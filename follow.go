@@ -34,7 +34,7 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 	c.JSON(200, follows)
 }
 
-func getXLSFollowedByCurrentUser(c *gin.Context) {
+func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
 
@@ -44,7 +44,7 @@ func getXLSFollowedByCurrentUser(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	xlsx, err := export.xlsx()
+	xlsx, err := export.xlsx(wekan)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return

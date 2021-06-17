@@ -49,3 +49,4 @@ wekanTokenDays = 60
 wekanConfigFile = "wekan_config.json"
 wekanImportFile = "wekan_import.csv"
 webBaseURL = "webBaseURL"
+wekanMgoURL = "mongodb://mongo:password@localhost/test"
