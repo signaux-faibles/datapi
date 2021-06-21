@@ -76,34 +76,10 @@ func (wc *WekanConfig) loadFile(path string) error {
 // 	Value string `json:"value" bson:"value"`
 // }
 
+// WekanCards est une liste de WekanCard
 type WekanCards []WekanCard
 
-// type WekanCard struct {
-// 	ID               string                `json:"_id" bson:"_id"`
-// 	Title            string                `json:"title" bson:"title"`
-// 	BoardID          string                `json:"boardId" bson:"boardId"`
-// 	ListID           string                `json:"listID" bson:"listID"`
-// 	Description      string                `json:"description" bson:"description"`
-// 	UserID           string                `json:"userId" bson:"userId"`
-// 	SwimlaneId       string                `json:"swimlaneId" bson:"swinlaneId"`
-// 	Sort             int                   `json:"sort" bson:"sort"`
-// 	Members          []string              `json:"members" bson:"members"`
-// 	Archived         bool                  `json:"archived" bson:"archived"`
-// 	ParentID         string                `json:"parentId" bson:"parentId"`
-// 	CoverId          string                `json:"coverID" bson:"coverId"`
-// 	CreatedAt        time.Time             `json:"createdAt" bson:"createdAt"`
-// 	ModifiedAt       time.Time             `json:"modifiedAt" bson:"modifiedAt"`
-// 	CustomFieds      []wekanDbCustomFields `json:"customFields" bson:"customFields"`
-// 	DateLastActivity time.Time             `json:"dateLastActivity" bson:"dateLastActivity"`
-// 	RequestedBy      string                `json:"requestedBy" bson:"requestedBy"`
-// 	AssignedBy       string                `json:"assignedBy" bson:"assignedBy"`
-// 	LabelIds         []string              `json:"labelIds" bson:"labelIds"`
-// 	Assignees        []string              `json:"assignees" bson:"assignees"`
-// 	SpentTime        int                   `json:"spentTime" bson:"spentTime"`
-// 	IsOverTime       bool                  `json:"isOverTime" bson:"isOverTime"`
-// 	Type             string                `json:"type" bson:"type"`
-// }
-
+// WekanCard embarque la sélection de champs Wekan nécessaires au traitement d'export
 type WekanCard struct {
 	ID          string    `json:"_id" bson:"_id"`
 	Description string    `json:"description" bson:"description"`
