@@ -204,9 +204,17 @@ func (we WekanExports) docx() ([]byte, error) {
 	cmd.Dir = dir
 	cmd.Stdin = bytes.NewReader(data)
 	var out bytes.Buffer
+	var outErr bytes.Buffer
 	cmd.Stdout = &out
+	cmd.Stderr = &outErr
 	cmd.Run()
 	file := out.Bytes()
+	if len(file) == 0 {
+		fmt.Println("no docx file generated")
+	}
+	if len(outErr.Bytes()) > 0 {
+		fmt.Println(outErr.String())
+	}
 	return file, nil
 }
 
