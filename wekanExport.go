@@ -359,7 +359,7 @@ func dateCreation(dt time.Time) string {
 	if dt.IsZero() || dt.Format("2006-02-01") == "1900-01-01" {
 		return "n/c"
 	}
-	return dt.Format("2006-02-01")
+	return dt.Format("02/01/2006")
 }
 
 func libelleAlerte(liste string, alerte string) string {
