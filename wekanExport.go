@@ -125,7 +125,7 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 	row := xlSheet.AddRow()
 	row.AddCell().Value = "Raison sociale"
 	row.AddCell().Value = "Siret"
-	row.AddCell().Value = "Siège"
+	row.AddCell().Value = "Type d'établissement"
 	row.AddCell().Value = "Tête de groupe"
 	row.AddCell().Value = "Département"
 	row.AddCell().Value = "Commune"
@@ -305,8 +305,8 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 		false: "Aucune dette salariale existante (%s)",
 	}
 	siegeSwitch := map[bool]string{
-		true:  "Oui",
-		false: "Non",
+		true:  "Siège social",
+		false: "Établissement secondaire",
 	}
 	procolSwitch := map[string]string{
 		"in_bonis":          "In bonis",
