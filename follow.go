@@ -53,31 +53,12 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
 }
 
-func getFollowedSirets(username string) ([]string, error) {
-	sql := "select siret from etablissement_follow where username = $1 and active;"
-	rows, err := db.Query(context.Background(), sql, username)
-	if err != nil {
-		return nil, err
-	}
-	var sirets []string
-	for rows.Next() {
-		var siret string
-		err := rows.Scan(&siret)
-		if err != nil {
-			return nil, err
-		}
-		sirets = append(sirets, siret)
-	}
-	return sirets, nil
-}
-
-func getDOCXFromSiret(c *gin.Context) {
+func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
-	sirets := append([]string{}, c.Param("siret"))
 
 	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, sirets)
+	export, err := getExport(scope, username, wekan, nil)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -91,13 +72,11 @@ func getDOCXFromSiret(c *gin.Context) {
 	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
 }
 
-func getDOCXFollowedByCurrentUser(c *gin.Context) {
+func getDOCXFromSiret(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
-	sirets, err := getFollowedSirets(username)
-	if err != nil {
-		c.AbortWithError(500, err)
-	}
+	sirets := append([]string{}, c.Param("siret"))
+
 	wekan := contains(scope, "wekan")
 	export, err := getExport(scope, username, wekan, sirets)
 	if err != nil {
