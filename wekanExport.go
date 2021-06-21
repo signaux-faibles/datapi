@@ -10,11 +10,11 @@ import (
 	"os/exec"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/tealeg/xlsx"
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// WekanExports array of WekanExport
 type WekanExports []WekanExport
 
 // WekanExport fournit les champs nécessaires pour l'export Wekan
@@ -125,30 +125,30 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 	row := xlSheet.AddRow()
 	row.AddCell().Value = "Raison sociale"
 	row.AddCell().Value = "Siret"
-	row.AddCell().Value = "Type Etablissement"
+	row.AddCell().Value = "Siège"
 	row.AddCell().Value = "Tête de groupe"
 	row.AddCell().Value = "Département"
 	row.AddCell().Value = "Commune"
 	row.AddCell().Value = "Territoire d'industrie"
 	row.AddCell().Value = "Secteur d'activité"
 	row.AddCell().Value = "Activité"
-	row.AddCell().Value = "Secteur Covid"
-	row.AddCell().Value = "Statut Juridique"
-	row.AddCell().Value = "Date Ouverture Établissement"
-	row.AddCell().Value = "Date Création Entreprise"
+	row.AddCell().Value = "Secteurs COVID-19"
+	row.AddCell().Value = "Statut juridique"
+	row.AddCell().Value = "Date d'ouverture"
+	row.AddCell().Value = "Création de l'entreprise"
 	row.AddCell().Value = "Effectif"
 	row.AddCell().Value = "Activité Partielle"
-	row.AddCell().Value = "Dette Sociale"
-	row.AddCell().Value = "Part Salariale"
+	row.AddCell().Value = "Dette sociale"
+	row.AddCell().Value = "Part salariale"
 	row.AddCell().Value = "Année Exercice"
-	row.AddCell().Value = "Chiffre Affaire"
-	row.AddCell().Value = "E.B.E."
-	row.AddCell().Value = "Résultat d'Exploitation"
-	row.AddCell().Value = "Procédure Collective"
-	row.AddCell().Value = "Détection Signaux-Faibles"
-	row.AddCell().Value = "Date Début Suivi"
+	row.AddCell().Value = "Chiffre d'affaires"
+	row.AddCell().Value = "Excédent brut d'exploitation"
+	row.AddCell().Value = "Résultat d'exploitation"
+	row.AddCell().Value = "Procédure collective"
+	row.AddCell().Value = "Détection Signaux Faibles"
+	row.AddCell().Value = "Début du suivi"
 	if wekan {
-		row.AddCell().Value = "Description"
+		row.AddCell().Value = "Présentation de l'enteprise, difficultés et actions"
 	}
 
 	for _, e := range we {
@@ -207,6 +207,9 @@ func (we WekanExports) docx() ([]byte, error) {
 }
 
 func getDbWekanCards(sirets []string, siretFields []string) (WekanCards, error) {
+	if len(sirets) == 0 {
+		return nil, nil
+	}
 	pipeline := []bson.M{
 		{
 			"$match": bson.M{"type": "cardType-card"},
@@ -238,21 +241,22 @@ func getDbWekanCards(sirets []string, siretFields []string) (WekanCards, error) 
 	}
 	var res WekanCards
 	err = cur.All(context.Background(), &res)
-	spew.Dump(res, err)
 	return res, err
 }
 
 func getDbExport(roles scope, username string, sirets []string) ([]dbExport, error) {
 	var exports []dbExport
-	sqlExport := `select v.siret, v.raison_sociale,	v.code_departement,	v.libelle_departement, v.commune,
+	sqlExport := `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 		coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-		v.code_activite, v.libelle_n5, v.libelle_n1, v.statut_juridique_n1,	v.statut_juridique_n2,
-		v.statut_juridique_n3, v.date_ouverture_etablissement, v.date_creation_entreprise, v.effectif,
-		v.date_effectif, v.arrete_bilan, v.exercice_diane,	v.chiffre_affaire, v.prev_chiffre_affaire,
-		v.variation_ca,	v.resultat_expl, v.prev_resultat_expl, v.excedent_brut_d_exploitation,
-		v.prev_excedent_brut_d_exploitation, v.last_list, v.last_alert, v.activite_partielle,
-		v.hausse_urssaf, v.presence_part_salariale, v.periode_urssaf, v.last_procol, v.date_last_procol,
-		f.since, f.comment,
+		v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
+		v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
+		coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif, 0), coalesce(v.date_effectif, '1900-01-01'),
+		coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
+		coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 0), coalesce(v.resultat_expl,0), 
+		coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
+		coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
+		v.activite_partielle, v.hausse_urssaf, v.presence_part_salariale, 
+		v.periode_urssaf, v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), f.since,
 		(permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 	from v_summaries v
 	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
@@ -275,7 +279,7 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 			&e.VariationCA, &e.ResultatExploitation, &e.ResultatExploitationPrecedent, &e.ExcedentBrutExploitation,
 			&e.ExcedentBrutExploitationPrecedent, &e.DerniereListe, &e.DerniereAlerte, &e.ActivitePartielle,
 			&e.DetteSociale, &e.PartSalariale, &e.DateUrssaf, &e.ProcedureCollective, &e.DateProcedureCollective,
-			&e.DateDebutSuivi, &e.CommentSuivi, &e.InZone)
+			&e.DateDebutSuivi, &e.InZone)
 		if err != nil {
 			return nil, err
 		}
@@ -286,7 +290,6 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 
 func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExports {
 	idx := indexCards(cards)
-	fmt.Println(idx)
 	var wekanExports []WekanExport
 
 	apartSwitch := map[bool]string{
@@ -298,12 +301,12 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 		false: "Pas de hausse sur les 3 derniers mois",
 	}
 	salarialSwitch := map[bool]string{
-		true:  "Dette salariale existante %s",
-		false: "Aucune dette salariale existante %s",
+		true:  "Dette salariale existante (%s)",
+		false: "Aucune dette salariale existante (%s)",
 	}
 	siegeSwitch := map[bool]string{
-		true:  "Siège",
-		false: "Établissement secondaire",
+		true:  "Oui",
+		false: "Non",
 	}
 	procolSwitch := map[string]string{
 		"in_bonis":          "In bonis",
@@ -326,8 +329,8 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			Activite:                   fmt.Sprintf("%s (%s)", e.LibelleActivite, e.CodeActivite),
 			SecteursCovid:              secteurCovid.get(e.CodeActivite),
 			StatutJuridique:            e.StatutJuridiqueN2,
-			DateOuvertureEtablissement: e.DateOuvertureEtablissement.Format("02/01/2006"),
-			DateCreationEntreprise:     e.DateCreationEntreprise.Format("02/01/2006"),
+			DateOuvertureEtablissement: dateCreation(e.DateOuvertureEtablissement),
+			DateCreationEntreprise:     dateCreation(e.DateCreationEntreprise),
 			Effectif:                   fmt.Sprintf("%d (%s)", e.DernierEffectif, e.DateDernierEffectif.Format("01/2006")),
 			ActivitePartielle:          apartSwitch[e.ActivitePartielle],
 			DetteSociale:               urssafSwitch[e.DetteSociale],
@@ -350,6 +353,13 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 	return wekanExports
 }
 
+func dateCreation(dt time.Time) string {
+	if dt.IsZero() || dt.Format("2006-02-01") == "1900-01-01" {
+		return "n/c"
+	}
+	return dt.Format("2006-02-01")
+}
+
 func libelleAlerte(liste string, alerte string) string {
 	if alerte == "Alerte seuil F1" {
 		return fmt.Sprintf("Risque élevé (%s)", liste)
@@ -367,7 +377,7 @@ func libelleFin(val float64) string {
 	if val == 0 {
 		return "n/c"
 	}
-	return fmt.Sprintf("%.0f €", val)
+	return fmt.Sprintf("%.0f k€", val)
 }
 
 func libelleCA(val float64, valPrec float64, threshold float64) string {
@@ -375,14 +385,14 @@ func libelleCA(val float64, valPrec float64, threshold float64) string {
 		return "n/c"
 	}
 	if valPrec == 0 {
-		return fmt.Sprintf("%.0f €", val)
+		return fmt.Sprintf("%.0f k€", val)
 	}
 	if (val-valPrec)/val > threshold {
-		return fmt.Sprintf("%.0f € (en hausse)", val)
+		return fmt.Sprintf("%.0f k€ (en hausse)", val)
 	} else if (val-valPrec)/val < threshold {
-		return fmt.Sprintf("%.0f € (en baisse)", val)
+		return fmt.Sprintf("%.0f k€ (en baisse)", val)
 	}
-	return fmt.Sprintf("%.0f €", val)
+	return fmt.Sprintf("%.0f k€", val)
 }
 
 func indexCards(cards WekanCards) map[string]int {
