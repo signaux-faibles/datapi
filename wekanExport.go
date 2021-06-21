@@ -267,8 +267,8 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 		coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 0), coalesce(v.resultat_expl,0), 
 		coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
 		coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
-		v.activite_partielle, v.hausse_urssaf, v.presence_part_salariale, 
-		v.periode_urssaf, v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), f.since,
+		coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
+		coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), f.since,
 		(permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 	from v_summaries v
 	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
@@ -345,8 +345,8 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			DateCreationEntreprise:     dateCreation(e.DateCreationEntreprise),
 			Effectif:                   fmt.Sprintf("%d (%s)", e.DernierEffectif, e.DateDernierEffectif.Format("01/2006")),
 			ActivitePartielle:          apartSwitch[e.ActivitePartielle],
-			DetteSociale:               fmt.Sprintf(urssafSwitch[e.DetteSociale], e.DateUrssaf.Format("01/2006")),
-			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], e.DateUrssaf.Format("01/2006")),
+			DetteSociale:               fmt.Sprintf(urssafSwitch[e.DetteSociale], dateUrssaf(e.DateUrssaf)),
+			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], dateUrssaf(e.DateUrssaf)),
 			AnneeExercice:              fmt.Sprintf("%d", e.ExerciceDiane),
 			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, 0.05),
 			ExcedentBrutExploitation:   libelleFin(e.ExcedentBrutExploitation),
@@ -367,6 +367,12 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 	return wekanExports
 }
 
+func dateUrssaf(dt time.Time) string {
+	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" {
+		return "n/c"
+	}
+	return dt.Format("01/2006")
+}
 func dateCreation(dt time.Time) string {
 	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" {
 		return "n/c"
