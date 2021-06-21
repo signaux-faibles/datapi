@@ -297,8 +297,8 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 		false: "Pas de demande récente",
 	}
 	urssafSwitch := map[bool]string{
-		true:  "Hausse sur les 3 derniers mois",
-		false: "Pas de hausse sur les 3 derniers mois",
+		true:  "Hausse sur les 3 derniers mois (%s)",
+		false: "Pas de hausse sur les 3 derniers mois (%s)",
 	}
 	salarialSwitch := map[bool]string{
 		true:  "Dette salariale existante (%s)",
@@ -333,7 +333,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			DateCreationEntreprise:     dateCreation(e.DateCreationEntreprise),
 			Effectif:                   fmt.Sprintf("%d (%s)", e.DernierEffectif, e.DateDernierEffectif.Format("01/2006")),
 			ActivitePartielle:          apartSwitch[e.ActivitePartielle],
-			DetteSociale:               urssafSwitch[e.DetteSociale],
+			DetteSociale:               fmt.Sprintf(urssafSwitch[e.DetteSociale], e.DateUrssaf.Format("01/2006")),
 			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], e.DateUrssaf.Format("01/2006")),
 			AnneeExercice:              fmt.Sprintf("%d", e.ExerciceDiane),
 			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, 0.05),
@@ -356,7 +356,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 }
 
 func dateCreation(dt time.Time) string {
-	if dt.IsZero() || dt.Format("2006-02-01") == "1900-01-01" {
+	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" {
 		return "n/c"
 	}
 	return dt.Format("02/01/2006")
