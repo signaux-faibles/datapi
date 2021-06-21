@@ -36,7 +36,7 @@ func (s secteursCovid) get(activite string) string {
 	}
 	for _, i := range s.s2 {
 		if i.codeActivite == activite {
-			return "S2"
+			return "S2 : très probable"
 		}
 	}
 	return ""
