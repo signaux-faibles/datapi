@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/spf13/viper"
 	"github.com/tealeg/xlsx"
 	"go.mongodb.org/mongo-driver/bson"
 )
@@ -193,11 +194,14 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 
 func (we WekanExports) docx() ([]byte, error) {
 	data, err := json.Marshal(we)
-
+	script := viper.GetString("docxifyPath")
+	dir := viper.GetString("docxifyWorkingDir")
+	python := viper.GetString("docxifyPython")
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command("cat")
+	cmd := exec.Command(python, script)
+	cmd.Dir = dir
 	cmd.Stdin = bytes.NewReader(data)
 	var out bytes.Buffer
 	cmd.Stdout = &out
