@@ -264,7 +264,7 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 		v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
 		coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif, 0), coalesce(v.date_effectif, '1900-01-01'),
 		coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
-		coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 0), coalesce(v.resultat_expl,0), 
+		coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
 		coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
 		coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
 		coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
@@ -348,7 +348,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			DetteSociale:               fmt.Sprintf(urssafSwitch[e.DetteSociale], dateUrssaf(e.DateUrssaf)),
 			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], dateUrssaf(e.DateUrssaf)),
 			AnneeExercice:              fmt.Sprintf("%d", e.ExerciceDiane),
-			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, 0.05),
+			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, e.VariationCA),
 			ExcedentBrutExploitation:   libelleFin(e.ExcedentBrutExploitation),
 			ResultatExploitation:       libelleFin(e.ResultatExploitation),
 			ProcedureCollective:        procolSwitch[e.ProcedureCollective],
@@ -400,16 +400,16 @@ func libelleFin(val float64) string {
 	return fmt.Sprintf("%.0f k€", val)
 }
 
-func libelleCA(val float64, valPrec float64, threshold float64) string {
+func libelleCA(val float64, valPrec float64, variationCA float64) string {
 	if val == 0 {
 		return "n/c"
 	}
 	if valPrec == 0 {
 		return fmt.Sprintf("%.0f k€", val)
 	}
-	if (val-valPrec)/val > threshold {
+	if variationCA > 1.05 {
 		return fmt.Sprintf("%.0f k€ (en hausse)", val)
-	} else if (val-valPrec)/val < threshold {
+	} else if variationCA < 0.95 {
 		return fmt.Sprintf("%.0f k€ (en baisse)", val)
 	}
 	return fmt.Sprintf("%.0f k€", val)
