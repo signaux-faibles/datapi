@@ -25,14 +25,14 @@ jobs:
       run: go build -v .
       
     - name: Set up Python 3.8
-        uses: actions/setup-python@v2
-        with:
-          python-version: 3.8
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.8
 
     - name: Install docx-mailmerge
-        run: |
-          python -m pip install --upgrade pip
-          pip install docx-mailmerge
+      run: |
+        python -m pip install --upgrade pip
+        pip install docx-mailmerge
 
     - name: Test
       run: |
