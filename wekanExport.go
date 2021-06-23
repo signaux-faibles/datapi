@@ -207,7 +207,10 @@ func (we WekanExports) docx() ([]byte, error) {
 	var outErr bytes.Buffer
 	cmd.Stdout = &out
 	cmd.Stderr = &outErr
-	cmd.Run()
+	err = cmd.Run()
+	if err != nil {
+		return nil, err
+	}
 	file := out.Bytes()
 	if len(file) == 0 {
 		fmt.Println("no docx file generated")

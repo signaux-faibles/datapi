@@ -28,11 +28,6 @@
     "resultatExploitationPrecedent": 150,
     "excedentBrutExploitation": 250,
     "excedentBrutExploitationPrecedent": 200,
-    "historiqueProcedureCollective": [
-      {"stade": "plan_continuation", "action": "redressement", "date_effet": "2020-08-11T00:00:00.000Z"}, 
-      {"stade": "inclusion_autre_procedure", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"},
-      {"stade": "ouverture", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"}
-    ],
     "derniereListe": "Mai 2021",
     "derniereAlerte": "Alerte Seuil F1",
     "activitePartielle": true,
@@ -40,7 +35,8 @@
     "partSalariale": true,
     "dateUrssaf": "2020-07-01T15:00:00.000Z",
     "procedureCollective": "in_bonis",
-    "dateDebutSuivi": "2020-07-01T15:00:00.000Z"
+    "dateDebutSuivi": "2020-07-01T15:00:00.000Z",
+    "inZone": true
   },
   {
     "siret": "12345678901234",
@@ -71,11 +67,6 @@
     "resultatExploitationPrecedent": 150,
     "excedentBrutExploitation": 250,
     "excedentBrutExploitationPrecedent": 200,
-    "historiqueProcedureCollective": [
-      {"stade": "plan_continuation", "action": "redressement", "date_effet": "2020-08-11T00:00:00.000Z"}, 
-      {"stade": "inclusion_autre_procedure", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"},
-      {"stade": "ouverture", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"}
-    ],
     "derniereListe": "Mai 2021",
     "derniereAlerte": "Alerte Seuil F1",
     "activitePartielle": true,
@@ -83,7 +74,8 @@
     "partSalariale": true,
     "dateUrssaf": "2020-07-01T15:00:00.000Z",
     "procedureCollective": "in_bonis",
-    "dateDebutSuivi": "2020-07-01T15:00:00.000Z"
+    "dateDebutSuivi": "2020-07-01T15:00:00.000Z",
+    "inZone": true
   },
   {
     "siret": "23456789012345",
@@ -114,11 +106,6 @@
     "resultatExploitationPrecedent": 150,
     "excedentBrutExploitation": 250,
     "excedentBrutExploitationPrecedent": 200,
-    "historiqueProcedureCollective": [
-      {"stade": "plan_continuation", "action": "redressement", "date_effet": "2020-08-11T00:00:00.000Z"}, 
-      {"stade": "inclusion_autre_procedure", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"},
-      {"stade": "ouverture", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"}
-    ],
     "derniereListe": "Mai 2021",
     "derniereAlerte": "Alerte Seuil F1",
     "activitePartielle": true,
@@ -126,7 +113,8 @@
     "partSalariale": true,
     "dateUrssaf": "2020-07-01T15:00:00.000Z",
     "procedureCollective": "in_bonis",
-    "dateDebutSuivi": "2020-07-01T15:00:00.000Z"
+    "dateDebutSuivi": "2020-07-01T15:00:00.000Z",
+    "inZone": true
   },
   {
     "siret": "34567890123456",
@@ -157,11 +145,6 @@
     "resultatExploitationPrecedent": 150,
     "excedentBrutExploitation": 250,
     "excedentBrutExploitationPrecedent": 200,
-    "historiqueProcedureCollective": [
-      {"stade": "plan_continuation", "action": "redressement", "date_effet": "2020-08-11T00:00:00.000Z"}, 
-      {"stade": "inclusion_autre_procedure", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"},
-      {"stade": "ouverture", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"}
-    ],
     "derniereListe": "Mai 2021",
     "derniereAlerte": "Alerte Seuil F1",
     "activitePartielle": true,
@@ -169,7 +152,8 @@
     "partSalariale": true,
     "dateUrssaf": "2020-07-01T15:00:00.000Z",
     "procedureCollective": "in_bonis",
-    "dateDebutSuivi": "2020-07-01T15:00:00.000Z"
+    "dateDebutSuivi": "2020-07-01T15:00:00.000Z",
+    "inZone": true
   },
   {
     "siret": "4567890123567",
@@ -200,11 +184,6 @@
     "resultatExploitationPrecedent": 150,
     "excedentBrutExploitation": 250,
     "excedentBrutExploitationPrecedent": 200,
-    "historiqueProcedureCollective": [
-      {"stade": "plan_continuation", "action": "redressement", "date_effet": "2020-08-11T00:00:00.000Z"}, 
-      {"stade": "inclusion_autre_procedure", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"},
-      {"stade": "ouverture", "action": "redressement", "date_effet": "2019-07-16T00:00:00.000Z"}
-    ],
     "derniereListe": "Mai 2021",
     "derniereAlerte": "Alerte Seuil F1",
     "activitePartielle": true,
@@ -212,6 +191,7 @@
     "partSalariale": true,
     "dateUrssaf": "2020-07-01T15:00:00.000Z",
     "procedureCollective": "in_bonis",
-    "dateDebutSuivi": "2020-07-01T15:00:00.000Z"
+    "dateDebutSuivi": "2020-07-01T15:00:00.000Z",
+    "inZone": true
   }
 ]
