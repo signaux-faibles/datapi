@@ -23,33 +23,6 @@ type keycloakUser struct {
 	roles     scope
 }
 
-// func (sc scope) containsRole(role string) bool {
-// 	for _, s := range sc {
-// 		if role == s {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
-// func (sc scope) containsScope(roles scope) bool {
-// 	for _, r := range roles {
-// 		if !sc.containsRole(r) {
-// 			return false
-// 		}
-// 	}
-// 	return true
-// }
-
-// func (sc scope) overlapsScope(roles scope) bool {
-// 	for _, r := range roles {
-// 		if sc.containsRole(r) {
-// 			return true
-// 		}
-// 	}
-// 	return false
-// }
-
 func connectKC() gocloak.GoCloak {
 	keycloak := gocloak.NewClient(viper.GetString("keycloakHostname"))
 	if keycloak == nil {
@@ -97,6 +70,18 @@ func keycloakMiddleware(c *gin.Context) {
 		c.AbortWithStatus(401)
 	}
 
+	if givenName, ok := (*claims)["given_name"]; ok {
+		c.Set("given_name", givenName)
+	} else {
+		c.AbortWithStatus(401)
+	}
+
+	if givenName, ok := (*claims)["family_name"]; ok {
+		c.Set("family_name", givenName)
+	} else {
+		c.AbortWithStatus(401)
+	}
+
 	c.Set("claims", claims)
 
 	c.Next()
@@ -117,6 +102,8 @@ func fakeCloakMiddleware(c *gin.Context) {
 	}
 
 	c.Set("username", viper.GetString("fakeUsernameKeycloak"))
+	c.Set("given_name", "John")
+	c.Set("family_name", "Doe")
 	c.Set("claims", &claims)
 	c.Next()
 }

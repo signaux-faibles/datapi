@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 // Follow type follow pour l'API
@@ -58,14 +59,28 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
-
+	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
+	confidentialites := c.Request.URL.Query()["confidentialite"]
+	confidentialite := viper.GetString("defaultConfidentialite")
+	if len(confidentialites) == 1 && len(confidentialites[0]) > 0 {
+		confidentialite = confidentialites[0]
+	}
+	if !isSecureString(confidentialite) || len(confidentialite) > 40 {
+		c.AbortWithStatusJSON(403, "`confidentialite` contient des caractères interdits ou mesure plus de 40 caractères")
+		return
+	}
 	wekan := contains(scope, "wekan")
 	export, err := getExport(scope, username, wekan, nil)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
-	header := ExportHeader{}
+	header := ExportHeader{
+		Auteur:          auteur,
+		Date:            time.Now(),
+		Confidentialite: confidentialite,
+	}
+	fmt.Println(confidentialite)
 	docx, err := export.docx(header)
 	if err != nil {
 		c.AbortWithError(500, err)
@@ -78,16 +93,25 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 
 func getDOCXFromSiret(c *gin.Context) {
 	username := c.GetString("username")
+	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
+	confidentialites := c.Request.URL.Query()["confidentialite"]
+	confidentialite := viper.GetString("defaultConfidentialite")
+	if len(confidentialites) == 1 {
+		confidentialite = confidentialites[0]
+	}
 	scope := scopeFromContext(c)
 	sirets := append([]string{}, c.Param("siret"))
-
 	wekan := contains(scope, "wekan")
 	export, err := getExport(scope, username, wekan, sirets)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
-	header := ExportHeader{}
+	header := ExportHeader{
+		Auteur:          auteur,
+		Date:            time.Now(),
+		Confidentialite: confidentialite,
+	}
 	docx, err := export.docx(header)
 	if err != nil {
 		c.AbortWithError(500, err)

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 	"time"
 
@@ -106,4 +107,13 @@ func coalescepTime(pointers ...*time.Time) *time.Time {
 		}
 	}
 	return nil
+}
+
+func isSecureString(s string) bool {
+	re, err := regexp.CompilePOSIX(`^[a-zA-Z0-9 àâäèéêëîïôœùûüÿçÀÂÄÈÉÊËÎÏÔŒÙÛÜŸÇ\-\'\"\(\)]*$`)
+	if err != nil {
+		fmt.Println(err)
+		return false
+	}
+	return re.MatchString(s)
 }
