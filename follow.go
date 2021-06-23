@@ -65,7 +65,8 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	docx, err := export.docx()
+	header := ExportHeader{}
+	docx, err := export.docx(header)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -86,7 +87,8 @@ func getDOCXFromSiret(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	docx, err := export.docx()
+	header := ExportHeader{}
+	docx, err := export.docx(header)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return

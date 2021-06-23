@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io/ioutil"
+	"os"
 	"testing"
+	"time"
 
 	"github.com/cnf/structhash"
 	"github.com/spf13/viper"
@@ -59,12 +61,24 @@ func Test_WekanExportsDOCX(t *testing.T) {
 	viper.Set("docxifyPath", "./docxify3.py")
 	viper.Set("docxifyWorkingDir", "./build-container")
 	viper.Set("docxifyPython", "python3")
-	docx, err := wekanExports.docx()
+	dateHeader, _ := time.Parse("02/01/2006", "05/06/2018")
+	header := ExportHeader{
+		Auteur:          "test_auteur",
+		Date:            dateHeader,
+		Confidentialite: "test_confidentialite",
+	}
+	docx, err := wekanExports.docx(header)
 	if len(docx) == 0 {
 		t.Error("empty docx file returned")
 	}
 	if err != nil {
 		t.Error(err)
+	}
+	if os.Getenv("WRITE_DOCX") == "true" {
+		err := ioutil.WriteFile("test_output.docx", docx, 0755)
+		if err != nil {
+			t.Errorf("could create result file: %s", err.Error())
+		}
 	}
 }
 

@@ -15,6 +15,12 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+type ExportHeader struct {
+	Auteur          string
+	Date            time.Time
+	Confidentialite string
+}
+
 // WekanExports array of WekanExport
 type WekanExports []WekanExport
 
@@ -192,7 +198,7 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 	return data.Bytes(), nil
 }
 
-func (we WekanExports) docx() ([]byte, error) {
+func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
 	data, err := json.Marshal(we)
 	script := viper.GetString("docxifyPath")
 	dir := viper.GetString("docxifyWorkingDir")
@@ -200,7 +206,7 @@ func (we WekanExports) docx() ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(python, script)
+	cmd := exec.Command(python, script, head.Auteur, head.Date.Format("02/01/2006"), head.Confidentialite)
 	cmd.Dir = dir
 	cmd.Stdin = bytes.NewReader(data)
 	var out bytes.Buffer
