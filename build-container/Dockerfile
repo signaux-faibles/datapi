@@ -3,7 +3,6 @@ RUN apk add --no-cache python3 python3-dev musl-dev libxml2 libxml2-dev libxslt 
 RUN python3 -m ensurepip
 RUN pip3 install docx-mailmerge
 ARG datapiDir
-COPY ./docxify.py /app/docxify.py
 COPY ./docxify3.py /app/docxify3.py
 COPY ./template.docx /app/template.docx
 COPY ./$datapiDir/datapi /app/datapi
