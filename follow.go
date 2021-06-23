@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -49,7 +50,8 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract-"+time.Now().Format("060102")+".xlsx")
+	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
 }
 
@@ -68,7 +70,8 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract-"+time.Now().Format("060102")+".docx")
+	filename := fmt.Sprintf("export-suivi-%s.docx", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
 	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
 }
 
@@ -88,7 +91,8 @@ func getDOCXFromSiret(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract-"+time.Now().Format("060102")+".docx")
+	filename := fmt.Sprintf("export-%s-%s.docx", sirets[0], time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
 	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
 }
 
