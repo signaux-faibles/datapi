@@ -107,9 +107,3 @@ func coalescepTime(pointers ...*time.Time) *time.Time {
 	}
 	return nil
 }
-
-var re, _ = regexp.CompilePOSIX(`^[a-zA-Z0-9 àâäèéêëîïôœùûüÿçÀÂÄÈÉÊËÎÏÔŒÙÛÜŸÇ\-\'\"\(\)]*$`)
-
-func isSecureString(s string) bool {
-	return re.MatchString(s)
-}

@@ -16,9 +16,8 @@ import (
 )
 
 type ExportHeader struct {
-	Auteur          string
-	Date            time.Time
-	Confidentialite string
+	Auteur string
+	Date   time.Time
 }
 
 // WekanExports array of WekanExport
@@ -206,7 +205,7 @@ func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	cmd := exec.Command(python, script, head.Auteur, head.Date.Format("02/01/2006"), head.Confidentialite)
+	cmd := exec.Command(python, script, head.Auteur, head.Date.Format("02/01/2006"), "Haute")
 	cmd.Dir = dir
 	cmd.Stdin = bytes.NewReader(data)
 	var out bytes.Buffer
