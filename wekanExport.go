@@ -277,7 +277,7 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 		coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
 		coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
 		coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
-		coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), f.since,
+		coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
 		(permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 	from v_summaries v
 	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
@@ -365,7 +365,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 		}
 
 		if i, ok := idx[e.Siret]; ok {
-			we.DateDebutSuivi = cards[i].StartAt.Format("02/01/2006")
+			we.DateDebutSuivi = dateUrssaf(cards[i].StartAt)
 			we.DescriptionWekan = cards[i].Description
 		} else {
 			we.DateDebutSuivi = e.DateDebutSuivi.Format("02/01/2006")
