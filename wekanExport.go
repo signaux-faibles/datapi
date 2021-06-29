@@ -15,6 +15,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
+// ExportHeader contient l'entête d'un document d'export
 type ExportHeader struct {
 	Auteur string
 	Date   time.Time

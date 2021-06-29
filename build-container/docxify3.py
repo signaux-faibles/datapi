@@ -1,6 +1,5 @@
 # coding: utf-8
 import sys
-import codecs
 import json
 from mailmerge import MailMerge
 
@@ -42,7 +41,7 @@ def get_json_input_data():
 		read = sys.stdin.read()
 		data = json.loads(read)
 		return data
-	except ValueError as e:
+	except ValueError:
 		sys.stderr.write('Erreur lors de la lecture des données JSON en entrée\n')
 		sys.exit(1)
 
@@ -64,7 +63,7 @@ def fill_template_with_data(data):
 			document.merge(auteur=auteur)
 		document.merge_templates(data, separator='page_break')
 		document.write(sys.stdout.buffer)
-	except ValueError as e:
+	except ValueError:
 		sys.stderr.write('Erreur lors du remplissage du modèle DOCX\n')
 		sys.exit(1)
 
