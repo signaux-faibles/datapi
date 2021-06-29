@@ -63,9 +63,8 @@ func Test_WekanExportsDOCX(t *testing.T) {
 	viper.Set("docxifyPython", "python3")
 	dateHeader, _ := time.Parse("02/01/2006", "05/06/2018")
 	header := ExportHeader{
-		Auteur:          "test_auteur",
-		Date:            dateHeader,
-		Confidentialite: "test_confidentialite",
+		Auteur: "test_auteur",
+		Date:   dateHeader,
 	}
 	docx, err := wekanExports.docx(header)
 	if len(docx) == 0 {
