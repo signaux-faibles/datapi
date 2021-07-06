@@ -49,3 +49,9 @@ wekanTokenDays = 60
 wekanConfigFile = "wekan_config.json"
 wekanImportFile = "wekan_import.csv"
 webBaseURL = "webBaseURL"
+wekanMgoURL = "mongodb://mongo:password@localhost/test"
+
+docxifyPath = "./docxify3.py"
+docxifyWorkingDir = "/foo/bar"
+docxifyPython = "/usr/bin/python3"
+defaultConfidentialite = "secret"

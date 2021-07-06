@@ -108,12 +108,6 @@ type entreprise struct {
 	} `bson:"value"`
 }
 
-// Effectif detail
-type effectif struct {
-	Periode  time.Time `json:"periode"`
-	Effectif int       `json:"effectif"`
-}
-
 // Debit detail
 type debit struct {
 	PartOuvriere       float64   `json:"part_ouvriere"`
@@ -791,18 +785,6 @@ func scoreToListe() pgx.Batch {
 	return batch
 }
 
-type importObject struct {
-	ID    string      `json:"_id"`
-	Value importValue `json:"value"`
-}
-
-type importValue struct {
-	Sirets   *[]string      `json:"sirets"`
-	Bdf      *[]interface{} `json:"bdf"`
-	Diane    *[]diane       `json:"diane"`
-	SireneUL *sireneUL      `json:"sirene_ul"`
-}
-
 func importHandler(c *gin.Context) {
 	tx, err := db.Begin(context.Background())
 	if err != nil {
@@ -855,6 +837,9 @@ func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) er
 	defer file.Close()
 	batches, wg := newBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
 	decoder := json.NewDecoder(unzip)
 	i := 0
 	var batch pgx.Batch
@@ -912,6 +897,9 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 	}
 	batches, wg := newBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
+	if err != nil {
+		return err
+	}
 	decoder := json.NewDecoder(unzip)
 
 	i := 0

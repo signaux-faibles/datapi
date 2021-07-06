@@ -16,27 +16,27 @@ type secteursCovid struct {
 func (s secteursCovid) get(activite string) string {
 	for _, i := range s.s1 {
 		if i.codeActivite == activite {
-			return "s1"
+			return "S1 : très probable"
 		}
 	}
 	for _, i := range s.s1Possible {
 		if i.codeActivite == activite {
-			return "s1Possible"
+			return "S1 : possible"
 		}
 	}
 	for _, i := range s.s1bis {
 		if i.codeActivite == activite {
-			return "s1bis"
+			return "S1 bis : très probable"
 		}
 	}
 	for _, i := range s.s1bisPossible {
 		if i.codeActivite == activite {
-			return "s1bisPossible"
+			return "S1 bis : possible"
 		}
 	}
 	for _, i := range s.s2 {
 		if i.codeActivite == activite {
-			return "s2"
+			return "S2 : très probable"
 		}
 	}
 	return ""

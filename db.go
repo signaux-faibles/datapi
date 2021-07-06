@@ -11,6 +11,8 @@ import (
 
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 
 	"github.com/spf13/viper"
 
@@ -47,7 +49,7 @@ func connectDB() *pgxpool.Pool {
 
 func listDatabaseMigrations(db *pgxpool.Pool) []migrationScript {
 	var exists bool
-	err := db.QueryRow(context.Background(),
+	db.QueryRow(context.Background(),
 		`select exists
 		(select 1
 		 from information_schema.tables 
@@ -204,74 +206,19 @@ func loadReferences(db *pgxpool.Pool) reference {
 	return result
 }
 
-func createIndexesBatch() pgx.Batch {
-	batch := pgx.Batch{}
-	batch.Queue("create index idx_etablissement_siret on etablissement (siret) where version = 0;")
-	batch.Queue("create index idx_etablissement_siren on etablissement (siren) where version = 0;")
-	batch.Queue("create index idx_etablissement_departement on etablissement (departement) where version = 0;")
-	batch.Queue("create index idx_etablissement_hash on etablissement (siret, hash) where version in (0, 1);")
-	batch.Queue("create index idx_etablissement_naf on etablissement (ape) where version = 0;")
-	batch.Queue("create index idx_entreprise_siren on entreprise (siren) where version = 0;")
-	batch.Queue("create index idx_entreprise_hash on entreprise (siren, hash) where version in (0, 1);")
-	batch.Queue("create index idx_etablissement_procol_siret on etablissement_procol (siret) where version = 0;")
-	batch.Queue("create index idx_etablissement_procol_hash on etablissement_procol (siret, hash) where version in (0, 1);")
-	batch.Queue("create index idx_etablissement_delai_siret on etablissement_delai (siret) where version = 0;")
-	batch.Queue("create index idx_etablissement_delai_hash on etablissement_delai (siret, hash) where version in (0, 1);")
-	batch.Queue("create index idx_etablissement_periode_urssaf_siret on etablissement_periode_urssaf (siret) where version = 0;")
-	batch.Queue("create index idx_etablissement_periode_urssaf_siren on etablissement_periode_urssaf (siren) where version = 0;")
-	batch.Queue("create index idx_etablissement_periode_urssaf_hash on etablissement_periode_urssaf (siret, hash) where version in (0, 1);")
-	batch.Queue("create index idx_etablissement_apconso_siret on etablissement_apconso (siret) where version = 0;")
-	batch.Queue("create index idx_etablissement_apconso_siren on etablissement_apconso (siren) where version = 0;")
-	batch.Queue("create index idx_etablissement_apconso_hash on etablissement_apconso (siret, hash) where version in (0, 1);")
-	batch.Queue("create index idx_etablissement_apdemande_siret on etablissement_apdemande (siret) where version = 0;")
-	batch.Queue("create index idx_etablissement_apdemande_siren on etablissement_apdemande (siren) where version = 0;")
-	batch.Queue("create index idx_etablissement_apdemande_hash on etablissement_apdemande (siret, hash) where version in (0, 1);")
-	batch.Queue("create index idx_score_siret on score (siret) where version = 0;")
-	batch.Queue("create index idx_score_siren on score (siren) where version = 0;")
-	batch.Queue("create index idx_score_alert on score (alert) where version = 0;")
-	batch.Queue("create index idx_score_liste on score (libelle_liste) where version = 0;")
-	batch.Queue("create index idx_score_score on score (score) where version = 0;")
-	batch.Queue("create index idx_score_hash on score (siret, hash) where version in (0, 1);")
-	batch.Queue("create index idx_liste_libelle on liste (libelle) where version = 0;")
-	batch.Queue("create index idx_naf_code_niveau on naf (code, niveau);")
-	batch.Queue("create index idx_etablissement_follow on etablissement_follow (siret, username, active);")
-	batch.Queue("create index idx_naf_code on naf  (code);")
-	batch.Queue("create index idx_naf_n1 on naf (id_n1);")
-	return batch
-}
-
-func dropIndexesBatch() pgx.Batch {
-	batch := pgx.Batch{}
-	batch.Queue("drop index idx_etablissement_siret;")
-	batch.Queue("drop index idx_etablissement_siren;")
-	batch.Queue("drop index idx_etablissement_departement;")
-	batch.Queue("drop index idx_etablissement_hash;")
-	batch.Queue("drop index idx_etablissement_naf;")
-	batch.Queue("drop index idx_entreprise_siren;")
-	batch.Queue("drop index idx_entreprise_hash;")
-	batch.Queue("drop index idx_etablissement_procol_siret;")
-	batch.Queue("drop index idx_etablissement_procol_hash;")
-	batch.Queue("drop index idx_etablissement_delai_siret;")
-	batch.Queue("drop index idx_etablissement_delai_hash;")
-	batch.Queue("drop index idx_etablissement_periode_urssaf_siret;")
-	batch.Queue("drop index idx_etablissement_periode_urssaf_siren;")
-	batch.Queue("drop index idx_etablissement_periode_urssaf_hash;")
-	batch.Queue("drop index idx_etablissement_apconso_siret;")
-	batch.Queue("drop index idx_etablissement_apconso_siren;")
-	batch.Queue("drop index idx_etablissement_apconso_hash;")
-	batch.Queue("drop index idx_etablissement_apdemande_siret;")
-	batch.Queue("drop index idx_etablissement_apdemande_siren;")
-	batch.Queue("drop index idx_etablissement_apdemande_hash;")
-	batch.Queue("drop index idx_score_siret;")
-	batch.Queue("drop index idx_score_siren;")
-	batch.Queue("drop index idx_score_alert;")
-	batch.Queue("drop index idx_score_liste;")
-	batch.Queue("drop index idx_score_score;")
-	batch.Queue("drop index idx_score_hash;")
-	batch.Queue("drop index idx_liste_libelle;")
-	batch.Queue("drop index idx_naf_code_niveau;")
-	batch.Queue("drop index idx_etablissement_follow;")
-	batch.Queue("drop index idx_naf_code;")
-	batch.Queue("drop index idx_naf_n1;")
-	return batch
+func connectWekanDB() *mongo.Database {
+	mongoURI := viper.GetString("wekanMgoURL")
+	if mongoURI != "" {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = client.Connect(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+		mgoDb := client.Database(viper.GetString("wekanMgoDB"))
+		return mgoDb
+	}
+	return nil
 }

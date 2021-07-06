@@ -41,6 +41,52 @@ type WekanConfig struct {
 	Users map[string]string `json:"users"`
 }
 
+// func (wc WekanConfig) boards() map[string]string {
+// 	boards := make(map[string]string)
+// 	for r, b := range wc.Boards {
+// 		boards[b.BoardID] = r
+// 	}
+// 	return boards
+// }
+
+func (wc WekanConfig) siretFields() []string {
+	var siretFields []string
+	for _, b := range wc.Boards {
+		siretFields = append(siretFields, b.CustomFields.SiretField)
+	}
+	return siretFields
+}
+
+func (wc *WekanConfig) load() error {
+	configFile := viper.GetString("wekanConfigFile")
+	return wc.loadFile(configFile)
+}
+
+func (wc *WekanConfig) loadFile(path string) error {
+	fileContent, err := ioutil.ReadFile(path)
+	if err != nil {
+		return err
+	}
+	err = json.Unmarshal(fileContent, wc)
+	return err
+}
+
+// type wekanDbCustomFields struct {
+// 	ID    string `json:"_id" bson:"_id"`
+// 	Value string `json:"value" bson:"value"`
+// }
+
+// WekanCards est une liste de WekanCard
+type WekanCards []WekanCard
+
+// WekanCard embarque la sélection de champs Wekan nécessaires au traitement d'export
+type WekanCard struct {
+	ID          string    `json:"_id" bson:"_id"`
+	Description string    `json:"description" bson:"description"`
+	StartAt     time.Time `json:"startAt" bson:"startAt"`
+	Siret       string    `json:"siret" bson:"siret"`
+}
+
 // Token type pour faire persister en mémoire les tokens réutilisables
 type Token struct {
 	Value        string
@@ -98,6 +144,7 @@ type EtablissementData struct {
 
 var tokens sync.Map
 
+//TODO: factorisation
 func wekanGetCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
 	configFile := viper.GetString("wekanConfigFile")
@@ -108,6 +155,10 @@ func wekanGetCardHandler(c *gin.Context) {
 	}
 	var config WekanConfig
 	err = json.Unmarshal(fileContent, &config)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
 	username := c.GetString("username")
 	userID, ok := config.Users[username]
 	if !ok {
@@ -170,7 +221,7 @@ func wekanGetCardHandler(c *gin.Context) {
 	}
 	etsData, err := getEtablissementDataFromDb(siret)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 		return
 	}
 	region := etsData.Region
@@ -222,6 +273,10 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 	var config WekanConfig
 	err = json.Unmarshal(fileContent, &config)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
 	username := c.GetString("username")
 	userID, ok := config.Users[username]
 	if !ok {
@@ -285,7 +340,7 @@ func wekanNewCardHandler(c *gin.Context) {
 	// data enrichment
 	etsData, err := getEtablissementDataFromDb(siret)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 		return
 	}
 	region := etsData.Region
@@ -379,22 +434,23 @@ func wekanImportHandler(c *gin.Context) {
 	importFile := viper.GetString("wekanImportFile")
 	csvFile, err := os.Open(importFile)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 		return
 	}
 	defer csvFile.Close()
 	csvLines, err := csv.NewReader(csvFile).ReadAll()
 	if err != nil {
-		log.Printf(err.Error())
+		log.Println(err.Error())
 		return
 	}
 	var tableauCRP []FicheCRP
 	var invalidLines []string
+	reSiret, _ := regexp.Compile("^[0-9]{14}$")
 	for i, line := range csvLines {
 		if i > 1 {
 			siret := strings.ReplaceAll(line[1], " ", "")
-			match, err := regexp.MatchString("^[0-9]{14}$", siret)
-			if err != nil || !match {
+			match := reSiret.MatchString(siret)
+			if !match {
 				invalidLines = append(invalidLines, "#"+strconv.Itoa(i+1))
 			} else {
 				commentaire := "**Difficultés rencontrées par l'entreprise**\n" + line[16] + "\n\n**Etat du climat social**\n" + line[19] + "\n\n**Etat du dossier**\n" + line[22] + "\n\n**Actions et échéances à venir**\n" + line[24] + "\n\n**Commentaires sur l'entreprise**\n" + line[25] + "\n\n**Commentaires sur la situation**\n" + line[26] + "\n\n"
@@ -419,6 +475,9 @@ func wekanImportHandler(c *gin.Context) {
 	}
 	var config WekanConfig
 	err = json.Unmarshal(fileContent, &config)
+	if err != nil {
+		c.AbortWithError(500, err)
+	}
 	board, ok := config.Boards[region]
 	if !ok {
 		c.JSON(500, "missing board in config file")
@@ -494,7 +553,7 @@ func wekanImportHandler(c *gin.Context) {
 		// data enrichment
 		etsData, err := getEtablissementDataFromDb(siret)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Println(err.Error())
 			continue
 		}
 		// fields formatting
@@ -533,13 +592,13 @@ func wekanImportHandler(c *gin.Context) {
 		}
 		body, err := createCard(userToken.Value, boardID, listID, creationData)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Println(err.Error())
 			continue
 		}
 		wekanCreateCard := WekanCreateCard{}
 		err = json.Unmarshal(body, &wekanCreateCard)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Println(err.Error())
 			continue
 		}
 		cardID := wekanCreateCard.ID
@@ -565,7 +624,7 @@ func wekanImportHandler(c *gin.Context) {
 		}
 		_, err = editCard(userToken.Value, boardID, listID, cardID, editionData)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Println(err.Error())
 			continue
 		}
 		// card comment
@@ -576,7 +635,7 @@ func wekanImportHandler(c *gin.Context) {
 		}
 		_, err = commentCard(userToken.Value, boardID, cardID, commentData)
 		if err != nil {
-			log.Printf(err.Error())
+			log.Println(err.Error())
 			continue
 		}
 		log.Printf("ets %s imported", siret)
@@ -592,6 +651,10 @@ func wekanGetListCardsHandler(c *gin.Context) {
 	}
 	var config WekanConfig
 	err = json.Unmarshal(fileContent, &config)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
 	var adminToken Token
 	adminUsername := viper.GetString("wekanAdminUsername")
 	loadedToken, ok := tokens.Load(adminUsername)
@@ -661,7 +724,7 @@ func wekanGetListCardsHandler(c *gin.Context) {
 			cardDataArray = append(cardDataArray, cardData)
 		}
 	}
-	log.Printf("cardDataArray=%s", len(cardDataArray))
+	log.Printf("cardDataArray=%d", len(cardDataArray))
 	c.JSON(200, "OK")
 }
 
@@ -821,10 +884,7 @@ func isValidToken(token Token) bool {
 	duration := time.Since(token.CreationDate)
 	hours := duration.Hours()
 	days := hours / 24
-	if days < float64(viper.GetInt("wekanTokenDays")) {
-		return true
-	}
-	return false
+	return days < float64(viper.GetInt("wekanTokenDays"))
 }
 
 func indexOf(element string, array []string) int {

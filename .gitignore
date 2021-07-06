@@ -4,3 +4,4 @@ test.json
 fce-download.csv
 tools/randomData.sql.gz
 wekan_config.json
+*.xlsx

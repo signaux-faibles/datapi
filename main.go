@@ -11,6 +11,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
+	"go.mongodb.org/mongo-driver/mongo"
 
 	"github.com/spf13/viper"
 
@@ -19,11 +20,13 @@ import (
 
 var keycloak gocloak.GoCloak
 var db *pgxpool.Pool
+var mgoDB *mongo.Database
 var ref reference
 
 func main() {
 	loadConfig()
 	db = connectDB()
+	mgoDB = connectWekanDB()
 	keycloak = connectKC()
 	runAPI()
 }
@@ -68,7 +71,12 @@ func runAPI() {
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
-	follow.GET("/xls", getXLSFollowedByCurrentUser)
+	follow.GET("/xls", getXLSXFollowedByCurrentUser)
+
+	export := router.Group("/export/", getKeycloakMiddleware(), logMiddleware)
+	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
+	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
+	export.GET("/docx/siret/:siret", validSiret, getDOCXFromSiret)
 
 	listes := router.Group("/listes", getKeycloakMiddleware(), logMiddleware)
 	listes.GET("", getListes)

@@ -1,14 +1,11 @@
 package main
 
 import (
-	"bufio"
-	"bytes"
 	"context"
 	"fmt"
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/tealeg/xlsx"
 )
 
 // Follow type follow pour l'API
@@ -38,23 +35,73 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 	c.JSON(200, follows)
 }
 
-func getXLSFollowedByCurrentUser(c *gin.Context) {
+func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
-	follow := Follow{Username: &username}
-	follows, err := follow.list(scope)
-	if err != nil {
-		c.JSON(err.Code(), err.Error())
-		return
-	}
 
-	file, err := follows.toXLS()
+	wekan := contains(scope, "wekan")
+	export, err := getExport(scope, username, wekan, nil)
 	if err != nil {
-		c.JSON(err.Code(), err.Error())
+		c.AbortWithError(500, err)
 		return
 	}
-	c.Writer.Header().Set("Content-disposition", "attachment;filename=extract.xls")
-	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", file)
+	xlsx, err := export.xlsx(wekan)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
+}
+
+func getDOCXFollowedByCurrentUser(c *gin.Context) {
+	username := c.GetString("username")
+	scope := scopeFromContext(c)
+	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
+	wekan := contains(scope, "wekan")
+	export, err := getExport(scope, username, wekan, nil)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	header := ExportHeader{
+		Auteur: auteur,
+		Date:   time.Now(),
+	}
+	docx, err := export.docx(header)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	filename := fmt.Sprintf("export-suivi-%s.docx", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
+}
+
+func getDOCXFromSiret(c *gin.Context) {
+	username := c.GetString("username")
+	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
+	scope := scopeFromContext(c)
+	sirets := append([]string{}, c.Param("siret"))
+	wekan := contains(scope, "wekan")
+	export, err := getExport(scope, username, wekan, sirets)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	header := ExportHeader{
+		Auteur: auteur,
+		Date:   time.Now(),
+	}
+	docx, err := export.docx(header)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	filename := fmt.Sprintf("export-%s-%s.docx", sirets[0], time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
 }
 
 func followEtablissement(c *gin.Context) {
@@ -221,54 +268,3 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 // Follows is a slice of Follows
 type Follows []Follow
-
-func (follows Follows) toXLS() ([]byte, Jerror) {
-	xlFile := xlsx.NewFile()
-	xlSheet, err := xlFile.AddSheet("extract")
-	if err != nil {
-		return nil, errorToJSON(500, err)
-	}
-
-	row := xlSheet.AddRow()
-	row.AddCell().Value = "siren"
-	row.AddCell().Value = "siret"
-	row.AddCell().Value = "departement"
-	row.AddCell().Value = "raison_sociale"
-	row.AddCell().Value = "dernier_effectif"
-	row.AddCell().Value = "code_activite"
-	row.AddCell().Value = "libelle_activite"
-	row.AddCell().Value = "alert"
-	row.AddCell().Value = "depuis"
-	row.AddCell().Value = "categorie"
-	row.AddCell().Value = "commentaire"
-
-	for _, f := range follows {
-		row := xlSheet.AddRow()
-		if err != nil {
-			return nil, errorToJSON(500, err)
-		}
-		row.AddCell().Value = fmt.Sprintf("%s", f.EtablissementSummary.Siren)
-		row.AddCell().Value = fmt.Sprintf("%s", f.EtablissementSummary.Siret)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeDepartement)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.RaisonSociale)
-		if f.EtablissementSummary.Effectif != nil {
-			row.AddCell().Value = fmt.Sprintf("%f", *f.EtablissementSummary.Effectif)
-		} else {
-			row.AddCell().Value = ""
-		}
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.CodeActivite)
-		if f.EtablissementSummary.LibelleActivite != nil {
-			row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.LibelleActivite)
-		}
-		row.AddCell().Value = fmt.Sprintf("%s", *coalescepString(f.EtablissementSummary.Alert, &EmptyString))
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Since)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Category)
-		row.AddCell().Value = fmt.Sprintf("%s", *f.EtablissementSummary.Comment)
-	}
-
-	data := bytes.NewBuffer(nil)
-	file := bufio.NewWriter(data)
-	xlFile.Write(file)
-	file.Flush()
-	return data.Bytes(), nil
-}

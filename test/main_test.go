@@ -386,13 +386,3 @@ func TestPermissions(t *testing.T) {
 	}
 
 }
-
-func TestExport(t *testing.T) {
-	// récupérer la même collection de siret que pour les tests
-	sirets := getSiret(t, VAF{false, false, false}, 1)
-	sirets = append(sirets, getSiret(t, VAF{false, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VAF{true, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VAF{true, true, false}, 1)...)
-
-	fmt.Print(sirets)
-}
