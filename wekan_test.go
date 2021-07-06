@@ -111,7 +111,7 @@ func Test_WekanExports(t *testing.T) {
 	if err != nil {
 		t.Errorf("could not hash WekanExport: %s", err.Error())
 	}
-	expected := "76305f3466653530373036626362616331383366646236646366616438623965353663"
+	expected := "76305f346665353037303662636261633138336664623664636661643862396535"
 	if fmt.Sprintf("%x", hash) != expected {
 		t.Errorf("unexpected results from joinExports(): \nstructhash should be: %s\nbut structHash is: %x", expected, hash)
 	}
