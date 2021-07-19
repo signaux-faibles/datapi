@@ -239,7 +239,7 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 		return nil, errorToJSON(500, err)
 	}
 
-	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, nil,
+	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, false, nil,
 		&True, &True, *f.Username, false, "follow", &False, nil,
 		nil, &True, nil, nil, nil, nil}
 
