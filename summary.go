@@ -180,10 +180,8 @@ func getSummaries(params summaryParams) (summaries, error) {
 		sqlParams = append(sqlParams, p[7:10]...)
 		sqlParams = append(sqlParams, p[12:]...)
 		if params.currentListe {
-			fmt.Println("current")
 			sql = `select * from get_currentscore($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16) as scores;`
 		} else {
-			fmt.Println("old")
 			sql = `select * from get_score($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16) as scores;`
 		}
 	} else if params.orderBy == "raison_sociale" {
