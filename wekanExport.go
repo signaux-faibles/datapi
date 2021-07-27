@@ -356,7 +356,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			ActivitePartielle:          apartSwitch[e.ActivitePartielle],
 			DetteSociale:               fmt.Sprintf(urssafSwitch[e.DetteSociale], dateUrssaf(e.DateUrssaf)),
 			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], dateUrssaf(e.DateUrssaf)),
-			AnneeExercice:              fmt.Sprintf("%d", e.ExerciceDiane),
+			AnneeExercice:              anneeExercice(e.ExerciceDiane),
 			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, e.VariationCA),
 			ExcedentBrutExploitation:   libelleFin(e.ExcedentBrutExploitation),
 			ResultatExploitation:       libelleFin(e.ResultatExploitation),
@@ -376,6 +376,12 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 	return wekanExports
 }
 
+func anneeExercice(exercice int) string {
+	if exercice == 0 {
+		return "n/c"
+	}
+	return fmt.Sprintf("%d", exercice)
+}
 func dateUrssaf(dt time.Time) string {
 	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" || dt.Format("02/01/2006") == "01/01/0001" {
 		return "n/c"
