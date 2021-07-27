@@ -377,13 +377,13 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 }
 
 func dateUrssaf(dt time.Time) string {
-	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" {
+	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" || dt.Format("02/01/2006") == "01/01/0001" {
 		return "n/c"
 	}
 	return dt.Format("01/2006")
 }
 func dateCreation(dt time.Time) string {
-	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" {
+	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" || dt.Format("02/01/2006") == "01/01/0001" {
 		return "n/c"
 	}
 	return dt.Format("02/01/2006")
