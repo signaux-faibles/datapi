@@ -368,7 +368,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			we.DateDebutSuivi = dateUrssaf(cards[i].StartAt)
 			we.DescriptionWekan = cards[i].Description
 		} else {
-			we.DateDebutSuivi = e.DateDebutSuivi.Format("02/01/2006")
+			we.DateDebutSuivi = dateUrssaf(e.DateDebutSuivi)
 		}
 
 		wekanExports = append(wekanExports, we)
