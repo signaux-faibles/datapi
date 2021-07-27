@@ -282,7 +282,7 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 	from v_summaries v
 	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
 	where v.siret = any($3) or ($3 is null and f.id is not null)
-	`
+	order by f.id, v.siret`
 
 	rows, err := db.Query(context.Background(), sqlExport, roles.zoneGeo(), username, sirets)
 	if err != nil {
