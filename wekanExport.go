@@ -378,7 +378,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 
 func anneeExercice(exercice int) string {
 	if exercice == 0 {
-		return "n/c"
+		return ""
 	}
 	return fmt.Sprintf("%d", exercice)
 }
