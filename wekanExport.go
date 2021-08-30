@@ -282,7 +282,7 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 	from v_summaries v
 	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
 	where v.siret = any($3) or ($3 is null and f.id is not null)
-	`
+	order by f.id, v.siret`
 
 	rows, err := db.Query(context.Background(), sqlExport, roles.zoneGeo(), username, sirets)
 	if err != nil {
@@ -356,7 +356,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			ActivitePartielle:          apartSwitch[e.ActivitePartielle],
 			DetteSociale:               fmt.Sprintf(urssafSwitch[e.DetteSociale], dateUrssaf(e.DateUrssaf)),
 			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], dateUrssaf(e.DateUrssaf)),
-			AnneeExercice:              fmt.Sprintf("%d", e.ExerciceDiane),
+			AnneeExercice:              anneeExercice(e.ExerciceDiane),
 			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, e.VariationCA),
 			ExcedentBrutExploitation:   libelleFin(e.ExcedentBrutExploitation),
 			ResultatExploitation:       libelleFin(e.ResultatExploitation),
@@ -368,7 +368,7 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 			we.DateDebutSuivi = dateUrssaf(cards[i].StartAt)
 			we.DescriptionWekan = cards[i].Description
 		} else {
-			we.DateDebutSuivi = e.DateDebutSuivi.Format("02/01/2006")
+			we.DateDebutSuivi = dateUrssaf(e.DateDebutSuivi)
 		}
 
 		wekanExports = append(wekanExports, we)
@@ -376,14 +376,20 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 	return wekanExports
 }
 
+func anneeExercice(exercice int) string {
+	if exercice == 0 {
+		return ""
+	}
+	return fmt.Sprintf("%d", exercice)
+}
 func dateUrssaf(dt time.Time) string {
-	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" {
+	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" || dt.Format("02/01/2006") == "01/01/0001" {
 		return "n/c"
 	}
 	return dt.Format("01/2006")
 }
 func dateCreation(dt time.Time) string {
-	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" {
+	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" || dt.Format("02/01/2006") == "01/01/0001" {
 		return "n/c"
 	}
 	return dt.Format("02/01/2006")

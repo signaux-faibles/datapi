@@ -72,7 +72,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	offset := params.Page * limit
 
 	summaryparams := summaryParams{
-		zoneGeo, &limit, &offset, &liste[0].ID, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
+		zoneGeo, &limit, &offset, &liste[0].ID, false, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
 		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil, params.EffectifMin, nil, nil, params.Activites,
 	}
 

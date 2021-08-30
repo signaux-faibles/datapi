@@ -41,6 +41,7 @@ type Liste struct {
 	Page        int               `json:"page,omitempty"`
 	PageMax     int               `json:"pageMax,omitempty"`
 	To          int               `json:"to,omitempty"`
+	CurrentList bool              `json:"-"`
 }
 
 func getListes(c *gin.Context) {
@@ -69,8 +70,9 @@ func getLastListeScores(c *gin.Context) {
 	}
 
 	liste := Liste{
-		ID:    listes[0].ID,
-		Query: params,
+		ID:          listes[0].ID,
+		Query:       params,
+		CurrentList: true,
 	}
 	limit := viper.GetInt("searchPageLength")
 	if limit == 0 {
@@ -124,16 +126,28 @@ func getListeScores(c *gin.Context) {
 
 	var params paramsListeScores
 	err := c.Bind(&params)
-
-	liste := Liste{
-		ID:    c.Param("id"),
-		Query: params,
-	}
-
-	if err != nil || liste.ID == "" {
+	if err != nil {
 		c.AbortWithStatus(400)
 		return
 	}
+
+	listes, err := findAllListes()
+	if err != nil || len(listes) == 0 {
+		c.AbortWithStatus(204)
+		return
+	}
+
+	liste := Liste{
+		ID:          c.Param("id"),
+		Query:       params,
+		CurrentList: listes[0].ID == c.Param("id"),
+	}
+
+	if liste.ID == "" {
+		c.AbortWithStatus(400)
+		return
+	}
+
 	limit := viper.GetInt("searchPageLength")
 	if limit == 0 {
 		c.JSON(418, "searchPageLength must be > 0 in configuration therefore, I'm a teapot.")
@@ -171,7 +185,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	}
 
 	params := summaryParams{
-		roles.zoneGeo(), limit, &offset, &liste.ID, &liste.Query.Filter, nil,
+		roles.zoneGeo(), limit, &offset, &liste.ID, liste.CurrentList, &liste.Query.Filter, nil,
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
 	}
