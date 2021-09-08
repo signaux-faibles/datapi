@@ -100,6 +100,7 @@ func runAPI() {
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	utils.GET("/wekanImport", wekanImportHandler)
 	utils.GET("/wekanListCards", wekanGetListCardsHandler)
+	utils.GET("/sireneImport", sireneImportHandler)
 
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", wekanGetCardHandler)

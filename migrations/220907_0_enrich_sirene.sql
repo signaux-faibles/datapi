@@ -1,0 +1,21 @@
+alter table etablissement add column perimetre boolean default true;
+alter table etablissement add column tranche_effectif text;
+alter table etablissement add column annee_effectif text;
+alter table etablissement add column code_activite_registre_metiers text;
+alter table etablissement add column etat_administratif text;
+alter table etablissement add column enseigne text;
+alter table etablissement add column denomination_usuelle text;
+alter table etablissement add column caractere_employeur bool;
+
+alter table entreprise add column perimetre boolean;
+alter table entreprise add column sigle text;
+alter table entreprise add column identifiant_association text;
+alter table entreprise add column tranche_effectif text;
+alter table entreprise add column annee_effectif text;
+alter table entreprise add column categorie text;
+alter table entreprise add column annee_categorie text;
+alter table entreprise add column etat_administratif text;
+alter table entreprise add column nomUsage text;
+alter table entreprise add column denomination text;
+alter table entreprise add column economie_sociale_solidaire boolean;
+alter table entreprise add column caractere_employeur text;

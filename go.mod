@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/Nerzal/gocloak/v6 v6.4.0
-	github.com/cnf/structhash v0.0.0-20180104161610-62a607eb0224
+	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08
 	github.com/dgrijalva/jwt-go v3.2.0+incompatible
 	github.com/fsnotify/fsnotify v1.4.9 // indirect
 	github.com/gin-contrib/cors v1.3.1
@@ -19,6 +19,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.7.1
 	github.com/segmentio/ksuid v1.0.3 // indirect
+	github.com/signaux-faibles/goSirene v0.0.0-20210907133104-8f1612152fe5 // indirect
 	github.com/spf13/afero v1.4.1 // indirect
 	github.com/spf13/cast v1.3.1 // indirect
 	github.com/spf13/jwalterweatherman v1.1.0 // indirect
