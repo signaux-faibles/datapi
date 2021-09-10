@@ -7,7 +7,7 @@ alter table etablissement add column enseigne text;
 alter table etablissement add column denomination_usuelle text;
 alter table etablissement add column caractere_employeur bool;
 
-alter table entreprise add column perimetre boolean;
+alter table entreprise add column perimetre boolean default true;
 alter table entreprise add column sigle text;
 alter table entreprise add column identifiant_association text;
 alter table entreprise add column tranche_effectif text;
