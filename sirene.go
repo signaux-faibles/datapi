@@ -449,8 +449,5 @@ func (s Siret) Less(than btree.Item) bool {
 }
 
 func (s Siret) Siren() Siret {
-	if len(s) == 14 {
-		return s[0:9]
-	}
-	return ""
+	return s[0:9]
 }
