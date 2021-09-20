@@ -54,6 +54,7 @@ func upsertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync
 				fmt.Println(err.Error())
 				continue
 			}
+			batch = []goSirene.GeoSirene{}
 			log.Println("upsert GeoSirene")
 		}
 		if sirene.Error() == nil {
@@ -164,7 +165,7 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene, tr *btree.BTre
 			code_commune, code_cedex, cedex, code_pays_etranger, pays_etranger, code_postal,
 			departement, code_activite, nomen_activite, latitude, longitude, 
 		  tranche_effectif, annee_effectif, code_activite_registre_metiers,
-			etat_administratif, enseigne, denomination_usuelle, caractere_employeur) select
+			etat_administratif, enseigne, denomination_usuelle, caractere_employeur, perimetre) select
 			s.siret,
 			s.siren,
 			s.siege,
@@ -194,7 +195,8 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene, tr *btree.BTre
 			s.etat_administratif,
 			s.enseigne,
 			s.denomination_usuelle,
-			s.caractere_employeur
+			s.caractere_employeur,
+			false
 		from tmp_geosirene s
 		where s.insert
 	`)
@@ -221,6 +223,7 @@ func upsertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.
 				fmt.Println(err.Error())
 				continue
 			}
+			batch = []goSirene.SireneUL{}
 			log.Println("upsert SireneUL")
 		}
 		if sirene.Error() == nil {
@@ -323,7 +326,7 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL, tr *btree.BTree)
 			prenom4, nom, nom_usage, statut_juridique, creation, sigle,
 			identifiant_association, tranche_effectif, annee_effectif,
 			categorie, annee_categorie, etat_administratif,
-		  economie_sociale_solidaire, caractere_employeur) select
+		  economie_sociale_solidaire, caractere_employeur, perimetre) select
 		ul.siren,
 		ul.siret_siege,
 		ul.raison_sociale,
@@ -343,7 +346,8 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL, tr *btree.BTree)
 		ul.annee_categorie,
 		ul.etat_administratif,
 		ul.economie_sociale_solidaire,
-		ul.caractere_employeur
+		ul.caractere_employeur,
+		false
 		from tmp_sirene_ul ul
 		where ul.insert = true
 	`)
