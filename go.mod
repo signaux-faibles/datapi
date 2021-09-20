@@ -15,6 +15,7 @@ require (
 	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
+	github.com/google/btree v1.0.1 // indirect
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/jackc/puddle v1.1.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
