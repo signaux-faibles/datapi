@@ -62,7 +62,6 @@ func upsertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync
 		}
 	}
 	err = sqlGeoSirene(ctx, batch, tr)
-	time.Sleep(5)
 	if err != nil {
 		cancelCtx()
 		fmt.Println(err.Error())
@@ -362,6 +361,7 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL, tr *btree.BTree)
 
 func sireneULdata(s goSirene.SireneUL, tr *btree.BTree) []interface{} {
 	var siren = Siret(s.Siren)
+	fmt.Println(siren, tr.Has(siren))
 	return []interface{}{
 		s.Siren,
 		s.NicSiegeUniteLegale,
@@ -425,7 +425,7 @@ func geoSireneData(s goSirene.GeoSirene, tr *btree.BTree) []interface{} {
 }
 
 func loadSirens() (*btree.BTree, error) {
-	sirets, err := db.Query(context.Background(), "select siret from etablissement;")
+	sirets, err := db.Query(context.Background(), "select siret from etablissement union select siren from entreprise;")
 	if err != nil {
 		return nil, err
 	}
@@ -437,7 +437,6 @@ func loadSirens() (*btree.BTree, error) {
 			return nil, err
 		}
 		bt.ReplaceOrInsert(siret)
-		bt.ReplaceOrInsert(siret.Siren())
 	}
 	return bt, nil
 }
