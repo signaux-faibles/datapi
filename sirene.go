@@ -6,7 +6,6 @@ import (
 	"log"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/btree"
@@ -230,7 +229,6 @@ func upsertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.
 		}
 	}
 	err := sqlSireneUL(ctx, batch, tr)
-	time.Sleep(5)
 	if err != nil {
 		cancelCtx()
 		fmt.Println(err.Error())
