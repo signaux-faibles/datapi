@@ -361,7 +361,6 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL, tr *btree.BTree)
 
 func sireneULdata(s goSirene.SireneUL, tr *btree.BTree) []interface{} {
 	var siren = Siret(s.Siren)
-	fmt.Println(siren, tr.Has(siren))
 	return []interface{}{
 		s.Siren,
 		s.NicSiegeUniteLegale,
