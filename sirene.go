@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -406,7 +407,7 @@ func geoSireneData(s goSirene.GeoSirene, tr *btree.BTree) []interface{} {
 		s.LibellePaysEtrangerEtablissement,
 		s.CodePostalEtablissement,
 		s.CodeDepartement(),
-		s.ActivitePrincipaleEtablissement,
+		strings.Replace(s.ActivitePrincipaleEtablissement, ".", "", -1),
 		s.NomenclatureActivitePrincipaleEtablissement,
 		s.Latitude,
 		s.Longitude,
