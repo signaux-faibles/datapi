@@ -15,7 +15,7 @@ require (
 	github.com/go-resty/resty/v2 v2.6.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang/snappy v0.0.4 // indirect
-	github.com/google/btree v1.0.1 // indirect
+	github.com/google/btree v1.0.1
 	github.com/jackc/pgx/v4 v4.13.0
 	github.com/jackc/puddle v1.1.4 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
@@ -29,7 +29,7 @@ require (
 	github.com/prometheus/common v0.30.0 // indirect
 	github.com/prometheus/procfs v0.7.3 // indirect
 	github.com/segmentio/ksuid v1.0.4 // indirect
-	github.com/signaux-faibles/goSirene v0.2.1
+	github.com/signaux-faibles/goSirene v0.2.4
 	github.com/spf13/cast v1.4.1 // indirect
 	github.com/spf13/viper v1.8.1
 	github.com/tealeg/xlsx v1.0.5
