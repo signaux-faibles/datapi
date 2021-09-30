@@ -36,29 +36,56 @@ func sireneImportHandler(c *gin.Context) {
 	wg.Wait()
 }
 
+func getMissingSiren(ctx context.Context) ([]string, error) {
+	sql := `select distinct p.siren from tmp_prediction p
+	left join etablissement e on e.siren = p.siren and e.siege
+	where e.siren is null`
+	rows, err := db.Query(ctx, sql)
+	if err != nil {
+		return nil, err
+	}
+	var sirens []string
+	for rows.Next() {
+		var siren string
+		rows.Scan(&siren)
+		sirens = append(sirens, siren)
+	}
+	rows.Close()
+	fmt.Println(sirens)
+	return sirens, nil
+}
+
 func upsertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.WaitGroup, tr *btree.BTree) {
 	file, err := os.Open(viper.GetString("geoSirenePath"))
 	if err != nil {
 		cancelCtx()
+		return
+	}
+	sirens, err := getMissingSiren(ctx)
+	if err != nil {
+		cancelCtx()
+		return
 	}
 	geoSirene := goSirene.GeoSireneParser(ctx, file)
 	count := 0
 	var batch []goSirene.GeoSirene
 	for sirene := range geoSirene {
-		count++
-		if count == 100000 {
-			count = 0
-			err := sqlGeoSirene(ctx, batch, tr)
-			if err != nil {
-				cancelCtx()
-				fmt.Println(err.Error())
-				continue
+		if contains(sirens, sirene.Siren) {
+			count++
+			if count == 100000 {
+				count = 0
+				err := sqlGeoSirene(ctx, batch, tr)
+				if err != nil {
+					cancelCtx()
+					fmt.Println(err.Error())
+					continue
+				}
+				batch = []goSirene.GeoSirene{}
+				log.Println("upsert GeoSirene")
 			}
-			batch = []goSirene.GeoSirene{}
-			log.Println("upsert GeoSirene")
-		}
-		if sirene.Error() == nil {
-			batch = append(batch, sirene)
+			if sirene.Error() == nil {
+				batch = append(batch, sirene)
+			}
 		}
 	}
 	err = sqlGeoSirene(ctx, batch, tr)
@@ -212,24 +239,31 @@ func upsertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.
 	sireneUL := goSirene.SireneULParser(ctx, viper.GetString("sireneULPath"))
 	count := 0
 	var batch []goSirene.SireneUL
+	sirens, err := getMissingSiren(ctx)
+	if err != nil {
+		cancelCtx()
+		return
+	}
 	for sirene := range sireneUL {
-		count++
-		if count == 100000 {
-			count = 0
-			err := sqlSireneUL(ctx, batch, tr)
-			if err != nil {
-				cancelCtx()
-				fmt.Println(err.Error())
-				continue
+		if contains(sirens, sirene.Siren) {
+			count++
+			if count == 100000 {
+				count = 0
+				err := sqlSireneUL(ctx, batch, tr)
+				if err != nil {
+					cancelCtx()
+					fmt.Println(err.Error())
+					continue
+				}
+				batch = []goSirene.SireneUL{}
+				log.Println("upsert SireneUL")
 			}
-			batch = []goSirene.SireneUL{}
-			log.Println("upsert SireneUL")
-		}
-		if sirene.Error() == nil {
-			batch = append(batch, sirene)
+			if sirene.Error() == nil {
+				batch = append(batch, sirene)
+			}
 		}
 	}
-	err := sqlSireneUL(ctx, batch, tr)
+	err = sqlSireneUL(ctx, batch, tr)
 	if err != nil {
 		cancelCtx()
 		fmt.Println(err.Error())
