@@ -897,7 +897,17 @@ func indexOf(element string, array []string) int {
 }
 
 func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
-	sql := `select et.siret, coalesce(etrs.raison_sociale, ''), coalesce(et.departement, ''), coalesce(r.libelle, ''), coalesce(ef.effectif, 0), coalesce(et.code_activite, ''), coalesce(n.libelle_n5, '') from etablissement0 et left join v_etablissement_raison_sociale etrs on etrs.id_etablissement = et.id left join v_last_effectif ef on ef.siret = et.siret left join v_naf n on n.code_n5 = et.code_activite left join departements d on d.code = et.departement left join regions r on r.id = d.id_region where et.siret = $1`
+	sql := `select s.siret,
+	coalesce(s.raison_sociale, ''), 
+	coalesce(s.code_departement, ''), 
+	coalesce(r.libelle, ''),
+	coalesce(s.effectif, 0),
+	coalesce(s.code_activite, ''), 
+	coalesce(s.libelle_n5, '') 
+	from v_summaries s
+	inner join departements d on d.code = s.code_departement
+	inner join regions r on r.id = d.id_region
+	where s.siret = $1`
 	rows, err := db.Query(context.Background(), sql, siret)
 	var etsData EtablissementData
 	if err != nil {

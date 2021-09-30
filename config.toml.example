@@ -55,3 +55,6 @@ docxifyPath = "./docxify3.py"
 docxifyWorkingDir = "/foo/bar"
 docxifyPython = "/usr/bin/python3"
 defaultConfidentialite = "secret"
+
+sireneULPath = "/foo/bar/StockUniteLegale_utf8.zip"
+geoSirenePath = "/foo/bar/StockEtablissement_utf8_geo.csv.gz"
