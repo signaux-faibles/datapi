@@ -21,24 +21,34 @@ import (
 	"github.com/spf13/viper"
 )
 
+type wekanListDetails struct {
+	ID    string `bson:"_id"`
+	Title string `bson:"title"`
+}
+
+type WekanConfigBoard struct {
+	BoardID      string             `bson:"boardId" json:"boardId"`
+	Title        string             `bson:"title"`
+	Slug         string             `bson:"slug" json:"slug"`
+	Swimlanes    map[string]string  `bson:"swimlanes" json:"swimlanes"`
+	Lists        []string           `bson:"lists" json:"lists"`
+	ListDetails  []wekanListDetails `bson:"listDetails" json:"listDetails"`
+	CustomFields struct {
+		SiretField    string `bson:"siretField" json:"siretField"`
+		ActiviteField string `bson:"activiteField" json:"activiteField"`
+		EffectifField struct {
+			EffectifFieldID    string   `bson:"effectifFieldId" json:"effectifFieldId"`
+			EffectifFieldItems []string `bson:"effectifFieldItems" json:"effectifFieldItems"`
+		} `bson:"effectifField" json:"effectifField"`
+		FicheSFField string `bson:"ficheSFField" json:"ficheSFField"`
+	} `bson:"customFields" json:"customFields"`
+}
+
 // WekanConfig type pour le fichier de configuration de Wekan
 type WekanConfig struct {
-	Boards map[string]struct {
-		BoardID      string            `json:"boardId"`
-		Slug         string            `json:"slug"`
-		Swimlanes    map[string]string `json:"swimlanes"`
-		Lists        []string          `json:"lists"`
-		CustomFields struct {
-			SiretField    string `json:"siretField"`
-			ActiviteField string `json:"activiteField"`
-			EffectifField struct {
-				EffectifFieldID    string   `json:"effectifFieldId"`
-				EffectifFieldItems []string `json:"effectifFieldItems"`
-			} `json:"effectifField"`
-			FicheSFField string `json:"ficheSFField"`
-		} `json:"customFields"`
-	} `json:"boards"`
-	Users map[string]string `json:"users"`
+	Boards   map[string]*WekanConfigBoard `bson:"boards" json:"boards"`
+	Users    map[string]string            `bson:"users" json:"users"`
+	BoardIds map[string]*WekanConfigBoard
 }
 
 // func (wc WekanConfig) boards() map[string]string {
@@ -75,17 +85,6 @@ func (wc *WekanConfig) loadFile(path string) error {
 // 	ID    string `json:"_id" bson:"_id"`
 // 	Value string `json:"value" bson:"value"`
 // }
-
-// WekanCards est une liste de WekanCard
-type WekanCards []WekanCard
-
-// WekanCard embarque la sélection de champs Wekan nécessaires au traitement d'export
-type WekanCard struct {
-	ID          string    `json:"_id" bson:"_id"`
-	Description string    `json:"description" bson:"description"`
-	StartAt     time.Time `json:"startAt" bson:"startAt"`
-	Siret       string    `json:"siret" bson:"siret"`
-}
 
 // Token type pour faire persister en mémoire les tokens réutilisables
 type Token struct {

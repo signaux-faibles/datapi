@@ -22,11 +22,17 @@ var keycloak gocloak.GoCloak
 var db *pgxpool.Pool
 var mgoDB *mongo.Database
 var ref reference
+var wekanConfig WekanConfig
 
 func main() {
 	loadConfig()
 	db = connectDB()
 	mgoDB = connectWekanDB()
+	var err error
+	if wekanConfig, err = lookupWekanConfig(); err != nil {
+		panic(fmt.Sprintf("Erreur à l'initialisation WekanConfig: %s", err.Error()))
+	}
+
 	keycloak = connectKC()
 	runAPI()
 }
@@ -101,6 +107,7 @@ func runAPI() {
 	utils.GET("/wekanImport", wekanImportHandler)
 	utils.GET("/wekanListCards", wekanGetListCardsHandler)
 	utils.GET("/sireneImport", sireneImportHandler)
+	utils.GET("/debugConfig", debugConfig)
 
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", wekanGetCardHandler)

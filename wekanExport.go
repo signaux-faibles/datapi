@@ -434,8 +434,12 @@ func indexCards(cards WekanCards) map[string]int {
 	index := make(map[string]int)
 
 	for i, c := range cards {
-		if c.Siret != "" {
-			index[c.Siret] = i
+		siret, err := c.Siret()
+		if err != nil {
+			continue // taggle
+		}
+		if siret != "" {
+			index[siret] = i
 		} else {
 			log.Printf("no siret for card %s", c.ID)
 		}
