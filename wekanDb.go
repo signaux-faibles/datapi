@@ -130,7 +130,7 @@ func selectWekanCards(username string, boardIds []string, swimlaneIds []string, 
 		filter["boardId"] = bson.M{"$in": ids}
 	} else {
 		var ids []string
-		for boardId, _ := range wekanConfig.BoardIds {
+		for boardId := range wekanConfig.BoardIds {
 			ids = append(ids, boardId)
 		}
 		filter["boardId"] = bson.M{"$in": ids}
