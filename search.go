@@ -6,16 +6,20 @@ import (
 )
 
 type searchParams struct {
-	Search          string   `json:"search"`
-	Page            int      `json:"page"`
-	Departements    []string `json:"departements,omitempty"`
-	Activites       []string `json:"activites,omitempty"`
-	EffectifMin     *int     `json:"effectifMin"`
-	SiegeUniquement bool     `json:"siegeUniquement"`
-	IgnoreRoles     bool     `json:"ignoreRoles"`
-	IgnoreZone      bool     `json:"ignoreZone"`
-	username        string
-	roles           scope
+	Search                string   `json:"search"`
+	Page                  int      `json:"page"`
+	Departements          []string `json:"departements,omitempty"`
+	Activites             []string `json:"activites,omitempty"`
+	EffectifMin           *int     `json:"effectifMin"`
+	EffectifMinEntreprise *int     `json:"effectifMinEntreprise"`
+	EffectifMaxEntreprise *int     `json:"effectifMaxEntreprise"`
+	CaMin                 *int     `json:"caMin"`
+	CaMax                 *int     `json:"caMax"`
+	SiegeUniquement       bool     `json:"siegeUniquement"`
+	IgnoreRoles           bool     `json:"ignoreRoles"`
+	IgnoreZone            bool     `json:"ignoreZone"`
+	username              string
+	roles                 scope
 }
 
 type searchResult struct {
@@ -37,7 +41,6 @@ func searchEtablissementHandler(c *gin.Context) {
 		c.Abort()
 		return
 	}
-
 	params.username = c.GetString("username")
 
 	if len(params.Search) < 3 {
@@ -73,9 +76,10 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 
 	summaryparams := summaryParams{
 		zoneGeo, &limit, &offset, &liste[0].ID, false, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
-		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil, params.EffectifMin, nil, nil, params.Activites,
+		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil,
+		params.EffectifMin, nil, nil, params.Activites, params.EffectifMinEntreprise, params.EffectifMaxEntreprise,
+		params.CaMin, params.CaMax,
 	}
-
 	summaries, err := getSummaries(summaryparams)
 	if err != nil {
 		return searchResult{}, errorToJSON(500, err)

@@ -14,16 +14,20 @@ import (
 )
 
 type paramsListeScores struct {
-	Departements    []string `json:"zone,omitempty"`
-	EtatsProcol     []string `json:"procol,omitempty"`
-	Activites       []string `json:"activite,omitempty"`
-	EffectifMin     *int     `json:"effectifMin"`
-	EffectifMax     *int     `json:"effectifMax"`
-	IgnoreZone      *bool    `json:"ignorezone"`
-	ExclureSuivi    *bool    `json:"exclureSuivi"`
-	SiegeUniquement bool     `json:"siegeUniquement"`
-	Page            int      `json:"page"`
-	Filter          string   `json:"filter"`
+	Departements          []string `json:"zone,omitempty"`
+	EtatsProcol           []string `json:"procol,omitempty"`
+	Activites             []string `json:"activite,omitempty"`
+	EffectifMin           *int     `json:"effectifMin"`
+	EffectifMax           *int     `json:"effectifMax"`
+	EffectifMinEntreprise *int     `json:"effectifMinEntreprise"`
+	EffectifMaxEntreprise *int     `json:"effectifMaxEntreprise"`
+	CaMin                 *int     `json:"caMin"`
+	CaMax                 *int     `json:"caMax"`
+	IgnoreZone            *bool    `json:"ignorezone"`
+	ExclureSuivi          *bool    `json:"exclureSuivi"`
+	SiegeUniquement       bool     `json:"siegeUniquement"`
+	Page                  int      `json:"page"`
+	Filter                string   `json:"filter"`
 }
 
 // Liste de détection
@@ -68,7 +72,6 @@ func getLastListeScores(c *gin.Context) {
 		c.AbortWithStatus(400)
 		return
 	}
-
 	liste := Liste{
 		ID:          listes[0].ID,
 		Query:       params,
@@ -188,7 +191,9 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		roles.zoneGeo(), limit, &offset, &liste.ID, liste.CurrentList, &liste.Query.Filter, nil,
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
+		liste.Query.EffectifMinEntreprise, liste.Query.EffectifMaxEntreprise, liste.Query.CaMin, liste.Query.CaMax,
 	}
+	fmt.Println(liste.Query)
 	summaries, err := getSummaries(params)
 	if err != nil {
 		return errorToJSON(500, err)

@@ -21,6 +21,7 @@ type Summary struct {
 	CodeDepartement       *string            `json:"departement"`
 	LibelleDepartement    *string            `json:"libelleDepartement"`
 	Effectif              *float64           `json:"dernier_effectif"`
+	EffectifEntreprise    *float64           `json:"dernier_effectif_entreprise"`
 	MontantDetteUrssaf    *float64           `json:"montantDetteUrssaf,omitempty"`
 	HausseUrssaf          *bool              `json:"urssaf,omitempty"`
 	DetteUrssaf           *float64           `json:"detteUrssaf,omitempty"`
@@ -83,6 +84,7 @@ func (summaries *summaries) newSummary() []interface{} {
 		&s.VariationCA,
 		&s.ResultatExploitation,
 		&s.Effectif,
+		&s.EffectifEntreprise,
 		&s.LibelleActivite,
 		&s.LibelleActiviteN1,
 		&s.CodeActivite,
@@ -115,25 +117,29 @@ func (summaries *summaries) newSummary() []interface{} {
 }
 
 type summaryParams struct {
-	zoneGeo         []string
-	limit           *int
-	offset          *int
-	libelleListe    *string
-	currentListe    bool
-	filter          *string
-	ignoreRoles     *bool
-	ignoreZone      *bool
-	userName        string
-	siegeUniquement bool
-	orderBy         string
-	alertOnly       *bool
-	etatsProcol     []string
-	departements    []string
-	suivi           *bool
-	effectifMin     *int
-	effectifMax     *int
-	sirens          []string
-	activites       []string
+	zoneGeo               []string
+	limit                 *int
+	offset                *int
+	libelleListe          *string
+	currentListe          bool
+	filter                *string
+	ignoreRoles           *bool
+	ignoreZone            *bool
+	userName              string
+	siegeUniquement       bool
+	orderBy               string
+	alertOnly             *bool
+	etatsProcol           []string
+	departements          []string
+	suivi                 *bool
+	effectifMin           *int
+	effectifMax           *int
+	sirens                []string
+	activites             []string
+	effectifMinEntreprise *int
+	effectifMaxEntreprise *int
+	caMin                 *int
+	caMax                 *int
 }
 
 func (p summaryParams) toSQLParams() []interface{} {
@@ -146,7 +152,6 @@ func (p summaryParams) toSQLParams() []interface{} {
 		expressionSiret = &eSiret
 		expressionRaisonSociale = &eRaisonSociale
 	}
-
 	return []interface{}{
 		p.zoneGeo,
 		p.limit,
@@ -167,6 +172,10 @@ func (p summaryParams) toSQLParams() []interface{} {
 		p.effectifMax,
 		p.sirens,
 		p.activites,
+		p.effectifMinEntreprise,
+		p.effectifMaxEntreprise,
+		p.caMin,
+		p.caMax,
 	}
 }
 
@@ -180,22 +189,24 @@ func getSummaries(params summaryParams) (summaries, error) {
 		sqlParams = append(sqlParams, p[7:10]...)
 		sqlParams = append(sqlParams, p[12:]...)
 		if params.currentListe {
-			sql = `select * from get_currentscore($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16) as scores;`
+			sql = `select * from get_currentscore($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) as scores;`
 		} else {
-			sql = `select * from get_score($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16) as scores;`
+			sql = `select * from get_score($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) as scores;`
 		}
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
 		sqlParams = append(p[0:10], p[13], p[15], p[18])
-		sql = `select * from get_search($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13) as raison_sociale;`
+		sqlParams = append(sqlParams, p[19:]...)
+		sql = `select * from get_search($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17) as raison_sociale;`
 	} else if params.orderBy == "follow" {
 		p := params.toSQLParams()
 		sqlParams = append(sqlParams, p[0], p[3], p[8])
-		sql = "select * from get_follow($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null) as follow;"
+		sql = "select * from get_follow($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null, null, null, null, null, null) as follow;"
 	} else {
-		p := params.toSQLParams()
-		sqlParams = p[0:17]
-		sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18) as %s;", params.orderBy)
+		// p := params.toSQLParams()
+		// sqlParams = p[0:17]
+		// sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) as %s;", params.orderBy)
+		return summaries{}, fmt.Errorf("not implemented: orderBy=%s", params.orderBy)
 	}
 
 	rows, err := db.Query(context.Background(), sql, sqlParams...)

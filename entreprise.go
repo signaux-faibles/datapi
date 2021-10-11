@@ -482,6 +482,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.VariationCA,
 			&e.ResultatExploitation,
 			&e.Effectif,
+			&e.EffectifEntreprise,
 			&e.LibelleActivite,
 			&e.LibelleActiviteN1,
 			&e.CodeActivite,
