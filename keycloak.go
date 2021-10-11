@@ -67,19 +67,19 @@ func keycloakMiddleware(c *gin.Context) {
 	if username, ok := (*claims)["preferred_username"]; ok {
 		c.Set("username", username)
 	} else {
-		c.AbortWithStatus(401)
+		c.AbortWithStatusJSON(401, "username absent")
 	}
 
 	if givenName, ok := (*claims)["given_name"]; ok {
 		c.Set("given_name", givenName)
 	} else {
-		c.AbortWithStatus(401)
+		c.AbortWithStatusJSON(401, "given_name absent")
 	}
 
 	if givenName, ok := (*claims)["family_name"]; ok {
 		c.Set("family_name", givenName)
 	} else {
-		c.AbortWithStatus(401)
+		c.AbortWithStatusJSON(401, "family_name")
 	}
 
 	c.Set("claims", claims)
