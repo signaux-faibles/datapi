@@ -51,7 +51,7 @@ type Summary struct {
 	Comment                   *string            `json:"-"`
 	Category                  *string            `json:"-"`
 	Since                     *time.Time         `json:"-"`
-	SecteurCovid              *string            `json:"secteurCovid"`
+	SecteurCovid              *string            `json:"secteurCovid,omitempty"`
 }
 
 type summaries struct {
