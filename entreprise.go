@@ -510,6 +510,8 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.PermDGEFP,
 			&e.PermScore,
 			&e.PermBDF,
+			&e.SecteurCovid,
+			&e.ExcedentBrutDExploitation,
 		)
 		if err != nil {
 			return err

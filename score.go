@@ -28,6 +28,7 @@ type paramsListeScores struct {
 	SiegeUniquement       bool     `json:"siegeUniquement"`
 	Page                  int      `json:"page"`
 	Filter                string   `json:"filter"`
+	ExcludeSecteursCovid  []string `json:"excludeSecteursCovid"`
 }
 
 // Liste de détection
@@ -192,8 +193,8 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
 		liste.Query.EffectifMinEntreprise, liste.Query.EffectifMaxEntreprise, liste.Query.CaMin, liste.Query.CaMax,
+		liste.Query.ExcludeSecteursCovid,
 	}
-	fmt.Println(liste.Query)
 	summaries, err := getSummaries(params)
 	if err != nil {
 		return errorToJSON(500, err)
