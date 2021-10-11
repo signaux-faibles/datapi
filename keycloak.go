@@ -79,7 +79,7 @@ func keycloakMiddleware(c *gin.Context) {
 	if givenName, ok := (*claims)["family_name"]; ok {
 		c.Set("family_name", givenName)
 	} else {
-		c.AbortWithStatusJSON(401, "family_name")
+		c.AbortWithStatusJSON(401, "family_name absent")
 	}
 
 	c.Set("claims", claims)
