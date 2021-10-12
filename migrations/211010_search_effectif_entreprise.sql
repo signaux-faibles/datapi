@@ -733,7 +733,7 @@ create materialized view v_summaries as
 	aet.last_list,
 	aet.last_alert,
 	coalesce(sco.secteur_covid, 'nonSecteurCovid') as secteur_covid,
-  et.etat_administratif,
+  case when en.etat_administratif = 'C' then 'F' else et.etat_administratif end as etat_administratif,
   en.etat_administratif as etat_administratif_entreprise
   from last_liste l
   	inner join etablissement0 et on true
@@ -928,7 +928,7 @@ select
     and 'score' = any($1)
     and (not (s.secteur_covid = any($24)) or $24 is null)
     and (n.code_n1 = any($19) or $19 is null)
-    and (s.etat_administratif = $25 or $25 is null)
+    and (etat_administratif = $25 or $25 is null)
   order by sc.alert, sc.score desc, sc.siret
   limit $2 offset $3
 $BODY$;
