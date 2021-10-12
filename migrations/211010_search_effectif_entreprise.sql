@@ -94,10 +94,6 @@ with js as (select '{
       "libelleActivite": "Création artistique relevant des arts plastiques"
     },
     {
-      "codeActivite": "9003A",
-      "libelleActivite": "Artistes auteurs"
-    },
-    {
       "codeActivite": "9003B",
       "libelleActivite": "Artistes auteurs"
     },
@@ -232,20 +228,8 @@ with js as (select '{
   ],
   "s1Possible": [
     {
-      "codeActivite": "7810Z",
-      "libelleActivite": "Agences de mannequins"
-    },
-    {
       "codeActivite": "6612Z",
       "libelleActivite": "Entreprises de détaxe et bureaux de change (changeurs manuels)"
-    },
-    {
-      "codeActivite": "4778C",
-      "libelleActivite": "Galeries d''art ou magasins de souvenirs et de piété"
-    },
-    {
-      "codeActivite": "7990Z",
-      "libelleActivite": "Guides conférenciers"
     },
     {
       "codeActivite": "9200Z",
@@ -258,18 +242,6 @@ with js as (select '{
     {
       "codeActivite": "5030Z",
       "libelleActivite": "Transport de passagers sur les fleuves, les canaux, les lacs, location de bateaux de plaisance"
-    },
-    {
-      "codeActivite": "7721Z",
-      "libelleActivite": "Transport de passagers sur les fleuves, les canaux, les lacs, location de bateaux de plaisance"
-    },
-    {
-      "codeActivite": "9002Z",
-      "libelleActivite": "Prestation et location de chapiteaux, tentes, structures, sonorisation, photographie, lumière et pyrotechnie"
-    },
-    {
-      "codeActivite": "5520Z",
-      "libelleActivite": "Accueils collectifs de mineurs en hébergement touristique"
     }
   ],
   "s1bis": [
@@ -466,10 +438,6 @@ with js as (select '{
       "libelleActivite": "Activités spécialisées, scientifiques et techniques diverses"
     },
     {
-      "codeActivite": "9003B",
-      "libelleActivite": "Autre création artistique"
-    },
-    {
       "codeActivite": "9601B",
       "libelleActivite": "Blanchisserie-teinturerie de détail"
     },
@@ -508,24 +476,12 @@ with js as (select '{
       "libelleActivite": "Stations-service"
     },
     {
-      "codeActivite": "9200Z",
-      "libelleActivite": "Paris sportifs"
-    },
-    {
-      "codeActivite": "5920Z",
-      "libelleActivite": "Activités liées à la production de matrices sonores originales, sur bandes, cassettes, CD, la mise à disposition des enregistrements, leur promotion et leur distribution"
-    },
-    {
       "codeActivite": "1013A",
       "libelleActivite": "Fabrication de foie gras"
     },
     {
       "codeActivite": "4781Z",
       "libelleActivite": "Commerce de détail de viande, produits à base de viandes sur éventaires et marchés"
-    },
-    {
-      "codeActivite": "4776Z",
-      "libelleActivite": "Commerce de détail de fleurs, en pot ou coupées, de compositions florales, de plantes et de graines"
     },
     {
       "codeActivite": "4789Z",
@@ -554,10 +510,6 @@ with js as (select '{
     {
       "codeActivite": "1399Z",
       "libelleActivite": "Fabrication de dentelle et broderie"
-    },
-    {
-      "codeActivite": "4622Z",
-      "libelleActivite": "Commerce de gros de vêtements de travail"
     },
     {
       "codeActivite": "6010Z",
