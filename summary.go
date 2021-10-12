@@ -33,7 +33,7 @@ type Summary struct {
 	ArreteBilan                 *time.Time         `json:"arrete_bilan,omitempty"`
 	ExerciceDiane               *int               `json:"exerciceDiane,omitempty"`
 	ResultatExploitation        *float64           `json:"resultat_expl,omitempty"`
-	ExcedentBrutDExploitation   *float64           `json:"excedent_brut_exploitation,omitempty"`
+	ExcedentBrutDExploitation   *float64           `json:"excedent_brut_d_exploitation,omitempty"`
 	EtatProcol                  *string            `json:"etat_procol,omitempty"`
 	Alert                       *string            `json:"alert,omitempty"`
 	Visible                     *bool              `json:"visible,omitempty"`
