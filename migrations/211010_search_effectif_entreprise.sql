@@ -1,3 +1,9 @@
+create or replace view etablissement0 as
+select * from etablissement where version = 0;
+
+create or replace view entreprise0 as
+select * from entreprise where version = 0;
+
 create table secteurs_covid as
 with js as (select '{
   "s1": [
@@ -726,7 +732,9 @@ create materialized view v_summaries as
 	en.creation as date_creation_entreprise,
 	aet.last_list,
 	aet.last_alert,
-	sco.secteur_covid
+	sco.secteur_covid,
+  et.etat_administratif,
+  en.etat_administratif as etat_administratif_entreprise
   from last_liste l
   	inner join etablissement0 et on true
     inner join entreprise0 en on en.siren = et.siren
@@ -762,49 +770,33 @@ create index idx_v_summaries_score on v_summaries (
   effectif_entreprise,
   code_departement,
   last_procol,
-  chiffre_affaire) where alert != 'Pas d''alerte';
+  chiffre_affaire,
+  etat_administratif) where alert != 'Pas d''alerte';
 
 drop function get_currentscore;
 CREATE OR REPLACE FUNCTION public.get_currentscore(
-	roles_users text[],
-	nblimit integer,
-	nboffset integer,
-	libelle_liste text,
-	siret_expression text,
-	raison_sociale_expression text,
-	ignore_roles boolean,
-	ignore_zone boolean,
-	username text,
-	siege_uniquement boolean,
-	order_by text,
-	alert_only boolean,
-	last_procol text[],
-	departements text[],
-	suivi boolean,
-	effectif_min integer,
-	effectif_max integer,
-	sirens text[],
-	activites text[],
-  effectif_min_entreprise integer,
-  effectif_max_entreprise integer,
-  ca_min integer,
-  ca_max integer,
-  exclude_secteurs_covid text[])
-    RETURNS TABLE(
-      siret text, siren text, raison_sociale text, commune text, libelle_departement text, 
-      code_departement text, valeur_score real, detail_score jsonb, first_alert boolean, 
-      chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real, 
-      resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text, 
-      last_procol text, activite_partielle boolean, apconso_heure_consomme integer, 
-      apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text, 
-      nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean, 
-      followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text, 
-      territoire_industrie boolean, comment text, category text, since timestamp without time zone, 
-      urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text,
-      excedent_brut_d_exploitation real)     LANGUAGE 'sql'
-    COST 100
-    IMMUTABLE PARALLEL UNSAFE
-    ROWS 1000
+    roles_users text[], nblimit integer, nboffset integer, libelle_liste text, siret_expression text,
+    raison_sociale_expression text, ignore_roles boolean, ignore_zone boolean, username text,
+    siege_uniquement boolean, order_by text, alert_only boolean, last_procol text[], departements text[],
+    suivi boolean, effectif_min integer, effectif_max integer, sirens text[], activites text[],
+    effectif_min_entreprise integer, effectif_max_entreprise integer, ca_min integer, ca_max integer,
+    exclude_secteurs_covid text[], etat_administratif text)
+  RETURNS TABLE(
+    siret text, siren text, raison_sociale text, commune text, libelle_departement text, 
+    code_departement text, valeur_score real, detail_score jsonb, first_alert boolean, 
+    chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real, 
+    resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text, 
+    last_procol text, activite_partielle boolean, apconso_heure_consomme integer, 
+    apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text, 
+    nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean, 
+    followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text, 
+    territoire_industrie boolean, comment text, category text, since timestamp without time zone, 
+    urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
+    etat_administratif text, etat_administratif_entreprise text) 
+  LANGUAGE 'sql'
+  COST 100
+  IMMUTABLE PARALLEL UNSAFE
+  ROWS 1000
 AS $BODY$
 select 
     s.siret, s.siren, s.raison_sociale, s.commune,
@@ -833,8 +825,7 @@ select
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-    s.secteur_covid,
-    s.excedent_brut_d_exploitation
+    s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
   from v_summaries s
     left join v_naf n on n.code_n5 = s.code_activite
     left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $9
@@ -857,52 +848,35 @@ select
     and 'score' = any($1)
     and (s.secteur_covid != any($24) or $24 is null)
     and (n.code_n1 = any($19) or $19 is null)
+    and (s.etat_administratif = $25 or $25 is null)
   order by s.alert, s.valeur_score desc, s.siret
   limit $2 offset $3
 $BODY$;
 
 drop function get_score;
 CREATE OR REPLACE FUNCTION public.get_score(
-	roles_users text[],
-	nblimit integer,
-	nboffset integer,
-	libelle_liste text,
-	siret_expression text,
-	raison_sociale_expression text,
-	ignore_roles boolean,
-	ignore_zone boolean,
-	username text,
-	siege_uniquement boolean,
-	order_by text,
-	alert_only boolean,
-	last_procol text[],
-	departements text[],
-	suivi boolean,
-	effectif_min integer,
-	effectif_max integer,
-	sirens text[],
-	activites text[],
-  effectif_min_entreprise integer,
-  effectif_max_entreprise integer,
-  ca_min integer,
-  ca_max integer,
-  exclude_secteurs_covid text[])
-    RETURNS TABLE(
-      siret text, siren text, raison_sociale text, commune text, libelle_departement text, 
-      code_departement text, valeur_score real, detail_score jsonb, first_alert boolean, 
-      chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real, 
-      resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text, 
-      last_procol text, activite_partielle boolean, apconso_heure_consomme integer, 
-      apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text, 
-      nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean, 
-      followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text, 
-      territoire_industrie boolean, comment text, category text, since timestamp without time zone, 
-      urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real) 
-    LANGUAGE 'sql'
-    COST 100
-    IMMUTABLE PARALLEL UNSAFE
-    ROWS 1000
-
+    roles_users text[], nblimit integer, nboffset integer, libelle_liste text, siret_expression text,
+    raison_sociale_expression text, ignore_roles boolean, ignore_zone boolean, username text,
+    siege_uniquement boolean, order_by text, alert_only boolean, last_procol text[], departements text[],
+    suivi boolean, effectif_min integer, effectif_max integer, sirens text[], activites text[],
+    effectif_min_entreprise integer, effectif_max_entreprise integer, ca_min integer, ca_max integer,
+    exclude_secteurs_covid text[], etat_administratif text)
+  RETURNS TABLE(
+    siret text, siren text, raison_sociale text, commune text, libelle_departement text, 
+    code_departement text, valeur_score real, detail_score jsonb, first_alert boolean, 
+    chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real, 
+    resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text, 
+    last_procol text, activite_partielle boolean, apconso_heure_consomme integer, 
+    apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text, 
+    nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean, 
+    followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text, 
+    territoire_industrie boolean, comment text, category text, since timestamp without time zone, 
+    urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
+    etat_administratif text, etat_administratif_entreprise text) 
+  LANGUAGE 'sql'
+  COST 100
+  IMMUTABLE PARALLEL UNSAFE
+  ROWS 1000
 AS $BODY$
 select 
     s.siret, s.siren, s.raison_sociale, s.commune,
@@ -931,7 +905,7 @@ select
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-    s.secteur_covid, s.excedent_brut_d_exploitation
+    s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
   from v_summaries s
     inner join score0 sc on sc.siret = s.siret and sc.libelle_liste = $4 and sc.alert != 'Pas d''alerte'
     left join v_naf n on n.code_n5 = s.code_activite
@@ -954,83 +928,36 @@ select
     and 'score' = any($1)
     and (s.secteur_covid != any($24) or $24 is null)
     and (n.code_n1 = any($19) or $19 is null)
+    and (s.etat_administratif = $25 or $25 is null)
   order by sc.alert, sc.score desc, sc.siret
   limit $2 offset $3
 $BODY$;
 
 drop function get_follow;
 create or replace function get_follow (
-    roles_users text[],
-    nblimit integer,
-    nboffset integer,
-    libelle_liste text,
-    siret_expression text,
-    raison_sociale_expression text,
-    ignore_roles boolean,
-    ignore_zone boolean,
-    username text,
-    siege_uniquement boolean,
-    order_by text,
-    alert_only boolean,
-    last_procol text[],
-    departements text[],
-    suivi boolean,
-    effectif_min integer,
-    effectif_max integer,
-    sirens text[],
-    activites text[],
-    effectif_min_entreprise integer,
-    effectif_max_entreprise integer,
-    ca_min integer,
-    ca_max integer,
-    exclude_secteurs_covid text[]
-  ) returns table (
-    siret text,
-    siren text,
-    raison_sociale text,
-    commune text,
-    libelle_departement text,
-    code_departement text,
-    valeur_score real,
-    detail_score jsonb,
-    first_alert boolean,
-    chiffre_affaire real,
-    arrete_bilan date,
-    exercice_diane int,
-    variation_ca real,
-    resultat_expl real,
-    effectif real,
-    effectif_entreprise real,
-    libelle_n5 text,
-    libelle_n1 text,
-    code_activite text,
-    last_procol text,
-    activite_partielle boolean,
-    apconso_heure_consomme int,
-    apconso_montant int,
-    hausse_urssaf boolean,
-    dette_urssaf real,
-    alert text,
-    nb_total bigint,
-    nb_f1 bigint,
-    nb_f2 bigint,
-    visible boolean,
-    in_zone boolean,
-    followed boolean,
-    followed_enterprise boolean,
-    siege boolean,
-    raison_sociale_groupe text,
-    territoire_industrie boolean,
-    comment text,
-    category text,
-    since timestamp,
-    urssaf boolean,
-    dgefp boolean,
-    score boolean,
-    bdf boolean,
-    secteur_covid text,
-    excedent_brut_d_exploitation real
-) as $$
+    roles_users text[], nblimit integer, nboffset integer, libelle_liste text, siret_expression text,
+    raison_sociale_expression text, ignore_roles boolean, ignore_zone boolean, username text,
+    siege_uniquement boolean, order_by text, alert_only boolean, last_procol text[], departements text[],
+    suivi boolean, effectif_min integer, effectif_max integer, sirens text[], activites text[],
+    effectif_min_entreprise integer, effectif_max_entreprise integer, ca_min integer, ca_max integer,
+    exclude_secteurs_covid text[], etat_administratif text)
+  RETURNS TABLE(
+    siret text, siren text, raison_sociale text, commune text, libelle_departement text, 
+    code_departement text, valeur_score real, detail_score jsonb, first_alert boolean, 
+    chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real, 
+    resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text, 
+    last_procol text, activite_partielle boolean, apconso_heure_consomme integer, 
+    apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text, 
+    nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean, 
+    followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text, 
+    territoire_industrie boolean, comment text, category text, since timestamp without time zone, 
+    urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
+    etat_administratif text, etat_administratif_entreprise text) 
+  LANGUAGE 'sql'
+  COST 100
+  IMMUTABLE PARALLEL UNSAFE
+  ROWS 1000 
+  AS $BODY$
   select 
     s.siret, s.siren, s.raison_sociale, s.commune,
     s.libelle_departement, s.code_departement,
@@ -1058,87 +985,35 @@ create or replace function get_follow (
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-    s.secteur_covid, s.excedent_brut_d_exploitation
+    s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
   from v_summaries s
     inner join etablissement_follow f on f.active and f.siret = s.siret and f.username = $9
     inner join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $9
     order by f.id
   limit $2 offset $3
-$$ language sql immutable;
+$BODY$;
 
 drop function get_search;
 create or replace function get_search (
-    roles_users text[],
-    nblimit integer,
-    nboffset integer,
-    libelle_liste text,
-    siret_expression text,
-    raison_sociale_expression text,
-    ignore_roles boolean,
-    ignore_zone boolean,
-    username text,
-    siege_uniquement boolean,
-    order_by text,
-    alert_only boolean,
-    last_procol text[],
-    departements text[],
-    suivi boolean,
-    effectif_min integer,
-    effectif_max integer,
-    sirens text[],
-    activites text[],
-    effectif_min_entreprise integer,
-    effectif_max_entreprise integer,
-    ca_min integer,
-    ca_max integer,
-    exclude_secteur_covid text[] 
-  ) returns table (
-    siret text,
-    siren text,
-    raison_sociale text,
-    commune text,
-    libelle_departement text,
-    code_departement text,
-    valeur_score real,
-    detail_score jsonb,
-    first_alert boolean,
-    chiffre_affaire real,
-    arrete_bilan date,
-    exercice_diane int,
-    variation_ca real,
-    resultat_expl real,
-    effectif real,
-    effectif_entreprise real,
-    libelle_n5 text,
-    libelle_n1 text,
-    code_activite text,
-    last_procol text,
-    activite_partielle boolean,
-    apconso_heure_consomme int,
-    apconso_montant int,
-    hausse_urssaf boolean,
-    dette_urssaf real,
-    alert text,
-    nb_total bigint,
-    nb_f1 bigint,
-    nb_f2 bigint,
-    visible boolean,
-    in_zone boolean,
-    followed boolean,
-    followed_enterprise boolean,
-    siege boolean,
-    raison_sociale_groupe text,
-    territoire_industrie boolean,
-    comment text,
-    category text,
-    since timestamp,
-    urssaf boolean,
-    dgefp boolean,
-    score boolean,
-    bdf boolean,
-    secteur_covid text,
-    excedent_brut_d_exploitation real
-) as $$
+    roles_users text[], nblimit integer, nboffset integer, libelle_liste text, siret_expression text,
+    raison_sociale_expression text, ignore_roles boolean, ignore_zone boolean, username text,
+    siege_uniquement boolean, order_by text, alert_only boolean, last_procol text[], departements text[],
+    suivi boolean, effectif_min integer, effectif_max integer, sirens text[], activites text[],
+    effectif_min_entreprise integer, effectif_max_entreprise integer, ca_min integer, ca_max integer,
+    exclude_secteurs_covid text[], etat_administratif text)
+  RETURNS TABLE(
+    siret text, siren text, raison_sociale text, commune text, libelle_departement text, 
+    code_departement text, valeur_score real, detail_score jsonb, first_alert boolean, 
+    chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real, 
+    resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text, 
+    last_procol text, activite_partielle boolean, apconso_heure_consomme integer, 
+    apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text, 
+    nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean, 
+    followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text, 
+    territoire_industrie boolean, comment text, category text, since timestamp without time zone, 
+    urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
+    etat_administratif text, etat_administratif_entreprise text) 
+  as $$
   select 
     s.siret, s.siren, s.raison_sociale, s.commune,
     s.libelle_departement, s.code_departement,
@@ -1166,7 +1041,7 @@ create or replace function get_search (
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-    s.secteur_covid, s.excedent_brut_d_exploitation
+    s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
   from v_summaries s
     left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $9
     left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $9
@@ -1184,77 +1059,32 @@ create or replace function get_search (
     and (n.code_n1 = any($19) or $19 is null)
     and (s.siege or not $10)
     and (s.secteur_covid != any($24) or $24 is null)
+    and (s.etat_administratif = $25 or $25 is null)
   order by s.raison_sociale, s.siret
   limit $2 offset $3
 $$ language sql immutable;
 
 drop function get_brother;
 create or replace function get_brother (
-    in roles_users text[],             -- $1
-    in nblimit int,                    -- $2
-    in nboffset int,                   -- $3
-    in libelle_liste text,             -- $4
-    in siret_expression text,          -- $5
-    in raison_sociale_expression text, -- $6
-    in ignore_roles boolean,           -- $7
-    in ignore_zone boolean,            -- $8
-    in username text,                  -- $9
-    in siege_uniquement boolean,       -- $10
-    in order_by text,                  -- $11
-    in alert_only boolean,             -- $12
-    in last_procol text[],             -- $13
-    in departements text[],            -- $14
-    in suivi boolean,                  -- $15
-    in effectif_min int,               -- $16
-    in effectif_max int,               -- $17
-    in sirens text[]                   -- $18               
-  ) returns table (
-    siret text,
-    siren text,
-    raison_sociale text,
-    commune text,
-    libelle_departement text,
-    code_departement text,
-    valeur_score real,
-    detail_score jsonb,
-    first_alert boolean,
-    chiffre_affaire real,
-    arrete_bilan date,
-    exercice_diane int,
-    variation_ca real,
-    resultat_expl real,
-    effectif real,
-    effectif_enterprise real,
-    libelle_n5 text,
-    libelle_n1 text,
-    code_activite text,
-    last_procol text,
-    activite_partielle boolean,
-    apconso_heure_consomme int,
-    apconso_montant int,
-    hausse_urssaf boolean,
-    dette_urssaf real,
-    alert text,
-    nb_total bigint,
-    nb_f1 bigint,
-    nb_f2 bigint,
-    visible boolean,
-    in_zone boolean,
-    followed boolean,
-    followed_enterprise boolean,
-    siege boolean,
-    raison_sociale_groupe text,
-    territoire_industrie boolean,
-    comment text,
-    category text,
-    since timestamp,
-    urssaf boolean,
-    dgefp boolean,
-    score boolean,
-    bdf boolean,
-    secteur_covid text,
-    excedent_brut_d_exploitation real
-) as $$
+    roles_users text[], nblimit integer, nboffset integer, libelle_liste text, siret_expression text,
+    raison_sociale_expression text, ignore_roles boolean, ignore_zone boolean, username text,
+    siege_uniquement boolean, order_by text, alert_only boolean, last_procol text[], departements text[],
+    suivi boolean, effectif_min integer, effectif_max integer, sirens text[], activites text[],
+    effectif_min_entreprise integer, effectif_max_entreprise integer, ca_min integer, ca_max integer,
+    exclude_secteurs_covid text[], etat_administratif text)
+  RETURNS TABLE(
+    siret text, siren text, raison_sociale text, commune text, libelle_departement text, 
+    code_departement text, valeur_score real, detail_score jsonb, first_alert boolean, 
+    chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real, 
+    resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text, 
+    last_procol text, activite_partielle boolean, apconso_heure_consomme integer, 
+    apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text, 
+    nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean, 
+    followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text, 
+    territoire_industrie boolean, comment text, category text, since timestamp without time zone, 
+    urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
+    etat_administratif text, etat_administratif_entreprise text) 
+as $$
   select 
     s.siret, s.siren, s.raison_sociale, s.commune,
     s.libelle_departement, s.code_departement,
@@ -1282,7 +1112,7 @@ create or replace function get_brother (
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
     (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-    s.secteur_covid, s.excedent_brut_d_exploitation
+    s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
   from v_summaries s
     left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $9
     left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $9

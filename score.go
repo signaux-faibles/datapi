@@ -29,6 +29,7 @@ type paramsListeScores struct {
 	Page                  int      `json:"page"`
 	Filter                string   `json:"filter"`
 	ExcludeSecteursCovid  []string `json:"excludeSecteursCovid"`
+	EtatAdministratif     *string  `json:"etatAdministratif"`
 }
 
 // Liste de détection
@@ -68,6 +69,10 @@ func getLastListeScores(c *gin.Context) {
 
 	var params paramsListeScores
 	err = c.Bind(&params)
+
+	if params.EtatAdministratif != nil && !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "C") {
+		c.JSON(400, "etatAdministratif must be either absent or `A` or `C`")
+	}
 
 	if err != nil || len(listes) == 0 {
 		c.AbortWithStatus(400)
@@ -135,6 +140,13 @@ func getListeScores(c *gin.Context) {
 		return
 	}
 
+	if params.EtatAdministratif != nil {
+		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "C") {
+			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'C'")
+			return
+		}
+	}
+
 	listes, err := findAllListes()
 	if err != nil || len(listes) == 0 {
 		c.AbortWithStatus(204)
@@ -193,7 +205,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
 		liste.Query.EffectifMinEntreprise, liste.Query.EffectifMaxEntreprise, liste.Query.CaMin, liste.Query.CaMax,
-		liste.Query.ExcludeSecteursCovid,
+		liste.Query.ExcludeSecteursCovid, liste.Query.EtatAdministratif,
 	}
 	summaries, err := getSummaries(params)
 	if err != nil {

@@ -21,6 +21,7 @@ type searchParams struct {
 	username              string
 	roles                 scope
 	ExcludeSecteursCovid  []string `json:"excludeSecteursCovid"`
+	EtatAdministratif     *string  `json:"etatAdministratif"`
 }
 
 type searchResult struct {
@@ -54,6 +55,13 @@ func searchEtablissementHandler(c *gin.Context) {
 		return
 	}
 
+	if params.EtatAdministratif != nil {
+		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "C") {
+			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'C'")
+			return
+		}
+	}
+
 	params.roles = scopeFromContext(c)
 
 	result, Jerr := searchEtablissement(params)
@@ -79,7 +87,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 		zoneGeo, &limit, &offset, &liste[0].ID, false, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
 		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil,
 		params.EffectifMin, nil, nil, params.Activites, params.EffectifMinEntreprise, params.EffectifMaxEntreprise,
-		params.CaMin, params.CaMax, params.ExcludeSecteursCovid,
+		params.CaMin, params.CaMax, params.ExcludeSecteursCovid, params.EtatAdministratif,
 	}
 	summaries, err := getSummaries(summaryparams)
 	if err != nil {
