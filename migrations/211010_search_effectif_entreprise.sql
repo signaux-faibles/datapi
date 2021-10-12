@@ -846,7 +846,7 @@ select
     and (fe.siren is not null = $15 or $15 is null)
 	  and (s.raison_sociale ilike $6 or s.siret ilike $5 or coalesce($5, $6) is null)
     and 'score' = any($1)
-    and (s.secteur_covid != any($24) or $24 is null)
+    and (not (s.secteur_covid = any($24)) or $24 is null)
     and (n.code_n1 = any($19) or $19 is null)
     and (s.etat_administratif = $25 or $25 is null)
   order by s.alert, s.valeur_score desc, s.siret
@@ -926,7 +926,7 @@ select
     and (fe.siren is not null = $15 or $15 is null)
 	  and (s.raison_sociale ilike $6 or s.siret ilike $5 or coalesce($5, $6) is null)
     and 'score' = any($1)
-    and (s.secteur_covid != any($24) or $24 is null)
+    and (not (s.secteur_covid = any($24)) or $24 is null)
     and (n.code_n1 = any($19) or $19 is null)
     and (s.etat_administratif = $25 or $25 is null)
   order by sc.alert, sc.score desc, sc.siret
@@ -1058,7 +1058,7 @@ create or replace function get_search (
     and (s.chiffre_affaire <= $23 or $23 is null)
     and (n.code_n1 = any($19) or $19 is null)
     and (s.siege or not $10)
-    and (s.secteur_covid != any($24) or $24 is null)
+    and (not (s.secteur_covid = any($24)) or $24 is null)
     and (s.etat_administratif = $25 or $25 is null)
   order by s.raison_sociale, s.siret
   limit $2 offset $3
