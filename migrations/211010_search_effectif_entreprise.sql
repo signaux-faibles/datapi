@@ -733,7 +733,7 @@ create materialized view v_summaries as
 	aet.last_list,
 	aet.last_alert,
 	coalesce(sco.secteur_covid, 'nonSecteurCovid') as secteur_covid,
-  case when en.etat_administratif = 'C' then 'F' else et.etat_administratif end as etat_administratif,
+  case when coalesce(en.etat_administratif, 'A') = 'C' then 'F' else coalesce(et.etat_administratif, 'A') end as etat_administratif,
   en.etat_administratif as etat_administratif_entreprise
   from last_liste l
   	inner join etablissement0 et on true
