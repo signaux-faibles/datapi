@@ -207,7 +207,7 @@ func getSummaries(params summaryParams) (summaries, error) {
 	} else if params.orderBy == "follow" {
 		p := params.toSQLParams()
 		sqlParams = append(sqlParams, p[0], p[3], p[8])
-		sql = "select * from get_follow($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null, null, null, null, null, null) as follow;"
+		sql = "select * from get_follow($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null, null, null, null, null, null, null) as follow;"
 	} else {
 		// p := params.toSQLParams()
 		// sqlParams = p[0:17]
