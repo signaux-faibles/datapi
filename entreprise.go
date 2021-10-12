@@ -455,7 +455,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	order by e.siren, date_valeur;`,
 		e.sirensFromQuery())
 
-	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4) as brothers;`,
+	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
 		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
 	)
 	return &batch
@@ -513,6 +513,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.SecteurCovid,
 			&e.ExcedentBrutDExploitation,
 			&e.EtatAdministratif,
+			&e.EtatAdministratifEntreprise,
 		)
 		if err != nil {
 			return err
