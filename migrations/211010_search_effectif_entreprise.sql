@@ -732,7 +732,7 @@ create materialized view v_summaries as
 	en.creation as date_creation_entreprise,
 	aet.last_list,
 	aet.last_alert,
-	sco.secteur_covid,
+	coalesce(sco.secteur_covid, 'nonSecteurCovid') as secteur_covid,
   et.etat_administratif,
   en.etat_administratif as etat_administratif_entreprise
   from last_liste l
