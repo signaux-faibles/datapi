@@ -70,8 +70,8 @@ func getLastListeScores(c *gin.Context) {
 	var params paramsListeScores
 	err = c.Bind(&params)
 
-	if params.EtatAdministratif != nil && !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "C") {
-		c.JSON(400, "etatAdministratif must be either absent or `A` or `C`")
+	if params.EtatAdministratif != nil && !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "F") {
+		c.JSON(400, "etatAdministratif must be either absent or `A` or `F`")
 	}
 
 	if err != nil || len(listes) == 0 {
@@ -141,8 +141,8 @@ func getListeScores(c *gin.Context) {
 	}
 
 	if params.EtatAdministratif != nil {
-		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "C") {
-			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'C'")
+		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "F") {
+			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'F'")
 			return
 		}
 	}

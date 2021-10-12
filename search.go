@@ -56,8 +56,8 @@ func searchEtablissementHandler(c *gin.Context) {
 	}
 
 	if params.EtatAdministratif != nil {
-		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "C") {
-			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'C'")
+		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "F") {
+			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'F'")
 			return
 		}
 	}
