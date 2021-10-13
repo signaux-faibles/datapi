@@ -441,11 +441,29 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		order by e.siret, date_creation;`,
 		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select e.siret, date_effet, action_procol, stade_procol
-		from etablissement_procol0 e
-		where e.siret=any($1) or e.siren=any($2)
-		order by e.siret, date_effet;`,
-		e.Query.Sirets, e.Query.Sirens)
+	batch.Queue(`
+	SELECT p.siren,
+		min(date_effet) as date_effet,
+		first(action_procol order by date_effet) as action_procol,
+		first(stade_procol order by date_effet) as stade_procol
+		FROM etablissement_procol0 p
+		where siren = any($1)
+		group by siren, CASE
+			WHEN 'liquidation'::text = p.action_procol THEN 'liquidation'::text
+			WHEN 'redressement'::text = p.action_procol THEN
+				CASE
+					WHEN 'redressement_plan_continuation'::text = p.action_procol || '_'::text || p.stade_procol THEN 'plan_continuation'::text
+					ELSE 'redressement'::text
+					END
+					WHEN 'sauvegarde'::text = p.action_procol THEN
+					CASE
+							WHEN 'sauvegarde_plan_continuation'::text =p.action_procol || '_'::text || p.stade_procol THEN 'plan_sauvegarde'::text
+							ELSE 'sauvegarde'::text
+					END
+					ELSE NULL::text
+			END
+		 order by siren, min(date_effet)`,
+		e.sirensFromQuery())
 
 	listes, _ := findAllListes()
 
@@ -629,17 +647,21 @@ func (e *Etablissements) loadProcol(rows *pgx.Rows) error {
 	var procol = make(map[string][]EtablissementProcol)
 	for (*rows).Next() {
 		var pc EtablissementProcol
-		var siret string
-		err := (*rows).Scan(&siret, &pc.DateEffet, &pc.Action, &pc.Stade)
+		var siren string
+		err := (*rows).Scan(&siren, &pc.DateEffet, &pc.Action, &pc.Stade)
 		if err != nil {
 			return err
 		}
-		procol[siret] = append(procol[siret], pc)
+		procol[siren] = append(procol[siren], pc)
 	}
-	for k, v := range procol {
-		etablissement := e.Etablissements[k]
-		etablissement.Procol = v
-		e.Etablissements[k] = etablissement
+	fmt.Println(procol)
+	for siren, procol := range procol {
+		for siret, etablissement := range e.Etablissements {
+			if siret[0:9] == siren {
+				etablissement.Procol = procol
+				e.Etablissements[siret] = etablissement
+			}
+		}
 	}
 	return nil
 }

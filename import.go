@@ -1103,7 +1103,7 @@ func listImportHandler(c *gin.Context) {
 		macro_radar jsonb default '{}',
 		alert_pre_redressements text,
 		redressements text[] default '{}'
-	) on commit drop;`)
+	);`)
 	if err != nil {
 		c.AbortWithStatusJSON(500, "create tmp_score: "+err.Error())
 		return
@@ -1113,28 +1113,29 @@ func listImportHandler(c *gin.Context) {
 	for _, s := range scores {
 		queueScoreToBatch(s, batch)
 	}
+	batch.Queue(`insert into score
+			(siret, siren, libelle_liste, batch, algo, periode,
+			score, diff, alert, expl_selection_concerning,
+			expl_selection_reassuring, macro_radar,
+			redressements, alert_pre_redressements)
+		select
+			e.siret, t.siren, t.libelle_liste, batch, $1,
+			current_date, score, diff, alert, expl_selection_concerning,
+			expl_selection_reassuring, macro_radar,
+			redressements, alert_pre_redressements
+		from tmp_score t
+		inner join etablissement e on e.siren = t.siren and e.siege`, algo)
+
 	results := tx.SendBatch(context.Background(), batch)
 	err = results.Close()
+
 	if err != nil {
 		c.AbortWithStatusJSON(500, "execute batch: "+err.Error())
 		return
 	}
-
-	tx.Query(context.Background(), `insert into score 
-		(siret, siren, libelle_liste, batch, algo, periode, 
-		score, diff, alert, expl_selection_concerning, 
-		expl_selection_reassuring, macro_radar,
-		redressements, alert_pre_redressements)
-	select 
-		e.siret, t.siren, t.libelle_liste, batch, $1, 
-		current_date, score, diff, alert, expl_selection_concerning, 
-		expl_selection_reassuring, macro_radar,
-		redressements, alert_pre_redressements 
-	from tmp_score t
-	inner join etablissement e on e.siren = t.siren and e.siege`, algo)
 	err = tx.Commit(context.Background())
 	if err != nil {
-		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
+		c.AbortWithStatusJSON(500, "commit: "+err.Error())
 	}
 }
 

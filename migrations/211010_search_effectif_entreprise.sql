@@ -675,6 +675,35 @@ from v;
 -- create index idx_etablissement_periode_urssaf_siret_siren on etablissement_periode_urssaf (siret, siren, version)
 drop materialized view v_summaries;
 drop materialized view v_last_effectif;
+DROP MATERIALIZED VIEW IF EXISTS public.v_last_procol;
+
+CREATE MATERIALIZED VIEW IF NOT EXISTS public.v_last_procol
+TABLESPACE pg_default
+AS
+ SELECT etablissement_procol0.siren,
+        CASE
+            WHEN 'liquidation'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN 'liquidation'::text
+            WHEN 'redressement'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN
+            CASE
+                WHEN 'redressement_plan_continuation'::text = ANY (array_agg((etablissement_procol0.action_procol || '_'::text) || etablissement_procol0.stade_procol)) THEN 'plan_continuation'::text
+                ELSE 'redressement'::text
+            END
+            WHEN 'sauvegarde'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN
+            CASE
+                WHEN 'sauvegarde_plan_continuation'::text = ANY (array_agg((etablissement_procol0.action_procol || '_'::text) || etablissement_procol0.stade_procol)) THEN 'plan_sauvegarde'::text
+                ELSE 'sauvegarde'::text
+            END
+            ELSE NULL::text
+        END AS last_procol,
+    max(etablissement_procol0.date_effet) AS date_effet
+   FROM etablissement_procol0
+  GROUP BY etablissement_procol0.siren
+WITH DATA;
+
+CREATE UNIQUE INDEX idx_v_last_procol_siren
+    ON public.v_last_procol USING btree
+    (siren COLLATE pg_catalog."default")
+    TABLESPACE pg_default;
 
 create materialized view v_last_effectif as
 with last_effectif as (select siret, siren, last(effectif order by periode) as effectif,
@@ -749,7 +778,7 @@ create materialized view v_summaries as
     left join v_last_effectif ef on ef.siret = et.siret
     left join v_hausse_urssaf u on u.siret = et.siret
     left join v_apdemande ap on ap.siret = et.siret
-    left join v_last_procol ep on ep.siret = et.siret
+    left join v_last_procol ep on ep.siren = et.siren
     left join v_diane_variation_ca di on di.siren = et.siren
     left join entreprise_ellisphere0 g on g.siren = et.siren
     left join terrind ti on ti.code_commune = et.code_commune
