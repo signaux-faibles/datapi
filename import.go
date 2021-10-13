@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -20,6 +21,7 @@ import (
 
 type score struct {
 	Siret         string        `json:"-"`
+	Siren         string        `json:"siret"`
 	Libelle       string        `json:"-"`
 	ID            bson.ObjectId `json:"-"`
 	Score         float64       `json:"score"`
@@ -778,6 +780,26 @@ func (s score) toLibelle() string {
 	return months[month] + " " + year
 }
 
+func (s scoreFile) toLibelle() string {
+	months := map[string]string{
+		"01": "Janvier",
+		"02": "Février",
+		"03": "Mars",
+		"04": "Avril",
+		"05": "Mai",
+		"06": "Juin",
+		"07": "Juillet",
+		"08": "Août",
+		"09": "Septembre",
+		"10": "Octobre",
+		"11": "Novembre",
+		"12": "Décembre",
+	}
+	year := "20" + s.Batch[0:2]
+	month := s.Batch[2:4]
+	return months[month] + " " + year
+}
+
 func scoreToListe() pgx.Batch {
 	var batch pgx.Batch
 	batch.Queue(`insert into liste (libelle, batch, algo) 
@@ -1018,4 +1040,138 @@ func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
 	// 	htrees[table] = tree
 	// }
 	return htrees, nil
+}
+
+type scoreFile struct {
+	Siren         string  `json:"siren"`
+	Score         float64 `json:"score"`
+	Diff          float64 `json:"diff"`
+	Alert         string  `json:"alert"`
+	Periode       string  `json:"periode"`
+	Batch         string  `json:"batch"`
+	Algo          string  `json:"algo"`
+	ExplSelection struct {
+		SelectConcerning [][]string `json:"selectConcerning"`
+		SelectReassuring [][]string `json:"selectReassuring"`
+	} `json:"explSelection"`
+	MacroRadar            map[string]float64 `json:"macroRadar"`
+	Redressements         []string           `json:"redressements"`
+	AlertPreRedressements string             `json:"alert_pre_redressements"`
+}
+
+func listImportHandler(c *gin.Context) {
+	algo := c.Params.ByName("algo")
+	if algo == "" {
+		c.AbortWithStatusJSON(400, "please provide algo name !")
+		return
+	}
+
+	filename := viper.GetString("listPath")
+	file, err := os.Open(filename)
+	if err != nil {
+		c.AbortWithStatusJSON(500, "open file: "+err.Error())
+		return
+	}
+	raw, err := ioutil.ReadAll(file)
+	file.Close()
+	if err != nil {
+		c.AbortWithStatusJSON(500, "read file: "+err.Error())
+		return
+	}
+	var scores []scoreFile
+	err = json.Unmarshal(raw, &scores)
+	if err != nil {
+		c.AbortWithStatusJSON(500, "unmarshal JSON: "+err.Error())
+		return
+	}
+
+	tx, err := db.Begin(context.Background())
+	if err != nil {
+		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
+	}
+
+	_, err = tx.Exec(context.Background(), `create table tmp_score (
+		siren text,
+		score real,
+		libelle_liste text,
+		diff real,
+		alert text,
+		batch text,
+		algo text,
+		expl_selection_concerning jsonb default '{}', 
+		expl_selection_reassuring jsonb default '{}',
+		macro_radar jsonb default '{}',
+		alert_pre_redressements text,
+		redressements text[] default '{}'
+	) on commit drop;`)
+	if err != nil {
+		c.AbortWithStatusJSON(500, "create tmp_score: "+err.Error())
+		return
+	}
+
+	batch := &pgx.Batch{}
+	for _, s := range scores {
+		queueScoreToBatch(s, batch)
+	}
+	results := tx.SendBatch(context.Background(), batch)
+	err = results.Close()
+	if err != nil {
+		c.AbortWithStatusJSON(500, "execute batch: "+err.Error())
+		return
+	}
+
+	tx.Query(context.Background(), `insert into score 
+		(siret, siren, libelle_liste, batch, algo, periode, 
+		score, diff, alert, expl_selection_concerning, 
+		expl_selection_reassuring, macro_radar,
+		redressements, alert_pre_redressements)
+	select 
+		e.siret, t.siren, t.libelle_liste, batch, $1, 
+		current_date, score, diff, alert, expl_selection_concerning, 
+		expl_selection_reassuring, macro_radar,
+		redressements, alert_pre_redressements 
+	from tmp_score t
+	inner join etablissement e on e.siren = t.siren and e.siege`, algo)
+	err = tx.Commit(context.Background())
+	if err != nil {
+		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
+	}
+}
+
+func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
+	sqlScore := `insert into tmp_score (siren, libelle_liste, batch, algo, score, diff, alert,
+ 		expl_selection_concerning, expl_selection_reassuring, macro_radar, alert_pre_redressements, redressements)
+   	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+
+	if s.ExplSelection.SelectConcerning == nil {
+		s.ExplSelection.SelectConcerning = make([][]string, 0)
+	}
+	if s.ExplSelection.SelectReassuring == nil {
+		s.ExplSelection.SelectReassuring = make([][]string, 0)
+	}
+
+	if s.MacroRadar == nil {
+		s.MacroRadar = make(map[string]float64)
+	}
+	if s.Redressements == nil {
+		s.Redressements = make([]string, 0)
+	}
+	if s.AlertPreRedressements == "" {
+		s.AlertPreRedressements = s.Alert
+	}
+
+	batch.Queue(sqlScore,
+		s.Siren,
+		s.toLibelle(),
+		s.Batch,
+		s.Algo,
+		s.Score,
+		s.Diff,
+		s.Alert,
+		s.ExplSelection.SelectConcerning,
+		s.ExplSelection.SelectReassuring,
+		s.MacroRadar,
+		s.AlertPreRedressements,
+		s.Redressements,
+	)
 }
