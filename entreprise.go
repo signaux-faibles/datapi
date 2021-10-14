@@ -654,7 +654,6 @@ func (e *Etablissements) loadProcol(rows *pgx.Rows) error {
 		}
 		procol[siren] = append(procol[siren], pc)
 	}
-	fmt.Println(procol)
 	for siren, procol := range procol {
 		for siret, etablissement := range e.Etablissements {
 			if siret[0:9] == siren {
