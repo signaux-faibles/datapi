@@ -309,6 +309,8 @@ func (e Etablissements) sirensFromQuery() []string {
 
 func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	var batch pgx.Batch
+	listes, _ := findAllListes()
+	lastListe := listes[0].ID
 
 	batch.Queue(
 		`select 
@@ -393,18 +395,18 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	// )
 
 	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert, 
-		expl_selection_concerning,			
-		s.expl_selection_reassuring, 
-		s.macro_expl, 
-		s.micro_expl,
-		s.macro_radar,
+		case when s.libelle_liste = $5 then s.expl_selection_concerning else '[]' end,			
+		case when s.libelle_liste = $5 then s.expl_selection_reassuring else '[]' end, 
+		case when s.libelle_liste = $5 then s.macro_expl else '{}' end, 
+		case when s.libelle_liste = $5 then s.micro_expl else '{}' end,
+		case when s.libelle_liste = $5 then s.macro_radar else '{}' end,
 		s.alert_pre_redressements,
 		s.redressements
 		from score0 s
 		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
 		where (p.siret=any($3) or p.siren=any($4))
 		order by s.siret, s.batch desc, s.score desc;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens, lastListe)
 
 	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
 		from etablissement_apconso0 e
@@ -464,8 +466,6 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 			END
 		 order by siren, min(date_effet)`,
 		e.sirensFromQuery())
-
-	listes, _ := findAllListes()
 
 	batch.Queue(`select e.siren, e.date_valeur, e.nb_jours
 	from entreprise_paydex0 e
