@@ -309,6 +309,8 @@ func (e Etablissements) sirensFromQuery() []string {
 
 func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	var batch pgx.Batch
+	listes, _ := findAllListes()
+	lastListe := listes[0].ID
 
 	batch.Queue(
 		`select 
@@ -393,18 +395,18 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	// )
 
 	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert, 
-		expl_selection_concerning,			
-		s.expl_selection_reassuring, 
-		s.macro_expl, 
-		s.micro_expl,
-		s.macro_radar,
+		case when s.libelle_liste = $5 then s.expl_selection_concerning else '[]' end,			
+		case when s.libelle_liste = $5 then s.expl_selection_reassuring else '[]' end, 
+		case when s.libelle_liste = $5 then s.macro_expl else '{}' end, 
+		case when s.libelle_liste = $5 then s.micro_expl else '{}' end,
+		case when s.libelle_liste = $5 then s.macro_radar else '{}' end,
 		s.alert_pre_redressements,
 		s.redressements
 		from score0 s
 		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
 		where (p.siret=any($3) or p.siren=any($4))
 		order by s.siret, s.batch desc, s.score desc;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens, lastListe)
 
 	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
 		from etablissement_apconso0 e
@@ -441,13 +443,29 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 		order by e.siret, date_creation;`,
 		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select e.siret, date_effet, action_procol, stade_procol
-		from etablissement_procol0 e
-		where e.siret=any($1) or e.siren=any($2)
-		order by e.siret, date_effet;`,
-		e.Query.Sirets, e.Query.Sirens)
-
-	listes, _ := findAllListes()
+	batch.Queue(`
+	SELECT p.siren,
+		min(date_effet) as date_effet,
+		first(action_procol order by date_effet) as action_procol,
+		first(stade_procol order by date_effet) as stade_procol
+		FROM etablissement_procol0 p
+		where siren = any($1)
+		group by siren, CASE
+			WHEN 'liquidation'::text = p.action_procol THEN 'liquidation'::text
+			WHEN 'redressement'::text = p.action_procol THEN
+				CASE
+					WHEN 'redressement_plan_continuation'::text = p.action_procol || '_'::text || p.stade_procol THEN 'plan_continuation'::text
+					ELSE 'redressement'::text
+					END
+					WHEN 'sauvegarde'::text = p.action_procol THEN
+					CASE
+							WHEN 'sauvegarde_plan_continuation'::text =p.action_procol || '_'::text || p.stade_procol THEN 'plan_sauvegarde'::text
+							ELSE 'sauvegarde'::text
+					END
+					ELSE NULL::text
+			END
+		 order by siren, min(date_effet)`,
+		e.sirensFromQuery())
 
 	batch.Queue(`select e.siren, e.date_valeur, e.nb_jours
 	from entreprise_paydex0 e
@@ -455,7 +473,7 @@ func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
 	order by e.siren, date_valeur;`,
 		e.sirensFromQuery())
 
-	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4) as brothers;`,
+	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
 		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
 	)
 	return &batch
@@ -482,6 +500,7 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.VariationCA,
 			&e.ResultatExploitation,
 			&e.Effectif,
+			&e.EffectifEntreprise,
 			&e.LibelleActivite,
 			&e.LibelleActiviteN1,
 			&e.CodeActivite,
@@ -509,6 +528,10 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 			&e.PermDGEFP,
 			&e.PermScore,
 			&e.PermBDF,
+			&e.SecteurCovid,
+			&e.ExcedentBrutDExploitation,
+			&e.EtatAdministratif,
+			&e.EtatAdministratifEntreprise,
 		)
 		if err != nil {
 			return err
@@ -624,17 +647,20 @@ func (e *Etablissements) loadProcol(rows *pgx.Rows) error {
 	var procol = make(map[string][]EtablissementProcol)
 	for (*rows).Next() {
 		var pc EtablissementProcol
-		var siret string
-		err := (*rows).Scan(&siret, &pc.DateEffet, &pc.Action, &pc.Stade)
+		var siren string
+		err := (*rows).Scan(&siren, &pc.DateEffet, &pc.Action, &pc.Stade)
 		if err != nil {
 			return err
 		}
-		procol[siret] = append(procol[siret], pc)
+		procol[siren] = append(procol[siren], pc)
 	}
-	for k, v := range procol {
-		etablissement := e.Etablissements[k]
-		etablissement.Procol = v
-		e.Etablissements[k] = etablissement
+	for siren, procol := range procol {
+		for siret, etablissement := range e.Etablissements {
+			if siret[0:9] == siren {
+				etablissement.Procol = procol
+				e.Etablissements[siret] = etablissement
+			}
+		}
 	}
 	return nil
 }
