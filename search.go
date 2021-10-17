@@ -6,16 +6,22 @@ import (
 )
 
 type searchParams struct {
-	Search          string   `json:"search"`
-	Page            int      `json:"page"`
-	Departements    []string `json:"departements,omitempty"`
-	Activites       []string `json:"activites,omitempty"`
-	EffectifMin     *int     `json:"effectifMin"`
-	SiegeUniquement bool     `json:"siegeUniquement"`
-	IgnoreRoles     bool     `json:"ignoreRoles"`
-	IgnoreZone      bool     `json:"ignoreZone"`
-	username        string
-	roles           scope
+	Search                string   `json:"search"`
+	Page                  int      `json:"page"`
+	Departements          []string `json:"departements,omitempty"`
+	Activites             []string `json:"activites,omitempty"`
+	EffectifMin           *int     `json:"effectifMin"`
+	EffectifMinEntreprise *int     `json:"effectifMinEntreprise"`
+	EffectifMaxEntreprise *int     `json:"effectifMaxEntreprise"`
+	CaMin                 *int     `json:"caMin"`
+	CaMax                 *int     `json:"caMax"`
+	SiegeUniquement       bool     `json:"siegeUniquement"`
+	IgnoreRoles           bool     `json:"ignoreRoles"`
+	IgnoreZone            bool     `json:"ignoreZone"`
+	username              string
+	roles                 scope
+	ExcludeSecteursCovid  []string `json:"excludeSecteursCovid"`
+	EtatAdministratif     *string  `json:"etatAdministratif"`
 }
 
 type searchResult struct {
@@ -37,7 +43,6 @@ func searchEtablissementHandler(c *gin.Context) {
 		c.Abort()
 		return
 	}
-
 	params.username = c.GetString("username")
 
 	if len(params.Search) < 3 {
@@ -48,6 +53,13 @@ func searchEtablissementHandler(c *gin.Context) {
 	if params.Page < 0 {
 		c.JSON(400, "page has to be integer >= 0")
 		return
+	}
+
+	if params.EtatAdministratif != nil {
+		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "F") {
+			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'F'")
+			return
+		}
 	}
 
 	params.roles = scopeFromContext(c)
@@ -73,9 +85,10 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 
 	summaryparams := summaryParams{
 		zoneGeo, &limit, &offset, &liste[0].ID, false, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
-		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil, params.EffectifMin, nil, nil, params.Activites,
+		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil,
+		params.EffectifMin, nil, nil, params.Activites, params.EffectifMinEntreprise, params.EffectifMaxEntreprise,
+		params.CaMin, params.CaMax, params.ExcludeSecteursCovid, params.EtatAdministratif,
 	}
-
 	summaries, err := getSummaries(summaryparams)
 	if err != nil {
 		return searchResult{}, errorToJSON(500, err)
