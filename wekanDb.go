@@ -6,18 +6,25 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func debugConfig(c *gin.Context) {
-	cards, err := selectWekanCards("marie.alloy@direccte.gouv.fr", nil, nil, nil, nil)
-	if err != nil {
-		fmt.Println(err)
-	}
-	fmt.Println(cards.Sirets(), len(cards.Sirets()))
+	// cards, err := selectWekanCards("marie.alloy@dreets.gouv.fr", nil, nil, nil, nil)
+	// if err != nil {
+	// 	fmt.Println(err)
+	// }
+	// js, _ := json.MarshalIndent(wekanConfig, " ", " ")
+	// fmt.Printf("%s", js)
+	// for k := range wekanConfig.Boards {
+	// 	fmt.Println(k)
+	// }
 	// selectWekanCards([]string{"christophe.ninucci@direccte.gouv.fr"}, nil, nil, nil, nil)
+	a := viper.GetStringMapString("wekanRegions")
+	fmt.Println(a)
 }
 
 // WekanCards est une liste de WekanCard
@@ -109,18 +116,21 @@ func (c WekanCard) FicheSF() (string, error) {
 	return "", fmt.Errorf("pas de propriété FicheSF pour cette carte: %s", c.ID)
 }
 
-func selectWekanCards(username string, boardIds []string, swimlaneIds []string, listIds []string, labelIds []string) (WekanCards, error) {
+func selectWekanCards(username string, allCards bool, boardIds []string, swimlaneIds []string, listIds []string, labelIds []string) (WekanCards, error) {
 	userID, ok := wekanConfig.Users[username]
 	if !ok {
 		return WekanCards{}, fmt.Errorf("unknown wekan user: %s", username)
 	}
 
 	filter := bson.M{
-		"$expr": bson.M{"$in": bson.A{userID, "$members"}},
-		"type":  "cardType-card",
+		"type": "cardType-card",
 	}
 
-	if len(boardIds) > 0 {
+	if !allCards {
+		filter["$expr"] = bson.M{"$in": bson.A{userID, "$members"}}
+	}
+
+	if len(boardIds) > 0 { // rejet des ids non connus dans la configuration
 		var ids []string
 		for _, id := range boardIds {
 			if _, ok := wekanConfig.BoardIds[id]; ok {
@@ -128,12 +138,8 @@ func selectWekanCards(username string, boardIds []string, swimlaneIds []string, 
 			}
 		}
 		filter["boardId"] = bson.M{"$in": ids}
-	} else {
-		var ids []string
-		for boardId := range wekanConfig.BoardIds {
-			ids = append(ids, boardId)
-		}
-		filter["boardId"] = bson.M{"$in": ids}
+	} else { // limiter au périmètre des boards de la configuration
+		filter["boardId"] = bson.M{"$in": wekanConfig.boardIds()}
 	}
 
 	if len(swimlaneIds) > 0 {
@@ -187,6 +193,10 @@ func lookupWekanConfig() (WekanConfig, error) {
 	for _, board := range config.Boards {
 		config.BoardIds[board.BoardID] = board
 	}
+	config.Regions = make(map[string]string)
+	for r, s := range viper.GetStringMapString("wekanRegions") {
+		config.Regions[s] = r
+	}
 	return config, nil
 }
 
@@ -224,6 +234,7 @@ func buildWekanConfigPipeline() []bson.M {
 			"boardId": "$_id",
 			"title":   "$title",
 			"slug":    "$slug",
+			"members": "$members.userId",
 			"swimlanes": bson.M{
 				"$arrayToObject": "$swimlanes",
 			}}}
@@ -309,6 +320,7 @@ func buildWekanConfigPipeline() []bson.M {
 				"slug":      "$slug",
 				"title":     "$title",
 				"swimlanes": "$swimlanes",
+				"members":   "$members",
 				"customFields": bson.M{
 					"siretField":    bson.M{"$arrayElemAt": bson.A{"$siretField.siretField", 0}},
 					"effectifField": bson.M{"$arrayElemAt": bson.A{"$effectifField.effectifField", 0}},

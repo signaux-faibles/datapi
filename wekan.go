@@ -29,9 +29,10 @@ type wekanListDetails struct {
 type WekanConfigBoard struct {
 	BoardID      string             `bson:"boardId" json:"boardId"`
 	Title        string             `bson:"title"`
-	Slug         string             `bson:"slug" json:"slug"`
+	Slug         string             `bson:"slug" json:"-"`
 	Swimlanes    map[string]string  `bson:"swimlanes" json:"swimlanes"`
-	Lists        []string           `bson:"lists" json:"lists"`
+	Members      []string           `bson:"members" json:"-"`
+	Lists        []string           `bson:"lists" json:"-"`
 	ListDetails  []wekanListDetails `bson:"listDetails" json:"listDetails"`
 	CustomFields struct {
 		SiretField    string `bson:"siretField" json:"siretField"`
@@ -39,37 +40,47 @@ type WekanConfigBoard struct {
 		EffectifField struct {
 			EffectifFieldID    string   `bson:"effectifFieldId" json:"effectifFieldId"`
 			EffectifFieldItems []string `bson:"effectifFieldItems" json:"effectifFieldItems"`
-		} `bson:"effectifField" json:"effectifField"`
+		} `bson:"effectifField" json:"-"`
 		FicheSFField string `bson:"ficheSFField" json:"ficheSFField"`
-	} `bson:"customFields" json:"customFields"`
+	} `bson:"customFields" json:"-"`
 }
 
 // WekanConfig type pour le fichier de configuration de Wekan
 type WekanConfig struct {
 	Boards   map[string]*WekanConfigBoard `bson:"boards" json:"boards"`
-	Users    map[string]string            `bson:"users" json:"users"`
-	BoardIds map[string]*WekanConfigBoard
+	Users    map[string]string            `bson:"users,omitempty" json:"users,omitempty"`
+	BoardIds map[string]*WekanConfigBoard `json:"-"`
+	Regions  map[string]string            `json:"Regions"`
 }
 
-// func (wc WekanConfig) boards() map[string]string {
-// 	boards := make(map[string]string)
-// 	for r, b := range wc.Boards {
-// 		boards[b.BoardID] = r
-// 	}
-// 	return boards
-// }
-
-func (wc WekanConfig) siretFields() []string {
-	var siretFields []string
-	for _, b := range wc.Boards {
-		siretFields = append(siretFields, b.CustomFields.SiretField)
+func (wc WekanConfig) forUser(username string) WekanConfig {
+	userId, ok := wc.Users[username]
+	if !ok {
+		return WekanConfig{}
 	}
-	return siretFields
+
+	var userWc WekanConfig
+	userWc.Boards = make(map[string]*WekanConfigBoard)
+	for slug, configBoard := range wc.Boards {
+		if contains(configBoard.Members, userId) {
+			userWc.Boards[slug] = configBoard
+		}
+	}
+	userWc.Regions = wc.Regions
+	return userWc
 }
 
 func (wc *WekanConfig) load() error {
 	configFile := viper.GetString("wekanConfigFile")
 	return wc.loadFile(configFile)
+}
+
+func (wc WekanConfig) boardIds() []string {
+	var ids []string
+	for boardId := range wekanConfig.BoardIds {
+		ids = append(ids, boardId)
+	}
+	return ids
 }
 
 func (wc *WekanConfig) loadFile(path string) error {
@@ -80,11 +91,6 @@ func (wc *WekanConfig) loadFile(path string) error {
 	err = json.Unmarshal(fileContent, wc)
 	return err
 }
-
-// type wekanDbCustomFields struct {
-// 	ID    string `json:"_id" bson:"_id"`
-// 	Value string `json:"value" bson:"value"`
-// }
 
 // Token type pour faire persister en mémoire les tokens réutilisables
 type Token struct {
@@ -641,92 +647,6 @@ func wekanImportHandler(c *gin.Context) {
 	}
 }
 
-func wekanGetListCardsHandler(c *gin.Context) {
-	configFile := viper.GetString("wekanConfigFile")
-	fileContent, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	var config WekanConfig
-	err = json.Unmarshal(fileContent, &config)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	var adminToken Token
-	adminUsername := viper.GetString("wekanAdminUsername")
-	loadedToken, ok := tokens.Load(adminUsername)
-	if loadedToken != nil {
-		adminToken = loadedToken.(Token)
-		ok = isValidToken(adminToken)
-	}
-	if !ok {
-		log.Printf("no valid admin token")
-		adminPassword := viper.GetString("wekanAdminPassword")
-		body, err := adminLogin(adminUsername, adminPassword)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		wekanLogin := WekanLogin{}
-		err = json.Unmarshal(body, &wekanLogin)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		adminToken.Value = wekanLogin.Token
-		now := time.Now()
-		adminToken.CreationDate = now
-		tokens.Store(adminUsername, adminToken)
-	} else {
-		log.Printf("existing admin token")
-	}
-	region := "Auvergne-Rhône-Alpes"
-	board, ok := config.Boards[region]
-	if !ok {
-		c.JSON(500, "missing board in config file")
-		return
-	}
-	boardID := board.BoardID
-	var cardDataArray = []map[string]interface{}{}
-	for _, listID := range board.Lists[:4] {
-		log.Printf("listID=%s", listID)
-		body, err := getListCards(adminToken.Value, boardID, listID)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		var wekanGetCard WekanGetCard
-		err = json.Unmarshal(body, &wekanGetCard)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		if len(wekanGetCard) == 0 {
-			c.JSON(404, "card not found")
-			return
-		}
-		for _, card := range wekanGetCard {
-			cardID := card.ID
-			cardDescription := card.Description
-			lists := board.Lists
-			listIndex := indexOf(card.ListID, lists)
-			wekanURL := viper.GetString("wekanURL")
-			cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
-			cardData := map[string]interface{}{
-				"cardId":          cardID,
-				"listIndex":       listIndex,
-				"cardURL":         cardURL,
-				"cardDescription": cardDescription,
-			}
-			cardDataArray = append(cardDataArray, cardData)
-		}
-	}
-	log.Printf("cardDataArray=%d", len(cardDataArray))
-	c.JSON(200, "OK")
-}
-
 func adminLogin(username string, password string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
 	data := url.Values{}
@@ -757,26 +677,6 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 	req.Header.Add("Authorization", "Bearer "+adminToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
-}
-
-func getListCards(userToken string, boardID string, listID string) ([]byte, error) {
-	wekanURL := viper.GetString("wekanURL")
-	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+userToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
-	}
 	if err != nil {
 		return nil, err
 	}
@@ -943,4 +843,14 @@ func getEffectifIndex(effectif int) int {
 
 func formatFicheSFField(siret string) string {
 	return viper.GetString("webBaseURL") + "ets/" + siret
+}
+
+func wekanConfigHandler(c *gin.Context) {
+	roles := scopeFromContext(c)
+	if contains(roles, "wekan") {
+		username := c.GetString("username")
+		c.JSON(200, wekanConfig.forUser(username))
+		return
+	}
+	c.AbortWithStatus(403)
 }

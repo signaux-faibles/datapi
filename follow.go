@@ -38,9 +38,11 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
+	var wep WekanExportParams
+	c.Bind(&wep)
 
 	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, nil)
+	export, err := getExport(scope, username, wekan, wep)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -60,7 +62,7 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	scope := scopeFromContext(c)
 	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
 	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, nil)
+	export, err := getExport(scope, username, wekan, WekanExportParams{})
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -85,7 +87,7 @@ func getDOCXFromSiret(c *gin.Context) {
 	scope := scopeFromContext(c)
 	sirets := append([]string{}, c.Param("siret"))
 	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, sirets)
+	export, err := getExport(scope, username, wekan, WekanExportParams{})
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -268,3 +270,21 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 // Follows is a slice of Follows
 type Follows []Follow
+
+func selectFollowedSirets(username string) ([]string, error) {
+	sql := "select siret from etablissement_follow where username = $1 and active"
+	cursor, err := db.Query(context.Background(), sql, username)
+	if err != nil {
+		return nil, err
+	}
+	var sirets []string
+	for cursor.Next() {
+		var siret string
+		err := cursor.Scan(&siret)
+		if err != nil {
+			return nil, err
+		}
+		sirets = append(sirets, siret)
+	}
+	return sirets, nil
+}

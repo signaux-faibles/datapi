@@ -12,7 +12,6 @@ import (
 
 	"github.com/spf13/viper"
 	"github.com/tealeg/xlsx"
-	"go.mongodb.org/mongo-driver/bson"
 )
 
 // ExportHeader contient l'entête d'un document d'export
@@ -96,27 +95,45 @@ type dbExport struct {
 	InZone                            bool      `json:"inZone"`
 }
 
-func getExport(roles scope, username string, wekan bool, sirets []string) (WekanExports, error) {
+type WekanExportParams struct {
+	ExportType  string   `json:"type"`
+	BoardIds    []string `json:"boardIds"`
+	SwimlaneIds []string `json:"swimlaneIds"`
+	ListIds     []string `json:"listIds"`
+	LabelIds    []string `json:"labelIds"`
+	AllCards    bool     `json:"allCards"`
+}
+
+func getExport(roles scope, username string, wekan bool, wep WekanExportParams) (WekanExports, error) {
 	var wc WekanConfig
 	err := wc.load()
 	if err != nil {
 		return nil, err
 	}
-	exports, err := getDbExport(roles, username, sirets)
-	if err != nil {
-		return nil, err
-	}
-	for _, c := range exports {
-		if c.InZone {
-			sirets = append(sirets, c.Siret)
-		}
-	}
+
 	var cards WekanCards
+	var sirets []string
 	if wekan {
-		cards, err = getDbWekanCards(sirets, wc.siretFields())
+		cards, err = selectWekanCards(username, wep.AllCards, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
 		if err != nil {
 			return nil, err
 		}
+		for _, c := range cards {
+			siret, err := c.Siret()
+			if err == nil {
+				sirets = append(sirets, siret)
+			}
+		}
+	} else {
+		sirets, err = selectFollowedSirets(username)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	exports, err := getDbExport(roles, sirets, username)
+	if err != nil {
+		return nil, err
 	}
 
 	return joinExports(wc, exports, cards), nil
@@ -227,45 +244,45 @@ func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
 	return file, nil
 }
 
-func getDbWekanCards(sirets []string, siretFields []string) (WekanCards, error) {
-	if len(sirets) == 0 {
-		return nil, nil
-	}
-	pipeline := []bson.M{
-		{
-			"$match": bson.M{"type": "cardType-card"},
-		}, {
-			"$project": bson.M{
-				"description":  1,
-				"customFields": 1,
-				"startAt":      1,
-			},
-		}, {
-			"$unwind": "$customFields",
-		}, {
-			"$match": bson.M{
-				"customFields._id":   bson.M{"$in": siretFields},
-				"customFields.value": bson.M{"$in": sirets},
-			},
-		}, {
-			"$project": bson.M{
-				"description": 1,
-				"startAt":     1,
-				"siret":       "$customFields.value",
-			},
-		},
-	}
+// func getDbWekanCards(sirets []string, siretFields []string) (WekanCards, error) {
+// 	if len(sirets) == 0 {
+// 		return nil, nil
+// 	}
+// 	pipeline := []bson.M{
+// 		{
+// 			"$match": bson.M{"type": "cardType-card"},
+// 		}, {
+// 			"$project": bson.M{
+// 				"description":  1,
+// 				"customFields": 1,
+// 				"startAt":      1,
+// 			},
+// 		}, {
+// 			"$unwind": "$customFields",
+// 		}, {
+// 			"$match": bson.M{
+// 				"customFields._id":   bson.M{"$in": siretFields},
+// 				"customFields.value": bson.M{"$in": sirets},
+// 			},
+// 		}, {
+// 			"$project": bson.M{
+// 				"description": 1,
+// 				"startAt":     1,
+// 				"siret":       "$customFields.value",
+// 			},
+// 		},
+// 	}
 
-	cur, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
-	if err != nil {
-		return nil, err
-	}
-	var res WekanCards
-	err = cur.All(context.Background(), &res)
-	return res, err
-}
+// 	cur, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	var res WekanCards
+// 	err = cur.All(context.Background(), &res)
+// 	return res, err
+// }
 
-func getDbExport(roles scope, username string, sirets []string) ([]dbExport, error) {
+func getDbExport(roles scope, sirets []string, username string) ([]dbExport, error) {
 	var exports []dbExport
 	sqlExport := `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 		coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
@@ -281,7 +298,7 @@ func getDbExport(roles scope, username string, sirets []string) ([]dbExport, err
 		(permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 	from v_summaries v
 	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-	where v.siret = any($3) or ($3 is null and f.id is not null)
+	where v.siret = any($3)
 	order by f.id, v.siret`
 
 	rows, err := db.Query(context.Background(), sqlExport, roles.zoneGeo(), username, sirets)

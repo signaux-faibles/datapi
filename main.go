@@ -81,6 +81,7 @@ func runAPI() {
 
 	export := router.Group("/export/", getKeycloakMiddleware(), logMiddleware)
 	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
+	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", validSiret, getDOCXFromSiret)
 
@@ -105,7 +106,7 @@ func runAPI() {
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	utils.GET("/wekanImport", wekanImportHandler)
-	utils.GET("/wekanListCards", wekanGetListCardsHandler)
+	// utils.GET("/wekanListCards", wekanGetListCardsHandler)
 	utils.GET("/sireneImport", sireneImportHandler)
 	utils.GET("/debugConfig", debugConfig)
 	utils.GET("/listImport/:algo", listImportHandler)
@@ -113,6 +114,7 @@ func runAPI() {
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", wekanGetCardHandler)
 	wekan.POST("/cards/:siret", wekanNewCardHandler)
+	wekan.GET("/config", wekanConfigHandler)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
