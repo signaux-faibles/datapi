@@ -30,7 +30,7 @@ CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
 
 # Build docker
 cd ../..
-docker build -t datapi --build-arg datapiDir="./workspace/datapi-$1/" . 
+docker build --tag datapi --build-arg datapiDir="./workspace/datapi-$1/" .
 docker save datapi | gzip > datapi.tar.gz
 
 # Cleanup
