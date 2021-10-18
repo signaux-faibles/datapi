@@ -3,7 +3,7 @@ name: Deploy Docker
 # Run workflow on tags starting with v (eg. v2, v1.2.0)
 on:
   push:
-    branches: [ try_to_push_to_registry ]
+    branches: [ master ]
 
 env:
   # Use docker.io for Docker Hub if empty
