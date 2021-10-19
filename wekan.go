@@ -231,7 +231,7 @@ func wekanGetCardHandler(c *gin.Context) {
 	}
 	region := etsData.Region
 	board, ok := config.Boards[region]
-	if !ok {
+	if !ok || board == nil {
 		c.JSON(500, "missing board in config file")
 		return
 	}
