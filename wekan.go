@@ -150,6 +150,7 @@ type EtablissementData struct {
 var tokens sync.Map
 
 //TODO: factorisation
+//TODO: factorisation
 func wekanGetCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
 	configFile := viper.GetString("wekanConfigFile")
@@ -231,7 +232,7 @@ func wekanGetCardHandler(c *gin.Context) {
 	}
 	region := etsData.Region
 	board, ok := config.Boards[region]
-	if !ok || board == nil {
+	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
 	}
