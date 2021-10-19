@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -685,6 +686,7 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 }
 
 func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
+	fmt.Println(boardID, siretField, siret)
 	wekanURL := viper.GetString("wekanURL")
 	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/cardsByCustomField/"+siretField+"/"+siret, nil)
 	if err != nil {
