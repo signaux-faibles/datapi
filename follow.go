@@ -85,9 +85,11 @@ func getDOCXFromSiret(c *gin.Context) {
 	username := c.GetString("username")
 	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
 	scope := scopeFromContext(c)
-	sirets := append([]string{}, c.Param("siret"))
+	siret := append([]string{}, c.Param("siret"))
 	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, WekanExportParams{})
+	export, err := getExport(scope, username, wekan, WekanExportParams{
+		Sirets: siret,
+	})
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -101,7 +103,8 @@ func getDOCXFromSiret(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	filename := fmt.Sprintf("export-%s-%s.docx", sirets[0], time.Now().Format("060102"))
+	fmt.Println(header)
+	filename := fmt.Sprintf("export-%s-%s.docx", siret[0], time.Now().Format("060102"))
 	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
 	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
 }

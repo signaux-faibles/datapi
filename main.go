@@ -83,6 +83,7 @@ func runAPI() {
 	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
+	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", validSiret, getDOCXFromSiret)
 
 	listes := router.Group("/listes", getKeycloakMiddleware(), logMiddleware)

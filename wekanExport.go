@@ -102,6 +102,7 @@ type WekanExportParams struct {
 	ListIds     []string `json:"listIds"`
 	LabelIds    []string `json:"labelIds"`
 	AllCards    bool     `json:"allCards"`
+	Sirets      []string `json:"sirets"`
 }
 
 func getExport(roles scope, username string, wekan bool, wep WekanExportParams) (WekanExports, error) {
@@ -113,21 +114,43 @@ func getExport(roles scope, username string, wekan bool, wep WekanExportParams) 
 
 	var cards WekanCards
 	var sirets []string
-	if wekan {
-		cards, err = selectWekanCards(username, wep.AllCards, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
-		if err != nil {
-			return nil, err
-		}
-		for _, c := range cards {
-			siret, err := c.Siret()
-			if err == nil {
-				sirets = append(sirets, siret)
+
+	// On utilise prioritairement les sirets fournis dans la requête
+	// Lorsque l'utilisateur a le flag wekan, on récupère les descriptions
+	// En cas d'absence, si l'utilisateur a le flag wekan alors on export de wekan
+	// Sinon on se base sur la liste de suivi
+	// TODO: écrire mieux
+	if len(wep.Sirets) > 0 {
+		sirets = wep.Sirets
+		if wekan {
+			allCards, err := selectWekanCards(username, wep.AllCards, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
+			if err != nil {
+				return nil, fmt.Errorf("getExport/allCards: %s", err.Error())
+			}
+			for _, c := range allCards {
+				siret, _ := c.Siret()
+				if contains(sirets, siret) {
+					cards = append(cards, c)
+				}
 			}
 		}
 	} else {
-		sirets, err = selectFollowedSirets(username)
-		if err != nil {
-			return nil, err
+		if wekan {
+			cards, err = selectWekanCards(username, wep.AllCards, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
+			if err != nil {
+				return nil, err
+			}
+			for _, c := range cards {
+				siret, err := c.Siret()
+				if err == nil {
+					sirets = append(sirets, siret)
+				}
+			}
+		} else {
+			sirets, err = selectFollowedSirets(username)
+			if err != nil {
+				return nil, err
+			}
 		}
 	}
 
@@ -216,7 +239,8 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 }
 
 func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
-	data, err := json.Marshal(we)
+	data, err := json.MarshalIndent(we, " ", " ")
+	fmt.Printf("%s", data)
 	script := viper.GetString("docxifyPath")
 	dir := viper.GetString("docxifyWorkingDir")
 	python := viper.GetString("docxifyPython")
@@ -243,44 +267,6 @@ func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
 	}
 	return file, nil
 }
-
-// func getDbWekanCards(sirets []string, siretFields []string) (WekanCards, error) {
-// 	if len(sirets) == 0 {
-// 		return nil, nil
-// 	}
-// 	pipeline := []bson.M{
-// 		{
-// 			"$match": bson.M{"type": "cardType-card"},
-// 		}, {
-// 			"$project": bson.M{
-// 				"description":  1,
-// 				"customFields": 1,
-// 				"startAt":      1,
-// 			},
-// 		}, {
-// 			"$unwind": "$customFields",
-// 		}, {
-// 			"$match": bson.M{
-// 				"customFields._id":   bson.M{"$in": siretFields},
-// 				"customFields.value": bson.M{"$in": sirets},
-// 			},
-// 		}, {
-// 			"$project": bson.M{
-// 				"description": 1,
-// 				"startAt":     1,
-// 				"siret":       "$customFields.value",
-// 			},
-// 		},
-// 	}
-
-// 	cur, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	var res WekanCards
-// 	err = cur.All(context.Background(), &res)
-// 	return res, err
-// }
 
 func getDbExport(roles scope, sirets []string, username string) ([]dbExport, error) {
 	var exports []dbExport

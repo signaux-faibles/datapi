@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -697,7 +696,8 @@ func getCard(userToken string, boardID string, siretField string, siret string) 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -722,7 +722,10 @@ func createCard(userToken string, boardID string, listID string, creationData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		if resp.StatusCode != http.StatusOK {
+			body, _ := ioutil.ReadAll(resp.Body)
+			err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -747,7 +750,10 @@ func editCard(userToken string, boardID string, listID string, cardID string, ed
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		if resp.StatusCode != http.StatusOK {
+			body, _ := ioutil.ReadAll(resp.Body)
+			err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
+		}
 	}
 	if err != nil {
 		return nil, err
@@ -772,7 +778,10 @@ func commentCard(userToken string, boardID string, cardID string, commentData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		if resp.StatusCode != http.StatusOK {
+			body, _ := ioutil.ReadAll(resp.Body)
+			err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
+		}
 	}
 	if err != nil {
 		return nil, err
