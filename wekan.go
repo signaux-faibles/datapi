@@ -41,9 +41,9 @@ type WekanConfigBoard struct {
 		EffectifField struct {
 			EffectifFieldID    string   `bson:"effectifFieldId" json:"effectifFieldId"`
 			EffectifFieldItems []string `bson:"effectifFieldItems" json:"effectifFieldItems"`
-		} `bson:"effectifField" json:"customFields"`
+		} `bson:"effectifField" json:"effectifField"`
 		FicheSFField string `bson:"ficheSFField" json:"ficheSFField"`
-	} `bson:"customFields" json:"FicheSFField"`
+	} `bson:"customFields" json:"customFields"`
 }
 
 // WekanConfig type pour le fichier de configuration de Wekan
