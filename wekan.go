@@ -150,7 +150,6 @@ type EtablissementData struct {
 var tokens sync.Map
 
 //TODO: factorisation
-//TODO: factorisation
 func wekanGetCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
 	configFile := viper.GetString("wekanConfigFile")
