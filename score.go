@@ -295,6 +295,8 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 	row.AddCell().Value = "code_activite"
 	row.AddCell().Value = "libelle_activite"
 	row.AddCell().Value = "alert"
+	row.AddCell().Value = "premiere_alerte"
+	row.AddCell().Value = "secteur_covid"
 
 	for _, score := range liste.Scores {
 		row := xlSheet.AddRow()
@@ -312,6 +314,12 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 			row.AddCell().Value = *score.LibelleActivite
 		}
 		row.AddCell().Value = *score.Alert
+		if *score.FirstAlert {
+			row.AddCell().Value = "oui"
+		} else {
+			row.AddCell().Value = "non"
+		}
+		row.AddCell().Value = *score.SecteurCovid
 	}
 
 	sheetParams, _ := xlFile.AddSheet("parameters")
