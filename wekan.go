@@ -28,11 +28,11 @@ type wekanListDetails struct {
 
 type WekanConfigBoard struct {
 	BoardID      string             `bson:"boardId" json:"boardId"`
-	Title        string             `bson:"title"`
-	Slug         string             `bson:"slug" json:"-"`
+	Title        string             `bson:"title" json:"title"`
+	Slug         string             `bson:"slug" json:"slug"`
 	Swimlanes    map[string]string  `bson:"swimlanes" json:"swimlanes"`
-	Members      []string           `bson:"members" json:"-"`
-	Lists        []string           `bson:"lists" json:"-"`
+	Members      []string           `bson:"members" json:"members"`
+	Lists        []string           `bson:"lists" json:"lists"`
 	ListDetails  []wekanListDetails `bson:"listDetails" json:"listDetails"`
 	CustomFields struct {
 		SiretField    string `bson:"siretField" json:"siretField"`
@@ -40,9 +40,9 @@ type WekanConfigBoard struct {
 		EffectifField struct {
 			EffectifFieldID    string   `bson:"effectifFieldId" json:"effectifFieldId"`
 			EffectifFieldItems []string `bson:"effectifFieldItems" json:"effectifFieldItems"`
-		} `bson:"effectifField" json:"-"`
+		} `bson:"effectifField" json:"customFields"`
 		FicheSFField string `bson:"ficheSFField" json:"ficheSFField"`
-	} `bson:"customFields" json:"-"`
+	} `bson:"customFields" json:"FicheSFField"`
 }
 
 // WekanConfig type pour le fichier de configuration de Wekan
@@ -50,7 +50,7 @@ type WekanConfig struct {
 	Boards   map[string]*WekanConfigBoard `bson:"boards" json:"boards"`
 	Users    map[string]string            `bson:"users,omitempty" json:"users,omitempty"`
 	BoardIds map[string]*WekanConfigBoard `json:"-"`
-	Regions  map[string]string            `json:"Regions"`
+	Regions  map[string]string            `json:"regions"`
 }
 
 func (wc WekanConfig) forUser(username string) WekanConfig {
