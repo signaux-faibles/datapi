@@ -62,9 +62,18 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	scope := scopeFromContext(c)
 	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
 	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, WekanExportParams{})
+	var wekanExportParams WekanExportParams
+	err := c.Bind(wekanExportParams)
+	if err != nil {
+		c.AbortWithStatusJSON(400, fmt.Sprintf("Mauvais paramètre: %s", err.Error()))
+	}
+	export, err := getExport(scope, username, wekan, wekanExportParams)
 	if err != nil {
 		c.AbortWithError(500, err)
+		return
+	}
+	if len(export) == 0 {
+		c.JSON(204, "export vide")
 		return
 	}
 	header := ExportHeader{
@@ -87,6 +96,11 @@ func getDOCXFromSiret(c *gin.Context) {
 	scope := scopeFromContext(c)
 	siret := append([]string{}, c.Param("siret"))
 	wekan := contains(scope, "wekan")
+	var wekanExportParams WekanExportParams
+	err := c.Bind(wekanExportParams)
+	if err != nil {
+		c.AbortWithStatusJSON(400, fmt.Sprintf("Mauvais paramètre: %s", err.Error()))
+	}
 	export, err := getExport(scope, username, wekan, WekanExportParams{
 		Sirets: siret,
 	})
