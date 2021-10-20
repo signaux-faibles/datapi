@@ -56,6 +56,11 @@ type WekanConfig struct {
 	Regions  map[string]string            `json:"regions"`
 }
 
+func (wc WekanConfig) boardForRegion(region string) *WekanConfigBoard {
+	regions := viper.GetStringMapString("wekanRegions")
+	return wc.Boards[regions[region]]
+}
+
 func (wc WekanConfig) forUser(username string) WekanConfig {
 	userId, ok := wc.Users[username]
 	if !ok {
@@ -167,25 +172,16 @@ var tokens sync.Map
 
 //TODO: factorisation
 func wekanGetCardHandler(c *gin.Context) {
-	siret := c.Param("siret")
-	configFile := viper.GetString("wekanConfigFile")
-	fileContent, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	var config WekanConfig
-	err = json.Unmarshal(fileContent, &config)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	username := c.GetString("username")
-	userID, ok := config.Users[username]
+	var s session
+	s.bind(c)
+	userID, ok := wekanConfig.Users[s.username]
 	if !ok {
 		c.JSON(403, "not a wekan user")
 		return
 	}
+
+	siret := c.Param("siret")
+
 	var adminToken Token
 	adminUsername := viper.GetString("wekanAdminUsername")
 	loadedToken, ok := tokens.Load(adminUsername)
@@ -215,7 +211,7 @@ func wekanGetCardHandler(c *gin.Context) {
 		log.Printf("existing admin token")
 	}
 	var userToken Token
-	loadedToken, ok = tokens.Load(username)
+	loadedToken, ok = tokens.Load(s.username)
 	if loadedToken != nil {
 		userToken = loadedToken.(Token)
 		ok = isValidToken(userToken)
@@ -236,7 +232,7 @@ func wekanGetCardHandler(c *gin.Context) {
 		userToken.Value = wekanCreateToken.AuthToken
 		now := time.Now()
 		userToken.CreationDate = now
-		tokens.Store(username, userToken)
+		tokens.Store(s.username, userToken)
 	} else {
 		log.Printf("existing user token")
 	}
@@ -245,12 +241,8 @@ func wekanGetCardHandler(c *gin.Context) {
 		log.Println(err.Error())
 		return
 	}
-	region := etsData.Region
-	board, ok := config.Boards[region]
-	if !ok || board == nil {
-		c.JSON(500, "missing board in config file")
-		return
-	}
+
+	board := wekanConfig.boardForRegion(etsData.Region)
 	boardID := board.BoardID
 	siretField := board.CustomFields.SiretField
 	body, err := getCard(userToken.Value, boardID, siretField, siret)
@@ -286,20 +278,10 @@ func wekanGetCardHandler(c *gin.Context) {
 
 func wekanNewCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
-	configFile := viper.GetString("wekanConfigFile")
-	fileContent, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	var config WekanConfig
-	err = json.Unmarshal(fileContent, &config)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	username := c.GetString("username")
-	userID, ok := config.Users[username]
+	var s session
+	s.bind(c)
+
+	userID, ok := wekanConfig.Users[s.username]
 	if !ok {
 		c.JSON(403, "not a wekan user")
 		return
@@ -333,7 +315,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		log.Printf("existing admin token")
 	}
 	var userToken Token
-	loadedToken, ok = tokens.Load(username)
+	loadedToken, ok = tokens.Load(s.username)
 	if loadedToken != nil {
 		userToken = loadedToken.(Token)
 		ok = isValidToken(userToken)
@@ -354,7 +336,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		userToken.Value = wekanCreateToken.AuthToken
 		now := time.Now()
 		userToken.CreationDate = now
-		tokens.Store(username, userToken)
+		tokens.Store(s.username, userToken)
 	} else {
 		log.Printf("existing user token")
 	}
@@ -364,8 +346,8 @@ func wekanNewCardHandler(c *gin.Context) {
 		log.Println(err.Error())
 		return
 	}
-	region := etsData.Region
-	board, ok := config.Boards[region]
+
+	board := wekanConfig.boardForRegion(etsData.Region)
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
