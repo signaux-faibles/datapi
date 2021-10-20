@@ -521,25 +521,21 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 }
 
 func getDOCXFromSiret(c *gin.Context) {
-	username := c.GetString("username")
-	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
-	scope := scopeFromContext(c)
+	var s session
+	s.bind(c)
+
 	siret := append([]string{}, c.Param("siret"))
-	wekan := contains(scope, "wekan")
-	var wekanExportParams WekanExportParams
-	err := c.Bind(wekanExportParams)
-	if err != nil {
-		c.AbortWithStatusJSON(400, fmt.Sprintf("Mauvais paramètre: %s", err.Error()))
-	}
-	export, err := getExport(scope, username, wekan, WekanExportParams{
-		Sirets: siret,
+	export, err := getExport(s.roles, s.username, s.wekan(), WekanExportParams{
+		Sirets:   siret,
+		AllCards: true,
+		BoardIds: wekanConfig.boardIdsForUser(s.username),
 	})
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
 	header := ExportHeader{
-		Auteur: auteur,
+		Auteur: s.auteur,
 		Date:   time.Now(),
 	}
 	docx, err := export.docx(header)

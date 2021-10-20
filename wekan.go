@@ -73,6 +73,19 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 	return userWc
 }
 
+func (wc WekanConfig) boardIdsForUser(username string) []string {
+	if userId, ok := wc.Users[username]; ok {
+		var boards []string
+		for boardId, board := range wekanConfig.BoardIds {
+			if contains(board.Members, userId) {
+				boards = append(boards, boardId)
+			}
+		}
+		return boards
+	}
+	return nil
+}
+
 func (wc *WekanConfig) load() error {
 	configFile := viper.GetString("wekanConfigFile")
 	return wc.loadFile(configFile)
