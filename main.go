@@ -109,7 +109,6 @@ func runAPI() {
 	utils.GET("/wekanImport", wekanImportHandler)
 	// utils.GET("/wekanListCards", wekanGetListCardsHandler)
 	utils.GET("/sireneImport", sireneImportHandler)
-	utils.GET("/debugConfig", debugConfig)
 	utils.GET("/listImport/:algo", listImportHandler)
 
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)

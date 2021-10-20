@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"github.com/tealeg/xlsx"
 )
@@ -448,4 +449,106 @@ func indexCards(cards WekanCards) map[string]int {
 		}
 	}
 	return index
+}
+
+func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
+	username := c.GetString("username")
+	scope := scopeFromContext(c)
+	follow := Follow{Username: &username}
+	follows, err := follow.list(scope)
+
+	if err != nil {
+		c.JSON(err.Code(), err.Error())
+		return
+	}
+
+	c.JSON(200, follows)
+}
+
+func getXLSXFollowedByCurrentUser(c *gin.Context) {
+	username := c.GetString("username")
+	scope := scopeFromContext(c)
+	var wep WekanExportParams
+	c.Bind(&wep)
+
+	wekan := contains(scope, "wekan")
+	export, err := getExport(scope, username, wekan, wep)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	xlsx, err := export.xlsx(wekan)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
+}
+
+func getDOCXFollowedByCurrentUser(c *gin.Context) {
+	username := c.GetString("username")
+	scope := scopeFromContext(c)
+	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
+	wekan := contains(scope, "wekan")
+	var wekanExportParams WekanExportParams
+	err := c.Bind(wekanExportParams)
+	if err != nil {
+		c.AbortWithStatusJSON(400, fmt.Sprintf("Mauvais paramètre: %s", err.Error()))
+	}
+	export, err := getExport(scope, username, wekan, wekanExportParams)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	if len(export) == 0 {
+		c.JSON(204, "export vide")
+		return
+	}
+	header := ExportHeader{
+		Auteur: auteur,
+		Date:   time.Now(),
+	}
+	docx, err := export.docx(header)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	filename := fmt.Sprintf("export-suivi-%s.docx", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
+}
+
+func getDOCXFromSiret(c *gin.Context) {
+	username := c.GetString("username")
+	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
+	scope := scopeFromContext(c)
+	siret := append([]string{}, c.Param("siret"))
+	wekan := contains(scope, "wekan")
+	var wekanExportParams WekanExportParams
+	err := c.Bind(wekanExportParams)
+	if err != nil {
+		c.AbortWithStatusJSON(400, fmt.Sprintf("Mauvais paramètre: %s", err.Error()))
+	}
+	export, err := getExport(scope, username, wekan, WekanExportParams{
+		Sirets: siret,
+	})
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	header := ExportHeader{
+		Auteur: auteur,
+		Date:   time.Now(),
+	}
+	docx, err := export.docx(header)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+	fmt.Println(header)
+	filename := fmt.Sprintf("export-%s-%s.docx", siret[0], time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
 }
