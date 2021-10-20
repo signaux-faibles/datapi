@@ -882,6 +882,16 @@ func wekanConfigHandler(c *gin.Context) {
 	c.AbortWithStatus(403)
 }
 
+func wekanReloadConfigHandler(c *gin.Context) {
+	var err error
+	wekanConfig, err = lookupWekanConfig()
+	if err != nil {
+		c.JSON(500, fmt.Sprintf("wekanReloadConfig: %s", err))
+		return
+	}
+	c.JSON(200, true)
+}
+
 // WekanCards est une liste de WekanCard
 type WekanCards []WekanCard
 
