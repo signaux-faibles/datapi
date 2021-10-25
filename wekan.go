@@ -36,6 +36,7 @@ type WekanConfig struct {
 				EffectifFieldItems []string `json:"effectifFieldItems"`
 			} `json:"effectifField"`
 			FicheSFField string `json:"ficheSFField"`
+			ContactField string `json:"contactField"`
 		} `json:"customFields"`
 	} `json:"boards"`
 	Users map[string]string `json:"users"`
@@ -403,10 +404,15 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 	if activite != "" {
 		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
+	} else {
+		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, ""})
 	}
 	if effectifIndex > 0 {
 		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
+	} else {
+		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, ""})
 	}
+	customFields = append(customFields, CustomField{board.CustomFields.ContactField, ""})
 	now := time.Now()
 	var editionData = map[string]interface{}{
 		"customFields": customFields,
@@ -611,12 +617,15 @@ func wekanImportHandler(c *gin.Context) {
 			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
 		} else {
 			log.Printf("unknown activite")
+			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, ""})
 		}
 		if effectifIndex > 0 {
 			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 		} else {
 			log.Printf("unknown effectif class")
+			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, ""})
 		}
+		customFields = append(customFields, CustomField{board.CustomFields.ContactField, ""})
 		now := time.Now()
 		var editionData = map[string]interface{}{
 			"customFields": customFields,
