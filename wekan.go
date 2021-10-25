@@ -753,6 +753,9 @@ func adminLogin(username string, password string) ([]byte, error) {
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("adminLogin: unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -770,6 +773,9 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 	req.Header.Add("Authorization", "Bearer "+adminToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("createToken: unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -788,7 +794,7 @@ func getListCards(userToken string, boardID string, listID string) ([]byte, erro
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		err = errors.New("getListCards: unexpected wekan API response")
 	}
 	if err != nil {
 		return nil, err
@@ -808,7 +814,7 @@ func getCard(userToken string, boardID string, siretField string, siret string) 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		err = errors.New("getCard: unexpected wekan API response")
 	}
 	if err != nil {
 		return nil, err
@@ -833,7 +839,7 @@ func createCard(userToken string, boardID string, listID string, creationData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		err = errors.New("createCard: unexpected wekan API response")
 	}
 	if err != nil {
 		return nil, err
@@ -858,7 +864,7 @@ func editCard(userToken string, boardID string, listID string, cardID string, ed
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		err = errors.New("editCard: unexpected wekan API response")
 	}
 	if err != nil {
 		return nil, err
@@ -883,7 +889,7 @@ func commentCard(userToken string, boardID string, cardID string, commentData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("unexpected wekan API response")
+		err = errors.New("commentCard: unexpected wekan API response")
 	}
 	if err != nil {
 		return nil, err
