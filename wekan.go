@@ -109,9 +109,10 @@ type WekanCreateToken struct {
 
 // WekanGetCard type pour les réponses du service de recherche de carte
 type WekanGetCard []struct {
-	ID          string `json:"_id"`
-	ListID      string `json:"listId"`
-	Description string `json:"description"`
+	ID          string    `json:"_id"`
+	ListID      string   `json:"listId"`
+	Description string   `json:"description"`
+	Members     []string `json:"members"`
 }
 
 // WekanCreateCard type pour les réponses du service de création de carte
@@ -255,11 +256,13 @@ func wekanGetCardHandler(c *gin.Context) {
 	listIndex := indexOf(card.ListID, lists)
 	wekanURL := viper.GetString("wekanURL")
 	cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
+	isMember := sliceContains(card.Members, userID)
 	cardData := map[string]interface{}{
 		"cardId":          cardID,
 		"listIndex":       listIndex,
 		"cardURL":         cardURL,
 		"cardDescription": cardDescription,
+		"isMember":        isMember,
 	}
 	c.JSON(200, cardData)
 }
@@ -954,3 +957,12 @@ func getEffectifIndex(effectif int) int {
 func formatFicheSFField(siret string) string {
 	return viper.GetString("webBaseURL") + "ets/" + siret
 }
+
+func sliceContains(slice[] string, s string) bool {
+	for _, e := range slice {
+	   if e == s {
+		  return true
+	   }
+	}
+	return false
+ }
