@@ -55,12 +55,8 @@ jobs:
             type=semver,pattern={{major}}.{{minor}}
             type=semver,pattern={{major}}
             type=sha
-#
-#      - name: Get the version
-#        id: vars
-#        run: |
-#          echo ::set-output tags :: ${{ steps.meta.outputs.tags }}
-#          echo ::set-outputlabels :: ${{ steps.meta.outputs.labels }}
+          flavor: |
+            latest=true
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v2
