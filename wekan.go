@@ -410,7 +410,7 @@ func wekanNewCardHandler(c *gin.Context) {
 	} else {
 		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, ""})
 	}
-	if effectifIndex > 0 {
+	if effectifIndex >= 0 {
 		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 	} else {
 		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, ""})
@@ -622,7 +622,7 @@ func wekanImportHandler(c *gin.Context) {
 			log.Printf("unknown activite")
 			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, ""})
 		}
-		if effectifIndex > 0 {
+		if effectifIndex >= 0 {
 			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 		} else {
 			log.Printf("unknown effectif class")
