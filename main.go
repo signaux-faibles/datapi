@@ -55,7 +55,7 @@ func runAPI() {
 	router := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:8081"}
+	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
@@ -75,9 +75,9 @@ func runAPI() {
 
 	follow := router.Group("/follow", getKeycloakMiddleware(), logMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
+	follow.POST("", getCardsForCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
-	follow.GET("/xls", getXLSXFollowedByCurrentUser)
 
 	export := router.Group("/export/", getKeycloakMiddleware(), logMiddleware)
 	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
