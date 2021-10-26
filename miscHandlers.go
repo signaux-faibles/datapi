@@ -111,7 +111,7 @@ func coalescepTime(pointers ...*time.Time) *time.Time {
 type session struct {
 	username string
 	auteur   string
-	roles    []string
+	roles    scope
 }
 
 func (s *session) bind(c *gin.Context) {
@@ -120,6 +120,6 @@ func (s *session) bind(c *gin.Context) {
 	s.roles = scopeFromContext(c)
 }
 
-func (s session) wekan() bool {
-	return contains(s.roles, "wekan")
+func (s session) hasRole(role string) bool {
+	return contains(s.roles, role)
 }

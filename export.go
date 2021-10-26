@@ -96,71 +96,65 @@ type dbExport struct {
 	InZone                            bool      `json:"inZone"`
 }
 
-type WekanExportParams struct {
-	ExportType  string   `json:"type"`
-	BoardIds    []string `json:"boardIds"`
-	SwimlaneIds []string `json:"swimlaneIds"`
-	ListIds     []string `json:"listIds"`
-	LabelIds    []string `json:"labelIds"`
-	AllCards    bool     `json:"allCards"`
-	Sirets      []string `json:"sirets"`
-}
+// type paramsSelectWekan struct {
 
-func getExport(roles scope, username string, wekan bool, wep WekanExportParams) (WekanExports, error) {
-	var wc WekanConfig
-	err := wc.load()
-	if err != nil {
-		return nil, err
-	}
+// }
+func getExport(roles scope, username *string, wekan bool, wep paramsSelectWekan) (WekanExports, error) {
+	// var wc WekanConfig
+	// err := wc.load()
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	var cards WekanCards
-	var sirets []string
+	// var cards WekanCards
+	// var sirets []string
 
-	// On utilise prioritairement les sirets fournis dans la requête
-	// Lorsque l'utilisateur a le flag wekan, on récupère les descriptions
-	// En cas d'absence, si l'utilisateur a le flag wekan alors on export de wekan
-	// Sinon on se base sur la liste de suivi
-	// TODO: écrire mieux
-	if len(wep.Sirets) > 0 {
-		sirets = wep.Sirets
-		if wekan {
-			allCards, err := selectWekanCards(username, wep.AllCards, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
-			if err != nil {
-				return nil, fmt.Errorf("getExport/allCards: %s", err.Error())
-			}
-			for _, c := range allCards {
-				siret, _ := c.Siret()
-				if contains(sirets, siret) {
-					cards = append(cards, c)
-				}
-			}
-		}
-	} else {
-		if wekan {
-			cards, err = selectWekanCards(username, wep.AllCards, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
-			if err != nil {
-				return nil, err
-			}
-			for _, c := range cards {
-				siret, err := c.Siret()
-				if err == nil {
-					sirets = append(sirets, siret)
-				}
-			}
-		} else {
-			sirets, err = selectFollowedSirets(username)
-			if err != nil {
-				return nil, err
-			}
-		}
-	}
+	// // On utilise prioritairement les sirets fournis dans la requête
+	// // Lorsque l'utilisateur a le flag wekan, on récupère les descriptions
+	// // En cas d'absence, si l'utilisateur a le flag wekan alors on export de wekan
+	// // Sinon on se base sur la liste de suivi
+	// // TODO: écrire mieux
+	// if len(wep.Sirets) > 0 {
+	// 	sirets = wep.Sirets
+	// 	if wekan {
+	// 		allCards, err := selectWekanCards(username, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
+	// 		if err != nil {
+	// 			return nil, fmt.Errorf("getExport/allCards: %s", err.Error())
+	// 		}
+	// 		for _, c := range allCards {
+	// 			siret, _ := c.Siret()
+	// 			if contains(sirets, siret) {
+	// 				cards = append(cards, c)
+	// 			}
+	// 		}
+	// 	}
+	// } else {
+	// 	if wekan {
+	// 		cards, err = selectWekanCards(username, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 		for _, c := range cards {
+	// 			siret, err := c.Siret()
+	// 			if err == nil {
+	// 				sirets = append(sirets, siret)
+	// 			}
+	// 		}
+	// 	} else {
+	// 		sirets, err = selectFollowedSirets(*username)
+	// 		if err != nil {
+	// 			return nil, err
+	// 		}
+	// 	}
+	// }
 
-	exports, err := getDbExport(roles, sirets, username)
-	if err != nil {
-		return nil, err
-	}
+	// exports, err := getDbExport(roles, sirets, *username)
+	// if err != nil {
+	// 	return nil, err
+	// }
 
-	return joinExports(wc, exports, cards), nil
+	// return joinExports(wc, exports, cards), nil
+	return nil, nil
 }
 
 func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
@@ -456,23 +450,23 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 	scope := scopeFromContext(c)
 	follow := Follow{Username: &username}
 	follows, err := follow.list(scope)
-
 	if err != nil {
 		c.JSON(err.Code(), err.Error())
 		return
 	}
-
 	c.JSON(200, follows)
 }
 
 func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
-	var wep WekanExportParams
+	var wep paramsSelectWekan
 	c.Bind(&wep)
 
+	var weip paramsSelectWekan
+
 	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, wep)
+	export, err := getExport(scope, &username, wekan, weip)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -492,12 +486,12 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	scope := scopeFromContext(c)
 	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
 	wekan := contains(scope, "wekan")
-	var wekanExportParams WekanExportParams
+	var wekanExportParams paramsSelectWekan
 	err := c.Bind(wekanExportParams)
 	if err != nil {
 		c.AbortWithStatusJSON(400, fmt.Sprintf("Mauvais paramètre: %s", err.Error()))
 	}
-	export, err := getExport(scope, username, wekan, wekanExportParams)
+	export, err := getExport(scope, &username, wekan, wekanExportParams)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -525,10 +519,10 @@ func getDOCXFromSiret(c *gin.Context) {
 	s.bind(c)
 
 	siret := append([]string{}, c.Param("siret"))
-	export, err := getExport(s.roles, s.username, s.wekan(), WekanExportParams{
-		Sirets:   siret,
-		AllCards: true,
-		BoardIds: wekanConfig.boardIdsForUser(s.username),
+	export, err := getExport(s.roles, &s.username, s.hasRole("wekan"), paramsSelectWekan{
+		// Sirets:   siret,
+		// AllCards: &t,
+		// BoardIds: wekanConfig.boardIdsForUser(s.username),
 	})
 	if err != nil {
 		c.AbortWithError(500, err)
