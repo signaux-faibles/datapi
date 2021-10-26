@@ -113,6 +113,7 @@ func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 	var listIds []string
 	for _, board := range wc.Boards {
 		for _, s := range board.ListDetails {
+			fmt.Println(statuts, s.Title)
 			if contains(statuts, s.Title) {
 				listIds = append(listIds, s.ID)
 			}
@@ -1037,6 +1038,7 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 		"title":        1,
 		"listId":       1,
 		"boardId":      1,
+		"members":      1,
 		"swimlaneId":   1,
 		"customFields": 1,
 		"sort":         1,
@@ -1046,6 +1048,8 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	}
 	options := options.Find().SetProjection(projection).SetSort(bson.M{"sort": 1})
 
+	q, _ := json.MarshalIndent(wekanConfig.forUser("christophe.ninucci@dreets.gouv.fr").Boards["Guadeloupe"], " ", " ")
+	fmt.Printf("%s", q)
 	cardsCursor, err := mgoDB.Collection("cards").Find(context.Background(), query, options)
 	if err != nil {
 		return nil, err

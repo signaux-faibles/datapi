@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v4"
 )
 
 // Follow type follow pour l'API
@@ -194,8 +193,9 @@ func getCardsForCurrentUser(c *gin.Context) {
 	err := c.Bind(&params)
 	if err != nil {
 		c.JSON(400, fmt.Sprintf("parametre incorrect: %s", err.Error()))
+		return
 	}
-	types := []string{"no-cards", "my-cards", "all-cards"}
+	types := []string{"no-card", "my-cards", "all-cards"}
 	if !contains(types, params.Type) {
 		c.AbortWithStatusJSON(400, fmt.Sprintf("`%s` n'est pas un type supporté", params.Type))
 		return
@@ -203,18 +203,21 @@ func getCardsForCurrentUser(c *gin.Context) {
 	cards, err := getCards(s, params)
 	if err != nil {
 		c.JSON(500, err.Error())
+		return
 	}
-	var follows Follows
+	var follows = make(Follows, 0)
 	for _, s := range cards {
 		var f Follow
-		if s.Summary != nil && s.Summary.Since != nil {
-			f.Comment = *coalescepString(s.Summary.Comment, &EmptyString)
-			f.Category = *coalescepString(s.Summary.Category, &EmptyString)
-			f.Since = *coalescepTime(s.Summary.Since, &time.Time{})
-			f.Active = true
+		if s.Summary != nil {
+			if s.Summary.Since == nil {
+				f.Comment = *coalescepString(s.Summary.Comment, &EmptyString)
+				f.Category = *coalescepString(s.Summary.Category, &EmptyString)
+				f.Since = *coalescepTime(s.Summary.Since, &time.Time{})
+				f.Active = true
+			}
+			f.EtablissementSummary = s.Summary
+			follows = append(follows, f)
 		}
-		f.EtablissementSummary = s.Summary
-		follows = append(follows, f)
 	}
 	c.JSON(200, follows)
 }
@@ -237,8 +240,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
 	userId := wekanConfig.Users[s.username]
-
-	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-cards" && ok {
+	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
 		var username *string
 		if params.Type == "my-cards" {
 			username = &s.username
@@ -246,6 +248,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 		boardIds := wcu.boardIds()
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
+		fmt.Println(listIds)
 		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, nil)
 		if err != nil {
 			return nil, err
@@ -263,9 +266,10 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
-		err = followSiretsFromWekan(s.username, sirets)
+		fmt.Println(s.username, followedSirets)
+		err = followSiretsFromWekan(s.username, followedSirets)
 		if err != nil {
-			return nil, nil
+			return nil, err
 		}
 		var ss summaries
 		cursor, err := db.Query(context.Background(), sqlGetCards, s.roles.zoneGeo(), s.username, sirets)
@@ -293,9 +297,8 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			}
 			excludeSirets[siret] = struct{}{}
 		}
-		followSiretsFromWekan(s.username, sirets)
 		var ss summaries
-		cursor, err := db.Query(context.Background(), sqlGetFollow, s.roles.zoneGeo(), s.username)
+		cursor, err := db.Query(context.Background(), sqlGetFollow, s.roles.zoneGeo(), s.username, params.Zone)
 		if err != nil {
 			return nil, err
 		}
@@ -314,27 +317,28 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 }
 
 func followSiretsFromWekan(username string, sirets []string) error {
-	batch := pgx.Batch{}
-	batch.Queue(sqlCreateTmpFollowWekan, sirets)
-	batch.Queue(sqlFollowFromTmp, username)
 	tx, err := db.Begin(context.Background())
 	if err != nil {
 		return err
 	}
-	results := tx.SendBatch(context.Background(), &batch)
-	return results.Close()
+	if _, err := tx.Exec(context.Background(), sqlCreateTmpFollowWekan, sirets); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(context.Background(), sqlFollowFromTmp, username); err != nil {
+		return err
+	}
+	return tx.Commit(context.Background())
 }
 
 // sqlCreateTmpFollowWekan
-const sqlCreateTmpFollowWekan = `with sirets as (select unnest($1) as siret),
+const sqlCreateTmpFollowWekan = `create table if not exists tmp_follow_wekan as
+	with sirets as (select unnest($1::text[]) as siret),
 	follow as (select siret from etablissement_follow f where f.username = '$2' and active)
-	create temporary table tmp_follow_wekan as
-	select case when f.siret is null then 'unfollow' else 'follow' end as todo,
+	select case when f.siret is null then 'follow' else 'unfollow' end as todo,
 	coalesce(f.siret, s.siret) as siret
 	from follow f
 	full join sirets s on s.siret = f.siret 
-	where f.siret is null or s.siret is null
-	on commit drop;
+	where f.siret is null or s.siret is null;
 `
 
 // sqlFollowFromTmp $1 = username
@@ -344,8 +348,7 @@ const sqlFollowFromTmp = `insert into etablissement_follow
 	true, current_timestamp, 'participe à la carte wekan', 'wekan'
 	from tmp_follow_wekan t
 	inner join etablissement0 e on e.siret = t.siret
-	where todo = 'follow'
-	returning since, true`
+	where todo = 'follow'`
 
 // sqlGetCards: $1 = roles.ZoneGeo, $2 = username, $3 = sirets
 const sqlGetCards = `select 
@@ -411,4 +414,5 @@ f.comment, f.category, f.since,
 s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
 from v_summaries s
 inner join etablissement_follow f on f.active and f.siret = s.siret and f.username = $2
-inner join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2`
+inner join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
+where s.code_departement = any($3) or $3 is null`
