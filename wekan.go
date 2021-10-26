@@ -113,7 +113,6 @@ func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 	var listIds []string
 	for _, board := range wc.Boards {
 		for _, s := range board.ListDetails {
-			fmt.Println(statuts, s.Title)
 			if contains(statuts, s.Title) {
 				listIds = append(listIds, s.ID)
 			}
@@ -273,8 +272,6 @@ func wekanGetCardHandler(c *gin.Context) {
 		return
 	}
 
-	fmt.Println(wekanConfig)
-	fmt.Println(etsData.Region)
 	board := wekanConfig.Boards[etsData.Region]
 	if board == nil {
 		board = &WekanConfigBoard{}
@@ -311,6 +308,19 @@ func wekanGetCardHandler(c *gin.Context) {
 	}
 	c.JSON(200, cardData)
 }
+
+func wekanJoinCardHandler(c *gin.Context) {
+	var s session
+	s.bind(c)
+
+	mgoDB.Collection("boards")
+}
+
+// func getCardIdFromSiret(siret string, username string) (string, error) {
+// 	wcu := wekanConfig.forUser(s.username)
+// 	boardIds := wcu.boardIds()
+
+// }
 
 func wekanNewCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
@@ -719,7 +729,6 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 }
 
 func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
-	fmt.Println(boardID, siretField, siret)
 	wekanURL := viper.GetString("wekanURL")
 	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/cardsByCustomField/"+siretField+"/"+siret, nil)
 	if err != nil {
@@ -1048,8 +1057,6 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	}
 	options := options.Find().SetProjection(projection).SetSort(bson.M{"sort": 1})
 
-	q, _ := json.MarshalIndent(wekanConfig.forUser("christophe.ninucci@dreets.gouv.fr").Boards["Guadeloupe"], " ", " ")
-	fmt.Printf("%s", q)
 	cardsCursor, err := mgoDB.Collection("cards").Find(context.Background(), query, options)
 	if err != nil {
 		return nil, err

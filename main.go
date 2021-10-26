@@ -114,6 +114,7 @@ func runAPI() {
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", wekanGetCardHandler)
 	wekan.POST("/cards/:siret", wekanNewCardHandler)
+	wekan.POST("/join/:siret", validSiret, wekanJoinCardHandler)
 	wekan.GET("/config", wekanConfigHandler)
 	wekan.GET("/reloadConfig", wekanReloadConfigHandler)
 

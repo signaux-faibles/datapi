@@ -248,7 +248,6 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 		boardIds := wcu.boardIds()
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
-		fmt.Println(listIds)
 		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, nil)
 		if err != nil {
 			return nil, err
@@ -266,7 +265,6 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
-		fmt.Println(s.username, followedSirets)
 		err = followSiretsFromWekan(s.username, followedSirets)
 		if err != nil {
 			return nil, err
