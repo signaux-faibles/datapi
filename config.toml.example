@@ -1,6 +1,7 @@
 # Configuration générale
 bind = ":3000"
 prod = true # limite les logs
+corsAllowOrigins = ["http://192.168.1.20:8081", "http://127.0.0.1:8081"]
 
 # Base de données
 postgres = "user=postgres dbname=datapi"
