@@ -1112,7 +1112,7 @@ func lookupWekanConfig() (WekanConfig, error) {
 		return WekanConfig{}, err
 	}
 	if len(wekanConfigs) != 1 {
-		return WekanConfig{}, fmt.Errorf("unexpected config result, len() = %d", len(wekanConfigs))
+		return WekanConfig{}, nil
 	}
 	config := wekanConfigs[0]
 	config.Boards = make(map[string]*WekanConfigBoard)
