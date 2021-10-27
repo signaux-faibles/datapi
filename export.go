@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -196,7 +197,7 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 			exports, s = exports.newDbExport()
 			err := cursor.Scan(s...)
 			if err != nil {
-				fmt.Println(err)
+				return nil, err
 			}
 		}
 		cursor.Close()
@@ -224,7 +225,7 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 
 		if params.Type == "single-card" {
 			cursor, err = db.Query(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret)
-		} else if params.Type == "no-card" {
+		} else {
 			cursor, err = db.Query(context.Background(), sqlDbExportFollow, s.roles.zoneGeo(), s.username, params.Zone)
 		}
 		if err != nil {
@@ -234,7 +235,9 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 			var s []interface{}
 			exports, s = exports.newDbExport()
 			err := cursor.Scan(s...)
-			fmt.Println(err)
+			if err != nil {
+				return nil, err
+			}
 		}
 		cursor.Close()
 		for _, s := range exports {
@@ -356,7 +359,7 @@ func (card Card) docx(head ExportHeader) (Docx, error) {
 		fmt.Println(outErr.String())
 	}
 	return Docx{
-		filename: fmt.Sprintf("export-%s-%s.docx", card.dbExport.Siret, time.Now().Format("060102")),
+		filename: fmt.Sprintf("export-%s-%s.docx", card.dbExport.Siret, strings.Replace(card.dbExport.RaisonSociale, " ", "-", -1)),
 		data:     file,
 	}, nil
 }
@@ -521,7 +524,11 @@ func (docxs Docxs) zip() []byte {
 	var zipData bytes.Buffer
 	zipFile := zip.NewWriter(&zipData)
 	for _, docx := range docxs {
-		w, _ := zipFile.Create(docx.filename)
+		w, _ := zipFile.CreateHeader(&zip.FileHeader{
+			Name:     docx.filename,
+			Modified: time.Now(),
+			Method:   0,
+		})
 		w.Write(docx.data)
 	}
 	zipFile.Close()
