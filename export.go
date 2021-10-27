@@ -1,16 +1,17 @@
 package main
 
 import (
+	"archive/zip"
 	"bufio"
 	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"os/exec"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	pgx "github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
 	"github.com/tealeg/xlsx"
 )
@@ -53,7 +54,6 @@ type WekanExport struct {
 	DescriptionWekan           string `json:"description_wekan"`
 }
 
-type dbExports []dbExport
 type dbExport struct {
 	Siret                             string    `json:"siret"`
 	RaisonSociale                     string    `json:"raisonSociale"`
@@ -96,68 +96,158 @@ type dbExport struct {
 	InZone                            bool      `json:"inZone"`
 }
 
-// type paramsSelectWekan struct {
+type dbExports []*dbExport
 
-// }
-func getExport(roles scope, username *string, wekan bool, wep paramsSelectWekan) (WekanExports, error) {
-	// var wc WekanConfig
-	// err := wc.load()
-	// if err != nil {
-	// 	return nil, err
-	// }
+func (exports dbExports) newDbExport() (dbExports, []interface{}) {
+	var e dbExport
 
-	// var cards WekanCards
-	// var sirets []string
-
-	// // On utilise prioritairement les sirets fournis dans la requête
-	// // Lorsque l'utilisateur a le flag wekan, on récupère les descriptions
-	// // En cas d'absence, si l'utilisateur a le flag wekan alors on export de wekan
-	// // Sinon on se base sur la liste de suivi
-	// // TODO: écrire mieux
-	// if len(wep.Sirets) > 0 {
-	// 	sirets = wep.Sirets
-	// 	if wekan {
-	// 		allCards, err := selectWekanCards(username, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
-	// 		if err != nil {
-	// 			return nil, fmt.Errorf("getExport/allCards: %s", err.Error())
-	// 		}
-	// 		for _, c := range allCards {
-	// 			siret, _ := c.Siret()
-	// 			if contains(sirets, siret) {
-	// 				cards = append(cards, c)
-	// 			}
-	// 		}
-	// 	}
-	// } else {
-	// 	if wekan {
-	// 		cards, err = selectWekanCards(username, wep.BoardIds, wep.SwimlaneIds, wep.ListIds, wep.LabelIds)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		for _, c := range cards {
-	// 			siret, err := c.Siret()
-	// 			if err == nil {
-	// 				sirets = append(sirets, siret)
-	// 			}
-	// 		}
-	// 	} else {
-	// 		sirets, err = selectFollowedSirets(*username)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 	}
-	// }
-
-	// exports, err := getDbExport(roles, sirets, *username)
-	// if err != nil {
-	// 	return nil, err
-	// }
-
-	// return joinExports(wc, exports, cards), nil
-	return nil, nil
+	exports = append(exports, &e)
+	t := []interface{}{
+		&e.Siret,
+		&e.RaisonSociale,
+		&e.CodeDepartement,
+		&e.LibelleDepartement,
+		&e.Commune,
+		&e.CodeTerritoireIndustrie,
+		&e.LibelleTerritoireIndustrie,
+		&e.Siege,
+		&e.TeteDeGroupe,
+		&e.CodeActivite,
+		&e.LibelleActivite,
+		&e.SecteurActivite,
+		&e.StatutJuridiqueN1,
+		&e.StatutJuridiqueN2,
+		&e.StatutJuridiqueN3,
+		&e.DateOuvertureEtablissement,
+		&e.DateCreationEntreprise,
+		&e.DernierEffectif,
+		&e.DateDernierEffectif,
+		&e.DateArreteBilan,
+		&e.ExerciceDiane,
+		&e.ChiffreAffaire,
+		&e.ChiffreAffairePrecedent,
+		&e.VariationCA,
+		&e.ResultatExploitation,
+		&e.ResultatExploitationPrecedent,
+		&e.ExcedentBrutExploitation,
+		&e.ExcedentBrutExploitationPrecedent,
+		&e.DerniereListe,
+		&e.DerniereAlerte,
+		&e.ActivitePartielle,
+		&e.DetteSociale,
+		&e.PartSalariale,
+		&e.DateUrssaf,
+		&e.ProcedureCollective,
+		&e.DateProcedureCollective,
+		&e.DateDebutSuivi,
+		&e.CommentSuivi,
+		&e.InZone,
+	}
+	return exports, t
 }
 
-func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
+func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
+	var cards Cards
+	var cardsMap = make(map[string]*Card)
+	var sirets []string
+	var followedSirets []string
+	wcu := wekanConfig.forUser(s.username)
+	userId := wekanConfig.Users[s.username]
+	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
+		var username *string
+		if params.Type == "my-cards" {
+			username = &s.username
+		}
+		boardIds := wcu.boardIds()
+		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
+		listIds := wcu.listIdsForStatuts(params.Statut)
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, nil)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range wekanCards {
+			siret, err := w.Siret()
+			if err != nil {
+				continue
+			}
+			card := Card{nil, w, nil}
+			cards = append(cards, &card)
+			cardsMap[siret] = &card
+			sirets = append(sirets, siret)
+			if contains(w.Members, userId) {
+				followedSirets = append(followedSirets, siret)
+			}
+		}
+		var exports dbExports
+		if params.Type == "my-cards" {
+			sirets = followedSirets
+		}
+		var cursor pgx.Rows
+		if params.Type == "single-card" {
+			cursor, err = db.Query(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret)
+		} else {
+			cursor, err = db.Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for cursor.Next() {
+			var s []interface{}
+			exports, s = exports.newDbExport()
+			err := cursor.Scan(s...)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+		cursor.Close()
+		for _, s := range exports {
+			cardsMap[s.Siret].dbExport = s
+		}
+	} else {
+		boardIds := wcu.boardIds()
+		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		var excludeSirets = make(map[string]struct{})
+		for _, w := range wekanCards {
+			siret, err := w.Siret()
+			if err != nil {
+				continue
+			}
+			if s.hasRole("wekan") {
+				excludeSirets[siret] = struct{}{}
+			}
+		}
+		var exports dbExports
+		var cursor pgx.Rows
+
+		if params.Type == "single-card" {
+			cursor, err = db.Query(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret)
+		} else if params.Type == "no-card" {
+			cursor, err = db.Query(context.Background(), sqlDbExportFollow, s.roles.zoneGeo(), s.username, params.Zone)
+		}
+		if err != nil {
+			return nil, err
+		}
+		for cursor.Next() {
+			var s []interface{}
+			exports, s = exports.newDbExport()
+			err := cursor.Scan(s...)
+			fmt.Println(err)
+		}
+		cursor.Close()
+		for _, s := range exports {
+			if _, ok := excludeSirets[s.Siret]; !ok {
+				card := Card{nil, nil, s}
+				cards = append(cards, &card)
+			}
+		}
+	}
+	return cards.dbExportsOnly(), nil
+}
+
+func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
 	if err != nil {
@@ -178,7 +268,7 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 	row.AddCell().Value = "Statut juridique"
 	row.AddCell().Value = "Date d'ouverture"
 	row.AddCell().Value = "Création de l'entreprise"
-	row.AddCell().Value = "Effectif"
+	row.AddCell().Value = "Effectif Entreprise"
 	row.AddCell().Value = "Activité Partielle"
 	row.AddCell().Value = "Dette sociale"
 	row.AddCell().Value = "Part salariale"
@@ -193,37 +283,40 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 		row.AddCell().Value = "Présentation de l'enteprise, difficultés et actions"
 	}
 
-	for _, e := range we {
-		row := xlSheet.AddRow()
-		if err != nil {
-			return nil, errorToJSON(500, err)
-		}
-		row.AddCell().Value = e.RaisonSociale
-		row.AddCell().Value = e.Siret
-		row.AddCell().Value = e.TypeEtablissement
-		row.AddCell().Value = e.TeteDeGroupe
-		row.AddCell().Value = e.Departement
-		row.AddCell().Value = e.Commune
-		row.AddCell().Value = e.TerritoireIndustrie
-		row.AddCell().Value = e.SecteurActivite
-		row.AddCell().Value = e.Activite
-		row.AddCell().Value = e.SecteursCovid
-		row.AddCell().Value = e.StatutJuridique
-		row.AddCell().Value = e.DateOuvertureEtablissement
-		row.AddCell().Value = e.DateCreationEntreprise
-		row.AddCell().Value = e.Effectif
-		row.AddCell().Value = e.ActivitePartielle
-		row.AddCell().Value = e.DetteSociale
-		row.AddCell().Value = e.PartSalariale
-		row.AddCell().Value = e.AnneeExercice
-		row.AddCell().Value = e.ChiffreAffaire
-		row.AddCell().Value = e.ExcedentBrutExploitation
-		row.AddCell().Value = e.ResultatExploitation
-		row.AddCell().Value = e.ProcedureCollective
-		row.AddCell().Value = e.DetectionSF
-		row.AddCell().Value = e.DateDebutSuivi
-		if wekan {
-			row.AddCell().Value = e.DescriptionWekan
+	for _, c := range cards {
+		if c.dbExport != nil {
+			row := xlSheet.AddRow()
+			e := c.join()
+			if err != nil {
+				return nil, errorToJSON(500, err)
+			}
+			row.AddCell().Value = e.RaisonSociale
+			row.AddCell().Value = e.Siret
+			row.AddCell().Value = e.TypeEtablissement
+			row.AddCell().Value = e.TeteDeGroupe
+			row.AddCell().Value = e.Departement
+			row.AddCell().Value = e.Commune
+			row.AddCell().Value = e.TerritoireIndustrie
+			row.AddCell().Value = e.SecteurActivite
+			row.AddCell().Value = e.Activite
+			row.AddCell().Value = e.SecteursCovid
+			row.AddCell().Value = e.StatutJuridique
+			row.AddCell().Value = e.DateOuvertureEtablissement
+			row.AddCell().Value = e.DateCreationEntreprise
+			row.AddCell().Value = e.Effectif
+			row.AddCell().Value = e.ActivitePartielle
+			row.AddCell().Value = e.DetteSociale
+			row.AddCell().Value = e.PartSalariale
+			row.AddCell().Value = e.AnneeExercice
+			row.AddCell().Value = e.ChiffreAffaire
+			row.AddCell().Value = e.ExcedentBrutExploitation
+			row.AddCell().Value = e.ResultatExploitation
+			row.AddCell().Value = e.ProcedureCollective
+			row.AddCell().Value = e.DetectionSF
+			row.AddCell().Value = e.DateDebutSuivi
+			if wekan {
+				row.AddCell().Value = e.DescriptionWekan
+			}
 		}
 	}
 	data := bytes.NewBuffer(nil)
@@ -233,14 +326,16 @@ func (we WekanExports) xlsx(wekan bool) ([]byte, error) {
 	return data.Bytes(), nil
 }
 
-func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
+func (card Card) docx(head ExportHeader) (Docx, error) {
+	var we WekanExports
+	we = append(we, card.join())
+
 	data, err := json.MarshalIndent(we, " ", " ")
-	fmt.Printf("%s", data)
 	script := viper.GetString("docxifyPath")
 	dir := viper.GetString("docxifyWorkingDir")
 	python := viper.GetString("docxifyPython")
 	if err != nil {
-		return nil, err
+		return Docx{}, err
 	}
 	cmd := exec.Command(python, script, head.Auteur, head.Date.Format("02/01/2006"), "Haute")
 	cmd.Dir = dir
@@ -251,7 +346,7 @@ func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
 	cmd.Stderr = &outErr
 	err = cmd.Run()
 	if err != nil {
-		return nil, err
+		return Docx{}, err
 	}
 	file := out.Bytes()
 	if len(file) == 0 {
@@ -260,57 +355,13 @@ func (we WekanExports) docx(head ExportHeader) ([]byte, error) {
 	if len(outErr.Bytes()) > 0 {
 		fmt.Println(outErr.String())
 	}
-	return file, nil
+	return Docx{
+		filename: fmt.Sprintf("export-%s-%s.docx", card.dbExport.Siret, time.Now().Format("060102")),
+		data:     file,
+	}, nil
 }
 
-func getDbExport(roles scope, sirets []string, username string) ([]dbExport, error) {
-	var exports []dbExport
-	sqlExport := `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
-		coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-		v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
-		v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
-		coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif, 0), coalesce(v.date_effectif, '1900-01-01'),
-		coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
-		coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
-		coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
-		coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
-		coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
-		coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
-		(permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
-	from v_summaries v
-	left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-	where v.siret = any($3)
-	order by f.id, v.siret`
-
-	rows, err := db.Query(context.Background(), sqlExport, roles.zoneGeo(), username, sirets)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	for rows.Next() {
-		var e dbExport
-		err := rows.Scan(&e.Siret, &e.RaisonSociale, &e.CodeDepartement, &e.LibelleDepartement, &e.Commune,
-			&e.CodeTerritoireIndustrie, &e.LibelleTerritoireIndustrie, &e.Siege, &e.TeteDeGroupe,
-			&e.CodeActivite, &e.LibelleActivite, &e.SecteurActivite, &e.StatutJuridiqueN1, &e.StatutJuridiqueN2,
-			&e.StatutJuridiqueN3, &e.DateOuvertureEtablissement, &e.DateCreationEntreprise, &e.DernierEffectif,
-			&e.DateDernierEffectif, &e.DateArreteBilan, &e.ExerciceDiane, &e.ChiffreAffaire, &e.ChiffreAffairePrecedent,
-			&e.VariationCA, &e.ResultatExploitation, &e.ResultatExploitationPrecedent, &e.ExcedentBrutExploitation,
-			&e.ExcedentBrutExploitationPrecedent, &e.DerniereListe, &e.DerniereAlerte, &e.ActivitePartielle,
-			&e.DetteSociale, &e.PartSalariale, &e.DateUrssaf, &e.ProcedureCollective, &e.DateProcedureCollective,
-			&e.DateDebutSuivi, &e.InZone)
-		if err != nil {
-			return nil, err
-		}
-		exports = append(exports, e)
-	}
-	return exports, nil
-}
-
-func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExports {
-	idx := indexCards(cards)
-	var wekanExports []WekanExport
-
+func (c Card) join() WekanExport {
 	apartSwitch := map[bool]string{
 		true:  "Demande sur les 12 derniers mois",
 		false: "Pas de demande récente",
@@ -335,43 +386,40 @@ func joinExports(wc WekanConfig, exports dbExports, cards WekanCards) WekanExpor
 		"sauvegarde":        "Sauvegarde",
 		"plan_sauvegarde":   "Plan de Sauvegarde",
 	}
-	for _, e := range exports {
-		we := WekanExport{
-			RaisonSociale:              e.RaisonSociale,
-			Siret:                      e.Siret,
-			TypeEtablissement:          siegeSwitch[e.Siege],
-			TeteDeGroupe:               e.TeteDeGroupe,
-			Departement:                fmt.Sprintf("%s (%s)", e.LibelleDepartement, e.CodeDepartement),
-			Commune:                    e.Commune,
-			TerritoireIndustrie:        e.LibelleTerritoireIndustrie,
-			SecteurActivite:            e.SecteurActivite,
-			Activite:                   fmt.Sprintf("%s (%s)", e.LibelleActivite, e.CodeActivite),
-			SecteursCovid:              secteurCovid.get(e.CodeActivite),
-			StatutJuridique:            e.StatutJuridiqueN2,
-			DateOuvertureEtablissement: dateCreation(e.DateOuvertureEtablissement),
-			DateCreationEntreprise:     dateCreation(e.DateCreationEntreprise),
-			Effectif:                   fmt.Sprintf("%d (%s)", e.DernierEffectif, e.DateDernierEffectif.Format("01/2006")),
-			ActivitePartielle:          apartSwitch[e.ActivitePartielle],
-			DetteSociale:               fmt.Sprintf(urssafSwitch[e.DetteSociale], dateUrssaf(e.DateUrssaf)),
-			PartSalariale:              fmt.Sprintf(salarialSwitch[e.PartSalariale], dateUrssaf(e.DateUrssaf)),
-			AnneeExercice:              anneeExercice(e.ExerciceDiane),
-			ChiffreAffaire:             libelleCA(e.ChiffreAffaire, e.ChiffreAffairePrecedent, e.VariationCA),
-			ExcedentBrutExploitation:   libelleFin(e.ExcedentBrutExploitation),
-			ResultatExploitation:       libelleFin(e.ResultatExploitation),
-			ProcedureCollective:        procolSwitch[e.ProcedureCollective],
-			DetectionSF:                libelleAlerte(e.DerniereListe, e.DerniereAlerte),
-		}
-
-		if i, ok := idx[e.Siret]; ok {
-			we.DateDebutSuivi = dateUrssaf(cards[i].StartAt)
-			we.DescriptionWekan = cards[i].Description
-		} else {
-			we.DateDebutSuivi = dateUrssaf(e.DateDebutSuivi)
-		}
-
-		wekanExports = append(wekanExports, we)
+	we := WekanExport{
+		RaisonSociale:              c.dbExport.RaisonSociale,
+		Siret:                      c.dbExport.Siret,
+		TypeEtablissement:          siegeSwitch[c.dbExport.Siege],
+		TeteDeGroupe:               c.dbExport.TeteDeGroupe,
+		Departement:                fmt.Sprintf("%s (%s)", c.dbExport.LibelleDepartement, c.dbExport.CodeDepartement),
+		Commune:                    c.dbExport.Commune,
+		TerritoireIndustrie:        c.dbExport.LibelleTerritoireIndustrie,
+		SecteurActivite:            c.dbExport.SecteurActivite,
+		Activite:                   fmt.Sprintf("%s (%s)", c.dbExport.LibelleActivite, c.dbExport.CodeActivite),
+		SecteursCovid:              secteurCovid.get(c.dbExport.CodeActivite),
+		StatutJuridique:            c.dbExport.StatutJuridiqueN2,
+		DateOuvertureEtablissement: dateCreation(c.dbExport.DateOuvertureEtablissement),
+		DateCreationEntreprise:     dateCreation(c.dbExport.DateCreationEntreprise),
+		Effectif:                   fmt.Sprintf("%d (%s)", c.dbExport.DernierEffectif, c.dbExport.DateDernierEffectif.Format("01/2006")),
+		ActivitePartielle:          apartSwitch[c.dbExport.ActivitePartielle],
+		DetteSociale:               fmt.Sprintf(urssafSwitch[c.dbExport.DetteSociale], dateUrssaf(c.dbExport.DateUrssaf)),
+		PartSalariale:              fmt.Sprintf(salarialSwitch[c.dbExport.PartSalariale], dateUrssaf(c.dbExport.DateUrssaf)),
+		AnneeExercice:              anneeExercice(c.dbExport.ExerciceDiane),
+		ChiffreAffaire:             libelleCA(c.dbExport.ChiffreAffaire, c.dbExport.ChiffreAffairePrecedent, c.dbExport.VariationCA),
+		ExcedentBrutExploitation:   libelleFin(c.dbExport.ExcedentBrutExploitation),
+		ResultatExploitation:       libelleFin(c.dbExport.ResultatExploitation),
+		ProcedureCollective:        procolSwitch[c.dbExport.ProcedureCollective],
+		DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
 	}
-	return wekanExports
+
+	if c.WekanCard != nil {
+		we.DateDebutSuivi = dateUrssaf(c.WekanCard.StartAt)
+		we.DescriptionWekan = c.WekanCard.Description
+	} else {
+		we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
+	}
+
+	return we
 }
 
 func anneeExercice(exercice int) string {
@@ -428,23 +476,6 @@ func libelleCA(val float64, valPrec float64, variationCA float64) string {
 	return fmt.Sprintf("%.0f k€", val)
 }
 
-func indexCards(cards WekanCards) map[string]int {
-	index := make(map[string]int)
-
-	for i, c := range cards {
-		siret, err := c.Siret()
-		if err != nil {
-			continue // taggle
-		}
-		if siret != "" {
-			index[siret] = i
-		} else {
-			log.Printf("no siret for card %s", c.ID)
-		}
-	}
-	return index
-}
-
 func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 	username := c.GetString("username")
 	scope := scopeFromContext(c)
@@ -458,20 +489,18 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 }
 
 func getXLSXFollowedByCurrentUser(c *gin.Context) {
-	username := c.GetString("username")
-	scope := scopeFromContext(c)
-	var wep paramsSelectWekan
-	c.Bind(&wep)
+	var s session
+	s.bind(c)
+	var params paramsGetCards
+	c.Bind(&params)
 
-	var weip paramsSelectWekan
-
-	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, &username, wekan, weip)
+	export, err := getExport(s, params, nil)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
-	xlsx, err := export.xlsx(wekan)
+
+	xlsx, err := export.xlsx(s.hasRole("wekan"))
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -481,49 +510,31 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
 }
 
-func getDOCXFollowedByCurrentUser(c *gin.Context) {
-	username := c.GetString("username")
-	scope := scopeFromContext(c)
-	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
-	wekan := contains(scope, "wekan")
-	var wekanExportParams paramsSelectWekan
-	err := c.Bind(wekanExportParams)
-	if err != nil {
-		c.AbortWithStatusJSON(400, fmt.Sprintf("Mauvais paramètre: %s", err.Error()))
-	}
-	export, err := getExport(scope, &username, wekan, wekanExportParams)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	if len(export) == 0 {
-		c.JSON(204, "export vide")
-		return
-	}
-	header := ExportHeader{
-		Auteur: auteur,
-		Date:   time.Now(),
-	}
-	docx, err := export.docx(header)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	filename := fmt.Sprintf("export-suivi-%s.docx", time.Now().Format("060102"))
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
+type Docx struct {
+	filename string
+	data     []byte
 }
 
-func getDOCXFromSiret(c *gin.Context) {
+type Docxs []Docx
+
+func (docxs Docxs) zip() []byte {
+	var zipData bytes.Buffer
+	zipFile := zip.NewWriter(&zipData)
+	for _, docx := range docxs {
+		w, _ := zipFile.Create(docx.filename)
+		w.Write(docx.data)
+	}
+	zipFile.Close()
+	return zipData.Bytes()
+}
+
+func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	var s session
 	s.bind(c)
+	var params paramsGetCards
+	c.Bind(&params)
 
-	siret := append([]string{}, c.Param("siret"))
-	export, err := getExport(s.roles, &s.username, s.hasRole("wekan"), paramsSelectWekan{
-		// Sirets:   siret,
-		// AllCards: &t,
-		// BoardIds: wekanConfig.boardIdsForUser(s.username),
-	})
+	exports, err := getExport(s, params, nil)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -532,13 +543,99 @@ func getDOCXFromSiret(c *gin.Context) {
 		Auteur: s.auteur,
 		Date:   time.Now(),
 	}
-	docx, err := export.docx(header)
+
+	var docxs Docxs
+	for _, export := range exports {
+		docx, err := export.docx(header)
+		if err != nil {
+			c.AbortWithError(500, err)
+			return
+		}
+		docxs = append(docxs, docx)
+	}
+	filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/zip", docxs.zip())
+}
+
+func getDOCXFromSiret(c *gin.Context) {
+	var s session
+	s.bind(c)
+	params := paramsGetCards{
+		Type: "single-card",
+	}
+	siret := c.Param("siret")
+	cards, err := getExport(s, params, &siret)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
-	fmt.Println(header)
-	filename := fmt.Sprintf("export-%s-%s.docx", siret[0], time.Now().Format("060102"))
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
+	if len(cards) != 1 {
+		c.AbortWithStatusJSON(204, "no data")
+		return
+	}
+
+	header := ExportHeader{
+		Auteur: s.auteur,
+		Date:   time.Now(),
+	}
+	docx, err := cards[0].docx(header)
+	if err != nil {
+		c.AbortWithError(500, err)
+		return
+	}
+
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+docx.filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx.data)
 }
+
+var sqlDbExport = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
+coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
+v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
+v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
+coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
+coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
+coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
+coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
+coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
+coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
+coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
+coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
+from v_summaries v
+left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
+where v.siret = any($3)
+order by f.id, v.siret`
+
+var sqlDbExportFollow = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
+coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
+v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
+v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
+coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
+coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
+coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
+coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
+coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
+coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
+coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
+coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
+from v_summaries v
+inner join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
+where v.code_departement = any($3) or $3 is null
+order by f.id, v.siret`
+
+var sqlDbExportSingle = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
+coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
+v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
+v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
+coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
+coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
+coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
+coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
+coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
+coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
+coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
+coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
+from v_summaries v
+left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
+where v.siret = $3
+order by f.id, v.siret`

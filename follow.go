@@ -68,8 +68,9 @@ func followEtablissement(c *gin.Context) {
 }
 
 func unfollowEtablissement(c *gin.Context) {
+	var s session
+	s.bind(c)
 	siret := c.Param("siret")
-	username := c.GetString("username")
 
 	var param struct {
 		UnfollowComment  string `json:"unfollowComment"`
@@ -87,9 +88,17 @@ func unfollowEtablissement(c *gin.Context) {
 
 	follow := Follow{
 		Siret:            &siret,
-		Username:         &username,
+		Username:         &s.username,
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
+	}
+
+	if userId, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && ok {
+		boardIds := wekanConfig.boardIdsForUser(s.username)
+		err := wekanPartCard(userId, siret, boardIds)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
 	err := follow.deactivate()
@@ -231,6 +240,19 @@ type paramsGetCards struct {
 type Card struct {
 	Summary   *Summary   `json:"summary"`
 	WekanCard *WekanCard `json:"wekanCard"`
+	dbExport  *dbExport
+}
+
+type Cards []*Card
+
+func (cards Cards) dbExportsOnly() Cards {
+	var filtered Cards
+	for _, c := range cards {
+		if c.dbExport != nil {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
 }
 
 func getCards(s session, params paramsGetCards) ([]*Card, error) {
@@ -257,7 +279,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			if err != nil {
 				continue
 			}
-			card := Card{nil, w}
+			card := Card{nil, w, nil}
 			cards = append(cards, &card)
 			cardsMap[siret] = &card
 			sirets = append(sirets, siret)
@@ -306,7 +328,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 		}
 		for _, s := range ss.summaries {
 			if _, ok := excludeSirets[s.Siret]; !ok {
-				card := Card{s, nil}
+				card := Card{s, nil, nil}
 				cards = append(cards, &card)
 			}
 		}
@@ -319,7 +341,7 @@ func followSiretsFromWekan(username string, sirets []string) error {
 	if err != nil {
 		return err
 	}
-	if _, err := tx.Exec(context.Background(), sqlCreateTmpFollowWekan, sirets); err != nil {
+	if _, err := tx.Exec(context.Background(), sqlCreateTmpFollowWekan, sirets, username); err != nil {
 		return err
 	}
 	if _, err := tx.Exec(context.Background(), sqlFollowFromTmp, username); err != nil {
@@ -329,9 +351,9 @@ func followSiretsFromWekan(username string, sirets []string) error {
 }
 
 // sqlCreateTmpFollowWekan
-const sqlCreateTmpFollowWekan = `create table if not exists tmp_follow_wekan as
+const sqlCreateTmpFollowWekan = `create temporary table tmp_follow_wekan on commit drop as
 	with sirets as (select unnest($1::text[]) as siret),
-	follow as (select siret from etablissement_follow f where f.username = '$2' and active)
+	follow as (select siret from etablissement_follow f where f.username = $2 and active)
 	select case when f.siret is null then 'follow' else 'unfollow' end as todo,
 	coalesce(f.siret, s.siret) as siret
 	from follow f
@@ -342,7 +364,7 @@ const sqlCreateTmpFollowWekan = `create table if not exists tmp_follow_wekan as
 // sqlFollowFromTmp $1 = username
 const sqlFollowFromTmp = `insert into etablissement_follow
 	(siret, siren, username, active, since, comment, category)
-	select t.siret, substring(t.siret from 0 for 9), $1, 
+	select t.siret, substring(t.siret from 1 for 9), $1, 
 	true, current_timestamp, 'participe à la carte wekan', 'wekan'
 	from tmp_follow_wekan t
 	inner join etablissement0 e on e.siret = t.siret

@@ -57,16 +57,6 @@ type WekanConfig struct {
 	Regions  map[string]string            `json:"regions"`
 }
 
-type paramsSelectWekan struct {
-	boardIds    []string
-	swimlaneIds []string
-	listIds     []string
-	labelIds    []string
-	allCards    *bool
-	sirets      []string
-	username    *string
-}
-
 func (wc WekanConfig) forUser(username string) WekanConfig {
 	userId, ok := wc.Users[username]
 	if !ok {
@@ -134,14 +124,14 @@ func (wc WekanConfig) boardIds() []string {
 	return ids
 }
 
-func (wc *WekanConfig) loadFile(path string) error {
-	fileContent, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(fileContent, wc)
-	return err
-}
+// func (wc *WekanConfig) loadFile(path string) error {
+// 	fileContent, err := ioutil.ReadFile(path)
+// 	if err != nil {
+// 		return err
+// 	}
+// 	err = json.Unmarshal(fileContent, wc)
+// 	return err
+// }
 
 // Token type pour faire persister en mémoire les tokens réutilisables
 type Token struct {
@@ -309,18 +299,60 @@ func wekanGetCardHandler(c *gin.Context) {
 	c.JSON(200, cardData)
 }
 
+func wekanPartCard(userId string, siret string, boardIds []string) error {
+	query := bson.M{
+		"type":     "cardType-card",
+		"boardId":  bson.M{"$in": boardIds},
+		"archived": false,
+		"$expr": bson.M{
+			"$and": bson.A{
+				bson.M{"$in": bson.A{userId, "$members"}},
+				bson.M{"$in": bson.A{siret, "$customFields.value"}},
+			}}}
+
+	update := bson.M{
+		"$pull": bson.M{
+			"members": userId,
+		},
+	}
+	_, err := mgoDB.Collection("cards").UpdateOne(context.Background(), query, update)
+	return err
+}
 func wekanJoinCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
+	cardId := c.Params.ByName("cardId")
+	userId, ok := wekanConfig.Users[s.username]
 
-	mgoDB.Collection("boards")
+	if !ok || !s.hasRole("wekan") {
+		c.AbortWithStatusJSON(403, "not a wekan user")
+		return
+	}
+	boardIds := wekanConfig.boardIdsForUser(s.username)
+	query := bson.M{
+		"_id":      cardId,
+		"boardId":  bson.M{"$in": boardIds},
+		"archived": false,
+		"$expr":    bson.M{"$not": bson.M{"$in": bson.A{userId, "$members"}}},
+	}
+	update := bson.M{
+		"$push": bson.M{
+			"members": userId,
+		},
+	}
+
+	_, err := mgoDB.Collection("cards").UpdateOne(
+		context.Background(),
+		query,
+		update,
+	)
+
+	if err != nil {
+		c.AbortWithStatusJSON(500, err.Error())
+		return
+	}
+	c.JSON(201, "suivi effectué")
 }
-
-// func getCardIdFromSiret(siret string, username string) (string, error) {
-// 	wcu := wekanConfig.forUser(s.username)
-// 	boardIds := wcu.boardIds()
-
-// }
 
 func wekanNewCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
