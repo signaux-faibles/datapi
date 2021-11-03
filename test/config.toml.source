@@ -1,8 +1,12 @@
 bind = ":changemyport"
 postgres = "host=127.0.0.1 user=postgres password=changemypass dbname=datapi_test port=changemypgport sslmode=disable"
 prod = false
+corsAllowOrigins = ["http://127.0.0.1:8080"]
 
 enableKeycloak = false
+
+wekanMgoURL = "mongodb://localhost:changemymongoport/"
+wekanMgoDB = "test"
 
 fakeUsernameKeycloak = "dummy@crash.test"
 fakeKeycloakRoles = [

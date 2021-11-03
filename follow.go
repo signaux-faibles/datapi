@@ -21,89 +21,6 @@ type Follow struct {
 	EtablissementSummary *Summary  `json:"etablissementSummary,omitempty"`
 }
 
-func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
-	username := c.GetString("username")
-	scope := scopeFromContext(c)
-	follow := Follow{Username: &username}
-	follows, err := follow.list(scope)
-
-	if err != nil {
-		c.JSON(err.Code(), err.Error())
-		return
-	}
-
-	c.JSON(200, follows)
-}
-
-func getXLSXFollowedByCurrentUser(c *gin.Context) {
-	username := c.GetString("username")
-	scope := scopeFromContext(c)
-
-	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, nil)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	xlsx, err := export.xlsx(wekan)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
-}
-
-func getDOCXFollowedByCurrentUser(c *gin.Context) {
-	username := c.GetString("username")
-	scope := scopeFromContext(c)
-	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
-	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, nil)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	header := ExportHeader{
-		Auteur: auteur,
-		Date:   time.Now(),
-	}
-	docx, err := export.docx(header)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	filename := fmt.Sprintf("export-suivi-%s.docx", time.Now().Format("060102"))
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
-}
-
-func getDOCXFromSiret(c *gin.Context) {
-	username := c.GetString("username")
-	auteur := c.GetString("given_name") + " " + c.GetString("family_name")
-	scope := scopeFromContext(c)
-	sirets := append([]string{}, c.Param("siret"))
-	wekan := contains(scope, "wekan")
-	export, err := getExport(scope, username, wekan, sirets)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	header := ExportHeader{
-		Auteur: auteur,
-		Date:   time.Now(),
-	}
-	docx, err := export.docx(header)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	filename := fmt.Sprintf("export-%s-%s.docx", sirets[0], time.Now().Format("060102"))
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx)
-}
-
 func followEtablissement(c *gin.Context) {
 	siret := c.Param("siret")
 	username := c.GetString("username")
@@ -151,8 +68,9 @@ func followEtablissement(c *gin.Context) {
 }
 
 func unfollowEtablissement(c *gin.Context) {
+	var s session
+	s.bind(c)
 	siret := c.Param("siret")
-	username := c.GetString("username")
 
 	var param struct {
 		UnfollowComment  string `json:"unfollowComment"`
@@ -170,9 +88,17 @@ func unfollowEtablissement(c *gin.Context) {
 
 	follow := Follow{
 		Siret:            &siret,
-		Username:         &username,
+		Username:         &s.username,
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
+	}
+
+	if userId, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && ok {
+		boardIds := wekanConfig.boardIdsForUser(s.username)
+		err := wekanPartCard(userId, siret, boardIds)
+		if err != nil {
+			fmt.Println(err)
+		}
 	}
 
 	err := follow.deactivate()
@@ -241,7 +167,7 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, false, nil,
 		&True, &True, *f.Username, false, "follow", &False, nil,
-		nil, &True, nil, nil, nil, nil}
+		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
 	sms, err := getSummaries(params)
 	if err != nil {
@@ -268,3 +194,245 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 // Follows is a slice of Follows
 type Follows []Follow
+
+func getCardsForCurrentUser(c *gin.Context) {
+	var s session
+	s.bind(c)
+	var params paramsGetCards
+	err := c.Bind(&params)
+	if err != nil {
+		c.JSON(400, fmt.Sprintf("parametre incorrect: %s", err.Error()))
+		return
+	}
+	types := []string{"no-card", "my-cards", "all-cards"}
+	if !contains(types, params.Type) {
+		c.AbortWithStatusJSON(400, fmt.Sprintf("`%s` n'est pas un type supporté", params.Type))
+		return
+	}
+	cards, err := getCards(s, params)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	var follows = make(Follows, 0)
+	for _, s := range cards {
+		var f Follow
+		if s.Summary != nil {
+			if s.Summary.Since == nil {
+				f.Comment = *coalescepString(s.Summary.Comment, &EmptyString)
+				f.Category = *coalescepString(s.Summary.Category, &EmptyString)
+				f.Since = *coalescepTime(s.Summary.Since, &time.Time{})
+				f.Active = true
+			}
+			f.EtablissementSummary = s.Summary
+			follows = append(follows, f)
+		}
+	}
+	c.JSON(200, follows)
+}
+
+type paramsGetCards struct {
+	Type   string   `json:"type"`
+	Statut []string `json:"statut"`
+	Zone   []string `json:"zone"`
+}
+
+type Card struct {
+	Summary   *Summary   `json:"summary"`
+	WekanCard *WekanCard `json:"wekanCard"`
+	dbExport  *dbExport
+}
+
+type Cards []*Card
+
+func (cards Cards) dbExportsOnly() Cards {
+	var filtered Cards
+	for _, c := range cards {
+		if c.dbExport != nil {
+			filtered = append(filtered, c)
+		}
+	}
+	return filtered
+}
+
+func getCards(s session, params paramsGetCards) ([]*Card, error) {
+	var cards []*Card
+	var cardsMap = make(map[string]*Card)
+	var sirets []string
+	var followedSirets []string
+	wcu := wekanConfig.forUser(s.username)
+	userId := wekanConfig.Users[s.username]
+	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
+		var username *string
+		if params.Type == "my-cards" {
+			username = &s.username
+		}
+		boardIds := wcu.boardIds()
+		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
+		listIds := wcu.listIdsForStatuts(params.Statut)
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, nil)
+		if err != nil {
+			return nil, err
+		}
+		for _, w := range wekanCards {
+			siret, err := w.Siret()
+			if err != nil {
+				continue
+			}
+			card := Card{nil, w, nil}
+			cards = append(cards, &card)
+			cardsMap[siret] = &card
+			sirets = append(sirets, siret)
+			if contains(w.Members, userId) {
+				followedSirets = append(followedSirets, siret)
+			}
+		}
+		err = followSiretsFromWekan(s.username, followedSirets)
+		if err != nil {
+			return nil, err
+		}
+		var ss summaries
+		cursor, err := db.Query(context.Background(), sqlGetCards, s.roles.zoneGeo(), s.username, sirets)
+		if err != nil {
+			return nil, err
+		}
+		for cursor.Next() {
+			s := ss.newSummary()
+			cursor.Scan(s...)
+		}
+		for _, s := range ss.summaries {
+			cardsMap[s.Siret].Summary = s
+		}
+	} else {
+		boardIds := wcu.boardIds()
+		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil)
+		if err != nil {
+			return nil, err
+		}
+		var excludeSirets = make(map[string]struct{})
+		for _, w := range wekanCards {
+			siret, err := w.Siret()
+			if err != nil {
+				continue
+			}
+			excludeSirets[siret] = struct{}{}
+		}
+		var ss summaries
+		cursor, err := db.Query(context.Background(), sqlGetFollow, s.roles.zoneGeo(), s.username, params.Zone)
+		if err != nil {
+			return nil, err
+		}
+		for cursor.Next() {
+			s := ss.newSummary()
+			cursor.Scan(s...)
+		}
+		for _, s := range ss.summaries {
+			if _, ok := excludeSirets[s.Siret]; !ok {
+				card := Card{s, nil, nil}
+				cards = append(cards, &card)
+			}
+		}
+	}
+	return cards, nil
+}
+
+func followSiretsFromWekan(username string, sirets []string) error {
+	tx, err := db.Begin(context.Background())
+	if err != nil {
+		return err
+	}
+	if _, err := tx.Exec(context.Background(), sqlCreateTmpFollowWekan, sirets, username); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(context.Background(), sqlFollowFromTmp, username); err != nil {
+		return err
+	}
+	return tx.Commit(context.Background())
+}
+
+// sqlCreateTmpFollowWekan
+const sqlCreateTmpFollowWekan = `create temporary table tmp_follow_wekan on commit drop as
+	with sirets as (select unnest($1::text[]) as siret),
+	follow as (select siret from etablissement_follow f where f.username = $2 and active)
+	select case when f.siret is null then 'follow' else 'unfollow' end as todo,
+	coalesce(f.siret, s.siret) as siret
+	from follow f
+	full join sirets s on s.siret = f.siret 
+	where f.siret is null or s.siret is null;
+`
+
+// sqlFollowFromTmp $1 = username
+const sqlFollowFromTmp = `insert into etablissement_follow
+	(siret, siren, username, active, since, comment, category)
+	select t.siret, substring(t.siret from 1 for 9), $1, 
+	true, current_timestamp, 'participe à la carte wekan', 'wekan'
+	from tmp_follow_wekan t
+	inner join etablissement0 e on e.siret = t.siret
+	where todo = 'follow'`
+
+// sqlGetCards: $1 = roles.ZoneGeo, $2 = username, $3 = sirets
+const sqlGetCards = `select 
+s.siret, s.siren, s.raison_sociale, s.commune,
+s.libelle_departement, s.code_departement,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.valeur_score end as valeur_score,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.detail_score end as detail_score,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.first_alert end as first_alert,
+s.chiffre_affaire, s.arrete_bilan, s.exercice_diane, s.variation_ca, s.resultat_expl, s.effectif, s.effectif_entreprise,
+s.libelle_n5, s.libelle_n1, s.code_activite, s.last_procol,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.activite_partielle end as activite_partielle,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_heure_consomme end as apconso_heure_consomme,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_montant end as apconso_montant,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.hausse_urssaf end as hausse_urssaf,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.dette_urssaf end as dette_urssaf,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.alert end,
+count(*) over () as nb_total,
+count(case when s.alert='Alerte seuil F1' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f1,
+count(case when s.alert='Alerte seuil F2' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f2,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible, 
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone, 
+f.id is not null as followed_etablissement,
+fe.siren is not null as followed_entreprise,
+s.siege, s.raison_sociale_groupe, territoire_industrie,
+f.comment, f.category, f.since,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
+s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
+from v_summaries s
+left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $2
+left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
+where s.siret = any($3)`
+
+const sqlGetFollow = `select 
+s.siret, s.siren, s.raison_sociale, s.commune,
+s.libelle_departement, s.code_departement,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.valeur_score end as valeur_score,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.detail_score end as detail_score,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.first_alert end as first_alert,
+s.chiffre_affaire, s.arrete_bilan, s.exercice_diane, s.variation_ca, s.resultat_expl, s.effectif, s.effectif_entreprise,
+s.libelle_n5, s.libelle_n1, s.code_activite, s.last_procol,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.activite_partielle end as activite_partielle,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_heure_consomme end as apconso_heure_consomme,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_montant end as apconso_montant,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.hausse_urssaf end as hausse_urssaf,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.dette_urssaf end as dette_urssaf,
+case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.alert end,
+count(*) over () as nb_total,
+count(case when s.alert='Alerte seuil F1' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f1,
+count(case when s.alert='Alerte seuil F2' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f2,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible, 
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone, 
+f.id is not null as followed_etablissement,
+fe.siren is not null as followed_entreprise,
+s.siege, s.raison_sociale_groupe, territoire_industrie,
+f.comment, f.category, f.since,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
+s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
+from v_summaries s
+inner join etablissement_follow f on f.active and f.siret = s.siret and f.username = $2
+inner join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
+where s.code_departement = any($3) or $3 is null`

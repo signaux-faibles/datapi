@@ -14,16 +14,22 @@ import (
 )
 
 type paramsListeScores struct {
-	Departements    []string `json:"zone,omitempty"`
-	EtatsProcol     []string `json:"procol,omitempty"`
-	Activites       []string `json:"activite,omitempty"`
-	EffectifMin     *int     `json:"effectifMin"`
-	EffectifMax     *int     `json:"effectifMax"`
-	IgnoreZone      *bool    `json:"ignorezone"`
-	ExclureSuivi    *bool    `json:"exclureSuivi"`
-	SiegeUniquement bool     `json:"siegeUniquement"`
-	Page            int      `json:"page"`
-	Filter          string   `json:"filter"`
+	Departements          []string `json:"zone,omitempty"`
+	EtatsProcol           []string `json:"procol,omitempty"`
+	Activites             []string `json:"activite,omitempty"`
+	EffectifMin           *int     `json:"effectifMin"`
+	EffectifMax           *int     `json:"effectifMax"`
+	EffectifMinEntreprise *int     `json:"effectifMinEntreprise"`
+	EffectifMaxEntreprise *int     `json:"effectifMaxEntreprise"`
+	CaMin                 *int     `json:"caMin"`
+	CaMax                 *int     `json:"caMax"`
+	IgnoreZone            *bool    `json:"ignorezone"`
+	ExclureSuivi          *bool    `json:"exclureSuivi"`
+	SiegeUniquement       bool     `json:"siegeUniquement"`
+	Page                  int      `json:"page"`
+	Filter                string   `json:"filter"`
+	ExcludeSecteursCovid  []string `json:"excludeSecteursCovid"`
+	EtatAdministratif     *string  `json:"etatAdministratif"`
 }
 
 // Liste de détection
@@ -64,11 +70,14 @@ func getLastListeScores(c *gin.Context) {
 	var params paramsListeScores
 	err = c.Bind(&params)
 
+	if params.EtatAdministratif != nil && !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "F") {
+		c.JSON(400, "etatAdministratif must be either absent or `A` or `F`")
+	}
+
 	if err != nil || len(listes) == 0 {
 		c.AbortWithStatus(400)
 		return
 	}
-
 	liste := Liste{
 		ID:          listes[0].ID,
 		Query:       params,
@@ -131,6 +140,13 @@ func getListeScores(c *gin.Context) {
 		return
 	}
 
+	if params.EtatAdministratif != nil {
+		if !(*params.EtatAdministratif == "A" || *params.EtatAdministratif == "F") {
+			c.JSON(400, "etatAdministratif must be either absent or 'A' or 'F'")
+			return
+		}
+	}
+
 	listes, err := findAllListes()
 	if err != nil || len(listes) == 0 {
 		c.AbortWithStatus(204)
@@ -188,6 +204,8 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 		roles.zoneGeo(), limit, &offset, &liste.ID, liste.CurrentList, &liste.Query.Filter, nil,
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
+		liste.Query.EffectifMinEntreprise, liste.Query.EffectifMaxEntreprise, liste.Query.CaMin, liste.Query.CaMax,
+		liste.Query.ExcludeSecteursCovid, liste.Query.EtatAdministratif,
 	}
 	summaries, err := getSummaries(params)
 	if err != nil {
@@ -273,10 +291,15 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 	row.AddCell().Value = "siret"
 	row.AddCell().Value = "departement"
 	row.AddCell().Value = "raison_sociale"
-	row.AddCell().Value = "dernier_effectif"
+	row.AddCell().Value = "dernier_effectif_entreprise"
 	row.AddCell().Value = "code_activite"
 	row.AddCell().Value = "libelle_activite"
 	row.AddCell().Value = "alert"
+	row.AddCell().Value = "premiere_alerte"
+	row.AddCell().Value = "secteur_covid"
+	row.AddCell().Value = "chiffre_affaire"
+	row.AddCell().Value = "excedent_brut_exploitation"
+	row.AddCell().Value = "resultat_d_exploitation"
 
 	for _, score := range liste.Scores {
 		row := xlSheet.AddRow()
@@ -294,6 +317,33 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 			row.AddCell().Value = *score.LibelleActivite
 		}
 		row.AddCell().Value = *score.Alert
+		if *score.FirstAlert {
+			row.AddCell().Value = "oui"
+		} else {
+			row.AddCell().Value = "non"
+		}
+		row.AddCell().Value = *score.SecteurCovid
+		var ca string
+		if score.ChiffreAffaire != nil {
+			ca = fmt.Sprintf("%d k€", int(*score.ChiffreAffaire))
+		} else {
+			ca = "n/c"
+		}
+		var ebe string
+		if score.ExcedentBrutDExploitation != nil {
+			ebe = fmt.Sprintf("%d k€", int(*score.ExcedentBrutDExploitation))
+		} else {
+			ebe = "n/c"
+		}
+		var rex string
+		if score.ResultatExploitation != nil {
+			rex = fmt.Sprintf("%d k€", int(*score.ResultatExploitation))
+		} else {
+			rex = "n/c"
+		}
+		row.AddCell().Value = ca
+		row.AddCell().Value = ebe
+		row.AddCell().Value = rex
 	}
 
 	sheetParams, _ := xlFile.AddSheet("parameters")

@@ -22,11 +22,17 @@ var keycloak gocloak.GoCloak
 var db *pgxpool.Pool
 var mgoDB *mongo.Database
 var ref reference
+var wekanConfig WekanConfig
 
 func main() {
 	loadConfig()
 	db = connectDB()
 	mgoDB = connectWekanDB()
+	var err error
+	if wekanConfig, err = lookupWekanConfig(); err != nil {
+		panic(fmt.Sprintf("Erreur à l'initialisation WekanConfig: %s", err.Error()))
+	}
+
 	keycloak = connectKC()
 	runAPI()
 }
@@ -49,7 +55,7 @@ func runAPI() {
 	router := gin.Default()
 
 	config := cors.DefaultConfig()
-	config.AllowOrigins = []string{"http://localhost:8081"}
+	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
@@ -69,13 +75,15 @@ func runAPI() {
 
 	follow := router.Group("/follow", getKeycloakMiddleware(), logMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
+	follow.POST("", getCardsForCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
-	follow.GET("/xls", getXLSXFollowedByCurrentUser)
 
 	export := router.Group("/export/", getKeycloakMiddleware(), logMiddleware)
 	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
+	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
+	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", validSiret, getDOCXFromSiret)
 
 	listes := router.Group("/listes", getKeycloakMiddleware(), logMiddleware)
@@ -99,12 +107,21 @@ func runAPI() {
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	utils.GET("/wekanImport", wekanImportHandler)
+<<<<<<< HEAD
 	utils.GET("/wekanListCards", wekanGetListCardsHandler)
 	utils.GET("/sireneImport", sireneImportHandler)
+=======
+	// utils.GET("/wekanListCards", wekanGetListCardsHandler)
+	utils.GET("/sireneImport", sireneImportHandler)
+	utils.GET("/listImport/:algo", listImportHandler)
+>>>>>>> origin/master
 
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", wekanGetCardHandler)
 	wekan.POST("/cards/:siret", wekanNewCardHandler)
+	wekan.GET("/join/:cardId", wekanJoinCardHandler)
+	wekan.GET("/config", wekanConfigHandler)
+	wekan.GET("/reloadConfig", wekanReloadConfigHandler)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
