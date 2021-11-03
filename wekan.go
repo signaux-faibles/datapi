@@ -6,6 +6,7 @@ import (
 	"encoding/csv"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"net/http"
@@ -19,74 +20,120 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
+
+type wekanListDetails struct {
+	ID    string `bson:"_id"`
+	Title string `bson:"title"`
+}
+
+type WekanConfigBoard struct {
+	BoardID      string             `bson:"boardId" json:"boardId"`
+	Title        string             `bson:"title" json:"title"`
+	Slug         string             `bson:"slug" json:"slug"`
+	Swimlanes    map[string]string  `bson:"swimlanes" json:"swimlanes"`
+	Members      []string           `bson:"members" json:"members"`
+	Lists        []string           `bson:"lists" json:"lists"`
+	ListDetails  []wekanListDetails `bson:"listDetails" json:"listDetails"`
+	CustomFields struct {
+		SiretField    string `bson:"siretField" json:"siretField"`
+		ActiviteField string `bson:"activiteField" json:"activiteField"`
+		ContactField  string `bson:"contactField" json:"contactField"`
+		EffectifField struct {
+			EffectifFieldID    string   `bson:"effectifFieldId" json:"effectifFieldId"`
+			EffectifFieldItems []string `bson:"effectifFieldItems" json:"effectifFieldItems"`
+		} `bson:"effectifField" json:"effectifField"`
+		FicheSFField string `bson:"ficheSFField" json:"ficheSFField"`
+	} `bson:"customFields" json:"customFields"`
+}
 
 // WekanConfig type pour le fichier de configuration de Wekan
 type WekanConfig struct {
-	Boards map[string]struct {
-		BoardID      string            `json:"boardId"`
-		Slug         string            `json:"slug"`
-		Swimlanes    map[string]string `json:"swimlanes"`
-		Lists        []string          `json:"lists"`
-		CustomFields struct {
-			SiretField    string `json:"siretField"`
-			ActiviteField string `json:"activiteField"`
-			EffectifField struct {
-				EffectifFieldID    string   `json:"effectifFieldId"`
-				EffectifFieldItems []string `json:"effectifFieldItems"`
-			} `json:"effectifField"`
-			FicheSFField string `json:"ficheSFField"`
-			ContactField string `json:"contactField"`
-		} `json:"customFields"`
-	} `json:"boards"`
-	Users map[string]string `json:"users"`
+	Slugs    map[string]*WekanConfigBoard `bson:"slugs" json:"slugs,omitempty"`
+	Boards   map[string]*WekanConfigBoard `bson:"boards" json:"boards"`
+	Users    map[string]string            `bson:"users,omitempty" json:"users,omitempty"`
+	BoardIds map[string]*WekanConfigBoard `json:"-"`
+	Regions  map[string]string            `json:"regions"`
 }
 
-// func (wc WekanConfig) boards() map[string]string {
-// 	boards := make(map[string]string)
-// 	for r, b := range wc.Boards {
-// 		boards[b.BoardID] = r
+func (wc WekanConfig) forUser(username string) WekanConfig {
+	userId, ok := wc.Users[username]
+	if !ok {
+		return WekanConfig{}
+	}
+
+	var userWc WekanConfig
+	userWc.Boards = make(map[string]*WekanConfigBoard)
+
+	for board, configBoard := range wc.Boards {
+		if contains(configBoard.Members, userId) {
+			userWc.Boards[board] = configBoard
+		}
+	}
+	return userWc
+}
+
+func (wc WekanConfig) boardIdsForUser(username string) []string {
+	if userId, ok := wc.Users[username]; ok {
+		var boards []string
+		for _, board := range wekanConfig.Boards {
+			if contains(board.Members, userId) {
+				boards = append(boards, board.BoardID)
+			}
+		}
+		return boards
+	}
+	return nil
+}
+
+func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
+	var swimlaneIds []string
+	for _, board := range wc.Boards {
+		for k, s := range board.Swimlanes {
+			if contains(zone, k) {
+				swimlaneIds = append(swimlaneIds, s)
+			}
+		}
+	}
+	return swimlaneIds
+}
+
+func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
+	var listIds []string
+	for _, board := range wc.Boards {
+		for _, s := range board.ListDetails {
+			if contains(statuts, s.Title) {
+				listIds = append(listIds, s.ID)
+			}
+		}
+	}
+	return listIds
+}
+
+// func (wc *WekanConfig) load() error {
+// 	configFile := viper.GetString("wekanConfigFile")
+// 	return wc.loadFile(configFile)
+// }
+
+func (wc WekanConfig) boardIds() []string {
+	var ids []string
+	for _, board := range wc.Boards {
+		ids = append(ids, board.BoardID)
+	}
+	return ids
+}
+
+// func (wc *WekanConfig) loadFile(path string) error {
+// 	fileContent, err := ioutil.ReadFile(path)
+// 	if err != nil {
+// 		return err
 // 	}
-// 	return boards
+// 	err = json.Unmarshal(fileContent, wc)
+// 	return err
 // }
-
-func (wc WekanConfig) siretFields() []string {
-	var siretFields []string
-	for _, b := range wc.Boards {
-		siretFields = append(siretFields, b.CustomFields.SiretField)
-	}
-	return siretFields
-}
-
-func (wc *WekanConfig) load() error {
-	configFile := viper.GetString("wekanConfigFile")
-	return wc.loadFile(configFile)
-}
-
-func (wc *WekanConfig) loadFile(path string) error {
-	fileContent, err := ioutil.ReadFile(path)
-	if err != nil {
-		return err
-	}
-	err = json.Unmarshal(fileContent, wc)
-	return err
-}
-
-// type wekanDbCustomFields struct {
-// 	ID    string `json:"_id" bson:"_id"`
-// 	Value string `json:"value" bson:"value"`
-// }
-
-// WekanCards est une liste de WekanCard
-type WekanCards []WekanCard
-
-// WekanCard embarque la sélection de champs Wekan nécessaires au traitement d'export
-type WekanCard struct {
-	ID          string    `json:"_id" bson:"_id"`
-	Description string    `json:"description" bson:"description"`
-	StartAt     time.Time `json:"startAt" bson:"startAt"`
-	Siret       string    `json:"siret" bson:"siret"`
-}
 
 // Token type pour faire persister en mémoire les tokens réutilisables
 type Token struct {
@@ -109,7 +156,7 @@ type WekanCreateToken struct {
 
 // WekanGetCard type pour les réponses du service de recherche de carte
 type WekanGetCard []struct {
-	ID          string    `json:"_id"`
+	ID          string   `json:"_id"`
 	ListID      string   `json:"listId"`
 	Description string   `json:"description"`
 	Members     []string `json:"members"`
@@ -148,25 +195,16 @@ var tokens sync.Map
 
 //TODO: factorisation
 func wekanGetCardHandler(c *gin.Context) {
-	siret := c.Param("siret")
-	configFile := viper.GetString("wekanConfigFile")
-	fileContent, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	var config WekanConfig
-	err = json.Unmarshal(fileContent, &config)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	username := c.GetString("username")
-	userID, ok := config.Users[username]
+	var s session
+	s.bind(c)
+	userID, ok := wekanConfig.Users[s.username]
 	if !ok {
 		c.JSON(403, "not a wekan user")
 		return
 	}
+
+	siret := c.Param("siret")
+
 	var adminToken Token
 	adminUsername := viper.GetString("wekanAdminUsername")
 	loadedToken, ok := tokens.Load(adminUsername)
@@ -196,7 +234,7 @@ func wekanGetCardHandler(c *gin.Context) {
 		log.Printf("existing admin token")
 	}
 	var userToken Token
-	loadedToken, ok = tokens.Load(username)
+	loadedToken, ok = tokens.Load(s.username)
 	if loadedToken != nil {
 		userToken = loadedToken.(Token)
 		ok = isValidToken(userToken)
@@ -217,7 +255,7 @@ func wekanGetCardHandler(c *gin.Context) {
 		userToken.Value = wekanCreateToken.AuthToken
 		now := time.Now()
 		userToken.CreationDate = now
-		tokens.Store(username, userToken)
+		tokens.Store(s.username, userToken)
 	} else {
 		log.Printf("existing user token")
 	}
@@ -226,11 +264,10 @@ func wekanGetCardHandler(c *gin.Context) {
 		log.Println(err.Error())
 		return
 	}
-	region := etsData.Region
-	board, ok := config.Boards[region]
-	if !ok {
-		c.JSON(500, "missing board in config file")
-		return
+
+	board := wekanConfig.Boards[etsData.Region]
+	if board == nil {
+		board = &WekanConfigBoard{}
 	}
 	boardID := board.BoardID
 	siretField := board.CustomFields.SiretField
@@ -256,7 +293,7 @@ func wekanGetCardHandler(c *gin.Context) {
 	listIndex := indexOf(card.ListID, lists)
 	wekanURL := viper.GetString("wekanURL")
 	cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
-	isMember := sliceContains(card.Members, userID)
+	isMember := contains(card.Members, userID)
 	cardData := map[string]interface{}{
 		"cardId":          cardID,
 		"listIndex":       listIndex,
@@ -267,22 +304,67 @@ func wekanGetCardHandler(c *gin.Context) {
 	c.JSON(200, cardData)
 }
 
+func wekanPartCard(userId string, siret string, boardIds []string) error {
+	query := bson.M{
+		"type":     "cardType-card",
+		"boardId":  bson.M{"$in": boardIds},
+		"archived": false,
+		"$expr": bson.M{
+			"$and": bson.A{
+				bson.M{"$in": bson.A{userId, "$members"}},
+				bson.M{"$in": bson.A{siret, "$customFields.value"}},
+			}}}
+
+	update := bson.M{
+		"$pull": bson.M{
+			"members": userId,
+		},
+	}
+	_, err := mgoDB.Collection("cards").UpdateOne(context.Background(), query, update)
+	return err
+}
+func wekanJoinCardHandler(c *gin.Context) {
+	var s session
+	s.bind(c)
+	cardId := c.Params.ByName("cardId")
+	userId, ok := wekanConfig.Users[s.username]
+
+	if !ok || !s.hasRole("wekan") {
+		c.AbortWithStatusJSON(403, "not a wekan user")
+		return
+	}
+	boardIds := wekanConfig.boardIdsForUser(s.username)
+	query := bson.M{
+		"_id":      cardId,
+		"boardId":  bson.M{"$in": boardIds},
+		"archived": false,
+		"$expr":    bson.M{"$not": bson.M{"$in": bson.A{userId, "$members"}}},
+	}
+	update := bson.M{
+		"$push": bson.M{
+			"members": userId,
+		},
+	}
+
+	_, err := mgoDB.Collection("cards").UpdateOne(
+		context.Background(),
+		query,
+		update,
+	)
+
+	if err != nil {
+		c.AbortWithStatusJSON(500, err.Error())
+		return
+	}
+	c.JSON(201, "suivi effectué")
+}
+
 func wekanNewCardHandler(c *gin.Context) {
 	siret := c.Param("siret")
-	configFile := viper.GetString("wekanConfigFile")
-	fileContent, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	var config WekanConfig
-	err = json.Unmarshal(fileContent, &config)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	username := c.GetString("username")
-	userID, ok := config.Users[username]
+	var s session
+	s.bind(c)
+
+	userID, ok := wekanConfig.Users[s.username]
 	if !ok {
 		c.JSON(403, "not a wekan user")
 		return
@@ -316,7 +398,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		log.Printf("existing admin token")
 	}
 	var userToken Token
-	loadedToken, ok = tokens.Load(username)
+	loadedToken, ok = tokens.Load(s.username)
 	if loadedToken != nil {
 		userToken = loadedToken.(Token)
 		ok = isValidToken(userToken)
@@ -337,7 +419,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		userToken.Value = wekanCreateToken.AuthToken
 		now := time.Now()
 		userToken.CreationDate = now
-		tokens.Store(username, userToken)
+		tokens.Store(s.username, userToken)
 	} else {
 		log.Printf("existing user token")
 	}
@@ -347,8 +429,8 @@ func wekanNewCardHandler(c *gin.Context) {
 		log.Println(err.Error())
 		return
 	}
-	region := etsData.Region
-	board, ok := config.Boards[region]
+
+	board := wekanConfig.Boards[etsData.Region]
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
@@ -654,92 +736,6 @@ func wekanImportHandler(c *gin.Context) {
 	}
 }
 
-func wekanGetListCardsHandler(c *gin.Context) {
-	configFile := viper.GetString("wekanConfigFile")
-	fileContent, err := ioutil.ReadFile(configFile)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	var config WekanConfig
-	err = json.Unmarshal(fileContent, &config)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	var adminToken Token
-	adminUsername := viper.GetString("wekanAdminUsername")
-	loadedToken, ok := tokens.Load(adminUsername)
-	if loadedToken != nil {
-		adminToken = loadedToken.(Token)
-		ok = isValidToken(adminToken)
-	}
-	if !ok {
-		log.Printf("no valid admin token")
-		adminPassword := viper.GetString("wekanAdminPassword")
-		body, err := adminLogin(adminUsername, adminPassword)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		wekanLogin := WekanLogin{}
-		err = json.Unmarshal(body, &wekanLogin)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		adminToken.Value = wekanLogin.Token
-		now := time.Now()
-		adminToken.CreationDate = now
-		tokens.Store(adminUsername, adminToken)
-	} else {
-		log.Printf("existing admin token")
-	}
-	region := "Auvergne-Rhône-Alpes"
-	board, ok := config.Boards[region]
-	if !ok {
-		c.JSON(500, "missing board in config file")
-		return
-	}
-	boardID := board.BoardID
-	var cardDataArray = []map[string]interface{}{}
-	for _, listID := range board.Lists[:4] {
-		log.Printf("listID=%s", listID)
-		body, err := getListCards(adminToken.Value, boardID, listID)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		var wekanGetCard WekanGetCard
-		err = json.Unmarshal(body, &wekanGetCard)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		if len(wekanGetCard) == 0 {
-			c.JSON(404, "card not found")
-			return
-		}
-		for _, card := range wekanGetCard {
-			cardID := card.ID
-			cardDescription := card.Description
-			lists := board.Lists
-			listIndex := indexOf(card.ListID, lists)
-			wekanURL := viper.GetString("wekanURL")
-			cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
-			cardData := map[string]interface{}{
-				"cardId":          cardID,
-				"listIndex":       listIndex,
-				"cardURL":         cardURL,
-				"cardDescription": cardDescription,
-			}
-			cardDataArray = append(cardDataArray, cardData)
-		}
-	}
-	log.Printf("cardDataArray=%d", len(cardDataArray))
-	c.JSON(200, "OK")
-}
-
 func adminLogin(username string, password string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
 	data := url.Values{}
@@ -783,7 +779,7 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-func getListCards(userToken string, boardID string, listID string) ([]byte, error) {
+/* func getListCards(userToken string, boardID string, listID string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
 	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards", nil)
 	if err != nil {
@@ -801,7 +797,7 @@ func getListCards(userToken string, boardID string, listID string) ([]byte, erro
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
-}
+} */
 
 func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
@@ -814,7 +810,8 @@ func getCard(userToken string, boardID string, siretField string, siret string) 
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("getCard: unexpected wekan API response")
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("getCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -839,7 +836,8 @@ func createCard(userToken string, boardID string, listID string, creationData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("createCard: unexpected wekan API response")
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("createCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -864,7 +862,8 @@ func editCard(userToken string, boardID string, listID string, cardID string, ed
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("editCard: unexpected wekan API response")
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("editCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -889,7 +888,8 @@ func commentCard(userToken string, boardID string, cardID string, commentData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		err = errors.New("commentCard: unexpected wekan API response")
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("commentCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -964,11 +964,396 @@ func formatFicheSFField(siret string) string {
 	return viper.GetString("webBaseURL") + "ets/" + siret
 }
 
-func sliceContains(slice[] string, s string) bool {
-	for _, e := range slice {
-	   if e == s {
-		  return true
-	   }
+func wekanConfigHandler(c *gin.Context) {
+	roles := scopeFromContext(c)
+	if contains(roles, "wekan") {
+		username := c.GetString("username")
+		c.JSON(200, wekanConfig.forUser(username))
+		return
 	}
-	return false
- }
+	c.AbortWithStatus(403)
+}
+
+func wekanReloadConfigHandler(c *gin.Context) {
+	var err error
+	wekanConfig, err = lookupWekanConfig()
+	if err != nil {
+		c.JSON(500, fmt.Sprintf("wekanReloadConfig: %s", err))
+		return
+	}
+	c.JSON(200, true)
+}
+
+// WekanCards est une liste de WekanCard
+type WekanCards []WekanCard
+
+// WekanCard embarque la sélection de champs Wekan nécessaires au traitement d'export
+type WekanCard struct {
+	ID           string    `bson:"_id"`
+	Title        string    `bson:"title"`
+	ListID       string    `bson:"listId"`
+	BoardId      string    `bson:"boardId"`
+	SwimlaneID   string    `bson:"swimlaneId"`
+	Members      []string  `bson:"members"`
+	Rank         float64   `bson:"sort"`
+	Description  string    `bson:"description"`
+	StartAt      time.Time `bson:"startAt"`
+	LabelIds     []string  `bson:"labelIds"`
+	CustomFields []struct {
+		ID    string `bson:"_id"`
+		Value string `bson:"value"`
+	}
+}
+
+func (cs WekanCards) Sirets() []string {
+	var sirets []string
+	for _, c := range cs {
+		siret, err := c.Siret()
+		if err != nil {
+			fmt.Printf("WekanCards.Sirets(): %s\n", err.Error())
+			continue
+		}
+		sirets = append(sirets, siret)
+	}
+	return sirets
+}
+
+func (c WekanCard) Siret() (string, error) {
+	board, ok := wekanConfig.BoardIds[c.BoardId]
+	if !ok {
+		return "", fmt.Errorf("WekanCard.Siret(), pas de board: %s", c.BoardId)
+	}
+	for _, field := range c.CustomFields {
+		if field.ID == board.CustomFields.SiretField {
+			return field.Value, nil
+		}
+	}
+	return "", fmt.Errorf("pas de propriété SIRET pour cette carte: %s", c.ID)
+}
+
+func (c WekanCard) Activite() (string, error) {
+	board, ok := wekanConfig.BoardIds[c.BoardId]
+	if !ok {
+		return "", fmt.Errorf("WekanCard.Activite(), pas de board: %s", c.BoardId)
+	}
+	for _, field := range c.CustomFields {
+		if field.ID == board.CustomFields.ActiviteField {
+			return field.Value, nil
+		}
+	}
+	return "", fmt.Errorf("WekanCard.Activite(), pas de propriété Activité pour cette carte: %s", c.ID)
+}
+
+func (c WekanCard) Effectif() (int, error) {
+	board, ok := wekanConfig.BoardIds[c.BoardId]
+	if !ok {
+		return -1, fmt.Errorf("WekanCard.Effectif(), pas de board: %s", c.BoardId)
+	}
+	for _, field := range c.CustomFields {
+		if field.ID == board.CustomFields.EffectifField.EffectifFieldID {
+			for k, v := range board.CustomFields.EffectifField.EffectifFieldItems {
+				if v == field.Value {
+					return k, nil
+				}
+			}
+		}
+	}
+	return -1, fmt.Errorf("WekanCard.Effectif(), pas de propriété Effectif pour cette carte: %s", c.ID)
+}
+
+func (c WekanCard) FicheSF() (string, error) {
+	board, ok := wekanConfig.BoardIds[c.BoardId]
+	if !ok {
+		return "", fmt.Errorf("pas de board: %s", c.BoardId)
+	}
+	for _, field := range c.CustomFields {
+		if field.ID == board.CustomFields.FicheSFField {
+			return field.Value, nil
+		}
+	}
+	return "", fmt.Errorf("pas de propriété FicheSF pour cette carte: %s", c.ID)
+}
+
+func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds []string) ([]*WekanCard, error) {
+	query := bson.M{
+		"type":     "cardType-card",
+		"archived": false,
+	}
+
+	if username != nil {
+		userID, ok := wekanConfig.Users[*username]
+		if !ok {
+			return nil, fmt.Errorf("selectWekanCards() -> utilisateur wekan inconnu: %s", *username)
+		}
+		query["$expr"] = bson.M{"$in": bson.A{userID, "$members"}}
+	}
+
+	if len(boardIds) > 0 { // rejet des ids non connus dans la configuration
+		var ids []string
+		for _, id := range boardIds {
+			if _, ok := wekanConfig.BoardIds[id]; ok {
+				ids = append(ids, id)
+			}
+		}
+		query["boardId"] = bson.M{"$in": ids}
+	} else { // limiter au périmètre des boards de la configuration
+		query["boardId"] = bson.M{"$in": wekanConfig.boardIds()}
+	}
+
+	if len(swimlaneIds) > 0 {
+		query["swimlaneId"] = bson.M{"$in": swimlaneIds}
+	}
+	if len(listIds) > 0 {
+		query["listId"] = bson.M{"$in": listIds}
+	}
+
+	// sélection des champs à retourner et tri
+	projection := bson.M{
+		"title":        1,
+		"listId":       1,
+		"boardId":      1,
+		"members":      1,
+		"swimlaneId":   1,
+		"customFields": 1,
+		"sort":         1,
+		"labelIds":     1,
+		"startAt":      1,
+		"description":  1,
+	}
+	options := options.Find().SetProjection(projection).SetSort(bson.M{"sort": 1})
+
+	cardsCursor, err := mgoDB.Collection("cards").Find(context.Background(), query, options)
+	if err != nil {
+		return nil, err
+	}
+	var wekanCards []*WekanCard
+	err = cardsCursor.All(context.Background(), &wekanCards)
+	if err != nil {
+		return nil, err
+	}
+	return wekanCards, nil
+}
+
+func lookupWekanConfig() (WekanConfig, error) {
+	cur, err := mgoDB.Collection("boards").Aggregate(context.Background(), buildWekanConfigPipeline())
+	if err != nil {
+		return WekanConfig{}, err
+	}
+	var wekanConfigs []WekanConfig
+	err = cur.All(context.Background(), &wekanConfigs)
+	if err != nil {
+		return WekanConfig{}, err
+	}
+	if len(wekanConfigs) != 1 {
+		return WekanConfig{}, nil
+	}
+	config := wekanConfigs[0]
+	config.Boards = make(map[string]*WekanConfigBoard)
+	config.BoardIds = make(map[string]*WekanConfigBoard)
+	for _, board := range config.Slugs {
+		config.BoardIds[board.BoardID] = board
+		if region, ok := viper.GetStringMapString("wekanRegions")[board.Slug]; ok {
+			config.Boards[region] = board
+		}
+	}
+	config.Regions = make(map[string]string)
+	for r, s := range viper.GetStringMapString("wekanRegions") {
+		config.Regions[s] = r
+	}
+	return config, nil
+}
+
+func buildWekanConfigPipeline() []bson.M {
+	matchTableaux := bson.M{
+		"$match": bson.M{
+			"slug": bson.M{
+				"$regex": primitive.Regex{
+					Pattern: "^tableau-crp.*",
+					Options: "i",
+				}}}}
+
+	lookupSwimlanes := bson.M{
+		"$lookup": bson.M{
+			"from": "swimlanes",
+			"let":  bson.M{"board": "$_id"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{
+					"$expr": bson.M{
+						"$eq": bson.A{"$boardId", "$$board"},
+					}}},
+				{"$project": bson.M{
+					"_id": 0,
+					"v":   "$_id",
+					"k":   bson.M{"$arrayElemAt": bson.A{bson.M{"$split": bson.A{"$title", " "}}, 0}},
+				}},
+			},
+			"as": "swimlanes",
+		},
+	}
+
+	formatSwimlanes := bson.M{
+		"$project": bson.M{
+			"_id":     0,
+			"boardId": "$_id",
+			"title":   "$title",
+			"slug":    "$slug",
+			"members": "$members.userId",
+			"swimlanes": bson.M{
+				"$arrayToObject": "$swimlanes",
+			}}}
+
+	lookupLists := bson.M{
+		"$lookup": bson.M{
+			"from": "lists",
+			"let":  bson.M{"board": "$boardId"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{
+					"$expr": bson.M{"$eq": bson.A{"$boardId", "$$board"}},
+				}},
+				{"$sort": bson.M{"order": 1}},
+				{"$project": bson.M{
+					"_id":   1,
+					"title": 1,
+				}}},
+			"as": "lists",
+		}}
+
+	lookupEffectifCustomField := bson.M{
+		"$lookup": bson.M{
+			"from": "customFields",
+			"let":  bson.M{"boardId": "$boardId"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"name": bson.M{"$eq": "Effectif"}}},
+				{"$unwind": "$boardIds"},
+				{"$match": bson.M{"$expr": bson.M{"$eq": bson.A{"$boardIds", "$$boardId"}}}},
+				{"$project": bson.M{
+					"_id": 0,
+					"effectifField": bson.M{
+						"effectifFieldId":    "$_id",
+						"effectifFieldItems": "$settings.dropdownItems._id",
+					}}},
+			},
+			"as": "effectifField",
+		}}
+
+	lookupSiretCustomField := bson.M{
+		"$lookup": bson.M{
+			"from": "customFields",
+			"let":  bson.M{"boardId": "$boardId"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"name": bson.M{"$eq": "SIRET"}}},
+				{"$unwind": "$boardIds"},
+				{"$match": bson.M{"$expr": bson.M{"$eq": bson.A{"$boardIds", "$$boardId"}}}},
+				{"$project": bson.M{"_id": 0, "siretField": "$_id"}},
+			},
+			"as": "siretField",
+		}}
+
+	lookupActiviteCustomField := bson.M{
+		"$lookup": bson.M{
+			"from": "customFields",
+			"let":  bson.M{"boardId": "$boardId"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"name": bson.M{"$eq": "Activité"}}},
+				{"$unwind": "$boardIds"},
+				{"$match": bson.M{"$expr": bson.M{"$eq": bson.A{"$boardIds", "$$boardId"}}}},
+				{"$project": bson.M{"_id": 0, "activiteField": "$_id"}},
+			},
+			"as": "activiteField",
+		}}
+
+	lookupFicheSFCustomField := bson.M{
+		"$lookup": bson.M{
+			"from": "customFields",
+			"let":  bson.M{"boardId": "$boardId"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"name": bson.M{"$eq": "Fiche Signaux Faibles"}}},
+				{"$unwind": "$boardIds"},
+				{"$match": bson.M{"$expr": bson.M{"$eq": bson.A{"$boardIds", "$$boardId"}}}},
+				{"$project": bson.M{"_id": 0, "ficheSFField": "$_id"}},
+			},
+			"as": "ficheSFField",
+		}}
+
+	lookupContactFieldCustomField := bson.M{
+		"$lookup": bson.M{
+			"from": "customFields",
+			"let":  bson.M{"boardId": "$boardId"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"name": bson.M{"$eq": "Contact"}}},
+				{"$unwind": "$boardIds"},
+				{"$match": bson.M{"$expr": bson.M{"$eq": bson.A{"$boardIds", "$$boardId"}}}},
+				{"$project": bson.M{"_id": 0, "contactField": "$_id"}},
+			},
+			"as": "contactField",
+		}}
+
+	buildBoardConfig := bson.M{
+		"$project": bson.M{
+			"k": "$slug",
+			"v": bson.M{
+				"boardId":   "$boardId",
+				"slug":      "$slug",
+				"title":     "$title",
+				"swimlanes": "$swimlanes",
+				"members":   "$members",
+				"customFields": bson.M{
+					"siretField":    bson.M{"$arrayElemAt": bson.A{"$siretField.siretField", 0}},
+					"contactField":  bson.M{"$arrayElemAt": bson.A{"$contactField.contactField", 0}},
+					"effectifField": bson.M{"$arrayElemAt": bson.A{"$effectifField.effectifField", 0}},
+					"ficheSFField":  bson.M{"$arrayElemAt": bson.A{"$ficheSFField.ficheSFField", 0}},
+					"activiteField": bson.M{"$arrayElemAt": bson.A{"$activiteField.activiteField", 0}},
+				},
+				"lists":       "$lists._id", // pour la retro compatibilité
+				"listDetails": "$lists",
+			}},
+	}
+
+	groupByBoard := bson.M{
+		"$group": bson.M{
+			"_id":    "",
+			"boards": bson.M{"$push": "$$ROOT"},
+		},
+	}
+
+	formatBoards := bson.M{
+		"$project": bson.M{
+			"_id":   0,
+			"slugs": bson.M{"$arrayToObject": "$boards"},
+		}}
+
+	lookupUsers := bson.M{
+		"$lookup": bson.M{
+			"from": "users",
+			"let":  bson.M{},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"username": bson.M{"$exists": true}}},
+				{"$project": bson.M{"_id": 0, "k": "$username", "v": "$_id"}},
+			},
+			"as": "users",
+		}}
+
+	formatUsers := bson.M{
+		"$project": bson.M{
+			"_id":   0,
+			"slugs": 1,
+			"users": bson.M{"$arrayToObject": "$users"},
+		}}
+
+	return []bson.M{
+		matchTableaux,
+		lookupSwimlanes,
+		formatSwimlanes,
+		lookupLists,
+		lookupEffectifCustomField,
+		lookupSiretCustomField,
+		lookupActiviteCustomField,
+		lookupFicheSFCustomField,
+		lookupContactFieldCustomField,
+		buildBoardConfig,
+		groupByBoard,
+		formatBoards,
+		lookupUsers,
+		formatUsers,
+	}
+}

@@ -19,8 +19,10 @@ rm -rf workspace
 
 echo "- arret conteneur"
 docker stop "$POSTGRES_CONTAINER" > /dev/null 2>&1
+docker stop "$MONGO_CONTAINER" > /dev/null 2>&1
 echo "- suppression conteneur"
 docker rm "$POSTGRES_CONTAINER" > /dev/null 2>&1
+docker rm "$MONGO_CONTAINER" > /dev/null 2>&1
 }
 
 trap cleanup EXIT
@@ -37,6 +39,11 @@ TEST_DATA="data/testData.sql.gz"
 POSTGRES_PASSWORD="test"
 POSTGRES_DOCKERPORT="65432"
 DATAPI_PORT="12345"
+MONGO_DOCKERPORT="12346"
+
+echo "- initialisation docker mongodb"
+MONGO_CONTAINER=$(docker run -p "$MONGO_DOCKERPORT":27017 -d mongo:4.0-xenial)
+echo "- conteneur créé: $MONGO_CONTAINER"
 
 echo "- initialisation docker postgres"
 POSTGRES_CONTAINER=$(docker run -e POSTGRES_PASSWORD="$POSTGRES_PASSWORD" -p "$POSTGRES_DOCKERPORT":5432 -d postgres:10-alpine)
@@ -53,7 +60,8 @@ zcat < "$TEST_DATA" | docker exec -i "$POSTGRES_CONTAINER" /usr/local/bin/psql -
 
 echo "- generation configuration de test"
 mkdir workspace 
-sed "s/changemypass/$POSTGRES_PASSWORD/" config.toml.source | sed "s/changemyport/$DATAPI_PORT/" | sed "s/changemypgport/$POSTGRES_DOCKERPORT/" > workspace/config.toml
+sed "s/changemypass/$POSTGRES_PASSWORD/" config.toml.source | sed "s/changemyport/$DATAPI_PORT/" | sed "s/changemypgport/$POSTGRES_DOCKERPORT/" | sed "s/changemymongoport/$MONGO_DOCKERPORT/" > workspace/config.toml
+
 
 cp ../datapi workspace
 cp -r ../migrations workspace

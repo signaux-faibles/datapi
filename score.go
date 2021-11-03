@@ -291,10 +291,15 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 	row.AddCell().Value = "siret"
 	row.AddCell().Value = "departement"
 	row.AddCell().Value = "raison_sociale"
-	row.AddCell().Value = "dernier_effectif"
+	row.AddCell().Value = "dernier_effectif_entreprise"
 	row.AddCell().Value = "code_activite"
 	row.AddCell().Value = "libelle_activite"
 	row.AddCell().Value = "alert"
+	row.AddCell().Value = "premiere_alerte"
+	row.AddCell().Value = "secteur_covid"
+	row.AddCell().Value = "chiffre_affaire"
+	row.AddCell().Value = "excedent_brut_exploitation"
+	row.AddCell().Value = "resultat_d_exploitation"
 
 	for _, score := range liste.Scores {
 		row := xlSheet.AddRow()
@@ -312,6 +317,33 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 			row.AddCell().Value = *score.LibelleActivite
 		}
 		row.AddCell().Value = *score.Alert
+		if *score.FirstAlert {
+			row.AddCell().Value = "oui"
+		} else {
+			row.AddCell().Value = "non"
+		}
+		row.AddCell().Value = *score.SecteurCovid
+		var ca string
+		if score.ChiffreAffaire != nil {
+			ca = fmt.Sprintf("%d k€", int(*score.ChiffreAffaire))
+		} else {
+			ca = "n/c"
+		}
+		var ebe string
+		if score.ExcedentBrutDExploitation != nil {
+			ebe = fmt.Sprintf("%d k€", int(*score.ExcedentBrutDExploitation))
+		} else {
+			ebe = "n/c"
+		}
+		var rex string
+		if score.ResultatExploitation != nil {
+			rex = fmt.Sprintf("%d k€", int(*score.ResultatExploitation))
+		} else {
+			rex = "n/c"
+		}
+		row.AddCell().Value = ca
+		row.AddCell().Value = ebe
+		row.AddCell().Value = rex
 	}
 
 	sheetParams, _ := xlFile.AddSheet("parameters")
