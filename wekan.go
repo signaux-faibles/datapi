@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -40,6 +41,7 @@ type WekanConfigBoard struct {
 	CustomFields struct {
 		SiretField    string `bson:"siretField" json:"siretField"`
 		ActiviteField string `bson:"activiteField" json:"activiteField"`
+		ContactField  string `bson:"contactField" json:"contactField"`
 		EffectifField struct {
 			EffectifFieldID    string   `bson:"effectifFieldId" json:"effectifFieldId"`
 			EffectifFieldItems []string `bson:"effectifFieldItems" json:"effectifFieldItems"`
@@ -154,9 +156,10 @@ type WekanCreateToken struct {
 
 // WekanGetCard type pour les réponses du service de recherche de carte
 type WekanGetCard []struct {
-	ID          string `json:"_id"`
-	ListID      string `json:"listId"`
-	Description string `json:"description"`
+	ID          string   `json:"_id"`
+	ListID      string   `json:"listId"`
+	Description string   `json:"description"`
+	Members     []string `json:"members"`
 }
 
 // WekanCreateCard type pour les réponses du service de création de carte
@@ -290,11 +293,13 @@ func wekanGetCardHandler(c *gin.Context) {
 	listIndex := indexOf(card.ListID, lists)
 	wekanURL := viper.GetString("wekanURL")
 	cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
+	isMember := contains(card.Members, userID)
 	cardData := map[string]interface{}{
 		"cardId":          cardID,
 		"listIndex":       listIndex,
 		"cardURL":         cardURL,
 		"cardDescription": cardDescription,
+		"isMember":        isMember,
 	}
 	c.JSON(200, cardData)
 }
@@ -484,10 +489,15 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 	if activite != "" {
 		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
+	} else {
+		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, ""})
 	}
-	if effectifIndex > 0 {
+	if effectifIndex >= 0 {
 		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
+	} else {
+		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, ""})
 	}
+	customFields = append(customFields, CustomField{board.CustomFields.ContactField, ""})
 	now := time.Now()
 	var editionData = map[string]interface{}{
 		"customFields": customFields,
@@ -692,12 +702,15 @@ func wekanImportHandler(c *gin.Context) {
 			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
 		} else {
 			log.Printf("unknown activite")
+			customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, ""})
 		}
-		if effectifIndex > 0 {
+		if effectifIndex >= 0 {
 			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
 		} else {
 			log.Printf("unknown effectif class")
+			customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, ""})
 		}
+		customFields = append(customFields, CustomField{board.CustomFields.ContactField, ""})
 		now := time.Now()
 		var editionData = map[string]interface{}{
 			"customFields": customFields,
@@ -736,6 +749,9 @@ func adminLogin(username string, password string) ([]byte, error) {
 	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("adminLogin: unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -753,12 +769,35 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 	req.Header.Add("Authorization", "Bearer "+adminToken)
 	client := &http.Client{}
 	resp, err := client.Do(req)
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("createToken: unexpected wekan API response")
+	}
 	if err != nil {
 		return nil, err
 	}
 	defer resp.Body.Close()
 	return ioutil.ReadAll(resp.Body)
 }
+
+/* func getListCards(userToken string, boardID string, listID string) ([]byte, error) {
+	wekanURL := viper.GetString("wekanURL")
+	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards", nil)
+	if err != nil {
+		return nil, err
+	}
+	req.Header.Add("Accept", "application/json")
+	req.Header.Add("Authorization", "Bearer "+userToken)
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if resp.StatusCode != http.StatusOK {
+		err = errors.New("getListCards: unexpected wekan API response")
+	}
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+	return ioutil.ReadAll(resp.Body)
+} */
 
 func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
@@ -772,7 +811,7 @@ func getCard(userToken string, boardID string, siretField string, siret string) 
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
 		body, _ := ioutil.ReadAll(resp.Body)
-		err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
+		err = fmt.Errorf("getCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -797,10 +836,8 @@ func createCard(userToken string, boardID string, listID string, creationData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode != http.StatusOK {
-			body, _ := ioutil.ReadAll(resp.Body)
-			err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
-		}
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("createCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -825,10 +862,8 @@ func editCard(userToken string, boardID string, listID string, cardID string, ed
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode != http.StatusOK {
-			body, _ := ioutil.ReadAll(resp.Body)
-			err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
-		}
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("editCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -853,10 +888,8 @@ func commentCard(userToken string, boardID string, cardID string, commentData ma
 	client := &http.Client{}
 	resp, err := client.Do(req)
 	if resp.StatusCode != http.StatusOK {
-		if resp.StatusCode != http.StatusOK {
-			body, _ := ioutil.ReadAll(resp.Body)
-			err = fmt.Errorf("unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
-		}
+		body, _ := ioutil.ReadAll(resp.Body)
+		err = fmt.Errorf("commentCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
 	}
 	if err != nil {
 		return nil, err
@@ -1242,6 +1275,19 @@ func buildWekanConfigPipeline() []bson.M {
 			"as": "ficheSFField",
 		}}
 
+	lookupContactFieldCustomField := bson.M{
+		"$lookup": bson.M{
+			"from": "customFields",
+			"let":  bson.M{"boardId": "$boardId"},
+			"pipeline": []bson.M{
+				{"$match": bson.M{"name": bson.M{"$eq": "Contact"}}},
+				{"$unwind": "$boardIds"},
+				{"$match": bson.M{"$expr": bson.M{"$eq": bson.A{"$boardIds", "$$boardId"}}}},
+				{"$project": bson.M{"_id": 0, "contactField": "$_id"}},
+			},
+			"as": "contactField",
+		}}
+
 	buildBoardConfig := bson.M{
 		"$project": bson.M{
 			"k": "$slug",
@@ -1253,6 +1299,7 @@ func buildWekanConfigPipeline() []bson.M {
 				"members":   "$members",
 				"customFields": bson.M{
 					"siretField":    bson.M{"$arrayElemAt": bson.A{"$siretField.siretField", 0}},
+					"contactField":  bson.M{"$arrayElemAt": bson.A{"$contactField.contactField", 0}},
 					"effectifField": bson.M{"$arrayElemAt": bson.A{"$effectifField.effectifField", 0}},
 					"ficheSFField":  bson.M{"$arrayElemAt": bson.A{"$ficheSFField.ficheSFField", 0}},
 					"activiteField": bson.M{"$arrayElemAt": bson.A{"$activiteField.activiteField", 0}},
@@ -1302,6 +1349,7 @@ func buildWekanConfigPipeline() []bson.M {
 		lookupSiretCustomField,
 		lookupActiviteCustomField,
 		lookupFicheSFCustomField,
+		lookupContactFieldCustomField,
 		buildBoardConfig,
 		groupByBoard,
 		formatBoards,
