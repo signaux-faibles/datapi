@@ -92,8 +92,8 @@ func unfollowEtablissement(c *gin.Context) {
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
 	}
-
-	if userId, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && ok {
+	userId := wekanConfig.userId(s.username)
+	if userId != "" && s.hasRole("wekan") {
 		boardIds := wekanConfig.boardIdsForUser(s.username)
 		err := wekanPartCard(userId, siret, boardIds)
 		if err != nil {
@@ -261,8 +261,8 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 	var sirets []string
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
-	userId := wekanConfig.Users[s.username]
-	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
+	userId := wekanConfig.userId(s.username)
+	if userId != "" && s.hasRole("wekan") && params.Type != "no-card" {
 		var username *string
 		if params.Type == "my-cards" {
 			username = &s.username

@@ -28,11 +28,7 @@ func main() {
 	loadConfig()
 	db = connectDB()
 	mgoDB = connectWekanDB()
-	var err error
-	if wekanConfig, err = lookupWekanConfig(); err != nil {
-		panic(fmt.Sprintf("Erreur à l'initialisation WekanConfig: %s", err.Error()))
-	}
-
+	go wekanConfigLoader()
 	keycloak = connectKC()
 	runAPI()
 }

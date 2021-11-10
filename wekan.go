@@ -57,9 +57,11 @@ type WekanConfig struct {
 	Users    map[string]string            `bson:"users,omitempty" json:"users,omitempty"`
 	BoardIds map[string]*WekanConfigBoard `json:"-"`
 	Regions  map[string]string            `json:"regions"`
+	mu       *sync.Mutex                  `json:"-"`
 }
 
 func (wc WekanConfig) forUser(username string) WekanConfig {
+	wc.mu.Lock()
 	userId, ok := wc.Users[username]
 	if !ok {
 		return WekanConfig{}
@@ -73,10 +75,19 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 			userWc.Boards[board] = configBoard
 		}
 	}
+	wc.mu.Unlock()
 	return userWc
 }
 
+func (wc WekanConfig) userId(username string) string {
+	wc.mu.Lock()
+	userId := wc.Users[username]
+	wc.mu.Unlock()
+	return userId
+}
+
 func (wc WekanConfig) boardIdsForUser(username string) []string {
+	wc.mu.Lock()
 	if userId, ok := wc.Users[username]; ok {
 		var boards []string
 		for _, board := range wekanConfig.Boards {
@@ -86,10 +97,12 @@ func (wc WekanConfig) boardIdsForUser(username string) []string {
 		}
 		return boards
 	}
+	wc.mu.Unlock()
 	return nil
 }
 
 func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
+	wc.mu.Lock()
 	var swimlaneIds []string
 	for _, board := range wc.Boards {
 		for k, s := range board.Swimlanes {
@@ -98,10 +111,12 @@ func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
 			}
 		}
 	}
+	wc.mu.Unlock()
 	return swimlaneIds
 }
 
 func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
+	wc.mu.Lock()
 	var listIds []string
 	for _, board := range wc.Boards {
 		for _, s := range board.ListDetails {
@@ -110,19 +125,17 @@ func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 			}
 		}
 	}
+	wc.mu.Unlock()
 	return listIds
 }
 
-// func (wc *WekanConfig) load() error {
-// 	configFile := viper.GetString("wekanConfigFile")
-// 	return wc.loadFile(configFile)
-// }
-
 func (wc WekanConfig) boardIds() []string {
+	wc.mu.Lock()
 	var ids []string
 	for _, board := range wc.Boards {
 		ids = append(ids, board.BoardID)
 	}
+	wc.mu.Unlock()
 	return ids
 }
 
@@ -197,8 +210,8 @@ var tokens sync.Map
 func wekanGetCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
-	userID, ok := wekanConfig.Users[s.username]
-	if !ok {
+	userID := wekanConfig.userId(s.username)
+	if userID == "" {
 		c.JSON(403, "not a wekan user")
 		return
 	}
@@ -265,10 +278,14 @@ func wekanGetCardHandler(c *gin.Context) {
 		return
 	}
 
+	wekanConfig.mu.Lock()
 	board := wekanConfig.Boards[etsData.Region]
+	wekanConfig.mu.Unlock()
+
 	if board == nil {
 		board = &WekanConfigBoard{}
 	}
+
 	boardID := board.BoardID
 	siretField := board.CustomFields.SiretField
 	body, err := getCard(userToken.Value, boardID, siretField, siret)
@@ -327,9 +344,9 @@ func wekanJoinCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
 	cardId := c.Params.ByName("cardId")
-	userId, ok := wekanConfig.Users[s.username]
+	userId := wekanConfig.userId(s.username)
 
-	if !ok || !s.hasRole("wekan") {
+	if userId == "" || !s.hasRole("wekan") {
 		c.AbortWithStatusJSON(403, "not a wekan user")
 		return
 	}
@@ -364,8 +381,8 @@ func wekanNewCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
 
-	userID, ok := wekanConfig.Users[s.username]
-	if !ok {
+	userId := wekanConfig.userId(s.username)
+	if userId == "" {
 		c.JSON(403, "not a wekan user")
 		return
 	}
@@ -405,7 +422,7 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 	if !ok {
 		log.Printf("no valid user token")
-		body, err := createToken(userID, adminToken.Value)
+		body, err := createToken(userId, adminToken.Value)
 		if err != nil {
 			c.JSON(500, err.Error())
 			return
@@ -430,7 +447,9 @@ func wekanNewCardHandler(c *gin.Context) {
 		return
 	}
 
+	wekanConfig.mu.Lock()
 	board := wekanConfig.Boards[etsData.Region]
+	wekanConfig.mu.Unlock()
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
@@ -450,8 +469,8 @@ func wekanNewCardHandler(c *gin.Context) {
 	// new card
 	title := etsData.RaisonSociale
 	creationData := map[string]interface{}{
-		"authorId":   userID,
-		"members":    [1]string{userID},
+		"authorId":   userId,
+		"members":    [1]string{userId},
 		"title":      title,
 		"swimlaneId": swimlaneID,
 	}
@@ -1019,6 +1038,7 @@ func (cs WekanCards) Sirets() []string {
 }
 
 func (c WekanCard) Siret() (string, error) {
+	wekanConfig.mu.Lock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("WekanCard.Siret(), pas de board: %s", c.BoardId)
@@ -1028,10 +1048,12 @@ func (c WekanCard) Siret() (string, error) {
 			return field.Value, nil
 		}
 	}
+	wekanConfig.mu.Unlock()
 	return "", fmt.Errorf("pas de propriété SIRET pour cette carte: %s", c.ID)
 }
 
 func (c WekanCard) Activite() (string, error) {
+	wekanConfig.mu.Lock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("WekanCard.Activite(), pas de board: %s", c.BoardId)
@@ -1041,10 +1063,12 @@ func (c WekanCard) Activite() (string, error) {
 			return field.Value, nil
 		}
 	}
+	wekanConfig.mu.Unlock()
 	return "", fmt.Errorf("WekanCard.Activite(), pas de propriété Activité pour cette carte: %s", c.ID)
 }
 
 func (c WekanCard) Effectif() (int, error) {
+	wekanConfig.mu.Lock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return -1, fmt.Errorf("WekanCard.Effectif(), pas de board: %s", c.BoardId)
@@ -1058,10 +1082,12 @@ func (c WekanCard) Effectif() (int, error) {
 			}
 		}
 	}
+	wekanConfig.mu.Unlock()
 	return -1, fmt.Errorf("WekanCard.Effectif(), pas de propriété Effectif pour cette carte: %s", c.ID)
 }
 
 func (c WekanCard) FicheSF() (string, error) {
+	wekanConfig.mu.Lock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("pas de board: %s", c.BoardId)
@@ -1071,6 +1097,7 @@ func (c WekanCard) FicheSF() (string, error) {
 			return field.Value, nil
 		}
 	}
+	wekanConfig.mu.Unlock()
 	return "", fmt.Errorf("pas de propriété FicheSF pour cette carte: %s", c.ID)
 }
 
@@ -1081,8 +1108,8 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	}
 
 	if username != nil {
-		userID, ok := wekanConfig.Users[*username]
-		if !ok {
+		userID := wekanConfig.userId(*username)
+		if userID == "" {
 			return nil, fmt.Errorf("selectWekanCards() -> utilisateur wekan inconnu: %s", *username)
 		}
 		query["$expr"] = bson.M{"$in": bson.A{userID, "$members"}}
@@ -1091,9 +1118,11 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	if len(boardIds) > 0 { // rejet des ids non connus dans la configuration
 		var ids []string
 		for _, id := range boardIds {
+			wekanConfig.mu.Lock()
 			if _, ok := wekanConfig.BoardIds[id]; ok {
 				ids = append(ids, id)
 			}
+			wekanConfig.mu.Unlock()
 		}
 		query["boardId"] = bson.M{"$in": ids}
 	} else { // limiter au périmètre des boards de la configuration
@@ -1355,5 +1384,26 @@ func buildWekanConfigPipeline() []bson.M {
 		formatBoards,
 		lookupUsers,
 		formatUsers,
+	}
+}
+
+func wekanConfigLoader() {
+	if wekanConfig.mu == nil {
+		wekanConfig.mu = &sync.Mutex{}
+	}
+	for {
+		wc, err := lookupWekanConfig()
+		if err != nil {
+			log.Printf("wekanConfigLoader() -> problem loading config: %s", err.Error())
+		} else {
+			wekanConfig.mu.Lock()
+			wekanConfig.BoardIds = wc.BoardIds
+			wekanConfig.Boards = wc.Boards
+			wekanConfig.Regions = wc.Regions
+			wekanConfig.Slugs = wc.Slugs
+			wekanConfig.Users = wc.Users
+			wekanConfig.mu.Unlock()
+		}
+		time.Sleep(time.Minute)
 	}
 }
