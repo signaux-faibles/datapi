@@ -202,7 +202,12 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 		}
 		cursor.Close()
 		for _, s := range exports {
-			cardsMap[s.Siret].dbExport = s
+			card := cardsMap[s.Siret]
+			if card == nil {
+				card = &Card{}
+			}
+			card.dbExport = s
+			cardsMap[s.Siret] = card
 		}
 	} else {
 		boardIds := wcu.boardIds()
