@@ -1387,23 +1387,30 @@ func buildWekanConfigPipeline() []bson.M {
 	}
 }
 
-func wekanConfigLoader() {
+func loadWekanConfig() WekanConfig {
 	if wekanConfig.mu == nil {
 		wekanConfig.mu = &sync.Mutex{}
 	}
-	for {
-		wc, err := lookupWekanConfig()
-		if err != nil {
-			log.Printf("wekanConfigLoader() -> problem loading config: %s", err.Error())
-		} else {
-			wekanConfig.mu.Lock()
-			wekanConfig.BoardIds = wc.BoardIds
-			wekanConfig.Boards = wc.Boards
-			wekanConfig.Regions = wc.Regions
-			wekanConfig.Slugs = wc.Slugs
-			wekanConfig.Users = wc.Users
-			wekanConfig.mu.Unlock()
-		}
-		time.Sleep(time.Minute)
+	wc, err := lookupWekanConfig()
+	if err != nil {
+		log.Printf("wekanConfigLoader() -> problem loading config: %s", err.Error())
+	} else {
+		wekanConfig.mu.Lock()
+		wekanConfig.BoardIds = wc.BoardIds
+		wekanConfig.Boards = wc.Boards
+		wekanConfig.Regions = wc.Regions
+		wekanConfig.Slugs = wc.Slugs
+		wekanConfig.Users = wc.Users
+		wekanConfig.mu.Unlock()
 	}
+	return wekanConfig
+}
+
+func watchWekanConfig(period time.Duration) {
+	go func() {
+		for {
+			loadWekanConfig()
+			time.Sleep(period)
+		}
+	}()
 }

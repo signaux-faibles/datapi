@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"time"
 
 	gocloak "github.com/Nerzal/gocloak/v6"
 	"github.com/gin-contrib/cors"
@@ -28,7 +29,8 @@ func main() {
 	loadConfig()
 	db = connectDB()
 	mgoDB = connectWekanDB()
-	go wekanConfigLoader()
+	wekanConfig = loadWekanConfig()
+	go watchWekanConfig(time.Minute)
 	keycloak = connectKC()
 	runAPI()
 }
