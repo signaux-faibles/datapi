@@ -153,8 +153,8 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 	var sirets []string
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
-	userId := wekanConfig.userId(s.username)
-	if userId != "" && s.hasRole("wekan") && params.Type != "no-card" {
+	userId := wekanConfig.Users[s.username]
+	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && siret == nil && ok {
 		var username *string
 		if params.Type == "my-cards" {
 			username = &s.username
@@ -202,21 +202,32 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 		}
 		cursor.Close()
 		for _, s := range exports {
-			cardsMap[s.Siret].dbExport = s
+			card := cardsMap[s.Siret]
+			if card == nil {
+				card = &Card{}
+			}
+			card.dbExport = s
+			cardsMap[s.Siret] = card
 		}
 	} else {
 		boardIds := wcu.boardIds()
-		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil)
-		if err != nil {
-			return nil, err
+		var wekanCards []*WekanCard
+		var err error
+
+		if s.hasRole("wekan") {
+			wekanCards, err = selectWekanCards(&s.username, boardIds, nil, nil, nil)
+			if err != nil {
+				return nil, err
+			}
 		}
+
 		var excludeSirets = make(map[string]struct{})
 		for _, w := range wekanCards {
-			siret, err := w.Siret()
-			if err != nil {
-				continue
-			}
-			if s.hasRole("wekan") {
+			if s.hasRole("wekan") && siret == nil {
+				siret, err := w.Siret()
+				if err != nil {
+					continue
+				}
 				excludeSirets[siret] = struct{}{}
 			}
 		}
