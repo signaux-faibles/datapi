@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	gocloak "github.com/Nerzal/gocloak/v6"
-	jwt "github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
+	jwt "github.com/golang-jwt/jwt"
 	"github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
 )
