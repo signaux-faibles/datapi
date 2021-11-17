@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"sync"
 	"testing"
 	"time"
 
@@ -31,15 +32,9 @@ func loadFollowExportsFromFile(exports *dbExports, path string) error {
 	return err
 }
 
-// func loadWekanConfig(path string) WekanConfig {
-// 	var wc WekanConfig
-// 	file, _ := ioutil.ReadFile(path)
-// 	json.Unmarshal(file, &wc)
-// 	return wc
-// }
-
 func readTestData() (Cards, error) {
 	var wekanCards WekanCards
+	wekanConfig.mu = &sync.Mutex{}
 	err := loadCardsFromFile(&wekanCards, "test/wekan/cards.json")
 	if err != nil {
 		return nil, errors.New("can't read wekan cards")

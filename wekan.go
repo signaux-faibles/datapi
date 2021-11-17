@@ -57,10 +57,12 @@ type WekanConfig struct {
 	Users    map[string]string            `bson:"users,omitempty" json:"users,omitempty"`
 	BoardIds map[string]*WekanConfigBoard `json:"-"`
 	Regions  map[string]string            `json:"regions"`
+	mu       *sync.Mutex                  `json:"-"`
 }
 
 func (wc WekanConfig) forUser(username string) WekanConfig {
-	userId, ok := wc.Users[username]
+	wc.mu.Lock()
+	userID, ok := wc.Users[username]
 	if !ok {
 		return WekanConfig{}
 	}
@@ -69,18 +71,29 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 	userWc.Boards = make(map[string]*WekanConfigBoard)
 
 	for board, configBoard := range wc.Boards {
-		if contains(configBoard.Members, userId) {
+		if contains(configBoard.Members, userID) {
 			userWc.Boards[board] = configBoard
 		}
 	}
+	wc.mu.Unlock()
 	return userWc
 }
 
+func (wc WekanConfig) userID(username string) string {
+	wc.mu.Lock()
+	userID := wc.Users[username]
+	wc.mu.Unlock()
+	return userID
+}
+
 func (wc WekanConfig) boardIdsForUser(username string) []string {
-	if userId, ok := wc.Users[username]; ok {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
+	if userID, ok := wc.Users[username]; ok {
 		var boards []string
 		for _, board := range wekanConfig.Boards {
-			if contains(board.Members, userId) {
+			if contains(board.Members, userID) {
 				boards = append(boards, board.BoardID)
 			}
 		}
@@ -90,6 +103,7 @@ func (wc WekanConfig) boardIdsForUser(username string) []string {
 }
 
 func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
+	wc.mu.Lock()
 	var swimlaneIds []string
 	for _, board := range wc.Boards {
 		for k, s := range board.Swimlanes {
@@ -98,10 +112,14 @@ func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
 			}
 		}
 	}
+	wc.mu.Unlock()
 	return swimlaneIds
 }
 
 func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
 	var listIds []string
 	for _, board := range wc.Boards {
 		for _, s := range board.ListDetails {
@@ -113,16 +131,13 @@ func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 	return listIds
 }
 
-// func (wc *WekanConfig) load() error {
-// 	configFile := viper.GetString("wekanConfigFile")
-// 	return wc.loadFile(configFile)
-// }
-
 func (wc WekanConfig) boardIds() []string {
+	wc.mu.Lock()
 	var ids []string
 	for _, board := range wc.Boards {
 		ids = append(ids, board.BoardID)
 	}
+	wc.mu.Unlock()
 	return ids
 }
 
@@ -197,8 +212,8 @@ var tokens sync.Map
 func wekanGetCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
-	userID, ok := wekanConfig.Users[s.username]
-	if !ok {
+	userID := wekanConfig.userID(s.username)
+	if userID == "" {
 		c.JSON(403, "not a wekan user")
 		return
 	}
@@ -265,10 +280,14 @@ func wekanGetCardHandler(c *gin.Context) {
 		return
 	}
 
+	wekanConfig.mu.Lock()
 	board := wekanConfig.Boards[etsData.Region]
+	wekanConfig.mu.Unlock()
+
 	if board == nil {
 		board = &WekanConfigBoard{}
 	}
+
 	boardID := board.BoardID
 	siretField := board.CustomFields.SiretField
 	body, err := getCard(userToken.Value, boardID, siretField, siret)
@@ -304,20 +323,20 @@ func wekanGetCardHandler(c *gin.Context) {
 	c.JSON(200, cardData)
 }
 
-func wekanPartCard(userId string, siret string, boardIds []string) error {
+func wekanPartCard(userID string, siret string, boardIds []string) error {
 	query := bson.M{
 		"type":     "cardType-card",
 		"boardId":  bson.M{"$in": boardIds},
 		"archived": false,
 		"$expr": bson.M{
 			"$and": bson.A{
-				bson.M{"$in": bson.A{userId, "$members"}},
+				bson.M{"$in": bson.A{userID, "$members"}},
 				bson.M{"$in": bson.A{siret, "$customFields.value"}},
 			}}}
 
 	update := bson.M{
 		"$pull": bson.M{
-			"members": userId,
+			"members": userID,
 		},
 	}
 	_, err := mgoDB.Collection("cards").UpdateOne(context.Background(), query, update)
@@ -327,9 +346,9 @@ func wekanJoinCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
 	cardId := c.Params.ByName("cardId")
-	userId, ok := wekanConfig.Users[s.username]
+	userID := wekanConfig.userID(s.username)
 
-	if !ok || !s.hasRole("wekan") {
+	if userID == "" || !s.hasRole("wekan") {
 		c.AbortWithStatusJSON(403, "not a wekan user")
 		return
 	}
@@ -338,11 +357,11 @@ func wekanJoinCardHandler(c *gin.Context) {
 		"_id":      cardId,
 		"boardId":  bson.M{"$in": boardIds},
 		"archived": false,
-		"$expr":    bson.M{"$not": bson.M{"$in": bson.A{userId, "$members"}}},
+		"$expr":    bson.M{"$not": bson.M{"$in": bson.A{userID, "$members"}}},
 	}
 	update := bson.M{
 		"$push": bson.M{
-			"members": userId,
+			"members": userID,
 		},
 	}
 
@@ -364,8 +383,8 @@ func wekanNewCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
 
-	userID, ok := wekanConfig.Users[s.username]
-	if !ok {
+	userID := wekanConfig.userID(s.username)
+	if userID == "" {
 		c.JSON(403, "not a wekan user")
 		return
 	}
@@ -430,7 +449,9 @@ func wekanNewCardHandler(c *gin.Context) {
 		return
 	}
 
+	wekanConfig.mu.Lock()
 	board := wekanConfig.Boards[etsData.Region]
+	wekanConfig.mu.Unlock()
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
@@ -1019,6 +1040,8 @@ func (cs WekanCards) Sirets() []string {
 }
 
 func (c WekanCard) Siret() (string, error) {
+	wekanConfig.mu.Lock()
+	defer wekanConfig.mu.Unlock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("WekanCard.Siret(), pas de board: %s", c.BoardId)
@@ -1032,6 +1055,8 @@ func (c WekanCard) Siret() (string, error) {
 }
 
 func (c WekanCard) Activite() (string, error) {
+	wekanConfig.mu.Lock()
+	defer wekanConfig.mu.Unlock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("WekanCard.Activite(), pas de board: %s", c.BoardId)
@@ -1045,7 +1070,10 @@ func (c WekanCard) Activite() (string, error) {
 }
 
 func (c WekanCard) Effectif() (int, error) {
+	wekanConfig.mu.Lock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
+	defer wekanConfig.mu.Unlock()
+
 	if !ok {
 		return -1, fmt.Errorf("WekanCard.Effectif(), pas de board: %s", c.BoardId)
 	}
@@ -1062,6 +1090,9 @@ func (c WekanCard) Effectif() (int, error) {
 }
 
 func (c WekanCard) FicheSF() (string, error) {
+	wekanConfig.mu.Lock()
+	defer wekanConfig.mu.Unlock()
+
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("pas de board: %s", c.BoardId)
@@ -1081,8 +1112,8 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	}
 
 	if username != nil {
-		userID, ok := wekanConfig.Users[*username]
-		if !ok {
+		userID := wekanConfig.userID(*username)
+		if userID == "" {
 			return nil, fmt.Errorf("selectWekanCards() -> utilisateur wekan inconnu: %s", *username)
 		}
 		query["$expr"] = bson.M{"$in": bson.A{userID, "$members"}}
@@ -1091,9 +1122,11 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	if len(boardIds) > 0 { // rejet des ids non connus dans la configuration
 		var ids []string
 		for _, id := range boardIds {
+			wekanConfig.mu.Lock()
 			if _, ok := wekanConfig.BoardIds[id]; ok {
 				ids = append(ids, id)
 			}
+			wekanConfig.mu.Unlock()
 		}
 		query["boardId"] = bson.M{"$in": ids}
 	} else { // limiter au périmètre des boards de la configuration
@@ -1197,7 +1230,7 @@ func buildWekanConfigPipeline() []bson.M {
 			"boardId": "$_id",
 			"title":   "$title",
 			"slug":    "$slug",
-			"members": "$members.userId",
+			"members": "$members.userID",
 			"swimlanes": bson.M{
 				"$arrayToObject": "$swimlanes",
 			}}}
@@ -1356,4 +1389,32 @@ func buildWekanConfigPipeline() []bson.M {
 		lookupUsers,
 		formatUsers,
 	}
+}
+
+func loadWekanConfig() WekanConfig {
+	if wekanConfig.mu == nil {
+		wekanConfig.mu = &sync.Mutex{}
+	}
+	wc, err := lookupWekanConfig()
+	if err != nil {
+		log.Printf("wekanConfigLoader() -> problem loading config: %s", err.Error())
+	} else {
+		wekanConfig.mu.Lock()
+		wekanConfig.BoardIds = wc.BoardIds
+		wekanConfig.Boards = wc.Boards
+		wekanConfig.Regions = wc.Regions
+		wekanConfig.Slugs = wc.Slugs
+		wekanConfig.Users = wc.Users
+		wekanConfig.mu.Unlock()
+	}
+	return wekanConfig
+}
+
+func watchWekanConfig(period time.Duration) {
+	go func() {
+		for {
+			loadWekanConfig()
+			time.Sleep(period)
+		}
+	}()
 }

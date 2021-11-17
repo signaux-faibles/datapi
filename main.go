@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"time"
 
 	gocloak "github.com/Nerzal/gocloak/v6"
 	"github.com/gin-contrib/cors"
@@ -28,11 +29,8 @@ func main() {
 	loadConfig()
 	db = connectDB()
 	mgoDB = connectWekanDB()
-	var err error
-	if wekanConfig, err = lookupWekanConfig(); err != nil {
-		panic(fmt.Sprintf("Erreur à l'initialisation WekanConfig: %s", err.Error()))
-	}
-
+	wekanConfig = loadWekanConfig()
+	go watchWekanConfig(time.Minute)
 	keycloak = connectKC()
 	runAPI()
 }
