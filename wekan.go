@@ -88,6 +88,8 @@ func (wc WekanConfig) userId(username string) string {
 
 func (wc WekanConfig) boardIdsForUser(username string) []string {
 	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
 	if userId, ok := wc.Users[username]; ok {
 		var boards []string
 		for _, board := range wekanConfig.Boards {
@@ -97,7 +99,6 @@ func (wc WekanConfig) boardIdsForUser(username string) []string {
 		}
 		return boards
 	}
-	wc.mu.Unlock()
 	return nil
 }
 
@@ -117,6 +118,8 @@ func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
 
 func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
 	var listIds []string
 	for _, board := range wc.Boards {
 		for _, s := range board.ListDetails {
@@ -125,7 +128,6 @@ func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 			}
 		}
 	}
-	wc.mu.Unlock()
 	return listIds
 }
 
@@ -1039,6 +1041,7 @@ func (cs WekanCards) Sirets() []string {
 
 func (c WekanCard) Siret() (string, error) {
 	wekanConfig.mu.Lock()
+	defer wekanConfig.mu.Unlock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("WekanCard.Siret(), pas de board: %s", c.BoardId)
@@ -1048,12 +1051,12 @@ func (c WekanCard) Siret() (string, error) {
 			return field.Value, nil
 		}
 	}
-	wekanConfig.mu.Unlock()
 	return "", fmt.Errorf("pas de propriété SIRET pour cette carte: %s", c.ID)
 }
 
 func (c WekanCard) Activite() (string, error) {
 	wekanConfig.mu.Lock()
+	defer wekanConfig.mu.Unlock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("WekanCard.Activite(), pas de board: %s", c.BoardId)
@@ -1063,13 +1066,14 @@ func (c WekanCard) Activite() (string, error) {
 			return field.Value, nil
 		}
 	}
-	wekanConfig.mu.Unlock()
 	return "", fmt.Errorf("WekanCard.Activite(), pas de propriété Activité pour cette carte: %s", c.ID)
 }
 
 func (c WekanCard) Effectif() (int, error) {
 	wekanConfig.mu.Lock()
 	board, ok := wekanConfig.BoardIds[c.BoardId]
+	defer wekanConfig.mu.Unlock()
+
 	if !ok {
 		return -1, fmt.Errorf("WekanCard.Effectif(), pas de board: %s", c.BoardId)
 	}
@@ -1082,12 +1086,13 @@ func (c WekanCard) Effectif() (int, error) {
 			}
 		}
 	}
-	wekanConfig.mu.Unlock()
 	return -1, fmt.Errorf("WekanCard.Effectif(), pas de propriété Effectif pour cette carte: %s", c.ID)
 }
 
 func (c WekanCard) FicheSF() (string, error) {
 	wekanConfig.mu.Lock()
+	defer wekanConfig.mu.Unlock()
+
 	board, ok := wekanConfig.BoardIds[c.BoardId]
 	if !ok {
 		return "", fmt.Errorf("pas de board: %s", c.BoardId)
@@ -1097,7 +1102,6 @@ func (c WekanCard) FicheSF() (string, error) {
 			return field.Value, nil
 		}
 	}
-	wekanConfig.mu.Unlock()
 	return "", fmt.Errorf("pas de propriété FicheSF pour cette carte: %s", c.ID)
 }
 
