@@ -153,7 +153,7 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 	var sirets []string
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
-	userId := wekanConfig.Users[s.username]
+	userID := wekanConfig.Users[s.username]
 	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && siret == nil && ok {
 		var username *string
 		if params.Type == "my-cards" {
@@ -175,7 +175,7 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 			cards = append(cards, &card)
 			cardsMap[siret] = &card
 			sirets = append(sirets, siret)
-			if contains(w.Members, userId) {
+			if contains(w.Members, userID) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}

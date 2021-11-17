@@ -62,7 +62,7 @@ type WekanConfig struct {
 
 func (wc WekanConfig) forUser(username string) WekanConfig {
 	wc.mu.Lock()
-	userId, ok := wc.Users[username]
+	userID, ok := wc.Users[username]
 	if !ok {
 		return WekanConfig{}
 	}
@@ -71,7 +71,7 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 	userWc.Boards = make(map[string]*WekanConfigBoard)
 
 	for board, configBoard := range wc.Boards {
-		if contains(configBoard.Members, userId) {
+		if contains(configBoard.Members, userID) {
 			userWc.Boards[board] = configBoard
 		}
 	}
@@ -79,21 +79,21 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 	return userWc
 }
 
-func (wc WekanConfig) userId(username string) string {
+func (wc WekanConfig) userID(username string) string {
 	wc.mu.Lock()
-	userId := wc.Users[username]
+	userID := wc.Users[username]
 	wc.mu.Unlock()
-	return userId
+	return userID
 }
 
 func (wc WekanConfig) boardIdsForUser(username string) []string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
-	if userId, ok := wc.Users[username]; ok {
+	if userID, ok := wc.Users[username]; ok {
 		var boards []string
 		for _, board := range wekanConfig.Boards {
-			if contains(board.Members, userId) {
+			if contains(board.Members, userID) {
 				boards = append(boards, board.BoardID)
 			}
 		}
@@ -212,7 +212,7 @@ var tokens sync.Map
 func wekanGetCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
-	userID := wekanConfig.userId(s.username)
+	userID := wekanConfig.userID(s.username)
 	if userID == "" {
 		c.JSON(403, "not a wekan user")
 		return
@@ -323,20 +323,20 @@ func wekanGetCardHandler(c *gin.Context) {
 	c.JSON(200, cardData)
 }
 
-func wekanPartCard(userId string, siret string, boardIds []string) error {
+func wekanPartCard(userID string, siret string, boardIds []string) error {
 	query := bson.M{
 		"type":     "cardType-card",
 		"boardId":  bson.M{"$in": boardIds},
 		"archived": false,
 		"$expr": bson.M{
 			"$and": bson.A{
-				bson.M{"$in": bson.A{userId, "$members"}},
+				bson.M{"$in": bson.A{userID, "$members"}},
 				bson.M{"$in": bson.A{siret, "$customFields.value"}},
 			}}}
 
 	update := bson.M{
 		"$pull": bson.M{
-			"members": userId,
+			"members": userID,
 		},
 	}
 	_, err := mgoDB.Collection("cards").UpdateOne(context.Background(), query, update)
@@ -346,9 +346,9 @@ func wekanJoinCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
 	cardId := c.Params.ByName("cardId")
-	userId := wekanConfig.userId(s.username)
+	userID := wekanConfig.userID(s.username)
 
-	if userId == "" || !s.hasRole("wekan") {
+	if userID == "" || !s.hasRole("wekan") {
 		c.AbortWithStatusJSON(403, "not a wekan user")
 		return
 	}
@@ -357,11 +357,11 @@ func wekanJoinCardHandler(c *gin.Context) {
 		"_id":      cardId,
 		"boardId":  bson.M{"$in": boardIds},
 		"archived": false,
-		"$expr":    bson.M{"$not": bson.M{"$in": bson.A{userId, "$members"}}},
+		"$expr":    bson.M{"$not": bson.M{"$in": bson.A{userID, "$members"}}},
 	}
 	update := bson.M{
 		"$push": bson.M{
-			"members": userId,
+			"members": userID,
 		},
 	}
 
@@ -383,8 +383,8 @@ func wekanNewCardHandler(c *gin.Context) {
 	var s session
 	s.bind(c)
 
-	userId := wekanConfig.userId(s.username)
-	if userId == "" {
+	userID := wekanConfig.userID(s.username)
+	if userID == "" {
 		c.JSON(403, "not a wekan user")
 		return
 	}
@@ -424,7 +424,7 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 	if !ok {
 		log.Printf("no valid user token")
-		body, err := createToken(userId, adminToken.Value)
+		body, err := createToken(userID, adminToken.Value)
 		if err != nil {
 			c.JSON(500, err.Error())
 			return
@@ -471,8 +471,8 @@ func wekanNewCardHandler(c *gin.Context) {
 	// new card
 	title := etsData.RaisonSociale
 	creationData := map[string]interface{}{
-		"authorId":   userId,
-		"members":    [1]string{userId},
+		"authorId":   userID,
+		"members":    [1]string{userID},
 		"title":      title,
 		"swimlaneId": swimlaneID,
 	}
@@ -1112,7 +1112,7 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	}
 
 	if username != nil {
-		userID := wekanConfig.userId(*username)
+		userID := wekanConfig.userID(*username)
 		if userID == "" {
 			return nil, fmt.Errorf("selectWekanCards() -> utilisateur wekan inconnu: %s", *username)
 		}
@@ -1230,7 +1230,7 @@ func buildWekanConfigPipeline() []bson.M {
 			"boardId": "$_id",
 			"title":   "$title",
 			"slug":    "$slug",
-			"members": "$members.userId",
+			"members": "$members.userID",
 			"swimlanes": bson.M{
 				"$arrayToObject": "$swimlanes",
 			}}}

@@ -92,10 +92,10 @@ func unfollowEtablissement(c *gin.Context) {
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
 	}
-	userId := wekanConfig.userId(s.username)
-	if userId != "" && s.hasRole("wekan") {
+	userID := wekanConfig.userID(s.username)
+	if userID != "" && s.hasRole("wekan") {
 		boardIds := wekanConfig.boardIdsForUser(s.username)
-		err := wekanPartCard(userId, siret, boardIds)
+		err := wekanPartCard(userID, siret, boardIds)
 		if err != nil {
 			fmt.Println(err)
 		}
@@ -261,8 +261,8 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 	var sirets []string
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
-	userId := wekanConfig.userId(s.username)
-	if userId != "" && s.hasRole("wekan") && params.Type != "no-card" {
+	userID := wekanConfig.userID(s.username)
+	if userID != "" && s.hasRole("wekan") && params.Type != "no-card" {
 		var username *string
 		if params.Type == "my-cards" {
 			username = &s.username
@@ -283,7 +283,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			cards = append(cards, &card)
 			cardsMap[siret] = &card
 			sirets = append(sirets, siret)
-			if contains(w.Members, userId) {
+			if contains(w.Members, userID) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
