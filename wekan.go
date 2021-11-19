@@ -30,10 +30,17 @@ type wekanListDetails struct {
 	Title string `bson:"title"`
 }
 
+type wekanLabel struct {
+	Color string `bson:"color" json:"color"`
+	ID    string `bson:"_id" json:"_id"`
+	Name  string `bson:"name" json:"name"`
+}
+
 type WekanConfigBoard struct {
 	BoardID      string             `bson:"boardId" json:"boardId"`
 	Title        string             `bson:"title" json:"title"`
 	Slug         string             `bson:"slug" json:"slug"`
+	Labels       []wekanLabel       `bson:"labels" json:"labels"`
 	Swimlanes    map[string]string  `bson:"swimlanes" json:"swimlanes"`
 	Members      []string           `bson:"members" json:"members"`
 	Lists        []string           `bson:"lists" json:"lists"`
@@ -54,14 +61,42 @@ type WekanConfigBoard struct {
 type WekanConfig struct {
 	Slugs    map[string]*WekanConfigBoard `bson:"slugs" json:"slugs,omitempty"`
 	Boards   map[string]*WekanConfigBoard `bson:"boards" json:"boards"`
-	Users    map[string]string            `bson:"users,omitempty" json:"users,omitempty"`
+	Users    map[string]string            `bson:"users" json:"users,omitempty"`
 	BoardIds map[string]*WekanConfigBoard `json:"-"`
-	Regions  map[string]string            `json:"regions"`
+	Regions  map[string]string            `json:"regions,omitempty"`
 	mu       *sync.Mutex                  `json:"-"`
+}
+
+func (wc WekanConfig) copy() WekanConfig {
+	var newc WekanConfig
+	newc.BoardIds = make(map[string]*WekanConfigBoard)
+	newc.mu = &sync.Mutex{}
+	wc.mu.Lock()
+	for boardID, wekanConfigBoard := range wc.BoardIds {
+		newc.BoardIds[boardID] = wekanConfigBoard
+	}
+	wc.mu.Unlock()
+	return newc
+}
+
+func (wc WekanConfig) labelForLabelsIDs(labelIDs []string, boardID string) []string {
+	var labels []string
+	if wc.BoardIds != nil {
+		board := wc.BoardIds[boardID]
+		for _, l := range board.Labels {
+			if contains(labelIDs, l.ID) && l.Name != "" {
+				labels = append(labels, l.Name)
+			}
+		}
+		return labels
+	}
+	return nil
 }
 
 func (wc WekanConfig) forUser(username string) WekanConfig {
 	wc.mu.Lock()
+	defer wc.mu.Unlock()
+
 	userID, ok := wc.Users[username]
 	if !ok {
 		return WekanConfig{}
@@ -69,13 +104,12 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 
 	var userWc WekanConfig
 	userWc.Boards = make(map[string]*WekanConfigBoard)
-
 	for board, configBoard := range wc.Boards {
 		if contains(configBoard.Members, userID) {
 			userWc.Boards[board] = configBoard
 		}
 	}
-	wc.mu.Unlock()
+	userWc.mu = &sync.Mutex{}
 	return userWc
 }
 
@@ -116,6 +150,29 @@ func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
 	return swimlaneIds
 }
 
+type labelID struct {
+	boardID string
+	labelID string
+}
+
+func (wc WekanConfig) labelIdsForLabels(labels []string) [][]labelID {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	var labelIDs [][]labelID
+	for _, label := range labels {
+		var ids = make([]labelID, 0)
+		for _, board := range wc.Boards {
+			for _, l := range board.Labels {
+				if l.Name == label {
+					ids = append(ids, labelID{board.BoardID, l.ID})
+				}
+			}
+		}
+		labelIDs = append(labelIDs, ids)
+	}
+	return labelIDs
+}
+
 func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
@@ -140,15 +197,6 @@ func (wc WekanConfig) boardIds() []string {
 	wc.mu.Unlock()
 	return ids
 }
-
-// func (wc *WekanConfig) loadFile(path string) error {
-// 	fileContent, err := ioutil.ReadFile(path)
-// 	if err != nil {
-// 		return err
-// 	}
-// 	err = json.Unmarshal(fileContent, wc)
-// 	return err
-// }
 
 // Token type pour faire persister en mémoire les tokens réutilisables
 type Token struct {
@@ -800,26 +848,6 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-/* func getListCards(userToken string, boardID string, listID string) ([]byte, error) {
-	wekanURL := viper.GetString("wekanURL")
-	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards", nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+userToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != http.StatusOK {
-		err = errors.New("getListCards: unexpected wekan API response")
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
-} */
-
 func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
 	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/cardsByCustomField/"+siretField+"/"+siret, nil)
@@ -1105,7 +1133,55 @@ func (c WekanCard) FicheSF() (string, error) {
 	return "", fmt.Errorf("pas de propriété FicheSF pour cette carte: %s", c.ID)
 }
 
-func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds []string) ([]*WekanCard, error) {
+func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error) {
+	wcu := wekanConfig.forUser(username)
+	userID := wekanConfig.userID(username)
+	if userID == "" {
+		return nil, fmt.Errorf("selectWekanCardFromSiret() -> utilisateur wekan inconnu: %s", username)
+	}
+
+	var queryOr []bson.M
+
+	for _, boardConfig := range wcu.Boards {
+		queryOr = append(queryOr,
+			bson.M{
+				"boardId": boardConfig.BoardID,
+				"customFields": bson.D{
+					{Key: "_id", Value: boardConfig.CustomFields.SiretField},
+					{Key: "value", Value: siret},
+				},
+			},
+		)
+	}
+	fmt.Println(queryOr)
+	query := bson.M{
+		"$or": queryOr,
+	}
+
+	projection := bson.M{
+		"title":        1,
+		"listId":       1,
+		"boardId":      1,
+		"members":      1,
+		"swimlaneId":   1,
+		"customFields": 1,
+		"sort":         1,
+		"labelIds":     1,
+		"startAt":      1,
+		"description":  1,
+	}
+
+	var wekanCard WekanCard
+	options := options.FindOne().SetProjection(projection).SetSort(bson.M{"sort": 1})
+	err := mgoDB.Collection("cards").FindOne(context.Background(), query, options).Decode(&wekanCard)
+	if err != nil {
+		return nil, nil
+	}
+
+	return &wekanCard, nil
+}
+
+func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID) ([]*WekanCard, error) {
 	query := bson.M{
 		"type":     "cardType-card",
 		"archived": false,
@@ -1138,6 +1214,23 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	}
 	if len(listIds) > 0 {
 		query["listId"] = bson.M{"$in": listIds}
+	}
+
+	if len(labelIds) > 0 {
+		labelQueryAnd := bson.A{}
+		for _, l := range labelIds {
+			labelQueryOr := bson.A{}
+			for _, i := range l {
+				labelQueryOr = append(labelQueryOr, bson.M{
+					"labelIds": i.labelID,
+					"boardId":  i.boardID,
+				})
+			}
+			labelQueryAnd = append(labelQueryAnd, bson.M{
+				"$or": labelQueryOr,
+			})
+		}
+		query["$and"] = labelQueryAnd
 	}
 
 	// sélection des champs à retourner et tri
@@ -1230,7 +1323,8 @@ func buildWekanConfigPipeline() []bson.M {
 			"boardId": "$_id",
 			"title":   "$title",
 			"slug":    "$slug",
-			"members": "$members.userID",
+			"labels":  "$labels",
+			"members": "$members.userId",
 			"swimlanes": bson.M{
 				"$arrayToObject": "$swimlanes",
 			}}}
@@ -1330,6 +1424,7 @@ func buildWekanConfigPipeline() []bson.M {
 				"title":     "$title",
 				"swimlanes": "$swimlanes",
 				"members":   "$members",
+				"labels":    "$labels",
 				"customFields": bson.M{
 					"siretField":    bson.M{"$arrayElemAt": bson.A{"$siretField.siretField", 0}},
 					"contactField":  bson.M{"$arrayElemAt": bson.A{"$contactField.contactField", 0}},
