@@ -311,7 +311,9 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 		row.AddCell().Value = score.Siret
 		row.AddCell().Value = *score.CodeDepartement
 		row.AddCell().Value = *score.RaisonSociale
-		row.AddCell().Value = fmt.Sprintf("%d", int(*score.EffectifEntreprise))
+		if score.EffectifEntreprise != nil {
+			row.AddCell().Value = fmt.Sprintf("%d", int(*score.EffectifEntreprise))
+		}
 		row.AddCell().Value = *score.CodeActivite
 		if score.LibelleActivite != nil {
 			row.AddCell().Value = *score.LibelleActivite
