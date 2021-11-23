@@ -235,6 +235,7 @@ type paramsGetCards struct {
 	Type   string   `json:"type"`
 	Statut []string `json:"statut"`
 	Zone   []string `json:"zone"`
+	Labels []string `json:"labels"`
 }
 
 type Card struct {
@@ -262,6 +263,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
 	userID := wekanConfig.userID(s.username)
+	labelIds := wcu.labelIdsForLabels(params.Labels)
 	if userID != "" && s.hasRole("wekan") && params.Type != "no-card" {
 		var username *string
 		if params.Type == "my-cards" {
@@ -270,7 +272,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 		boardIds := wcu.boardIds()
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, nil)
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds)
 		if err != nil {
 			return nil, err
 		}

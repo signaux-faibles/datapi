@@ -105,7 +105,6 @@ func runAPI() {
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	utils.GET("/wekanImport", wekanImportHandler)
-	// utils.GET("/wekanListCards", wekanGetListCardsHandler)
 	utils.GET("/sireneImport", sireneImportHandler)
 	utils.GET("/listImport/:algo", listImportHandler)
 

@@ -28,31 +28,32 @@ type WekanExports []WekanExport
 
 // WekanExport fournit les champs nécessaires pour l'export Wekan
 type WekanExport struct {
-	RaisonSociale              string `json:"raison_sociale"`
-	Siret                      string `json:"siret"`
-	TypeEtablissement          string `json:"type_etablissement"`
-	TeteDeGroupe               string `json:"tete_de_groupe"`
-	Departement                string `json:"departement"`
-	Commune                    string `json:"commune"`
-	TerritoireIndustrie        string `json:"territoire_industrie"`
-	SecteurActivite            string `json:"secteur_activite"`
-	Activite                   string `json:"activite"`
-	SecteursCovid              string `json:"secteurs_covid"`
-	StatutJuridique            string `json:"statut_juridique"`
-	DateOuvertureEtablissement string `json:"date_ouverture_etablissement"`
-	DateCreationEntreprise     string `json:"date_creation_entreprise"`
-	Effectif                   string `json:"effectif"`
-	ActivitePartielle          string `json:"activite_partielle"`
-	DetteSociale               string `json:"dette_sociale"`
-	PartSalariale              string `json:"part_salariale"`
-	AnneeExercice              string `json:"annee_exercice"`
-	ChiffreAffaire             string `json:"ca"`
-	ExcedentBrutExploitation   string `json:"ebe"`
-	ResultatExploitation       string `json:"rex"`
-	ProcedureCollective        string `json:"procol"`
-	DetectionSF                string `json:"detection_sf"`
-	DateDebutSuivi             string `json:"date_debut_suivi"`
-	DescriptionWekan           string `json:"description_wekan"`
+	RaisonSociale              string   `json:"raison_sociale"`
+	Siret                      string   `json:"siret"`
+	TypeEtablissement          string   `json:"type_etablissement"`
+	TeteDeGroupe               string   `json:"tete_de_groupe"`
+	Departement                string   `json:"departement"`
+	Commune                    string   `json:"commune"`
+	TerritoireIndustrie        string   `json:"territoire_industrie"`
+	SecteurActivite            string   `json:"secteur_activite"`
+	Activite                   string   `json:"activite"`
+	SecteursCovid              string   `json:"secteurs_covid"`
+	StatutJuridique            string   `json:"statut_juridique"`
+	DateOuvertureEtablissement string   `json:"date_ouverture_etablissement"`
+	DateCreationEntreprise     string   `json:"date_creation_entreprise"`
+	Effectif                   string   `json:"effectif"`
+	ActivitePartielle          string   `json:"activite_partielle"`
+	DetteSociale               string   `json:"dette_sociale"`
+	PartSalariale              string   `json:"part_salariale"`
+	AnneeExercice              string   `json:"annee_exercice"`
+	ChiffreAffaire             string   `json:"ca"`
+	ExcedentBrutExploitation   string   `json:"ebe"`
+	ResultatExploitation       string   `json:"rex"`
+	ProcedureCollective        string   `json:"procol"`
+	DetectionSF                string   `json:"detection_sf"`
+	DateDebutSuivi             string   `json:"date_debut_suivi"`
+	DescriptionWekan           string   `json:"description_wekan"`
+	Labels                     []string `json:"labels"`
 }
 
 type dbExport struct {
@@ -147,14 +148,37 @@ func (exports dbExports) newDbExport() (dbExports, []interface{}) {
 	return exports, t
 }
 
-func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
+func getExportSiret(s session, siret string) (Card, error) {
+	var exports dbExports
+	exports, exportsFields := exports.newDbExport()
+	err := db.QueryRow(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret).Scan(exportsFields...)
+	if err != nil {
+		return Card{}, err
+	}
+
+	var c = Card{
+		dbExport: exports[0],
+	}
+	if s.hasRole("wekan") {
+		wekanCard, err := selectWekanCardFromSiret(s.username, siret)
+		if err != nil {
+			return Card{}, err
+		}
+		c.WekanCard = wekanCard
+	}
+
+	return c, nil
+}
+
+func getExport(s session, params paramsGetCards) (Cards, error) {
 	var cards Cards
 	var cardsMap = make(map[string]*Card)
 	var sirets []string
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
 	userID := wekanConfig.Users[s.username]
-	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && siret == nil && ok {
+	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
+		// Export wekan + DB
 		var username *string
 		if params.Type == "my-cards" {
 			username = &s.username
@@ -162,7 +186,8 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 		boardIds := wcu.boardIds()
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, nil)
+		labelIds := wcu.labelIdsForLabels(params.Labels)
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds)
 		if err != nil {
 			return nil, err
 		}
@@ -184,11 +209,8 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 			sirets = followedSirets
 		}
 		var cursor pgx.Rows
-		if params.Type == "single-card" {
-			cursor, err = db.Query(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret)
-		} else {
-			cursor, err = db.Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
-		}
+		cursor, err = db.Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
+
 		if err != nil {
 			return nil, err
 		}
@@ -210,6 +232,7 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 			cardsMap[s.Siret] = card
 		}
 	} else {
+		// export DB uniquement
 		boardIds := wcu.boardIds()
 		var wekanCards []*WekanCard
 		var err error
@@ -223,7 +246,7 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 
 		var excludeSirets = make(map[string]struct{})
 		for _, w := range wekanCards {
-			if s.hasRole("wekan") && siret == nil {
+			if s.hasRole("wekan") {
 				siret, err := w.Siret()
 				if err != nil {
 					continue
@@ -233,12 +256,8 @@ func getExport(s session, params paramsGetCards, siret *string) (Cards, error) {
 		}
 		var exports dbExports
 		var cursor pgx.Rows
+		cursor, err = db.Query(context.Background(), sqlDbExportFollow, s.roles.zoneGeo(), s.username, params.Zone)
 
-		if params.Type == "single-card" {
-			cursor, err = db.Query(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret)
-		} else {
-			cursor, err = db.Query(context.Background(), sqlDbExportFollow, s.roles.zoneGeo(), s.username, params.Zone)
-		}
 		if err != nil {
 			return nil, err
 		}
@@ -294,6 +313,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	row.AddCell().Value = "Détection Signaux Faibles"
 	row.AddCell().Value = "Début du suivi"
 	if wekan {
+		row.AddCell().Value = "Étiquettes"
 		row.AddCell().Value = "Présentation de l'enteprise, difficultés et actions"
 	}
 
@@ -329,6 +349,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 			row.AddCell().Value = e.DetectionSF
 			row.AddCell().Value = e.DateDebutSuivi
 			if wekan {
+				row.AddCell().Value = strings.Join(e.Labels, ", ")
 				row.AddCell().Value = e.DescriptionWekan
 			}
 		}
@@ -340,9 +361,10 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	return data.Bytes(), nil
 }
 
-func (card Card) docx(head ExportHeader) (Docx, error) {
+func (c Card) docx(head ExportHeader) (Docx, error) {
 	var we WekanExports
-	we = append(we, card.join())
+
+	we = append(we, c.join())
 
 	data, err := json.MarshalIndent(we, " ", " ")
 	script := viper.GetString("docxifyPath")
@@ -370,12 +392,13 @@ func (card Card) docx(head ExportHeader) (Docx, error) {
 		fmt.Println(outErr.String())
 	}
 	return Docx{
-		filename: fmt.Sprintf("export-%s-%s.docx", card.dbExport.Siret, strings.Replace(card.dbExport.RaisonSociale, " ", "-", -1)),
+		filename: fmt.Sprintf("export-%s-%s.docx", c.dbExport.Siret, strings.Replace(c.dbExport.RaisonSociale, " ", "-", -1)),
 		data:     file,
 	}, nil
 }
 
 func (c Card) join() WekanExport {
+	wc := wekanConfig.copy()
 	apartSwitch := map[bool]string{
 		true:  "Demande sur les 12 derniers mois",
 		false: "Pas de demande récente",
@@ -429,6 +452,7 @@ func (c Card) join() WekanExport {
 	if c.WekanCard != nil {
 		we.DateDebutSuivi = dateUrssaf(c.WekanCard.StartAt)
 		we.DescriptionWekan = c.WekanCard.Description
+		we.Labels = wc.labelForLabelsIDs(c.WekanCard.LabelIds, c.WekanCard.BoardId)
 	} else {
 		we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
 	}
@@ -508,7 +532,7 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	var params paramsGetCards
 	c.Bind(&params)
 
-	export, err := getExport(s, params, nil)
+	export, err := getExport(s, params)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -552,7 +576,7 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	var params paramsGetCards
 	c.Bind(&params)
 
-	exports, err := getExport(s, params, nil)
+	exports, err := getExport(s, params)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -579,17 +603,11 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 func getDOCXFromSiret(c *gin.Context) {
 	var s session
 	s.bind(c)
-	params := paramsGetCards{
-		Type: "single-card",
-	}
+
 	siret := c.Param("siret")
-	cards, err := getExport(s, params, &siret)
+	card, err := getExportSiret(s, siret)
 	if err != nil {
 		c.AbortWithError(500, err)
-		return
-	}
-	if len(cards) != 1 {
-		c.AbortWithStatusJSON(204, "no data")
 		return
 	}
 
@@ -597,7 +615,7 @@ func getDOCXFromSiret(c *gin.Context) {
 		Auteur: s.auteur,
 		Date:   time.Now(),
 	}
-	docx, err := cards[0].docx(header)
+	docx, err := card.docx(header)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
