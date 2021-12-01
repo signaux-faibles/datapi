@@ -321,7 +321,21 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 		if score.LibelleActivite != nil {
 			row.AddCell().Value = *score.LibelleActivite
 		}
-		row.AddCell().Value = *score.Alert
+
+		if score.Alert != nil {
+			if *score.Alert == "Alerte seuil F1" {
+				row.AddCell().Value = "Risque élevé"
+			}
+			if *score.Alert == "Alerte seuil F2" {
+				row.AddCell().Value = "Risque modéré"
+			}
+			if *score.Alert == "Pas d'alerte" {
+				row.AddCell().Value = "Pas de risque"
+			}
+		} else {
+			row.AddCell().Value = "Hors périmètre"
+		}
+
 		if *score.FirstAlert {
 			row.AddCell().Value = "oui"
 		} else {
