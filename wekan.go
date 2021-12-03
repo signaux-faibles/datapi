@@ -99,7 +99,9 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 
 	userID, ok := wc.Users[username]
 	if !ok {
-		return WekanConfig{}
+		wcu := WekanConfig{}
+		wcu.mu = &sync.Mutex{}
+		return wcu
 	}
 
 	var userWc WekanConfig
