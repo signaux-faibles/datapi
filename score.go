@@ -300,6 +300,9 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 	row.AddCell().Value = "chiffre_affaire"
 	row.AddCell().Value = "excedent_brut_exploitation"
 	row.AddCell().Value = "resultat_d_exploitation"
+	row.AddCell().Value = "date_cloture_bilan"
+	row.AddCell().Value = "etat_procol"
+	row.AddCell().Value = "tete_groupe"
 
 	for _, score := range liste.Scores {
 		row := xlSheet.AddRow()
@@ -313,39 +316,66 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 		row.AddCell().Value = *score.RaisonSociale
 		if score.EffectifEntreprise != nil {
 			row.AddCell().Value = fmt.Sprintf("%d", int(*score.EffectifEntreprise))
+		} else {
+			row.AddCell().Value = "n/c"
 		}
 		row.AddCell().Value = *score.CodeActivite
 		if score.LibelleActivite != nil {
 			row.AddCell().Value = *score.LibelleActivite
+		} else {
+			row.AddCell().Value = "n/c"
 		}
-		row.AddCell().Value = *score.Alert
+
+		if score.Alert != nil {
+			if *score.Alert == "Alerte seuil F1" {
+				row.AddCell().Value = "Risque élevé"
+			}
+			if *score.Alert == "Alerte seuil F2" {
+				row.AddCell().Value = "Risque modéré"
+			}
+			if *score.Alert == "Pas d'alerte" {
+				row.AddCell().Value = "Pas de risque"
+			}
+		} else {
+			row.AddCell().Value = "Hors périmètre"
+		}
+
 		if *score.FirstAlert {
 			row.AddCell().Value = "oui"
 		} else {
 			row.AddCell().Value = "non"
 		}
 		row.AddCell().Value = *score.SecteurCovid
-		var ca string
 		if score.ChiffreAffaire != nil {
-			ca = fmt.Sprintf("%d k€", int(*score.ChiffreAffaire))
+			row.AddCell().Value = fmt.Sprintf("%d k€", int(*score.ChiffreAffaire))
 		} else {
-			ca = "n/c"
+			row.AddCell().Value = "n/c"
 		}
-		var ebe string
 		if score.ExcedentBrutDExploitation != nil {
-			ebe = fmt.Sprintf("%d k€", int(*score.ExcedentBrutDExploitation))
+			row.AddCell().Value = fmt.Sprintf("%d k€", int(*score.ExcedentBrutDExploitation))
 		} else {
-			ebe = "n/c"
+			row.AddCell().Value = "n/c"
 		}
-		var rex string
 		if score.ResultatExploitation != nil {
-			rex = fmt.Sprintf("%d k€", int(*score.ResultatExploitation))
+			row.AddCell().Value = fmt.Sprintf("%d k€", int(*score.ResultatExploitation))
 		} else {
-			rex = "n/c"
+			row.AddCell().Value = "n/c"
 		}
-		row.AddCell().Value = ca
-		row.AddCell().Value = ebe
-		row.AddCell().Value = rex
+		if score.ArreteBilan != nil {
+			row.AddCell().Value = score.ArreteBilan.Format("02/01/2006")
+		} else {
+			row.AddCell().Value = "n/c"
+		}
+		if score.EtatProcol != nil {
+			row.AddCell().Value = *score.EtatProcol
+		} else {
+			row.AddCell().Value = "n/c"
+		}
+		if score.Groupe != nil {
+			row.AddCell().Value = *score.Groupe
+		} else {
+			row.AddCell().Value = "pas de groupe identifié"
+		}
 	}
 
 	sheetParams, _ := xlFile.AddSheet("parameters")
