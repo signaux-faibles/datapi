@@ -308,7 +308,7 @@ func wekanGetCardHandler(c *gin.Context) {
 		log.Printf("no valid user token")
 		body, err := createToken(userID, adminToken.Value)
 		if err != nil {
-			c.JSON(500, err.Error())
+			c.JSON(403, err.Error())
 			return
 		}
 		wekanCreateToken := WekanCreateToken{}

@@ -53,20 +53,20 @@ func getFceURL(c *gin.Context) {
 	}
 	body, err := askFceCredentials()
 	if err != nil {
-		c.JSON(500, err.Error())
+		c.JSON(502, err.Error())
 		return
 	}
 	fce := Fce{}
 	bodyString := string(body)
 	err = json.Unmarshal([]byte(bodyString), &fce)
 	if err != nil {
-		c.JSON(500, err.Error())
+		c.JSON(502, err.Error())
 		return
 	}
 	username := c.GetString("username")
 	fceVisitURL, err := makeFceVisitURL(siret, fce.Credential, username)
 	if err != nil {
-		c.JSON(500, err.Error())
+		c.JSON(502, err.Error())
 		return
 	}
 	c.String(200, fceVisitURL)
