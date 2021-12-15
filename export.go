@@ -52,6 +52,7 @@ type WekanExport struct {
 	ProcedureCollective        string   `json:"procol"`
 	DetectionSF                string   `json:"detection_sf"`
 	DateDebutSuivi             string   `json:"date_debut_suivi"`
+	DateFinSuivi               string   `json:"date_fin_suivi"`
 	DescriptionWekan           string   `json:"description_wekan"`
 	Labels                     []string `json:"labels"`
 }
@@ -315,6 +316,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	if wekan {
 		row.AddCell().Value = "Étiquettes"
 		row.AddCell().Value = "Présentation de l'enteprise, difficultés et actions"
+		row.AddCell().Value = "Fin du suivi Wekan"
 	}
 
 	for _, c := range cards {
@@ -351,6 +353,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 			if wekan {
 				row.AddCell().Value = strings.Join(e.Labels, ", ")
 				row.AddCell().Value = e.DescriptionWekan
+				row.AddCell().Value = e.DateFinSuivi
 			}
 		}
 	}
@@ -449,12 +452,18 @@ func (c Card) join() WekanExport {
 		DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
 	}
 
+	we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
+	we.DateDebutSuivi = ""
+
 	if c.WekanCard != nil {
 		we.DateDebutSuivi = dateUrssaf(c.WekanCard.StartAt)
 		we.DescriptionWekan = c.WekanCard.Description
 		we.Labels = wc.labelForLabelsIDs(c.WekanCard.LabelIds, c.WekanCard.BoardId)
+		if c.WekanCard.EndAt != nil {
+			we.DateDebutSuivi = dateUrssaf(*c.WekanCard.EndAt)
+		}
 	} else {
-		we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
+
 	}
 
 	return we

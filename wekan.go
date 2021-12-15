@@ -1040,16 +1040,17 @@ type WekanCards []WekanCard
 
 // WekanCard embarque la sélection de champs Wekan nécessaires au traitement d'export
 type WekanCard struct {
-	ID           string    `bson:"_id"`
-	Title        string    `bson:"title"`
-	ListID       string    `bson:"listId"`
-	BoardId      string    `bson:"boardId"`
-	SwimlaneID   string    `bson:"swimlaneId"`
-	Members      []string  `bson:"members"`
-	Rank         float64   `bson:"sort"`
-	Description  string    `bson:"description"`
-	StartAt      time.Time `bson:"startAt"`
-	LabelIds     []string  `bson:"labelIds"`
+	ID           string     `bson:"_id"`
+	Title        string     `bson:"title"`
+	ListID       string     `bson:"listId"`
+	BoardId      string     `bson:"boardId"`
+	SwimlaneID   string     `bson:"swimlaneId"`
+	Members      []string   `bson:"members"`
+	Rank         float64    `bson:"sort"`
+	Description  string     `bson:"description"`
+	StartAt      time.Time  `bson:"startAt"`
+	EndAt        *time.Time `bson:"endAt"`
+	LabelIds     []string   `bson:"labelIds"`
 	CustomFields []struct {
 		ID    string `bson:"_id"`
 		Value string `bson:"value"`
@@ -1170,6 +1171,7 @@ func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error)
 		"sort":         1,
 		"labelIds":     1,
 		"startAt":      1,
+		"endAt":        1,
 		"description":  1,
 	}
 
@@ -1246,6 +1248,7 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 		"sort":         1,
 		"labelIds":     1,
 		"startAt":      1,
+		"endAt":        1,
 		"description":  1,
 	}
 	options := options.Find().SetProjection(projection).SetSort(bson.M{"sort": 1})
