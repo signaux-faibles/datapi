@@ -460,10 +460,9 @@ func (c Card) join() WekanExport {
 		we.DescriptionWekan = c.WekanCard.Description
 		we.Labels = wc.labelForLabelsIDs(c.WekanCard.LabelIds, c.WekanCard.BoardId)
 		if c.WekanCard.EndAt != nil {
-			we.DateDebutSuivi = dateUrssaf(*c.WekanCard.EndAt)
+			we.DateFinSuivi = dateUrssaf(*c.WekanCard.EndAt)
 		}
 	}
-
 	return we
 }
 
