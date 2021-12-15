@@ -452,9 +452,6 @@ func (c Card) join() WekanExport {
 		DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
 	}
 
-	we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
-	we.DateDebutSuivi = ""
-
 	if c.WekanCard != nil {
 		we.DateDebutSuivi = dateUrssaf(c.WekanCard.StartAt)
 		we.DescriptionWekan = c.WekanCard.Description
