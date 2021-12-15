@@ -1176,7 +1176,7 @@ func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error)
 	}
 
 	var wekanCard WekanCard
-	options := options.FindOne().SetProjection(projection).SetSort(bson.M{"sort": 1})
+	options := options.FindOne().SetProjection(projection).SetSort(bson.M{"archived": 1, "startAt": 1})
 	err := mgoDB.Collection("cards").FindOne(context.Background(), query, options).Decode(&wekanCard)
 	if err != nil {
 		return nil, nil
@@ -1251,7 +1251,7 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 		"endAt":        1,
 		"description":  1,
 	}
-	options := options.Find().SetProjection(projection).SetSort(bson.M{"sort": 1})
+	options := options.Find().SetProjection(projection).SetSort(bson.M{"archived": 1, "startAt": 1})
 
 	cardsCursor, err := mgoDB.Collection("cards").Find(context.Background(), query, options)
 	if err != nil {
