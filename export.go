@@ -462,8 +462,6 @@ func (c Card) join() WekanExport {
 		if c.WekanCard.EndAt != nil {
 			we.DateDebutSuivi = dateUrssaf(*c.WekanCard.EndAt)
 		}
-	} else {
-
 	}
 
 	return we
