@@ -12,7 +12,7 @@ require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/go-playground/validator/v10 v10.9.0 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
-	github.com/golang-jwt/jwt v3.2.2+incompatible
+	github.com/golang-jwt/jwt/v4 v4.2.0
 	github.com/golang/snappy v0.0.4 // indirect
 	github.com/google/btree v1.0.1
 	github.com/jackc/pgx/v4 v4.13.0
