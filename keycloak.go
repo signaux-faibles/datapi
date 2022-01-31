@@ -6,9 +6,9 @@ import (
 	"log"
 	"strings"
 
-	gocloak "github.com/Nerzal/gocloak/v6"
-	jwt "github.com/dgrijalva/jwt-go"
+	gocloak "github.com/Nerzal/gocloak/v10"
 	"github.com/gin-gonic/gin"
+	"github.com/golang-jwt/jwt/v4"
 	"github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
 )
@@ -247,7 +247,8 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, Jerror) 
 		context.Background(),
 		jwt.AccessToken,
 		realm,
-		*clients[0].ID)
+		*clients[0].ID,
+		gocloak.GetRoleParams{})
 
 	if err != nil {
 		return nil, nil, errorToJSON(500, err)
