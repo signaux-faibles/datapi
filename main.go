@@ -8,7 +8,7 @@ import (
 	"log"
 	"time"
 
-	gocloak "github.com/Nerzal/gocloak/v6"
+	gocloak "github.com/Nerzal/gocloak/v10"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
