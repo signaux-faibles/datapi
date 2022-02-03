@@ -109,10 +109,11 @@ func runAPI() {
 	utils.GET("/listImport/:algo", listImportHandler)
 
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
-	wekan.GET("/cards/:siret", wekanGetCardHandler)
+	wekan.GET("/cards/:siret", wekanGetCardsHandler)
 	wekan.POST("/cards/:siret", wekanNewCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 	wekan.GET("/config", wekanConfigHandler)
+	wekan.GET("/allconfig", wekanAllConfigHandler)
 	wekan.GET("/reloadConfig", wekanReloadConfigHandler)
 
 	log.Print("Running API on " + viper.GetString("bind"))
