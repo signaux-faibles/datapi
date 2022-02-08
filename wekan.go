@@ -10,6 +10,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -78,18 +79,6 @@ type EtablissementData struct {
 	LibelleActivite string
 }
 
-type CardData struct {
-	CardID          string `json:"cardID,omitempty"`
-	List            string `json:"listIndex,omitempty"`
-	Archived        bool   `json:"archived,omitempty"`
-	Board           string `json:"board,omitempty"`
-	CardURL         string `json:"cardURL,omitempty"`
-	CardDescription string `json:"cardDescription,omitempty"`
-	IsMember        bool   `json:"isMember,omitempty"`
-	Creator         string `json:"creator,omitempty"`
-	IsBoardMember   bool   `json:"isBoardMember,omitempty"`
-}
-
 var tokens sync.Map
 
 func lookupCard(siret string) (WekanCards, error) {
@@ -120,142 +109,107 @@ func lookupCard(siret string) (WekanCards, error) {
 }
 
 func wekanGetCardsHandler(c *gin.Context) {
+	type CardData struct {
+		CardID          string `json:"cardID,omitempty"`
+		List            string `json:"listIndex,omitempty"`
+		Archived        bool   `json:"archived,omitempty"`
+		Board           string `json:"board,omitempty"`
+		CardURL         string `json:"cardURL,omitempty"`
+		CardDescription string `json:"cardDescription,omitempty"`
+		IsMember        bool   `json:"isMember,omitempty"`
+		Creator         string `json:"creator,omitempty"`
+		IsBoardMember   bool   `json:"isBoardMember,omitempty"`
+	}
+
+	type BoardData struct {
+		IsMember bool      `json:"isMember"`
+		ID       string    `json:"id,omitempty"`
+		Title    string    `json:"title,omitempty"`
+		Slug     string    `json:"slug,omitempty"`
+		URL      string    `json:"url,omitempty"`
+		Card     *CardData `json:"card"`
+	}
+
 	var s session
 	s.bind(c)
 	userID := wekanConfig.userID(s.username)
 	siret := c.Param("siret")
+	dept, err := getDeptFromSiret(siret)
+
+	if err != nil {
+		c.JSON(500, "wekanGetCards/getDeptFromSiret: "+err.Error())
+	}
 	wc := wekanConfig.copy()
 
-	if userID == "" {
+	if userID == "" || !s.hasRole("wekan") {
 		c.JSON(403, "not a wekan user")
 		return
 	}
+
 	cards, err := lookupCard(siret)
 	if err != nil {
-		c.JSON(403, "wekanGetCardsHandler: "+err.Error())
+		c.JSON(500, "wekanGetCardsHandler/lookupCard: "+err.Error())
 		return
 	}
-	if len(cards) > 0 {
-		c.JSON(200, cards.Data(s, wc))
+
+	wc = wekanConfig.copy()
+	wcu := wc.forUser(s.username)
+
+	boardsMap := make(map[*WekanConfigBoard]*WekanCard)
+	for _, board := range wcu.Boards {
+		if _, ok := board.Swimlanes[dept]; ok {
+			boardsMap[board] = nil
+		}
+	}
+	for _, card := range cards {
+		c := card
+		boardsMap[wc.BoardIds[card.BoardId]] = &c
+	}
+	spew.Dump(boardsMap)
+	wekanURL := viper.GetString("wekanURL")
+	var boardDatas []BoardData
+	for board, card := range boardsMap {
+		var boardData BoardData
+		boardData.Title = board.Title
+
+		if _, ok := wcu.BoardIds[board.BoardID]; ok {
+			boardData.ID = board.BoardID
+			boardData.Slug = board.Slug
+			boardData.URL = wekanURL + "b/" + board.BoardID + "/" + wc.BoardIds[board.BoardID].Slug
+			boardData.IsMember = true
+			if card != nil {
+				boardData.Card = &CardData{
+					CardID:          card.ID,
+					List:            wc.listForListID(card.ListID, card.BoardId),
+					Archived:        card.Archived,
+					Board:           wc.BoardIds[card.BoardId].Title,
+					CardURL:         wekanURL + "b/" + card.BoardId + "/" + wc.BoardIds[card.BoardId].Slug + "/" + card.ID,
+					CardDescription: card.Description,
+					IsMember:        contains(card.Members, wc.userID(s.username)),
+					Creator:         wc.userForUserID(card.UserID),
+				}
+			}
+		} else {
+			boardData.IsMember = false
+			boardData.Card = &CardData{
+				Board:    wc.BoardIds[card.BoardId].Title,
+				IsMember: false,
+				Creator:  wc.userForUserID(card.UserID),
+			}
+		}
+		boardDatas = append(boardDatas, boardData)
+	}
+
+	sort.Slice(boardDatas, func(i, j int) bool {
+		return boardDatas[i].Title < boardDatas[j].Title
+	})
+
+	if len(boardDatas) > 0 {
+		c.JSON(200, boardDatas)
 	} else {
 		c.JSON(204, nil)
 	}
 }
-
-// //TODO: factorisation
-// func wekanGetCardHandler(c *gin.Context) {
-// 	var s session
-// 	s.bind(c)
-// 	userID := wekanConfig.userID(s.username)
-// 	if userID == "" {
-// 		c.JSON(403, "not a wekan user")
-// 		return
-// 	}
-
-// 	siret := c.Param("siret")
-
-// 	var adminToken Token
-// 	adminUsername := viper.GetString("wekanAdminUsername")
-// 	loadedToken, ok := tokens.Load(adminUsername)
-// 	if loadedToken != nil {
-// 		adminToken = loadedToken.(Token)
-// 		ok = isValidToken(adminToken)
-// 	}
-// 	if !ok {
-// 		log.Printf("no valid admin token")
-// 		adminPassword := viper.GetString("wekanAdminPassword")
-// 		body, err := adminLogin(adminUsername, adminPassword)
-// 		if err != nil {
-// 			c.JSON(500, err.Error())
-// 			return
-// 		}
-// 		wekanLogin := WekanLogin{}
-// 		err = json.Unmarshal(body, &wekanLogin)
-// 		if err != nil {
-// 			c.JSON(500, err.Error())
-// 			return
-// 		}
-// 		adminToken.Value = wekanLogin.Token
-// 		now := time.Now()
-// 		adminToken.CreationDate = now
-// 		tokens.Store(adminUsername, adminToken)
-// 	} else {
-// 		log.Printf("existing admin token")
-// 	}
-// 	var userToken Token
-// 	loadedToken, ok = tokens.Load(s.username)
-// 	if loadedToken != nil {
-// 		userToken = loadedToken.(Token)
-// 		ok = isValidToken(userToken)
-// 	}
-// 	if !ok {
-// 		log.Printf("no valid user token")
-// 		body, err := createToken(userID, adminToken.Value)
-// 		if err != nil {
-// 			c.JSON(403, err.Error())
-// 			return
-// 		}
-// 		wekanCreateToken := WekanCreateToken{}
-// 		err = json.Unmarshal(body, &wekanCreateToken)
-// 		if err != nil {
-// 			c.JSON(500, err.Error())
-// 			return
-// 		}
-// 		userToken.Value = wekanCreateToken.AuthToken
-// 		now := time.Now()
-// 		userToken.CreationDate = now
-// 		tokens.Store(s.username, userToken)
-// 	} else {
-// 		log.Printf("existing user token")
-// 	}
-// 	etsData, err := getEtablissementDataFromDb(siret)
-// 	if err != nil {
-// 		log.Println(err.Error())
-// 		return
-// 	}
-
-// 	wekanConfig.mu.Lock()
-// 	board := wekanConfig.Boards[etsData.Region]
-// 	wekanConfig.mu.Unlock()
-
-// 	if board == nil {
-// 		board = &WekanConfigBoard{}
-// 	}
-
-// 	boardID := board.BoardID
-// 	siretField := board.CustomFields.SiretField
-// 	body, err := getCard(userToken.Value, boardID, siretField, siret)
-// 	if err != nil {
-// 		c.JSON(500, err.Error())
-// 		return
-// 	}
-// 	var wekanGetCard WekanGetCard
-// 	err = json.Unmarshal(body, &wekanGetCard)
-// 	if err != nil {
-// 		c.JSON(500, err.Error())
-// 		return
-// 	}
-// 	if len(wekanGetCard) == 0 {
-// 		c.JSON(404, "card not found")
-// 		return
-// 	}
-// 	card := wekanGetCard[0]
-// 	cardID := card.ID
-// 	cardDescription := card.Description
-// 	lists := board.Lists
-// 	listIndex := indexOf(card.ListID, lists)
-// 	wekanURL := viper.GetString("wekanURL")
-// 	cardURL := wekanURL + "b/" + boardID + "/" + board.Slug + "/" + cardID
-// 	isMember := contains(card.Members, userID)
-// 	cardData := map[string]interface{}{
-// 		"cardId":          cardID,
-// 		"listIndex":       listIndex,
-// 		"cardURL":         cardURL,
-// 		"cardDescription": cardDescription,
-// 		"isMember":        isMember,
-// 	}
-// 	c.JSON(200, cardData)
-// }
 
 func wekanPartCard(userID string, siret string, boardIds []string) error {
 	query := bson.M{
@@ -313,9 +267,26 @@ func wekanJoinCardHandler(c *gin.Context) {
 }
 
 func wekanNewCardHandler(c *gin.Context) {
+	type newCard struct {
+		BoardID     string `json:"boardId"`
+		Description string `json:"description"`
+	}
+
 	siret := c.Param("siret")
 	var s session
+	var param newCard
 	s.bind(c)
+	err := c.Bind(&param)
+	fmt.Println(err)
+	if err != nil {
+		return
+	}
+
+	boardIds := wekanConfig.boardIdsForUser(s.username)
+	if !contains(boardIds, param.BoardID) {
+		c.JSON(403, "User can't create card on this board "+param.BoardID)
+		return
+	}
 
 	userID := wekanConfig.userID(s.username)
 	if userID == "" {
@@ -384,13 +355,13 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 
 	wekanConfig.mu.Lock()
-	board := wekanConfig.Boards[etsData.Region]
+	board, ok := wekanConfig.BoardIds[param.BoardID]
 	wekanConfig.mu.Unlock()
 	if !ok {
 		c.JSON(500, "missing board in config file")
 		return
 	}
-	boardID := board.BoardID
+	boardID := param.BoardID
 	listID := board.Lists[0]
 	// fields formatting
 	departement := etsData.Departement
@@ -410,23 +381,24 @@ func wekanNewCardHandler(c *gin.Context) {
 		"title":      title,
 		"swimlaneId": swimlaneID,
 	}
-	body, err := ioutil.ReadAll(c.Request.Body)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
+	// body, err := ioutil.ReadAll(c.Request.Body)
+	// if err != nil {
+	// 	c.JSON(500, err.Error())
+	// 	return
+	// }
+	// var requestData map[string]string
+	// err = json.Unmarshal(body, &requestData)
+	// if err != nil {
+	// 	c.JSON(500, err.Error())
+	// 	return
+	// }
+
+	if param.Description != "" {
+		creationData["description"] = param.Description
 	}
-	var requestData map[string]string
-	err = json.Unmarshal(body, &requestData)
+	body, err := createCard(userToken.Value, boardID, listID, creationData)
 	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	description := requestData["description"]
-	if description != "" {
-		creationData["description"] = description
-	}
-	body, err = createCard(userToken.Value, boardID, listID, creationData)
-	if err != nil {
+		fmt.Println("we're here")
 		c.JSON(500, err.Error())
 		return
 	}
@@ -686,35 +658,6 @@ type WekanCard struct {
 		ID    string `bson:"_id"`
 		Value string `bson:"value"`
 	}
-}
-
-func (cs WekanCards) Data(s session, wc WekanConfig) []CardData {
-	var data []CardData
-	spew.Dump(wc.Users[s.username])
-	for _, c := range cs {
-		var card CardData
-		if contains(wc.boardIdsForUser(s.username), c.BoardId) {
-			wekanURL := viper.GetString("wekanURL")
-			card = CardData{
-				CardID:          c.ID,
-				List:            wc.listForListID(c.ListID, c.BoardId),
-				Archived:        c.Archived,
-				Board:           wc.BoardIds[c.BoardId].Title,
-				CardURL:         wekanURL + "b/" + c.BoardId + "/" + wc.BoardIds[c.BoardId].Slug + "/" + c.ID,
-				CardDescription: c.Description,
-				IsMember:        contains(c.Members, wc.userID(s.username)),
-				Creator:         wc.userForUserID(c.UserID),
-			}
-		} else {
-			card = CardData{
-				Board:    wc.BoardIds[c.BoardId].Title,
-				IsMember: false,
-				Creator:  wc.userForUserID(c.UserID),
-			}
-		}
-		data = append(data, card)
-	}
-	return data
 }
 
 func (cs WekanCards) Sirets() []string {

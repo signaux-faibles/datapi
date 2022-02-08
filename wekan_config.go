@@ -105,7 +105,19 @@ func buildWekanConfigPipeline() []bson.M {
 			"title":   "$title",
 			"slug":    "$slug",
 			"labels":  "$labels",
-			"members": "$members.userId",
+			"members": bson.M{
+				"$map": bson.M{
+					"input": bson.M{
+						"$filter": bson.M{
+							"input": "$members",
+							"as":    "memberf",
+							"cond":  "$$memberf.isActive",
+						},
+					},
+					"as": "memberm",
+					"in": "$$memberm.userId",
+				},
+			},
 			"swimlanes": bson.M{
 				"$arrayToObject": "$swimlanes",
 			}}}
@@ -267,14 +279,14 @@ func buildWekanConfigPipeline() []bson.M {
 	}
 }
 
-func wekanAllConfigHandler(c *gin.Context) {
-	roles := scopeFromContext(c)
-	if contains(roles, "wekan") {
-		c.JSON(200, wekanConfig)
-		return
-	}
-	c.AbortWithStatus(403)
-}
+// func wekanAllConfigHandler(c *gin.Context) {
+// 	roles := scopeFromContext(c)
+// 	if contains(roles, "wekan") {
+// 		c.JSON(200, wekanConfig)
+// 		return
+// 	}
+// 	c.AbortWithStatus(403)
+// }
 
 func wekanReloadConfigHandler(c *gin.Context) {
 	var err error
