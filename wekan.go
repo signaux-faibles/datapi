@@ -16,7 +16,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
@@ -165,7 +164,6 @@ func wekanGetCardsHandler(c *gin.Context) {
 		c := card
 		boardsMap[wc.BoardIds[card.BoardId]] = &c
 	}
-	spew.Dump(boardsMap)
 	wekanURL := viper.GetString("wekanURL")
 	var boardDatas []BoardData
 	for board, card := range boardsMap {
