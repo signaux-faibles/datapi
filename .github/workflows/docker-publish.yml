@@ -4,6 +4,7 @@ name: Deploy Docker
 on:
   push:
     branches:
+      - 'master'
       - 'feat*'
     tags:
       - 'v*'
@@ -55,8 +56,6 @@ jobs:
           tags: |
             type=ref,event=branch
             type=ref,event=tag
-            type=semver,pattern={{version}}
-            type=sha
           flavor: |
             latest=true
 
