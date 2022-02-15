@@ -44,11 +44,6 @@ jobs:
           cp ./datapi ./build-container
           cp -r ./migrations ./build-container
 
-#      - name: Build container image
-#        shell: bash
-#        run: |
-#          docker build -t datapi --build-arg datapiDir="." ./build-container
-
       - name: Extract metadata (tags, labels) for Docker
         id: meta
         uses: docker/metadata-action@v3
