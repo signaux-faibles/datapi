@@ -395,7 +395,7 @@ func (c Card) docx(head ExportHeader) (Docx, error) {
 		fmt.Println(outErr.String())
 	}
 	return Docx{
-		filename: fmt.Sprintf("export-%s-%s.docx", c.dbExport.Siret, strings.Replace(c.dbExport.RaisonSociale, " ", "-", -1)),
+		filename: fmt.Sprintf("export-%s-%s.docx", strings.Replace(c.dbExport.RaisonSociale, " ", "-", -1), c.dbExport.Siret),
 		data:     file,
 	}, nil
 }
@@ -454,7 +454,7 @@ func (c Card) join() WekanExport {
 
 	if c.WekanCard != nil {
 		we.DateDebutSuivi = dateUrssaf(c.WekanCard.StartAt)
-		we.DescriptionWekan = c.WekanCard.Description
+		we.DescriptionWekan = c.WekanCard.Description + "\n\n" + strings.ReplaceAll(strings.Join(c.WekanCard.Comments, "\n\n"), "#export", "")
 		we.Labels = wc.labelForLabelsIDs(c.WekanCard.LabelIds, c.WekanCard.BoardId)
 		if c.WekanCard.EndAt != nil {
 			we.DateFinSuivi = dateUrssaf(*c.WekanCard.EndAt)
