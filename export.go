@@ -395,7 +395,7 @@ func (c Card) docx(head ExportHeader) (Docx, error) {
 		fmt.Println(outErr.String())
 	}
 	return Docx{
-		filename: fmt.Sprintf("export-%s-%s.docx", c.dbExport.Siret, strings.Replace(c.dbExport.RaisonSociale, " ", "-", -1)),
+		filename: fmt.Sprintf("export-%s-%s.docx", strings.Replace(c.dbExport.RaisonSociale, " ", "-", -1), c.dbExport.Siret),
 		data:     file,
 	}, nil
 }
