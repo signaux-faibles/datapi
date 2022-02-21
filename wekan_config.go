@@ -450,6 +450,7 @@ type wekanLabel struct {
 	Name  string `bson:"name" json:"name"`
 }
 
+// WekanConfigBoard contient les détails de configuration d'une board Wekan
 type WekanConfigBoard struct {
 	BoardID      string             `bson:"boardId" json:"boardId"`
 	Title        string             `bson:"title" json:"title"`
