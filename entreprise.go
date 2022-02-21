@@ -1068,3 +1068,11 @@ func str(o ...*string) string {
 	}
 	return ""
 }
+
+func getDeptFromSiret(siret string) (string, error) {
+	sql := "select departement from etablissement0 where siret = $1"
+	row := db.QueryRow(context.Background(), sql, siret)
+	var dept string
+	err := row.Scan(&dept)
+	return dept, err
+}
