@@ -113,8 +113,6 @@ func runAPI() {
 	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 	wekan.GET("/config", wekanConfigHandler)
-	// wekan.GET("/allconfig", wekanAllConfigHandler)
-	// wekan.GET("/reloadConfig", wekanReloadConfigHandler)
 
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))

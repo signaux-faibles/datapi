@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"sync"
 	"time"
@@ -288,15 +287,15 @@ func buildWekanConfigPipeline() []bson.M {
 // 	c.AbortWithStatus(403)
 // }
 
-func wekanReloadConfigHandler(c *gin.Context) {
-	var err error
-	wekanConfig, err = lookupWekanConfig()
-	if err != nil {
-		c.JSON(500, fmt.Sprintf("wekanReloadConfig: %s", err))
-		return
-	}
-	c.JSON(200, true)
-}
+// func wekanReloadConfigHandler(c *gin.Context) {
+// 	var err error
+// 	wekanConfig, err = lookupWekanConfig()
+// 	if err != nil {
+// 		c.JSON(500, fmt.Sprintf("wekanReloadConfig: %s", err))
+// 		return
+// 	}
+// 	c.JSON(200, true)
+// }
 
 func wekanConfigHandler(c *gin.Context) {
 	roles := scopeFromContext(c)

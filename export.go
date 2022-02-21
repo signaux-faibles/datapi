@@ -454,7 +454,7 @@ func (c Card) join() WekanExport {
 
 	if c.WekanCard != nil {
 		we.DateDebutSuivi = dateUrssaf(c.WekanCard.StartAt)
-		we.DescriptionWekan = c.WekanCard.Description
+		we.DescriptionWekan = c.WekanCard.Description + "\n\n" + strings.ReplaceAll(strings.Join(c.WekanCard.Comments, "\n"), "#export", "")
 		we.Labels = wc.labelForLabelsIDs(c.WekanCard.LabelIds, c.WekanCard.BoardId)
 		if c.WekanCard.EndAt != nil {
 			we.DateFinSuivi = dateUrssaf(*c.WekanCard.EndAt)

@@ -19,7 +19,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 // Token type pour faire persister en mémoire les tokens réutilisables
@@ -478,27 +477,6 @@ func createToken(userID string, adminToken string) ([]byte, error) {
 	return ioutil.ReadAll(resp.Body)
 }
 
-// func getCard(userToken string, boardID string, siretField string, siret string) ([]byte, error) {
-// 	wekanURL := viper.GetString("wekanURL")
-// 	req, err := http.NewRequest("GET", wekanURL+"api/boards/"+boardID+"/cardsByCustomField/"+siretField+"/"+siret, nil)
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	req.Header.Add("Accept", "application/json")
-// 	req.Header.Add("Authorization", "Bearer "+userToken)
-// 	client := &http.Client{}
-// 	resp, err := client.Do(req)
-// 	if resp.StatusCode != http.StatusOK {
-// 		body, _ := ioutil.ReadAll(resp.Body)
-// 		err = fmt.Errorf("getCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
-// 	}
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	defer resp.Body.Close()
-// 	return ioutil.ReadAll(resp.Body)
-// }
-
 func createCard(userToken string, boardID string, listID string, creationData map[string]interface{}) ([]byte, error) {
 	wekanURL := viper.GetString("wekanURL")
 	json, err := json.Marshal(creationData)
@@ -652,6 +630,7 @@ type WekanCard struct {
 	LabelIds     []string   `bson:"labelIds"`
 	Archived     bool       `bson:"archived"`
 	UserID       string     `bson:"userId"`
+	Comments     []string   `bson:"comments"`
 	CustomFields []struct {
 		ID    string `bson:"_id"`
 		Value string `bson:"value"`
@@ -744,8 +723,28 @@ func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error)
 		return nil, fmt.Errorf("selectWekanCardFromSiret() -> utilisateur wekan inconnu: %s", username)
 	}
 
-	var queryOr []bson.M
+	var wekanCards []WekanCard
 
+	pipeline := cardPipeline(wcu, siret)
+	cursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+
+	err = cursor.All(context.Background(), &wekanCards)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(wekanCards) > 0 {
+		return &wekanCards[0], nil
+	} else {
+		return nil, nil
+	}
+}
+
+func cardPipeline(wcu WekanConfig, siret string) bson.A {
+	var queryOr []bson.M
 	for _, boardConfig := range wcu.Boards {
 		queryOr = append(queryOr,
 			bson.M{
@@ -757,50 +756,93 @@ func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error)
 			},
 		)
 	}
-	fmt.Println(queryOr)
-	query := bson.M{
-		"$or": queryOr,
+
+	pipeline := bson.A{
+		bson.M{
+			"$match": bson.M{
+				"$or": queryOr,
+			},
+		},
+		bson.M{
+			"$lookup": bson.M{
+				"from": "card_comments",
+				"let":  bson.M{"card": "$_id"},
+				"pipeline": bson.A{
+					bson.M{
+						"$match": bson.M{
+							"$expr": bson.M{"$eq": bson.A{"$cardId", "$$card"}},
+							"text":  bson.M{"$regex": "#export"},
+						},
+					}, bson.M{
+						"$sort": bson.M{
+							"createdAt": -1,
+						},
+					}, bson.M{
+						"$project": bson.M{
+							"text": 1,
+							"_id":  0,
+						},
+					},
+				},
+				"as": "comments",
+			},
+		},
+		bson.M{
+			"$sort": bson.D{
+				bson.E{Key: "archived", Value: 1},
+				bson.E{Key: "startAt", Value: 1},
+			},
+		},
+		bson.M{
+			"$project": bson.M{
+				"archived":     1,
+				"title":        1,
+				"listId":       1,
+				"boardId":      1,
+				"members":      1,
+				"swimlaneId":   1,
+				"customFields": 1,
+				"sort":         1,
+				"labelIds":     1,
+				"startAt":      1,
+				"endAt":        1,
+				"description":  1,
+				"comments":     "$comments.text",
+			},
+		},
 	}
 
-	projection := bson.M{
-		"title":        1,
-		"listId":       1,
-		"boardId":      1,
-		"members":      1,
-		"swimlaneId":   1,
-		"customFields": 1,
-		"sort":         1,
-		"labelIds":     1,
-		"startAt":      1,
-		"endAt":        1,
-		"description":  1,
-	}
-
-	var wekanCard WekanCard
-	options := options.FindOne().SetProjection(projection).SetSort(bson.D{
-		bson.E{Key: "archived", Value: 1},
-		bson.E{Key: "startAt", Value: 1},
-	})
-
-	err := mgoDB.Collection("cards").FindOne(context.Background(), query, options).Decode(&wekanCard)
-	if err != nil {
-		return nil, nil
-	}
-
-	return &wekanCard, nil
+	return pipeline
 }
-
 func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID) ([]*WekanCard, error) {
-	query := bson.M{
-		"type":     "cardType-card",
-		"archived": false,
-	}
-
 	if username != nil {
 		userID := wekanConfig.userID(*username)
 		if userID == "" {
 			return nil, fmt.Errorf("selectWekanCards() -> utilisateur wekan inconnu: %s", *username)
 		}
+	}
+
+	pipeline := cardsPipeline(username, boardIds, swimlaneIds, listIds, labelIds)
+
+	cardsCursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
+	if err != nil {
+		return nil, err
+	}
+	var wekanCards []*WekanCard
+	err = cardsCursor.All(context.Background(), &wekanCards)
+	if err != nil {
+		return nil, err
+	}
+	return wekanCards, nil
+}
+
+func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID) bson.A {
+	query := bson.M{
+		"type": "cardType-card",
+	}
+
+	if username != nil {
+		userID := wekanConfig.userID(*username)
 		query["$expr"] = bson.M{"$in": bson.A{userID, "$members"}}
 	}
 
@@ -842,33 +884,58 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 		query["$and"] = labelQueryAnd
 	}
 
-	// sélection des champs à retourner et tri
-	projection := bson.M{
-		"title":        1,
-		"listId":       1,
-		"boardId":      1,
-		"members":      1,
-		"swimlaneId":   1,
-		"customFields": 1,
-		"sort":         1,
-		"labelIds":     1,
-		"startAt":      1,
-		"endAt":        1,
-		"description":  1,
+	pipeline := bson.A{
+		bson.M{
+			"$match": query,
+		},
+		bson.M{
+			"$lookup": bson.M{
+				"from": "card_comments",
+				"let":  bson.M{"card": "$_id"},
+				"pipeline": bson.A{
+					bson.M{
+						"$match": bson.M{
+							"$expr": bson.M{"$eq": bson.A{"$cardId", "$$card"}},
+							"text":  bson.M{"$regex": "#export"},
+						},
+					}, bson.M{
+						"$sort": bson.M{
+							"createdAt": -1,
+						},
+					}, bson.M{
+						"$project": bson.M{
+							"text": 1,
+							"_id":  0,
+						},
+					},
+				},
+				"as": "comments",
+			},
+		},
+		bson.M{
+			"$sort": bson.D{
+				bson.E{Key: "archived", Value: 1},
+				bson.E{Key: "startAt", Value: 1},
+			},
+		},
+		bson.M{
+			"$project": bson.M{
+				"archived":     1,
+				"title":        1,
+				"listId":       1,
+				"boardId":      1,
+				"members":      1,
+				"swimlaneId":   1,
+				"customFields": 1,
+				"sort":         1,
+				"labelIds":     1,
+				"startAt":      1,
+				"endAt":        1,
+				"description":  1,
+				"comments":     "$comments.text",
+			},
+		},
 	}
-	options := options.Find().SetProjection(projection).SetSort(bson.D{
-		bson.E{Key: "archived", Value: 1},
-		bson.E{Key: "startAt", Value: 1},
-	})
 
-	cardsCursor, err := mgoDB.Collection("cards").Find(context.Background(), query, options)
-	if err != nil {
-		return nil, err
-	}
-	var wekanCards []*WekanCard
-	err = cardsCursor.All(context.Background(), &wekanCards)
-	if err != nil {
-		return nil, err
-	}
-	return wekanCards, nil
+	return pipeline
 }
