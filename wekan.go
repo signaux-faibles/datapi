@@ -738,9 +738,8 @@ func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error)
 
 	if len(wekanCards) > 0 {
 		return &wekanCards[0], nil
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func cardPipeline(wcu WekanConfig, siret string) bson.A {
@@ -775,7 +774,7 @@ func cardPipeline(wcu WekanConfig, siret string) bson.A {
 						},
 					}, bson.M{
 						"$sort": bson.M{
-							"createdAt": -1,
+							"createdAt": 1,
 						},
 					}, bson.M{
 						"$project": bson.M{
