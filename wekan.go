@@ -774,7 +774,7 @@ func cardPipeline(wcu WekanConfig, siret string) bson.A {
 						},
 					}, bson.M{
 						"$sort": bson.M{
-							"createdAt": -1,
+							"createdAt": 1,
 						},
 					}, bson.M{
 						"$project": bson.M{
