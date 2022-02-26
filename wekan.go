@@ -738,9 +738,8 @@ func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error)
 
 	if len(wekanCards) > 0 {
 		return &wekanCards[0], nil
-	} else {
-		return nil, nil
 	}
+	return nil, nil
 }
 
 func cardPipeline(wcu WekanConfig, siret string) bson.A {
