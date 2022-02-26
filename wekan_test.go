@@ -60,7 +60,7 @@ func readTestData() (Cards, error) {
 	for _, we := range wekanCards {
 		siret, _ := we.Siret()
 		if card, ok := cardIndex[siret]; ok {
-			card.WekanCard = &we
+			card.WekanCards = []*WekanCard{&we}
 		}
 	}
 

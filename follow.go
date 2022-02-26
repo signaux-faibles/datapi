@@ -239,9 +239,9 @@ type paramsGetCards struct {
 }
 
 type Card struct {
-	Summary   *Summary   `json:"summary"`
-	WekanCard *WekanCard `json:"wekanCard"`
-	dbExport  *dbExport
+	Summary    *Summary     `json:"summary"`
+	WekanCards []*WekanCard `json:"wekanCard"`
+	dbExport   *dbExport
 }
 
 type Cards []*Card
@@ -281,7 +281,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			if err != nil {
 				continue
 			}
-			card := Card{nil, w, nil}
+			card := Card{nil, []*WekanCard{w}, nil}
 			cards = append(cards, &card)
 			cardsMap[siret] = &card
 			sirets = append(sirets, siret)

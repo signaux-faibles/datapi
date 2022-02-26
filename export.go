@@ -55,6 +55,9 @@ type WekanExport struct {
 	DateFinSuivi               string   `json:"date_fin_suivi"`
 	DescriptionWekan           string   `json:"description_wekan"`
 	Labels                     []string `json:"labels"`
+	Board                      string   `json:"board"`
+	Swimlane                   string   `json:"swimlane"`
+	Column                     string   `json:"column"`
 }
 
 type dbExport struct {
@@ -161,11 +164,11 @@ func getExportSiret(s session, siret string) (Card, error) {
 		dbExport: exports[0],
 	}
 	if s.hasRole("wekan") {
-		wekanCard, err := selectWekanCardFromSiret(s.username, siret)
+		wekanCards, err := selectWekanCardsFromSiret(s.username, siret)
 		if err != nil {
 			return Card{}, err
 		}
-		c.WekanCard = wekanCard
+		c.WekanCards = wekanCards
 	}
 
 	return c, nil
@@ -177,7 +180,8 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 	var sirets []string
 	var followedSirets []string
 	wcu := wekanConfig.forUser(s.username)
-	userID := wekanConfig.Users[s.username]
+	userID := wekanConfig.userID(s.username)
+
 	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
 		// Export wekan + DB
 		var username *string
@@ -197,7 +201,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 			if err != nil {
 				continue
 			}
-			card := Card{nil, w, nil}
+			card := Card{nil, []*WekanCard{w}, nil}
 			cards = append(cards, &card)
 			cardsMap[siret] = &card
 			sirets = append(sirets, siret)
@@ -321,39 +325,38 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 
 	for _, c := range cards {
 		if c.dbExport != nil {
-			row := xlSheet.AddRow()
-			e := c.join()
-			if err != nil {
-				return nil, errorToJSON(500, err)
-			}
-			row.AddCell().Value = e.RaisonSociale
-			row.AddCell().Value = e.Siret
-			row.AddCell().Value = e.TypeEtablissement
-			row.AddCell().Value = e.TeteDeGroupe
-			row.AddCell().Value = e.Departement
-			row.AddCell().Value = e.Commune
-			row.AddCell().Value = e.TerritoireIndustrie
-			row.AddCell().Value = e.SecteurActivite
-			row.AddCell().Value = e.Activite
-			row.AddCell().Value = e.SecteursCovid
-			row.AddCell().Value = e.StatutJuridique
-			row.AddCell().Value = e.DateOuvertureEtablissement
-			row.AddCell().Value = e.DateCreationEntreprise
-			row.AddCell().Value = e.Effectif
-			row.AddCell().Value = e.ActivitePartielle
-			row.AddCell().Value = e.DetteSociale
-			row.AddCell().Value = e.PartSalariale
-			row.AddCell().Value = e.AnneeExercice
-			row.AddCell().Value = e.ChiffreAffaire
-			row.AddCell().Value = e.ExcedentBrutExploitation
-			row.AddCell().Value = e.ResultatExploitation
-			row.AddCell().Value = e.ProcedureCollective
-			row.AddCell().Value = e.DetectionSF
-			row.AddCell().Value = e.DateDebutSuivi
-			if wekan {
-				row.AddCell().Value = strings.Join(e.Labels, ", ")
-				row.AddCell().Value = e.DescriptionWekan
-				row.AddCell().Value = e.DateFinSuivi
+			es := c.join()
+			for _, e := range es {
+				row := xlSheet.AddRow()
+				row.AddCell().Value = e.RaisonSociale
+				row.AddCell().Value = e.Siret
+				row.AddCell().Value = e.TypeEtablissement
+				row.AddCell().Value = e.TeteDeGroupe
+				row.AddCell().Value = e.Departement
+				row.AddCell().Value = e.Commune
+				row.AddCell().Value = e.TerritoireIndustrie
+				row.AddCell().Value = e.SecteurActivite
+				row.AddCell().Value = e.Activite
+				row.AddCell().Value = e.SecteursCovid
+				row.AddCell().Value = e.StatutJuridique
+				row.AddCell().Value = e.DateOuvertureEtablissement
+				row.AddCell().Value = e.DateCreationEntreprise
+				row.AddCell().Value = e.Effectif
+				row.AddCell().Value = e.ActivitePartielle
+				row.AddCell().Value = e.DetteSociale
+				row.AddCell().Value = e.PartSalariale
+				row.AddCell().Value = e.AnneeExercice
+				row.AddCell().Value = e.ChiffreAffaire
+				row.AddCell().Value = e.ExcedentBrutExploitation
+				row.AddCell().Value = e.ResultatExploitation
+				row.AddCell().Value = e.ProcedureCollective
+				row.AddCell().Value = e.DetectionSF
+				row.AddCell().Value = e.DateDebutSuivi
+				if wekan {
+					row.AddCell().Value = strings.Join(e.Labels, ", ")
+					row.AddCell().Value = e.DescriptionWekan
+					row.AddCell().Value = e.DateFinSuivi
+				}
 			}
 		}
 	}
@@ -367,7 +370,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 func (c Card) docx(head ExportHeader) (Docx, error) {
 	var we WekanExports
 
-	we = append(we, c.join())
+	we = append(we, c.join()...)
 
 	data, err := json.MarshalIndent(we, " ", " ")
 	script := viper.GetString("docxifyPath")
@@ -400,7 +403,7 @@ func (c Card) docx(head ExportHeader) (Docx, error) {
 	}, nil
 }
 
-func (c Card) join() WekanExport {
+func (c Card) join() []WekanExport {
 	wc := wekanConfig.copy()
 	apartSwitch := map[bool]string{
 		true:  "Demande sur les 12 derniers mois",
@@ -426,43 +429,48 @@ func (c Card) join() WekanExport {
 		"sauvegarde":        "Sauvegarde",
 		"plan_sauvegarde":   "Plan de Sauvegarde",
 	}
-	we := WekanExport{
-		RaisonSociale:              c.dbExport.RaisonSociale,
-		Siret:                      c.dbExport.Siret,
-		TypeEtablissement:          siegeSwitch[c.dbExport.Siege],
-		TeteDeGroupe:               c.dbExport.TeteDeGroupe,
-		Departement:                fmt.Sprintf("%s (%s)", c.dbExport.LibelleDepartement, c.dbExport.CodeDepartement),
-		Commune:                    c.dbExport.Commune,
-		TerritoireIndustrie:        c.dbExport.LibelleTerritoireIndustrie,
-		SecteurActivite:            c.dbExport.SecteurActivite,
-		Activite:                   fmt.Sprintf("%s (%s)", c.dbExport.LibelleActivite, c.dbExport.CodeActivite),
-		SecteursCovid:              secteurCovid.get(c.dbExport.CodeActivite),
-		StatutJuridique:            c.dbExport.StatutJuridiqueN2,
-		DateOuvertureEtablissement: dateCreation(c.dbExport.DateOuvertureEtablissement),
-		DateCreationEntreprise:     dateCreation(c.dbExport.DateCreationEntreprise),
-		Effectif:                   fmt.Sprintf("%d (%s)", c.dbExport.DernierEffectif, c.dbExport.DateDernierEffectif.Format("01/2006")),
-		ActivitePartielle:          apartSwitch[c.dbExport.ActivitePartielle],
-		DetteSociale:               fmt.Sprintf(urssafSwitch[c.dbExport.DetteSociale], dateUrssaf(c.dbExport.DateUrssaf)),
-		PartSalariale:              fmt.Sprintf(salarialSwitch[c.dbExport.PartSalariale], dateUrssaf(c.dbExport.DateUrssaf)),
-		AnneeExercice:              anneeExercice(c.dbExport.ExerciceDiane),
-		ChiffreAffaire:             libelleCA(c.dbExport.ChiffreAffaire, c.dbExport.ChiffreAffairePrecedent, c.dbExport.VariationCA),
-		ExcedentBrutExploitation:   libelleFin(c.dbExport.ExcedentBrutExploitation),
-		ResultatExploitation:       libelleFin(c.dbExport.ResultatExploitation),
-		ProcedureCollective:        procolSwitch[c.dbExport.ProcedureCollective],
-		DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
-	}
 
-	if c.WekanCard != nil {
-		we.DateDebutSuivi = dateUrssaf(c.WekanCard.StartAt)
-		we.DescriptionWekan = c.WekanCard.Description + "\n\n" + strings.ReplaceAll(strings.Join(c.WekanCard.Comments, "\n\n"), "#export", "")
-		we.Labels = wc.labelForLabelsIDs(c.WekanCard.LabelIds, c.WekanCard.BoardId)
-		if c.WekanCard.EndAt != nil {
-			we.DateFinSuivi = dateUrssaf(*c.WekanCard.EndAt)
+	output := []WekanExport{}
+	for _, card := range c.WekanCards {
+		we := WekanExport{
+			RaisonSociale:              c.dbExport.RaisonSociale,
+			Siret:                      c.dbExport.Siret,
+			TypeEtablissement:          siegeSwitch[c.dbExport.Siege],
+			TeteDeGroupe:               c.dbExport.TeteDeGroupe,
+			Departement:                fmt.Sprintf("%s (%s)", c.dbExport.LibelleDepartement, c.dbExport.CodeDepartement),
+			Commune:                    c.dbExport.Commune,
+			TerritoireIndustrie:        c.dbExport.LibelleTerritoireIndustrie,
+			SecteurActivite:            c.dbExport.SecteurActivite,
+			Activite:                   fmt.Sprintf("%s (%s)", c.dbExport.LibelleActivite, c.dbExport.CodeActivite),
+			SecteursCovid:              secteurCovid.get(c.dbExport.CodeActivite),
+			StatutJuridique:            c.dbExport.StatutJuridiqueN2,
+			DateOuvertureEtablissement: dateCreation(c.dbExport.DateOuvertureEtablissement),
+			DateCreationEntreprise:     dateCreation(c.dbExport.DateCreationEntreprise),
+			Effectif:                   fmt.Sprintf("%d (%s)", c.dbExport.DernierEffectif, c.dbExport.DateDernierEffectif.Format("01/2006")),
+			ActivitePartielle:          apartSwitch[c.dbExport.ActivitePartielle],
+			DetteSociale:               fmt.Sprintf(urssafSwitch[c.dbExport.DetteSociale], dateUrssaf(c.dbExport.DateUrssaf)),
+			PartSalariale:              fmt.Sprintf(salarialSwitch[c.dbExport.PartSalariale], dateUrssaf(c.dbExport.DateUrssaf)),
+			AnneeExercice:              anneeExercice(c.dbExport.ExerciceDiane),
+			ChiffreAffaire:             libelleCA(c.dbExport.ChiffreAffaire, c.dbExport.ChiffreAffairePrecedent, c.dbExport.VariationCA),
+			ExcedentBrutExploitation:   libelleFin(c.dbExport.ExcedentBrutExploitation),
+			ResultatExploitation:       libelleFin(c.dbExport.ResultatExploitation),
+			ProcedureCollective:        procolSwitch[c.dbExport.ProcedureCollective],
+			DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
 		}
-	} else {
-		we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
+
+		if c.WekanCards != nil {
+			we.DateDebutSuivi = dateUrssaf(card.StartAt)
+			we.DescriptionWekan = card.Description + "\n\n" + strings.ReplaceAll(strings.Join(card.Comments, "\n\n"), "#export", "")
+			we.Labels = wc.labelForLabelsIDs(card.LabelIds, card.BoardId)
+			if card.EndAt != nil {
+				we.DateFinSuivi = dateUrssaf(*card.EndAt)
+			}
+		} else {
+			we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
+		}
+
 	}
-	return we
+	return output
 }
 
 func anneeExercice(exercice int) string {
