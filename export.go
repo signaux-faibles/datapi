@@ -55,9 +55,7 @@ type WekanExport struct {
 	DateFinSuivi               string   `json:"date_fin_suivi"`
 	DescriptionWekan           string   `json:"description_wekan"`
 	Labels                     []string `json:"labels"`
-	Board                      string   `json:"board"`
-	Swimlane                   string   `json:"swimlane"`
-	Column                     string   `json:"column"`
+	Board                      string   `json:"-"`
 }
 
 type dbExport struct {
@@ -433,6 +431,9 @@ func (c Card) join() []WekanExport {
 	}
 
 	output := []WekanExport{}
+	if len(c.WekanCards) == 0 {
+		c.WekanCards = append(c.WekanCards, nil)
+	}
 	for _, card := range c.WekanCards {
 		we := WekanExport{
 			RaisonSociale:              c.dbExport.RaisonSociale,
@@ -458,20 +459,20 @@ func (c Card) join() []WekanExport {
 			ResultatExploitation:       libelleFin(c.dbExport.ResultatExploitation),
 			ProcedureCollective:        procolSwitch[c.dbExport.ProcedureCollective],
 			DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
-			Board:                      card.Board(),
 		}
 
-		if c.WekanCards != nil {
+		if card != nil {
 			we.DateDebutSuivi = dateUrssaf(card.StartAt)
 			we.DescriptionWekan = card.Description + "\n\n" + strings.ReplaceAll(strings.Join(card.Comments, "\n\n"), "#export", "")
 			we.Labels = wc.labelForLabelsIDs(card.LabelIds, card.BoardId)
 			if card.EndAt != nil {
 				we.DateFinSuivi = dateUrssaf(*card.EndAt)
 			}
+			we.Board = card.Board()
 		} else {
 			we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
 		}
-
+		output = append(output, we)
 	}
 	return output
 }

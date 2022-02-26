@@ -70,6 +70,7 @@ func readTestData() (Cards, error) {
 func Test_WekanExportsDOCX(t *testing.T) {
 	t.Log("WekanExports can generate a non-zero length docx file")
 	cards, err := readTestData()
+
 	if err != nil {
 		t.Error(err.Error())
 		return
@@ -135,7 +136,7 @@ func Test_WekanExports(t *testing.T) {
 	if err != nil {
 		t.Errorf("could not hash WekanExport: %s", err.Error())
 	}
-	expected := "76305f6361636366363232633966643639303336653631343831303233366430643535"
+	expected := "76305f3266663335653439626432636163386564343133323462646339373731346330"
 	if fmt.Sprintf("%x", hash) != expected {
 		t.Errorf("unexpected results from joinExports(): \nstructhash should be: %s\nbut structHash is: %x", expected, hash)
 	}

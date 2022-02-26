@@ -320,7 +320,10 @@ type WekanConfig struct {
 func (wc WekanConfig) BoardForId(boardId string) string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
-	return wc.BoardIds[boardId].Title
+	if board, ok := wc.BoardIds[boardId]; ok {
+		return board.Title
+	}
+	return ""
 }
 
 func (wc WekanConfig) copy() WekanConfig {
