@@ -321,6 +321,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 		row.AddCell().Value = "Étiquettes"
 		row.AddCell().Value = "Présentation de l'enteprise, difficultés et actions"
 		row.AddCell().Value = "Fin du suivi Wekan"
+		row.AddCell().Value = "Tableau"
 	}
 
 	for _, c := range cards {
@@ -356,6 +357,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 					row.AddCell().Value = strings.Join(e.Labels, ", ")
 					row.AddCell().Value = e.DescriptionWekan
 					row.AddCell().Value = e.DateFinSuivi
+					row.AddCell().Value = e.Board
 				}
 			}
 		}
@@ -456,6 +458,7 @@ func (c Card) join() []WekanExport {
 			ResultatExploitation:       libelleFin(c.dbExport.ResultatExploitation),
 			ProcedureCollective:        procolSwitch[c.dbExport.ProcedureCollective],
 			DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
+			Board:                      card.Board(),
 		}
 
 		if c.WekanCards != nil {

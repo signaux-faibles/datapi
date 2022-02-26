@@ -317,6 +317,12 @@ type WekanConfig struct {
 	mu       *sync.Mutex                  `json:"-"`
 }
 
+func (wc WekanConfig) BoardForId(boardId string) string {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	return wc.BoardIds[boardId].Title
+}
+
 func (wc WekanConfig) copy() WekanConfig {
 	var newc WekanConfig
 	newc.BoardIds = make(map[string]*WekanConfigBoard)
