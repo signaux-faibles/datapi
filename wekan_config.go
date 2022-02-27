@@ -318,10 +318,10 @@ type WekanConfig struct {
 }
 
 // BoardForID retourne le nom d'une board en échange de son id
-func (wc WekanConfig) BoardForID(boardId string) string {
+func (wc WekanConfig) BoardForID(boardID string) string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
-	if board, ok := wc.BoardIds[boardId]; ok {
+	if board, ok := wc.BoardIds[boardID]; ok {
 		return board.Title
 	}
 	return ""
