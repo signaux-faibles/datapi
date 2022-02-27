@@ -285,7 +285,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			cards = append(cards, &card)
 			cardsMap[siret] = &card
 			sirets = append(sirets, siret)
-			if contains(w.Members, userID) {
+			if contains(append(w.Members, w.Assignees...), userID) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
@@ -339,6 +339,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 }
 
 func followSiretsFromWekan(username string, sirets []string) error {
+	fmt.Println(sirets)
 	tx, err := db.Begin(context.Background())
 	if err != nil {
 		return err

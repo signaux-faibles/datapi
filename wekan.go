@@ -623,6 +623,7 @@ type WekanCard struct {
 	BoardId      string     `bson:"boardId"`
 	SwimlaneID   string     `bson:"swimlaneId"`
 	Members      []string   `bson:"members"`
+	Assignees    []string   `bson:"assignees"`
 	Rank         float64    `bson:"sort"`
 	Description  string     `bson:"description"`
 	StartAt      time.Time  `bson:"startAt"`
@@ -936,6 +937,7 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 				"startAt":      1,
 				"endAt":        1,
 				"description":  1,
+				"assignees":    1,
 				"comments":     "$comments.text",
 			},
 		},
