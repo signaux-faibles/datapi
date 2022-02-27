@@ -317,6 +317,16 @@ type WekanConfig struct {
 	mu       *sync.Mutex                  `json:"-"`
 }
 
+// BoardForID retourne le nom d'une board en échange de son id
+func (wc WekanConfig) BoardForID(boardID string) string {
+	wc.mu.Lock()
+	defer wc.mu.Unlock()
+	if board, ok := wc.BoardIds[boardID]; ok {
+		return board.Title
+	}
+	return ""
+}
+
 func (wc WekanConfig) copy() WekanConfig {
 	var newc WekanConfig
 	newc.BoardIds = make(map[string]*WekanConfigBoard)

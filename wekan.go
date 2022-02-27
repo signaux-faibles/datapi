@@ -623,6 +623,7 @@ type WekanCard struct {
 	BoardId      string     `bson:"boardId"`
 	SwimlaneID   string     `bson:"swimlaneId"`
 	Members      []string   `bson:"members"`
+	Assignees    []string   `bson:"assignees"`
 	Rank         float64    `bson:"sort"`
 	Description  string     `bson:"description"`
 	StartAt      time.Time  `bson:"startAt"`
@@ -635,6 +636,11 @@ type WekanCard struct {
 		ID    string `bson:"_id"`
 		Value string `bson:"value"`
 	}
+}
+
+// Board retourne le nom de la board où est la carte
+func (c WekanCard) Board() string {
+	return wekanConfig.BoardForID(c.BoardId)
 }
 
 func (cs WekanCards) Sirets() []string {
@@ -716,14 +722,14 @@ func (c WekanCard) FicheSF() (string, error) {
 	return "", fmt.Errorf("pas de propriété FicheSF pour cette carte: %s", c.ID)
 }
 
-func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error) {
+func selectWekanCardsFromSiret(username string, siret string) ([]*WekanCard, error) {
 	wcu := wekanConfig.forUser(username)
 	userID := wekanConfig.userID(username)
 	if userID == "" {
 		return nil, fmt.Errorf("selectWekanCardFromSiret() -> utilisateur wekan inconnu: %s", username)
 	}
 
-	var wekanCards []WekanCard
+	var wekanCards []*WekanCard
 
 	pipeline := cardPipeline(wcu, siret)
 	cursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
@@ -736,10 +742,7 @@ func selectWekanCardFromSiret(username string, siret string) (*WekanCard, error)
 		return nil, err
 	}
 
-	if len(wekanCards) > 0 {
-		return &wekanCards[0], nil
-	}
-	return nil, nil
+	return wekanCards, nil
 }
 
 func cardPipeline(wcu WekanConfig, siret string) bson.A {
@@ -810,9 +813,9 @@ func cardPipeline(wcu WekanConfig, siret string) bson.A {
 			},
 		},
 	}
-
 	return pipeline
 }
+
 func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID) ([]*WekanCard, error) {
 	if username != nil {
 		userID := wekanConfig.userID(*username)
@@ -842,7 +845,12 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 
 	if username != nil {
 		userID := wekanConfig.userID(*username)
-		query["$expr"] = bson.M{"$in": bson.A{userID, "$members"}}
+		query["$expr"] = bson.M{
+			"$or": bson.A{
+				bson.M{"$in": bson.A{userID, "$members"}},
+				bson.M{"$in": bson.A{userID, "$assignees"}},
+			},
+		}
 	}
 
 	if len(boardIds) > 0 { // rejet des ids non connus dans la configuration
@@ -931,6 +939,7 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 				"startAt":      1,
 				"endAt":        1,
 				"description":  1,
+				"assignees":    1,
 				"comments":     "$comments.text",
 			},
 		},
