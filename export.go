@@ -172,6 +172,7 @@ func getExportSiret(s session, siret string) (Card, error) {
 	return c, nil
 }
 
+// TODO: factoriser avec getCards
 func getExport(s session, params paramsGetCards) (Cards, error) {
 	var cards Cards
 	var cardsMap = make(map[string]*Card)
@@ -191,6 +192,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		listIds := wcu.listIdsForStatuts(params.Statut)
 		labelIds := wcu.labelIdsForLabels(params.Labels)
 		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds)
+		fmt.Println(wekanCards)
 		if err != nil {
 			return nil, err
 		}
@@ -201,9 +203,16 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 			}
 			card := Card{nil, []*WekanCard{w}, nil}
 			cards = append(cards, &card)
-			cardsMap[siret] = &card
-			sirets = append(sirets, siret)
-			if contains(w.Members, userID) {
+			if _, ok := cardsMap[siret]; !ok {
+				cardsMap[siret] = &card
+				sirets = append(sirets, siret)
+			} else {
+				c := cardsMap[siret].WekanCards
+				c = append(c, card.WekanCards...)
+				cardsMap[siret].WekanCards = c
+			}
+
+			if contains(append(w.Members, w.Assignees...), userID) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
@@ -463,7 +472,7 @@ func (c Card) join() []WekanExport {
 
 		if card != nil {
 			we.DateDebutSuivi = dateUrssaf(card.StartAt)
-			we.DescriptionWekan = card.Description + "\n\n" + strings.ReplaceAll(strings.Join(card.Comments, "\n\n"), "#export", "")
+			we.DescriptionWekan = strings.TrimSuffix(card.Description+"\n\n"+strings.ReplaceAll(strings.Join(card.Comments, "\n\n"), "#export", ""), "\n")
 			we.Labels = wc.labelForLabelsIDs(card.LabelIds, card.BoardId)
 			if card.EndAt != nil {
 				we.DateFinSuivi = dateUrssaf(*card.EndAt)
