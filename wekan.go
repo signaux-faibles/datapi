@@ -638,9 +638,11 @@ type WekanCard struct {
 	}
 }
 
+// Board retourne le nom de la board où est la carte
 func (c WekanCard) Board() string {
-	return wekanConfig.BoardForId(c.BoardId)
+	return wekanConfig.BoardForID(c.BoardId)
 }
+
 func (cs WekanCards) Sirets() []string {
 	var sirets []string
 	for _, c := range cs {

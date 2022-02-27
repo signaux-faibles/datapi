@@ -317,7 +317,8 @@ type WekanConfig struct {
 	mu       *sync.Mutex                  `json:"-"`
 }
 
-func (wc WekanConfig) BoardForId(boardId string) string {
+// BoardForID retourne le nom d'une board en échange de son id
+func (wc WekanConfig) BoardForID(boardId string) string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 	if board, ok := wc.BoardIds[boardId]; ok {
