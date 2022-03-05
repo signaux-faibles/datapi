@@ -588,12 +588,12 @@ func importHandler(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	log.Print("refreshing materialized views")
-	err = refreshMaterializedViews(&tx)
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
+	// log.Print("refreshing materialized views")
+	// err = refreshMaterializedViews(&tx)
+	// if err != nil {
+	// 	c.AbortWithError(500, err)
+	// 	return
+	// }
 	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
 	log.Print("drop dead data")
