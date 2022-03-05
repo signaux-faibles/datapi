@@ -307,7 +307,7 @@ func (e Etablissements) sirensFromQuery() []string {
 	return list
 }
 
-func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
+func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 	var batch pgx.Batch
 	listes, _ := findAllListes()
 	lastListe := listes[0].ID
@@ -835,7 +835,7 @@ func (e *Etablissements) load(roles scope, username string) error {
 		return err
 	}
 	defer tx.Commit(context.Background())
-	batch := e.getBatch(roles, username)
+	batch := e.intoBatch(roles, username)
 	b := tx.SendBatch(context.Background(), batch)
 	if err != nil {
 		return err
