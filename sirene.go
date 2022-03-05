@@ -21,24 +21,19 @@ func sireneImportHandler(c *gin.Context) {
 		return
 	}
 	log.Println("Truncate etablissement & entreprise table")
-	tx, err := db.Begin(context.Background())
-	defer tx.Commit(context.Background())
+
+	err := truncateSirens()
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
-	err = truncateSirens(tx)
 	log.Println("Tables truncated")
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
+
 	wg := sync.WaitGroup{}
 	wg.Add(2)
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	go insertSireneUL(ctx, cancelCtx, &wg)
 	go insertGeoSirene(ctx, cancelCtx, &wg)
-
 	wg.Wait()
 }
 
@@ -112,8 +107,7 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
 		etat_administratif text, 
 		enseigne text, 
 		denomination_usuelle text, 
-		caractere_employeur bool,
-		insert bool)
+		caractere_employeur bool)
 	on commit drop;`)
 
 	batch := &pgx.Batch{}
@@ -123,10 +117,10 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
 			code_commune, code_cedex, cedex, code_pays_etranger, pays_etranger, code_postal,
 			departement, code_activite, nomen_activite, latitude, longitude, 
 		  tranche_effectif, annee_effectif, code_activite_registre_metiers,
-			etat_administratif, enseigne, denomination_usuelle, caractere_employeur, insert) values 
+			etat_administratif, enseigne, denomination_usuelle, caractere_employeur) values 
 		($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
 		 $12,$13,$14,$15,$16,$17,$18,$19,$20,
-		 $21,$22,$23,$24,$25,$26,$27,$28,$29,$30,$31);`
+		 $21,$22,$23,$24,$25,$26,$27,$28,$29,$30);`
 	for _, sirene := range data {
 		d := geoSireneData(sirene)
 		batch.Queue(sql, d...)
@@ -139,7 +133,7 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
 			code_commune, code_cedex, cedex, code_pays_etranger, pays_etranger, code_postal,
 			departement, code_activite, nomen_activite, latitude, longitude, 
 		  tranche_effectif, annee_effectif, code_activite_registre_metiers,
-			etat_administratif, enseigne, denomination_usuelle, caractere_employeur, perimetre) select
+			etat_administratif, enseigne, denomination_usuelle, caractere_employeur) select
 			s.siret,
 			s.siren,
 			s.siege,
@@ -169,10 +163,8 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
 			s.etat_administratif,
 			s.enseigne,
 			s.denomination_usuelle,
-			s.caractere_employeur,
-			false
+			s.caractere_employeur
 		from tmp_geosirene s
-		where s.insert
 	`)
 	results := tx.SendBatch(ctx, batch)
 	err = results.Close()
@@ -375,12 +367,12 @@ func null(s string) *string {
 	return &s
 }
 
-func truncateSirens(tx pgx.Tx) error {
-	_, err := tx.Exec(context.Background(), "truncate table etablissement")
+func truncateSirens() error {
+	_, err := db.Exec(context.Background(), "truncate table etablissement")
 	if err != nil {
 		return err
 	}
-	_, err = tx.Exec(context.Background(), "truncate table entreprise")
+	_, err = db.Exec(context.Background(), "truncate table entreprise")
 	return err
 }
 
