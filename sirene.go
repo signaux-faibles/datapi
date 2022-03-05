@@ -57,7 +57,7 @@ func insertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync
 				continue
 			}
 			batch = []goSirene.GeoSirene{}
-			log.Println("inssert GeoSirene")
+			log.Println("insert GeoSirene")
 		}
 		if sirene.Error() == nil {
 			batch = append(batch, sirene)
