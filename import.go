@@ -568,7 +568,7 @@ func importHandler(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-	log.Print("preparing import (caching hashes and upgrading version)")
+	log.Print("preparing import (truncate tables)")
 	err = prepareImport(&tx)
 	if err != nil {
 		c.AbortWithError(500, err)
@@ -694,32 +694,32 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 	}
 }
 
-func refreshMaterializedViews(tx *pgx.Tx) error {
-	//!\ v_summaries doit être rafraichie en dernier
-	views := []string{
-		"v_alert_entreprise",
-		"v_alert_etablissement",
-		"v_apdemande",
-		"v_diane_variation_ca",
-		"v_etablissement_raison_sociale",
-		"v_hausse_urssaf",
-		"v_last_effectif",
-		"v_last_procol",
-		"v_naf",
-		"v_roles",
-		"v_summaries",
-	}
-	for _, v := range views {
-		fmt.Printf("\033[2K\rrefreshing %s", v)
-		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))
-		if err != nil {
-			return err
-		}
-	}
-	fmt.Println("")
-	log.Printf("success: %d views refreshed\n", len(views))
-	return nil
-}
+// func refreshMaterializedViews(tx *pgx.Tx) error {
+// 	//!\ v_summaries doit être rafraichie en dernier
+// 	views := []string{
+// 		"v_alert_entreprise",
+// 		"v_alert_etablissement",
+// 		"v_apdemande",
+// 		"v_diane_variation_ca",
+// 		"v_etablissement_raison_sociale",
+// 		"v_hausse_urssaf",
+// 		"v_last_effectif",
+// 		"v_last_procol",
+// 		"v_naf",
+// 		"v_roles",
+// 		"v_summaries",
+// 	}
+// 	for _, v := range views {
+// 		fmt.Printf("\033[2K\rrefreshing %s", v)
+// 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))
+// 		if err != nil {
+// 			return err
+// 		}
+// 	}
+// 	fmt.Println("")
+// 	log.Printf("success: %d views refreshed\n", len(views))
+// 	return nil
+// }
 
 func prepareImport(tx *pgx.Tx) error {
 	// var batch pgx.Batch
