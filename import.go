@@ -12,7 +12,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/cnf/structhash"
 	"github.com/gin-gonic/gin"
 	"github.com/globalsign/mgo/bson"
 	pgx "github.com/jackc/pgx/v4"
@@ -301,65 +300,25 @@ type sirene struct {
 	Latitude             float64    `json:"latitude,omitempty"`
 }
 
-func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
-	htreeEntreprise := htrees["entreprise"]
-	htreeEntrepriseEllisphere := htrees["entreprise_ellisphere"]
-	htreeEntrepriseBdF := htrees["entreprise_bdf"]
-	htreeEntrepriseDiane := htrees["entreprise_diane"]
-
-	updates := make(map[string][]int)
-
-	sqlEntrepriseInsert := `insert into entreprise 
-	(siren, raison_sociale, prenom1, prenom2, prenom3, prenom4, 
-	  nom, nom_usage, statut_juridique, creation, hash)
-  values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11);`
-
-	hash := structhash.Md5(e.Value.SireneUL, 0)
-
-	if id, ok := htreeEntreprise.contains(hash); !ok {
-		batch.Queue(
-			sqlEntrepriseInsert,
-			e.Value.SireneUL.Siren,
-			e.Value.SireneUL.RaisonSociale,
-			e.Value.SireneUL.Prenom1UniteLegale,
-			e.Value.SireneUL.Prenom2UniteLegale,
-			e.Value.SireneUL.Prenom3UniteLegale,
-			e.Value.SireneUL.Prenom4UniteLegale,
-			e.Value.SireneUL.NomUniteLegale,
-			e.Value.SireneUL.NomUsageUniteLegale,
-			e.Value.SireneUL.StatutJuridique,
-			e.Value.SireneUL.Creation,
-			hash,
-		)
-	} else {
-		updates["entreprise"] = append(updates["entreprise"], id)
-	}
-
+func (e entreprise) intoBatch(batch *pgx.Batch) {
 	sqlEntrepriseBDF := `insert into entreprise_bdf
 	(siren, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme,
-	 poids_frng, dette_fiscale, frais_financier, taux_marge, hash)
-	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10);`
+	 poids_frng, dette_fiscale, frais_financier, taux_marge)
+	values ($1, $2, $3, $4, $5, $6, $7, $8, $9);`
 
 	for _, b := range e.Value.BDF {
-
-		hash := structhash.Md5(b, 0)
-		if id, ok := htreeEntrepriseBdF.contains(hash); !ok {
-			batch.Queue(
-				sqlEntrepriseBDF,
-				b.Siren,
-				b.ArreteBilan,
-				b.Annee,
-				b.DelaiFournisseur,
-				b.FinancierCourtTerme,
-				b.PoidsFrng,
-				b.DetteFiscale,
-				b.FraisFinancier,
-				b.TauxMarge,
-				hash,
-			)
-		} else {
-			updates["entreprise_bdf"] = append(updates["entreprise_bdf"], id)
-		}
+		batch.Queue(
+			sqlEntrepriseBDF,
+			b.Siren,
+			b.ArreteBilan,
+			b.Annee,
+			b.DelaiFournisseur,
+			b.FinancierCourtTerme,
+			b.PoidsFrng,
+			b.DetteFiscale,
+			b.FraisFinancier,
+			b.TauxMarge,
+		)
 	}
 
 	sqlEntrepriseDiane := `insert into entreprise_diane
@@ -378,208 +337,120 @@ func (e entreprise) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[str
 	 	rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
 	 	rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
 	 	taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-		taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee, hash)
+		taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee)
 	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
 	 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
 	 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
- 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79, $80);`
+ 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79);`
 
 	for _, d := range e.Value.Diane {
 		if d.ArreteBilan.IsZero() {
 			continue
 		}
 
-		hash := structhash.Md5(d, 0)
-		if id, ok := htreeEntrepriseDiane.contains(hash); !ok {
-			batch.Queue(
-				sqlEntrepriseDiane,
-				d.NumeroSiren, d.ArreteBilan, d.AchatMarchandises, d.AchatMatieresPremieres, d.AutonomieFinanciere,
-				d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises, d.BeneficeOuPerte, d.CAExportation,
-				d.CapaciteAutofinancement, d.CapaciteRemboursement, d.CAparEffectif, d.ChargeExceptionnelle, d.ChargePersonnel,
-				d.ChargesFinancieres, d.ChiffreAffaire, d.ConcesBrevEtDroitsSim, d.ConcoursBancaireCourant, d.Consommation,
-				d.CouvertureCaBesoinFdr, d.CouvertureCaFdr, d.CreditClient, d.CreditFournisseur, d.DegreImmoCorporelle,
-				d.DetteFiscaleEtSociale, d.DotationAmortissement, d.EffectifConsolide, d.EfficaciteEconomique, d.Endettement,
-				d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
-				d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
-				d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
-				d.OperationsCommun, d.PartAutofinancement, d.PartEtat, d.PartPreteur, d.PartSalaries, d.ParticipationSalaries,
-				d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
-				d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
-				d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
-				d.RentabiliteNette, d.ResultatAvantImpot, d.ResultatExploitation, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
-				d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
-				d.TauxMargeCommerciale, d.TauxValeurAjoutee, d.ValeurAjoutee, hash,
-			)
-		} else {
-			updates["entreprise_diane"] = append(updates["entreprise_diane"], id)
-		}
+		batch.Queue(
+			sqlEntrepriseDiane,
+			d.NumeroSiren, d.ArreteBilan, d.AchatMarchandises, d.AchatMatieresPremieres, d.AutonomieFinanciere,
+			d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises, d.BeneficeOuPerte, d.CAExportation,
+			d.CapaciteAutofinancement, d.CapaciteRemboursement, d.CAparEffectif, d.ChargeExceptionnelle, d.ChargePersonnel,
+			d.ChargesFinancieres, d.ChiffreAffaire, d.ConcesBrevEtDroitsSim, d.ConcoursBancaireCourant, d.Consommation,
+			d.CouvertureCaBesoinFdr, d.CouvertureCaFdr, d.CreditClient, d.CreditFournisseur, d.DegreImmoCorporelle,
+			d.DetteFiscaleEtSociale, d.DotationAmortissement, d.EffectifConsolide, d.EfficaciteEconomique, d.Endettement,
+			d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
+			d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
+			d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
+			d.OperationsCommun, d.PartAutofinancement, d.PartEtat, d.PartPreteur, d.PartSalaries, d.ParticipationSalaries,
+			d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
+			d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
+			d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
+			d.RentabiliteNette, d.ResultatAvantImpot, d.ResultatExploitation, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
+			d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
+			d.TauxMargeCommerciale, d.TauxValeurAjoutee, d.ValeurAjoutee,
+		)
+
 	}
 
 	if e.Value.Ellisphere != nil {
 		sqlEllisphere := `insert into entreprise_ellisphere
 		(siren, code, refid, raison_sociale,	adresse, personne_pou_m,
 		niveau_detention, part_financiere, code_filiere, refid_filiere,
-		personne_pou_m_filiere, hash) 
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
-
+		personne_pou_m_filiere) 
+		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 		el := *e.Value.Ellisphere
 		el.Siren = e.Value.SireneUL.Siren
-		hash := structhash.Md5(el, 0)
-
-		if id, ok := htreeEntrepriseEllisphere.contains(hash); !ok {
-			batch.Queue(sqlEllisphere, el.Siren, el.CodeGroupe, el.RefIDGroupe, el.RaisocGroupe,
-				el.AdresseGroupe, el.PersonnePouMGroupe, el.NiveauDetention, el.PartFinanciere,
-				el.CodeFiliere, el.RefIDFiliere, el.PersonnePouMFiliere, hash)
-		} else {
-			updates["entreprise_ellisphere"] = append(updates["entreprise_ellisphere"], id)
-		}
+		batch.Queue(sqlEllisphere, el.Siren, el.CodeGroupe, el.RefIDGroupe, el.RaisocGroupe,
+			el.AdresseGroupe, el.PersonnePouMGroupe, el.NiveauDetention, el.PartFinanciere,
+			el.CodeFiliere, el.RefIDFiliere, el.PersonnePouMFiliere)
 	}
 
 	if e.Value.Paydex != nil {
 		for _, p := range *e.Value.Paydex {
 			sqlPaydex := `insert into entreprise_paydex
-				(siren, date_valeur, nb_jours, hash) 
-				values ($1, $2, $3, $4)`
-
+				(siren, date_valeur, nb_jours) 
+				values ($1, $2, $3)`
 			el := p
 			el.Siren = e.Value.SireneUL.Siren
-			hash := structhash.Md5(el, 0)
-
-			if id, ok := htreeEntrepriseEllisphere.contains(hash); !ok {
-				batch.Queue(sqlPaydex, el.Siren, el.DateValeur, el.NBJours, hash)
-			} else {
-				updates["entreprise_paydex"] = append(updates["entreprise_paydex"], id)
-			}
+			batch.Queue(sqlPaydex, el.Siren, el.DateValeur, el.NBJours)
 		}
-
 	}
-
-	return updates
 }
 
-func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[string][]int {
-	htreeEtablissement := htrees["etablissement"]
-	htreeEtablissementAPConso := htrees["etablissement_apconso"]
-	htreeEtablissementAPDemande := htrees["etablissement_apdemande"]
-	htreeEtablissementPeriodeUrssaf := htrees["etablissement_periode_urssaf"]
-	htreeEtablissementDelai := htrees["etablissement_delai"]
-	htreeEtablissementProcol := htrees["etablissement_procol"]
-	htreeScore := htrees["score"]
-
-	updates := make(map[string][]int)
-
-	sqlEtablissement := `insert into etablissement
-		(siret, siren, siege, complement_adresse, numero_voie, indice_repetition, 
-		type_voie, voie, commune, commune_etranger, distribution_speciale, code_commune,
-		cedex, code_pays_etranger, pays_etranger, code_postal, departement,
-		code_activite, nomen_activite, creation, latitude, longitude, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, 
-		$13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23);`
-
-	hash := structhash.Md5(e.Value.Sirene, 0)
-
-	defaultNomen := "NAFRev2"
-
-	if id, ok := htreeEtablissement.contains(hash); !ok {
-		e.Value.Sirene.Siret = e.Value.Key
-		batch.Queue(
-			sqlEtablissement,
-			e.Value.Sirene.Siret,
-			e.Value.Sirene.Siren,
-			e.Value.Sirene.Siege,
-			e.Value.Sirene.ComplementAdresse,
-			e.Value.Sirene.NumVoie,
-			e.Value.Sirene.IndRep,
-			e.Value.Sirene.TypeVoie,
-			e.Value.Sirene.Voie,
-			e.Value.Sirene.Commune,
-			e.Value.Sirene.CommuneEtranger,
-			e.Value.Sirene.DistributionSpeciale,
-			e.Value.Sirene.CodeCommune,
-			e.Value.Sirene.Cedex,
-			e.Value.Sirene.CodePaysEtranger,
-			e.Value.Sirene.PaysEtranger,
-			e.Value.Sirene.CodePostal,
-			e.Value.Sirene.Departement,
-			coalescepString(e.Value.Sirene.APE, e.Value.Sirene.CodeActivite),
-			coalescepString(e.Value.Sirene.NomenActivite, &defaultNomen),
-			e.Value.Sirene.Creation,
-			e.Value.Sirene.Latitude,
-			e.Value.Sirene.Longitude,
-			hash,
-		)
-	} else {
-		updates["etablissement"] = append(updates["etablissement"], id)
-	}
-
+func (e etablissement) intoBatch(batch *pgx.Batch) {
 	for _, a := range e.Value.APConso {
 		sqlAPConso := `insert into etablissement_apconso
-		(siret, siren, id_conso, heure_consomme, montant, effectif, periode, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8);`
+		(siret, siren, id_conso, heure_consomme, montant, effectif, periode)
+		values ($1, $2, $3, $4, $5, $6, $7);`
 
 		a.Siret = e.Value.Key
 
-		hash := structhash.Md5(a, 0)
+		batch.Queue(
+			sqlAPConso,
+			a.Siret,
+			a.Siret[0:9],
+			a.IDConso,
+			a.HeureConsomme,
+			a.Montant,
+			a.Effectif,
+			a.Periode,
+		)
 
-		if id, ok := htreeEtablissementAPConso.contains(hash); !ok {
-			batch.Queue(
-				sqlAPConso,
-				a.Siret,
-				a.Siret[0:9],
-				a.IDConso,
-				a.HeureConsomme,
-				a.Montant,
-				a.Effectif,
-				a.Periode,
-				hash,
-			)
-		} else {
-			updates["etablissement_apconso"] = append(updates["etablissement_apconso"], id)
-		}
 	}
 
 	periodesOrigine, _ := time.Parse("20060102", "20180101")
 	for _, a := range e.Value.APDemande {
 		sqlAPDemande := `insert into etablissement_apdemande
 				(siret, siren, id_demande, effectif_entreprise, effectif, date_statut, periode_start, periode_end,
-				 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme, hash)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)`
+				 hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)`
 
 		a.Siret = e.Value.Key
 
-		hash := structhash.Md5(a, 0)
-
-		if id, ok := htreeEtablissementAPDemande.contains(hash); !ok {
-			batch.Queue(
-				sqlAPDemande,
-				a.Siret,
-				a.Siret[0:9],
-				a.IDDemande,
-				a.EffectifEntreprise,
-				a.Effectif,
-				a.DateStatut,
-				a.Periode.Start,
-				a.Periode.End,
-				a.HTA,
-				a.MTA,
-				a.EffectifAutorise,
-				a.MotifRecoursSE,
-				a.HeureConsomme,
-				a.MontantConsomme,
-				a.EffectifConsomme,
-				hash,
-			)
-		} else {
-			updates["etablissement_apdemande"] = append(updates["etablissement_apdemande"], id)
-		}
+		batch.Queue(
+			sqlAPDemande,
+			a.Siret,
+			a.Siret[0:9],
+			a.IDDemande,
+			a.EffectifEntreprise,
+			a.Effectif,
+			a.DateStatut,
+			a.Periode.Start,
+			a.Periode.End,
+			a.HTA,
+			a.MTA,
+			a.EffectifAutorise,
+			a.MotifRecoursSE,
+			a.HeureConsomme,
+			a.MontantConsomme,
+			a.EffectifConsomme,
+		)
 	}
 
 	for i, a := range e.Value.Periodes {
 		if *e.Value.Cotisation[i]+*e.Value.DebitPartPatronale[i]+*e.Value.DebitPartOuvriere[i]+*e.Value.DebitMontantMajorations[i] != 0 ||
 			e.Value.Effectif[i] != nil && e.Value.Periodes[i].After(periodesOrigine) {
 			sqlUrssaf := `insert into etablissement_periode_urssaf
-				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif, hash)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9)`
+				(siret, siren, periode, cotisation, part_patronale, part_salariale, montant_majorations, effectif)
+				values ($1, $2, $3, $4, $5, $6, $7, $8)`
 
 			var periode = struct {
 				Siret                   string
@@ -599,141 +470,60 @@ func (e etablissement) getBatch(batch *pgx.Batch, htrees map[string]*htree) map[
 				Cotisation:              e.Value.Cotisation[i],
 			}
 
-			hash := structhash.Md5(periode, 0)
-
-			if id, ok := htreeEtablissementPeriodeUrssaf.contains(hash); !ok {
-				batch.Queue(
-					sqlUrssaf,
-					periode.Siret,
-					periode.Siret[0:9],
-					periode.Periode,
-					periode.Cotisation,
-					periode.DebitPartPatronale,
-					periode.DebitPartOuvriere,
-					periode.DebitMontantMajorations,
-					periode.Effectif,
-					hash,
-				)
-			} else {
-				updates["etablissement_periode_urssaf"] = append(updates["etablissement_periode_urssaf"], id)
-			}
+			batch.Queue(
+				sqlUrssaf,
+				periode.Siret,
+				periode.Siret[0:9],
+				periode.Periode,
+				periode.Cotisation,
+				periode.DebitPartPatronale,
+				periode.DebitPartOuvriere,
+				periode.DebitMontantMajorations,
+				periode.Effectif,
+			)
 		}
 	}
 
 	for _, a := range e.Value.Delai {
 		sqlDelai := `insert into etablissement_delai (siret, siren, action, annee_creation, date_creation, date_echeance,
-				denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade, hash)
-				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14);`
+				denomination, duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade)
+				values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13);`
 
 		a.Siret = e.Value.Key
-		hash := structhash.Md5(a, 0)
 
-		if id, ok := htreeEtablissementDelai.contains(hash); !ok {
-
-			batch.Queue(
-				sqlDelai,
-				a.Siret,
-				a.Siret[0:9],
-				a.Action,
-				a.AnneeCreation,
-				a.DateCreation,
-				a.DateEcheance,
-				a.Denomination,
-				a.DureeDelai,
-				a.Indic6m,
-				a.MontantEcheancier,
-				a.NumeroCompte,
-				a.NumeroContentieux,
-				a.Stade,
-				hash,
-			)
-		} else {
-			updates["etablissement_delai"] = append(updates["etablissement_delai"], id)
-		}
+		batch.Queue(
+			sqlDelai,
+			a.Siret,
+			a.Siret[0:9],
+			a.Action,
+			a.AnneeCreation,
+			a.DateCreation,
+			a.DateEcheance,
+			a.Denomination,
+			a.DureeDelai,
+			a.Indic6m,
+			a.MontantEcheancier,
+			a.NumeroCompte,
+			a.NumeroContentieux,
+			a.Stade,
+		)
 	}
 
 	for _, p := range e.Value.Procol {
 		sqlProcol := `insert into etablissement_procol (siret, siren, date_effet,
-			action_procol, stade_procol, hash) values ($1, $2, $3, $4, $5, $6);`
+			action_procol, stade_procol) values ($1, $2, $3, $4, $5);`
 
 		p.Siret = e.Value.Key
 
-		hash := structhash.Md5(p, 0)
-
-		if id, ok := htreeEtablissementProcol.contains(hash); !ok {
-			batch.Queue(
-				sqlProcol,
-				p.Siret,
-				p.Siret[0:9],
-				p.DateEffet,
-				p.Action,
-				p.Stade,
-				hash,
-			)
-		} else {
-			updates["etablissement_procol"] = append(updates["etablissement_procol"], id)
-		}
+		batch.Queue(
+			sqlProcol,
+			p.Siret,
+			p.Siret[0:9],
+			p.DateEffet,
+			p.Action,
+			p.Stade,
+		)
 	}
-
-	for _, s := range groupScores(e.Scores) {
-		sqlScore := `insert into score (siret, siren, libelle_liste, batch, algo, periode, score, diff, alert, 
-			expl_selection_concerning, expl_selection_reassuring, macro_expl, micro_expl, macro_radar, alert_pre_redressements, redressements, hash)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)`
-
-		s.Siret = e.Value.Key
-		s.Libelle = s.toLibelle()
-
-		if !contains(viper.GetStringSlice("algoIgnore"), s.Algo) && !contains(viper.GetStringSlice("batchIgnore"), s.Batch) {
-			hash := structhash.Md5(s, 0)
-			if id, ok := htreeScore.contains(hash); !ok {
-				if s.ExplSelection.SelectConcerning == nil {
-					s.ExplSelection.SelectConcerning = make([][]string, 0)
-				}
-				if s.ExplSelection.SelectReassuring == nil {
-					s.ExplSelection.SelectReassuring = make([][]string, 0)
-				}
-				if s.MacroExpl == nil {
-					s.MacroExpl = make(map[string]float64)
-				}
-				if s.MicroExpl == nil {
-					s.MicroExpl = make(map[string]float64)
-				}
-				if s.MacroRadar == nil {
-					s.MacroRadar = make(map[string]float64)
-				}
-				redressements := []string{}
-				if s.AlertPreRedressements == "" {
-					s.AlertPreRedressements = s.Alert
-				}
-				if s.Alert != s.AlertPreRedressements {
-					redressements = append(redressements, "detteUrssaf")
-				}
-				batch.Queue(sqlScore,
-					s.Siret,
-					s.Siret[:9],
-					s.toLibelle(),
-					s.Batch,
-					s.Algo,
-					s.Periode,
-					s.Score,
-					s.Diff,
-					s.Alert,
-					s.ExplSelection.SelectConcerning,
-					s.ExplSelection.SelectReassuring,
-					s.MacroExpl,
-					s.MicroExpl,
-					s.MacroRadar,
-					s.AlertPreRedressements,
-					redressements,
-					hash,
-				)
-			} else {
-				updates["score"] = append(updates["score"], id)
-			}
-		}
-	}
-
-	return updates
 }
 
 func contains(array []string, test string) bool {
@@ -743,41 +533,6 @@ func contains(array []string, test string) bool {
 		}
 	}
 	return false
-}
-
-func groupScores(scores []score) []score {
-	var a = make(map[string]score)
-	for _, s := range scores {
-		key := s.Batch + s.Algo
-		if i, ok := a[key]; !ok || i.Timestamp.After(s.Timestamp) {
-			a[key] = s
-		}
-	}
-	var res []score
-	for _, i := range a {
-		res = append(res, i)
-	}
-	return res
-}
-
-func (s score) toLibelle() string {
-	months := map[string]string{
-		"01": "Janvier",
-		"02": "Février",
-		"03": "Mars",
-		"04": "Avril",
-		"05": "Mai",
-		"06": "Juin",
-		"07": "Juillet",
-		"08": "Août",
-		"09": "Septembre",
-		"10": "Octobre",
-		"11": "Novembre",
-		"12": "Décembre",
-	}
-	year := "20" + s.Batch[0:2]
-	month := s.Batch[2:4]
-	return months[month] + " " + year
 }
 
 func (s scoreFile) toLibelle() string {
@@ -800,12 +555,12 @@ func (s scoreFile) toLibelle() string {
 	return months[month] + " " + year
 }
 
-func scoreToListe() pgx.Batch {
-	var batch pgx.Batch
-	batch.Queue(`insert into liste (libelle, batch, algo) 
-	select distinct libelle_liste as libelle, batch, algo from score;`)
-	return batch
-}
+// func scoreToListe() pgx.Batch {
+// 	var batch pgx.Batch
+// 	batch.Queue(`insert into liste (libelle, batch, algo)
+// 	select distinct libelle_liste as libelle, batch, algo from score;`)
+// 	return batch
+// }
 
 func importHandler(c *gin.Context) {
 	tx, err := db.Begin(context.Background())
@@ -814,21 +569,21 @@ func importHandler(c *gin.Context) {
 		return
 	}
 	log.Print("preparing import (caching hashes and upgrading version)")
-	htrees, err := prepareImport(&tx)
+	err = prepareImport(&tx)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
-	err = processEntreprise(sourceEntreprise, htrees, &tx)
+	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
 	}
 	sourceEtablissement := viper.GetString("sourceEtablissement")
 	log.Printf("processing etablissement file %s", sourceEtablissement)
-	err = processEtablissement(sourceEtablissement, htrees, &tx)
+	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -849,7 +604,7 @@ func importHandler(c *gin.Context) {
 	}
 }
 
-func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) error {
+func processEntreprise(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Printf("error opening file: %s", err.Error())
@@ -866,14 +621,10 @@ func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) er
 	i := 0
 	var batch pgx.Batch
 
-	var updates = make(map[string][]int)
-
 	for {
 		var e entreprise
 		err := decoder.Decode(&e)
 		if err != nil {
-			updatesToBatch(updates, &batch)
-			batches <- batch
 			close(batches)
 			wg.Wait()
 			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
@@ -884,15 +635,11 @@ func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) er
 		}
 
 		if e.Value.SireneUL.Siren != "" {
-			newUpdates := e.getBatch(&batch, htrees)
-			for k, v := range newUpdates {
-				updates[k] = append(updates[k], v...)
-			}
+			e.intoBatch(&batch)
+
 			i++
 			if math.Mod(float64(i), 1000) == 0 {
-				updatesToBatch(updates, &batch)
 				batches <- batch
-				updates = make(map[string][]int)
 				batch = pgx.Batch{}
 				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
 			}
@@ -900,14 +647,7 @@ func processEntreprise(fileName string, htrees map[string]*htree, tx *pgx.Tx) er
 	}
 }
 
-func updatesToBatch(updates map[string][]int, batch *pgx.Batch) {
-	for table, ids := range updates {
-		sqlUpdate := fmt.Sprintf(`update %s set version = 0 where id = any($1)`, table)
-		batch.Queue(sqlUpdate, ids)
-	}
-}
-
-func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx) error {
+func processEtablissement(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
 		log.Printf("error opening file: %s", err.Error())
@@ -926,15 +666,11 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 
 	i := 0
 	var batch pgx.Batch
-	var updates = make(map[string][]int)
 
 	for {
 		var e etablissement
 		err := decoder.Decode(&e)
 		if err != nil {
-			updatesToBatch(updates, &batch)
-			batches <- batch
-			batches <- scoreToListe()
 			close(batches)
 			wg.Wait()
 			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
@@ -946,10 +682,7 @@ func processEtablissement(fileName string, htrees map[string]*htree, tx *pgx.Tx)
 
 		if len(e.ID) > 14 && e.Value.Sirene.Departement != nil {
 			e.Value.Key = e.ID[len(e.ID)-14:]
-			newUpdates := e.getBatch(&batch, htrees)
-			for k, v := range newUpdates {
-				updates[k] = append(updates[k], v...)
-			}
+			e.intoBatch(&batch)
 
 			i++
 			if math.Mod(float64(i), 1000) == 0 {
@@ -988,58 +721,28 @@ func refreshMaterializedViews(tx *pgx.Tx) error {
 	return nil
 }
 
-func prepareImport(tx *pgx.Tx) (map[string]*htree, error) {
+func prepareImport(tx *pgx.Tx) error {
 	// var batch pgx.Batch
 	var tables = []string{
-		"entreprise",
 		"entreprise_ellisphere",
 		"entreprise_bdf",
 		"entreprise_diane",
 		"entreprise_paydex",
-		"etablissement",
 		"etablissement_apconso",
 		"etablissement_apdemande",
 		"etablissement_periode_urssaf",
 		"etablissement_delai",
 		"etablissement_procol",
-		"score",
-		"liste",
 	}
-	// for _, table := range tables {
-	// 	batch.Queue(fmt.Sprintf("update %s set version = version + 1 returning id, case when version = 1 then hash else null end", table))
-	// }
-	var htrees = make(map[string]*htree)
 
 	for _, table := range tables {
 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("truncate table %s;", table))
-
-		htrees[table] = &htree{}
 		if err != nil {
-			return htrees, err
+			return err
 		}
 	}
-	// r := (*tx).SendBatch(context.Background(), &batch)
-	// for _, table := range tables {
-	// 	tree := &htree{}
-	// 	fmt.Printf("\033[2K\rupdate table %s\n", table)
-	// 	rows, err := r.Query()
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
-	// 	for rows.Next() {
-	// 		var hash []byte
-	// 		var id int
-	// 		err := rows.Scan(&id, &hash)
-	// 		if err != nil {
-	// 			return nil, err
-	// 		}
-	// 		if hash != nil {
-	// 			tree.insert(hash, id)
-	// 		}
-	// 	}
-	// 	htrees[table] = tree
-	// }
-	return htrees, nil
+
+	return nil
 }
 
 type scoreFile struct {
