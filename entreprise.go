@@ -15,16 +15,16 @@ import (
 type Entreprise struct {
 	Siren  string `json:"siren"`
 	Sirene struct {
-		RaisonSociale     string    `json:"raisonSociale"`
+		RaisonSociale     *string   `json:"raisonSociale"`
 		StatutJuridique   *string   `json:"statutJuridique"`
 		StatutJuridiqueN1 *string   `json:"statutJuridiqueN1"`
 		StatutJuridiqueN2 *string   `json:"statutJuridiqueN2"`
-		Prenom1           string    `json:"prenom1,omitempty"`
-		Prenom2           string    `json:"prenom2,omitempty"`
-		Prenom3           string    `json:"prenom3,omitempty"`
-		Prenom4           string    `json:"prenom4,omitempty"`
-		Nom               string    `json:"nom,omitempty"`
-		NomUsage          string    `json:"nomUsage,omitempty"`
+		Prenom1           *string   `json:"prenom1,omitempty"`
+		Prenom2           *string   `json:"prenom2,omitempty"`
+		Prenom3           *string   `json:"prenom3,omitempty"`
+		Prenom4           *string   `json:"prenom4,omitempty"`
+		Nom               *string   `json:"nom,omitempty"`
+		NomUsage          *string   `json:"nomUsage,omitempty"`
 		Creation          time.Time `json:"creation,omitempty"`
 	}
 	Paydex                *Paydex         `json:"paydex,omitempty"`
@@ -91,7 +91,7 @@ type Etablissement struct {
 		Cedex                *string    `json:"-"`
 		CodePaysEtranger     *string    `json:"-"`
 		PaysEtranger         *string    `json:"-"`
-		Adresse              string     `json:"adresse"`
+		Adresse              *string    `json:"adresse"`
 		CodeDepartement      *string    `json:"codeDepartement"`
 		Departement          *string    `json:"departement"`
 		Creation             *time.Time `json:"creation"`
@@ -307,7 +307,7 @@ func (e Etablissements) sirensFromQuery() []string {
 	return list
 }
 
-func (e *Etablissements) getBatch(roles scope, username string) *pgx.Batch {
+func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 	var batch pgx.Batch
 	listes, _ := findAllListes()
 	lastListe := listes[0].ID
@@ -835,7 +835,7 @@ func (e *Etablissements) load(roles scope, username string) error {
 		return err
 	}
 	defer tx.Commit(context.Background())
-	batch := e.getBatch(roles, username)
+	batch := e.intoBatch(roles, username)
 	b := tx.SendBatch(context.Background(), batch)
 	if err != nil {
 		return err
@@ -981,7 +981,8 @@ func (e *Etablissement) setAdresse() {
 	if e.Sirene.CodePaysEtranger != nil {
 		adresse = append(adresse, str(e.Sirene.CodePaysEtranger))
 	}
-	e.Sirene.Adresse = strings.Join(adresse, "\n")
+	adresseStr := strings.Join(adresse, "\n")
+	e.Sirene.Adresse = &adresseStr
 }
 
 func getSiegeFromSiren(siren string) (string, error) {
