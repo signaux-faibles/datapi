@@ -1,24 +1,18 @@
 package main
 
 import (
-	"bytes"
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"net/http"
-	"net/url"
+	"math"
+	"math/rand"
 	"sort"
-	"strconv"
-	"strings"
-	"sync"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/mongo"
 )
 
 // Token type pour faire persister en mémoire les tokens réutilisables
@@ -77,7 +71,7 @@ type EtablissementData struct {
 	LibelleActivite string
 }
 
-var tokens sync.Map
+// var tokens sync.Map
 
 func lookupCard(siret string) (WekanCards, error) {
 	var cards WekanCards
@@ -264,302 +258,289 @@ func wekanJoinCardHandler(c *gin.Context) {
 }
 
 func wekanNewCardHandler(c *gin.Context) {
+	type poker struct {
+		Question             bool     `bson:"question"`
+		One                  []string `bson:"one"`
+		Two                  []string `bson:"two"`
+		Three                []string `bson:"three"`
+		Five                 []string `bson:"five"`
+		Eight                []string `bson:"eight"`
+		Thirteen             []string `bson:"thirteen"`
+		Twenty               []string `bson:"twenty"`
+		Forty                []string `bson:"forty"`
+		OneHundred           []string `bson:"oneHundred"`
+		Unsure               []string `bson:"unsure"`
+		End                  *bool    `bson:"end"`
+		AllowNonBoardMembers bool     `bson:"allowNonBoardMembers"`
+	}
+	type vote struct {
+		Question             string   `bson:"question"`
+		Positive             []string `bson:"positive"`
+		Negative             []string `bson:"negative"`
+		End                  *bool    `bson:"end"`
+		Public               bool     `bson:"public"`
+		AllowNonBoardMembers bool     `bson:"allowNonBoardMembers"`
+	}
 	type newCard struct {
+		ID               string        `bson:"_id"`
+		Title            string        `bson:"title"`
+		Members          []string      `bson:"members"`
+		LabelIds         []string      `bson:"labelIds"`
+		CustomFields     []CustomField `bson:"customFields"`
+		ListID           string        `bson:"listId"`
+		BoardID          string        `bson:"boardId"`
+		Sort             float64       `bson:"sort"`
+		SwimlaneId       string        `bson:"swimlaneId"`
+		Type             string        `bson:"type"`
+		Archived         bool          `bson:"archived"`
+		ParentId         string        `bson:"parentId"`
+		CoverId          string        `bson:"coverId"`
+		CreatedAt        time.Time     `bson:"createdAt"`
+		ModifiedAt       time.Time     `bson:"modifiedAt"`
+		DateLastActivity time.Time     `bson:"dateLastActivity"`
+		Description      string        `bson:"description"`
+		RequestedBy      string        `bson:"requestedBy"`
+		AssignedBy       string        `bson:"assignedBy"`
+		Assignees        []string      `bson:"assignees"`
+		SpentTime        int           `bson:"spentTime"`
+		IsOverTime       bool          `bson:"isOvertime"`
+		UserID           string        `bson:"userId"`
+		SubtaskSort      int           `bson:"int"`
+		LinkedID         string        `bson:"linkedId"`
+		Vote             vote          `bson:"vote"`
+		Poker            poker         `bson:"poker"`
+		TargetIdGantt    []string      `bson:"targetId_gantt"`
+		LinkTypeGantt    []string      `bson:"linkType_gantt"`
+		LinkIdGantt      []string      `bson:"linkId_gantt"`
+		StartAt          time.Time     `bson:"startAt"`
+	}
+	type newActivity struct {
+		ID           string    `bson:"_id"`
+		UserID       string    `bson:"userId"`
+		ActivityType string    `bson:"activityType"`
+		BoardID      string    `bson:"boardId"`
+		ListName     string    `bson:"listName"`
+		ListID       string    `bson:"listId"`
+		CardID       string    `bson:"cardId"`
+		CardTitle    string    `bson:"cardTitle"`
+		SwimlaneName string    `bson:"swimlaneName"`
+		SwimlaneId   string    `bson:"swimlaneId"`
+		CreatedAt    time.Time `bson:"createAt"`
+		ModifiedAt   time.Time `bson:"modifiedAt"`
+	}
+
+	var s session
+	var param struct {
 		BoardID     string `json:"boardId"`
 		Description string `json:"description"`
 	}
 
-	siret := c.Param("siret")
-	var s session
-	var param newCard
 	s.bind(c)
+	siret := c.Param("siret")
 	err := c.Bind(&param)
-	fmt.Println(err)
 	if err != nil {
-		return
+		c.JSON(400, "wekanNewCardHandler: "+err.Error())
 	}
 
-	boardIds := wekanConfig.boardIdsForUser(s.username)
-	if !contains(boardIds, param.BoardID) {
-		c.JSON(403, "User can't create card on this board "+param.BoardID)
+	wcu := wekanConfig.forUser(s.username)
+	if !contains(wcu.boardIdsForUser(s.username), param.BoardID) {
+		c.JSON(403, "wekanNewCardHandler: accès refusé")
 		return
 	}
-
-	userID := wekanConfig.userID(s.username)
-	if userID == "" {
-		c.JSON(403, "not a wekan user")
-		return
-	}
-	var adminToken Token
-	adminUsername := viper.GetString("wekanAdminUsername")
-	loadedToken, ok := tokens.Load(adminUsername)
-	if loadedToken != nil {
-		adminToken = loadedToken.(Token)
-		ok = isValidToken(adminToken)
-	}
-	if !ok {
-		log.Printf("no valid admin token")
-		adminPassword := viper.GetString("wekanAdminPassword")
-		body, err := adminLogin(adminUsername, adminPassword)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		wekanLogin := WekanLogin{}
-		err = json.Unmarshal(body, &wekanLogin)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		adminToken.Value = wekanLogin.Token
-		now := time.Now()
-		adminToken.CreationDate = now
-		tokens.Store(adminUsername, adminToken)
-	} else {
-		log.Printf("existing admin token")
-	}
-	var userToken Token
-	loadedToken, ok = tokens.Load(s.username)
-	if loadedToken != nil {
-		userToken = loadedToken.(Token)
-		ok = isValidToken(userToken)
-	}
-	if !ok {
-		log.Printf("no valid user token")
-		body, err := createToken(userID, adminToken.Value)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		wekanCreateToken := WekanCreateToken{}
-		err = json.Unmarshal(body, &wekanCreateToken)
-		if err != nil {
-			c.JSON(500, err.Error())
-			return
-		}
-		userToken.Value = wekanCreateToken.AuthToken
-		now := time.Now()
-		userToken.CreationDate = now
-		tokens.Store(s.username, userToken)
-	} else {
-		log.Printf("existing user token")
-	}
-	// data enrichment
+	userId := wcu.userID(s.username)
 	etsData, err := getEtablissementDataFromDb(siret)
 	if err != nil {
-		log.Println(err.Error())
+		c.JSON(500, "wekanNewCardHandler/getEtablissementData: "+err.Error())
 		return
 	}
 
-	wekanConfig.mu.Lock()
-	board, ok := wekanConfig.BoardIds[param.BoardID]
-	wekanConfig.mu.Unlock()
+	board, ok := wcu.BoardIds[param.BoardID]
 	if !ok {
-		c.JSON(500, "missing board in config file")
+		c.JSON(500, "quelque chose ne va vraiment pas avec wekanConfig")
 		return
 	}
-	boardID := param.BoardID
+
 	listID := board.Lists[0]
-	// fields formatting
-	departement := etsData.Departement
-	swimlaneID, ok := board.Swimlanes[departement]
+
+	swimlane, ok := board.Swimlanes[etsData.Departement]
 	if !ok {
-		c.JSON(500, "not a departement of this region")
+		c.JSON(500, "wekanNewCardHandler: le département ne correspond pas à cette board")
 		return
 	}
-	activite := formatActiviteField(etsData.CodeActivite, etsData.LibelleActivite)
-	ficheSF := formatFicheSFField(etsData.Siret)
-	effectifIndex := getEffectifIndex(etsData.Effectif)
-	// new card
-	title := etsData.RaisonSociale
-	creationData := map[string]interface{}{
-		"authorId":   userID,
-		"members":    [1]string{userID},
-		"title":      title,
-		"swimlaneId": swimlaneID,
-	}
-	// body, err := ioutil.ReadAll(c.Request.Body)
-	// if err != nil {
-	// 	c.JSON(500, err.Error())
-	// 	return
-	// }
-	// var requestData map[string]string
-	// err = json.Unmarshal(body, &requestData)
-	// if err != nil {
-	// 	c.JSON(500, err.Error())
-	// 	return
-	// }
 
-	if param.Description != "" {
-		creationData["description"] = param.Description
-	}
-	body, err := createCard(userToken.Value, boardID, listID, creationData)
-	if err != nil {
-		fmt.Println("we're here")
-		c.JSON(500, err.Error())
-		return
-	}
-	wekanCreateCard := WekanCreateCard{}
-	err = json.Unmarshal(body, &wekanCreateCard)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	cardID := wekanCreateCard.ID
-	// card edition
-	var customFields = []CustomField{
-		{board.CustomFields.SiretField, siret},
-		{board.CustomFields.FicheSFField, ficheSF},
-	}
-	if activite != "" {
-		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, activite})
-	} else {
-		customFields = append(customFields, CustomField{board.CustomFields.ActiviteField, ""})
-	}
-	if effectifIndex >= 0 {
-		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, board.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]})
-	} else {
-		customFields = append(customFields, CustomField{board.CustomFields.EffectifField.EffectifFieldID, ""})
-	}
-	customFields = append(customFields, CustomField{board.CustomFields.ContactField, ""})
 	now := time.Now()
-	var editionData = map[string]interface{}{
-		"customFields": customFields,
-		"startAt":      now,
-	}
-	_, err = editCard(adminToken.Value, boardID, listID, cardID, editionData)
+	cardID, err := getNewCardID(0)
 	if err != nil {
-		c.JSON(500, err.Error())
+		c.JSON(500, "wekanNewCardHandler: erreur de génération de la carte -> "+err.Error())
+	}
+	activityID, err := getNewActivityID(0)
+	if err != nil {
+		c.JSON(500, "wekanNewCardHandler: erreur de génération de la carte -> "+err.Error())
+	}
+	sort, err := getNewCardHint(board.BoardID)
+	if err != nil {
+		c.JSON(500, "wekanNewCardHandler: erreur de génération de la carte -> "+err.Error())
+	}
+
+	customFields := []CustomField{
+		board.activiteField(etsData.CodeActivite, etsData.LibelleActivite),
+		board.effectifField(etsData.Effectif),
+		{
+			ID:    board.CustomFields.ContactField,
+			Value: "",
+		},
+		{
+			ID:    board.CustomFields.SiretField,
+			Value: siret,
+		},
+		{
+			ID:    board.CustomFields.FicheSFField,
+			Value: viper.GetString("webBaseURL") + "ets/" + siret,
+		},
+	}
+
+	card := newCard{
+		ID:               cardID,
+		Title:            etsData.RaisonSociale,
+		BoardID:          board.BoardID,
+		ListID:           listID,
+		Description:      param.Description,
+		UserID:           wcu.userID(s.username),
+		SwimlaneId:       swimlane.ID,
+		Sort:             sort,
+		Members:          []string{userId},
+		Archived:         false,
+		ParentId:         "",
+		CoverId:          "",
+		CreatedAt:        now,
+		ModifiedAt:       now,
+		CustomFields:     customFields,
+		DateLastActivity: now,
+		RequestedBy:      "",
+		AssignedBy:       "",
+		Assignees:        []string{},
+		SpentTime:        0,
+		IsOverTime:       false,
+		SubtaskSort:      -1,
+		Type:             "cardType-card",
+		LinkedID:         "",
+		Vote: vote{
+			Question:             "",
+			Positive:             []string{},
+			Negative:             []string{},
+			End:                  nil,
+			Public:               false,
+			AllowNonBoardMembers: false,
+		},
+		Poker: poker{
+			Question:             false,
+			One:                  []string{},
+			Two:                  []string{},
+			Three:                []string{},
+			Five:                 []string{},
+			Eight:                []string{},
+			Thirteen:             []string{},
+			Twenty:               []string{},
+			Forty:                []string{},
+			OneHundred:           []string{},
+			Unsure:               []string{},
+			End:                  nil,
+			AllowNonBoardMembers: false,
+		},
+		TargetIdGantt: []string{},
+		LinkTypeGantt: []string{},
+		LinkIdGantt:   []string{},
+		StartAt:       now,
+	}
+
+	activity := newActivity{
+		ID:           activityID,
+		UserID:       userId,
+		ActivityType: "createCard",
+		BoardID:      board.BoardID,
+		ListName:     "À définir",
+		ListID:       listID,
+		CardID:       cardID,
+		CardTitle:    etsData.RaisonSociale,
+		SwimlaneName: swimlane.Title,
+		SwimlaneId:   swimlane.ID,
+		CreatedAt:    now,
+		ModifiedAt:   now,
+	}
+
+	_, err = mgoDB.Collection("activities").InsertOne(context.Background(), activity)
+	if err == nil {
+		c.JSON(500, "wekanNewCardHandler:"+err.Error())
+		return
+	}
+
+	_, err = mgoDB.Collection("cards").InsertOne(context.Background(), card)
+	if err == nil {
+		c.JSON(500, "wekanNewCardHandler:"+err.Error())
 		return
 	}
 }
 
-func adminLogin(username string, password string) ([]byte, error) {
-	wekanURL := viper.GetString("wekanURL")
-	data := url.Values{}
-	data.Set("username", username)
-	data.Set("password", password)
-	req, err := http.NewRequest("POST", wekanURL+"users/login", strings.NewReader(data.Encode()))
+// getNewCardHint fournit la valeur du prochain champ cardNumber et du champ sort pour une board pour une nouvelle carte
+// sort est obtenu en donnant l'entier immédiatement inférieur à la valeur obtenue dans la requête
+func getNewCardHint(boardId string) (float64, error) {
+	var hints []struct {
+		MinSort float64 `bson:"minSort"`
+	}
+	cursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), bson.A{
+		bson.M{
+			"$match": boardId,
+		},
+		bson.M{
+			"$group": bson.M{
+				"$_id": "boardId",
+				"$minSort": bson.M{
+					"$min": "$sort",
+				},
+			},
+		},
+	})
 	if err != nil {
-		return nil, err
+		return 0, errors.New("getNewCardHint: " + err.Error())
 	}
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Add("Content-Length", strconv.Itoa(len(data.Encode())))
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != http.StatusOK {
-		err = errors.New("adminLogin: unexpected wekan API response")
+	err = cursor.Decode(&hints)
+	if err != nil || len(hints) != 1 {
+		return 0, errors.New("getNewCardHint: " + err.Error())
 	}
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
+	newSort := math.Round(hints[0].MinSort - 0.001)
+	return newSort, nil
 }
 
-func createToken(userID string, adminToken string) ([]byte, error) {
-	wekanURL := viper.GetString("wekanURL")
-	req, err := http.NewRequest("POST", wekanURL+"api/createtoken/"+userID, nil)
-	if err != nil {
-		return nil, err
+// Génère un ID de la même façon de Meteor et teste s'il est disponible dans la collection cards
+func getNewCardID(try int) (string, error) {
+	if try < 4 {
+		id := meteorID()
+		res := mgoDB.Collection("cards").FindOne(context.Background(), bson.M{
+			"_id": meteorID(),
+		})
+		if res.Err() == mongo.ErrNoDocuments {
+			return id, nil
+		}
+		return getNewCardID(try + 1)
+	} else {
+		return "", errors.New("getNewCardID: pas de nouvel ID disponible au 4° essais")
 	}
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+adminToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != http.StatusOK {
-		err = errors.New("createToken: unexpected wekan API response")
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
 }
 
-func createCard(userToken string, boardID string, listID string, creationData map[string]interface{}) ([]byte, error) {
-	wekanURL := viper.GetString("wekanURL")
-	json, err := json.Marshal(creationData)
-	if err != nil {
-		return nil, err
+// Génère un ID de la même façon de Meteor et teste s'il est disponible dans la collection cards
+func getNewActivityID(try int) (string, error) {
+	if try < 4 {
+		id := meteorID()
+		res := mgoDB.Collection("activities").FindOne(context.Background(), bson.M{
+			"_id": meteorID(),
+		})
+		if res.Err() == mongo.ErrNoDocuments {
+			return id, nil
+		}
+		return getNewCardID(try + 1)
+	} else {
+		return "", errors.New("getNewActivityID: pas de nouvel ID disponible au 4° essais")
 	}
-	req, err := http.NewRequest("POST", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards", bytes.NewBuffer(json))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+userToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		err = fmt.Errorf("createCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
-}
-
-func editCard(userToken string, boardID string, listID string, cardID string, editionData map[string]interface{}) ([]byte, error) {
-	wekanURL := viper.GetString("wekanURL")
-	json, err := json.Marshal(editionData)
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("PUT", wekanURL+"api/boards/"+boardID+"/lists/"+listID+"/cards/"+cardID, bytes.NewBuffer(json))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+userToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		err = fmt.Errorf("editCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
-}
-
-func commentCard(userToken string, boardID string, cardID string, commentData map[string]string) ([]byte, error) {
-	wekanURL := viper.GetString("wekanURL")
-	json, err := json.Marshal(commentData)
-	if err != nil {
-		return nil, err
-	}
-	req, err := http.NewRequest("POST", wekanURL+"api/boards/"+boardID+"/cards/"+cardID+"/comments", bytes.NewBuffer(json))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Add("Content-Type", "application/json")
-	req.Header.Add("Accept", "application/json")
-	req.Header.Add("Authorization", "Bearer "+userToken)
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if resp.StatusCode != http.StatusOK {
-		body, _ := ioutil.ReadAll(resp.Body)
-		err = fmt.Errorf("commentCard: unexpected wekan API response: %d\nBody: %s", resp.StatusCode, body)
-	}
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	return ioutil.ReadAll(resp.Body)
-}
-
-func isValidToken(token Token) bool {
-	duration := time.Since(token.CreationDate)
-	hours := duration.Hours()
-	days := hours / 24
-	return days < float64(viper.GetInt("wekanTokenDays"))
 }
 
 func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
@@ -588,15 +569,18 @@ func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
 	return etsData, nil
 }
 
-func formatActiviteField(codeActivite string, libelleActivite string) string {
+func (wcb *WekanConfigBoard) activiteField(codeActivite string, libelleActivite string) CustomField {
 	var activite string
 	if len(libelleActivite) > 0 && len(codeActivite) > 0 {
 		activite = libelleActivite + " (" + codeActivite + ")"
 	}
-	return activite
+	return CustomField{
+		ID:    wcb.CustomFields.ActiviteField,
+		Value: activite,
+	}
 }
 
-func getEffectifIndex(effectif int) int {
+func (wcb *WekanConfigBoard) effectifField(effectif int) CustomField {
 	var effectifIndex = -1
 	effectifClass := [4]int{10, 20, 50, 100}
 	for i := len(effectifClass) - 1; i >= 0; i-- {
@@ -605,11 +589,11 @@ func getEffectifIndex(effectif int) int {
 			break
 		}
 	}
-	return effectifIndex
-}
-
-func formatFicheSFField(siret string) string {
-	return viper.GetString("webBaseURL") + "ets/" + siret
+	if effectifIndex >= 0 {
+		return CustomField{wcb.CustomFields.EffectifField.EffectifFieldID, wcb.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]}
+	} else {
+		return CustomField{wcb.CustomFields.EffectifField.EffectifFieldID, ""}
+	}
 }
 
 // WekanCards est une liste de WekanCard
@@ -946,4 +930,14 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 	}
 
 	return pipeline
+}
+
+var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
+
+func meteorID() string {
+	b := make([]rune, 17)
+	for i := range b {
+		b[i] = letters[rand.Intn(len(letters))]
+	}
+	return string(b)
 }

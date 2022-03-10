@@ -89,8 +89,11 @@ func buildWekanConfigPipeline() []bson.M {
 					}}},
 				{"$project": bson.M{
 					"_id": 0,
-					"v":   "$_id",
-					"k":   bson.M{"$arrayElemAt": bson.A{bson.M{"$split": bson.A{"$title", " "}}, 0}},
+					"v": bson.M{
+						"id":    "$_id",
+						"title": "$title",
+					},
+					"k": bson.M{"$arrayElemAt": bson.A{bson.M{"$split": bson.A{"$title", " "}}, 0}},
 				}},
 			},
 			"as": "swimlanes",
@@ -436,7 +439,7 @@ func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
 	for _, board := range wc.Boards {
 		for k, s := range board.Swimlanes {
 			if contains(zone, k) {
-				swimlaneIds = append(swimlaneIds, s)
+				swimlaneIds = append(swimlaneIds, s.ID)
 			}
 		}
 	}
@@ -461,11 +464,14 @@ type wekanLabel struct {
 
 // WekanConfigBoard contient les détails de configuration d'une board Wekan
 type WekanConfigBoard struct {
-	BoardID      string             `bson:"boardId" json:"boardId"`
-	Title        string             `bson:"title" json:"title"`
-	Slug         string             `bson:"slug" json:"slug"`
-	Labels       []wekanLabel       `bson:"labels" json:"labels"`
-	Swimlanes    map[string]string  `bson:"swimlanes" json:"swimlanes"`
+	BoardID   string       `bson:"boardId" json:"boardId"`
+	Title     string       `bson:"title" json:"title"`
+	Slug      string       `bson:"slug" json:"slug"`
+	Labels    []wekanLabel `bson:"labels" json:"labels"`
+	Swimlanes map[string]struct {
+		ID    string `bson:"id"`
+		Title string `bson:"title"`
+	} `bson:"swimlanes" json:"swimlanes"`
 	Members      []string           `bson:"members" json:"members"`
 	Lists        []string           `bson:"lists" json:"lists"`
 	ListDetails  []wekanListDetails `bson:"listDetails" json:"listDetails"`
