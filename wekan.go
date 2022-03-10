@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 	"math/rand"
 	"sort"
 	"time"
@@ -49,8 +48,8 @@ type WekanCreateCard struct {
 
 // CustomField type pour les champs personnalisés lors de l'édition de carte
 type CustomField struct {
-	ID    string `json:"_id"`
-	Value string `json:"value"`
+	ID    string `json:"_id" bson:"_id"`
+	Value string `json:"value" bson:"value"`
 }
 
 // FicheCRP type pour les fiches CRP
@@ -305,7 +304,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		SpentTime        int           `bson:"spentTime"`
 		IsOverTime       bool          `bson:"isOvertime"`
 		UserID           string        `bson:"userId"`
-		SubtaskSort      int           `bson:"int"`
+		SubtaskSort      int           `bson:"subtaskSort"`
 		LinkedID         string        `bson:"linkedId"`
 		Vote             vote          `bson:"vote"`
 		Poker            poker         `bson:"poker"`
@@ -325,7 +324,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		CardTitle    string    `bson:"cardTitle"`
 		SwimlaneName string    `bson:"swimlaneName"`
 		SwimlaneId   string    `bson:"swimlaneId"`
-		CreatedAt    time.Time `bson:"createAt"`
+		CreatedAt    time.Time `bson:"createdAt"`
 		ModifiedAt   time.Time `bson:"modifiedAt"`
 	}
 
@@ -343,11 +342,11 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 
 	wcu := wekanConfig.forUser(s.username)
-	if !contains(wcu.boardIdsForUser(s.username), param.BoardID) {
+	if !contains(wekanConfig.boardIdsForUser(s.username), param.BoardID) {
 		c.JSON(403, "wekanNewCardHandler: accès refusé")
 		return
 	}
-	userId := wcu.userID(s.username)
+	userId := wekanConfig.userID(s.username)
 	etsData, err := getEtablissementDataFromDb(siret)
 	if err != nil {
 		c.JSON(500, "wekanNewCardHandler/getEtablissementData: "+err.Error())
@@ -372,14 +371,12 @@ func wekanNewCardHandler(c *gin.Context) {
 	cardID, err := getNewCardID(0)
 	if err != nil {
 		c.JSON(500, "wekanNewCardHandler: erreur de génération de la carte -> "+err.Error())
+		return
 	}
 	activityID, err := getNewActivityID(0)
 	if err != nil {
 		c.JSON(500, "wekanNewCardHandler: erreur de génération de la carte -> "+err.Error())
-	}
-	sort, err := getNewCardHint(board.BoardID)
-	if err != nil {
-		c.JSON(500, "wekanNewCardHandler: erreur de génération de la carte -> "+err.Error())
+		return
 	}
 
 	customFields := []CustomField{
@@ -405,9 +402,9 @@ func wekanNewCardHandler(c *gin.Context) {
 		BoardID:          board.BoardID,
 		ListID:           listID,
 		Description:      param.Description,
-		UserID:           wcu.userID(s.username),
+		UserID:           userId,
 		SwimlaneId:       swimlane.ID,
-		Sort:             sort,
+		Sort:             0,
 		Members:          []string{userId},
 		Archived:         false,
 		ParentId:         "",
@@ -418,6 +415,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		DateLastActivity: now,
 		RequestedBy:      "",
 		AssignedBy:       "",
+		LabelIds:         []string{},
 		Assignees:        []string{},
 		SpentTime:        0,
 		IsOverTime:       false,
@@ -469,46 +467,16 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 
 	_, err = mgoDB.Collection("activities").InsertOne(context.Background(), activity)
-	if err == nil {
+	if err != nil {
 		c.JSON(500, "wekanNewCardHandler:"+err.Error())
 		return
 	}
 
 	_, err = mgoDB.Collection("cards").InsertOne(context.Background(), card)
-	if err == nil {
+	if err != nil {
 		c.JSON(500, "wekanNewCardHandler:"+err.Error())
 		return
 	}
-}
-
-// getNewCardHint fournit la valeur du prochain champ cardNumber et du champ sort pour une board pour une nouvelle carte
-// sort est obtenu en donnant l'entier immédiatement inférieur à la valeur obtenue dans la requête
-func getNewCardHint(boardId string) (float64, error) {
-	var hints []struct {
-		MinSort float64 `bson:"minSort"`
-	}
-	cursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), bson.A{
-		bson.M{
-			"$match": boardId,
-		},
-		bson.M{
-			"$group": bson.M{
-				"$_id": "boardId",
-				"$minSort": bson.M{
-					"$min": "$sort",
-				},
-			},
-		},
-	})
-	if err != nil {
-		return 0, errors.New("getNewCardHint: " + err.Error())
-	}
-	err = cursor.Decode(&hints)
-	if err != nil || len(hints) != 1 {
-		return 0, errors.New("getNewCardHint: " + err.Error())
-	}
-	newSort := math.Round(hints[0].MinSort - 0.001)
-	return newSort, nil
 }
 
 // Génère un ID de la même façon de Meteor et teste s'il est disponible dans la collection cards
@@ -516,7 +484,7 @@ func getNewCardID(try int) (string, error) {
 	if try < 4 {
 		id := meteorID()
 		res := mgoDB.Collection("cards").FindOne(context.Background(), bson.M{
-			"_id": meteorID(),
+			"_id": id,
 		})
 		if res.Err() == mongo.ErrNoDocuments {
 			return id, nil
@@ -532,7 +500,7 @@ func getNewActivityID(try int) (string, error) {
 	if try < 4 {
 		id := meteorID()
 		res := mgoDB.Collection("activities").FindOne(context.Background(), bson.M{
-			"_id": meteorID(),
+			"_id": id,
 		})
 		if res.Err() == mongo.ErrNoDocuments {
 			return id, nil
@@ -935,6 +903,7 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 func meteorID() string {
+	rand.Seed(time.Now().UTC().UnixNano())
 	b := make([]rune, 17)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]
