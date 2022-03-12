@@ -505,9 +505,8 @@ func getNewActivityID(try int) (string, error) {
 			return id, nil
 		}
 		return getNewCardID(try + 1)
-	} else {
-		return "", errors.New("getNewActivityID: pas de nouvel ID disponible au 4° essais")
 	}
+	return "", errors.New("getNewActivityID: pas de nouvel ID disponible au 4° essais")
 }
 
 func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
