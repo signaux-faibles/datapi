@@ -346,7 +346,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		c.JSON(403, "wekanNewCardHandler: accès refusé")
 		return
 	}
-	userId := wekanConfig.userID(s.username)
+	userID := wekanConfig.userID(s.username)
 	etsData, err := getEtablissementDataFromDb(siret)
 	if err != nil {
 		c.JSON(500, "wekanNewCardHandler/getEtablissementData: "+err.Error())
@@ -402,10 +402,10 @@ func wekanNewCardHandler(c *gin.Context) {
 		BoardID:          board.BoardID,
 		ListID:           listID,
 		Description:      param.Description,
-		UserID:           userId,
+		UserID:           userID,
 		SwimlaneID:       swimlane.ID,
 		Sort:             0,
-		Members:          []string{userId},
+		Members:          []string{userID},
 		Archived:         false,
 		ParentID:         "",
 		CoverID:          "",
@@ -453,7 +453,7 @@ func wekanNewCardHandler(c *gin.Context) {
 
 	activity := newActivity{
 		ID:           activityID,
-		UserID:       userId,
+		UserID:       userID,
 		ActivityType: "createCard",
 		BoardID:      board.BoardID,
 		ListName:     "À définir",
@@ -490,12 +490,11 @@ func getNewCardID(try int) (string, error) {
 			return id, nil
 		}
 		return getNewCardID(try + 1)
-	} else {
-		return "", errors.New("getNewCardID: pas de nouvel ID disponible au 4° essais")
 	}
+	return "", errors.New("getNewCardID: pas de nouvel ID disponible au 4° essais")
 }
 
-// Génère un ID de la même façon de Meteor et teste s'il est disponible dans la collection cards
+// Génère un ID de la même façon de Meteor et teste s'il est disponible dans la collection activities
 func getNewActivityID(try int) (string, error) {
 	if try < 4 {
 		id := meteorID()
