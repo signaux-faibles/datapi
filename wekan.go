@@ -284,16 +284,16 @@ func wekanNewCardHandler(c *gin.Context) {
 		ID               string        `bson:"_id"`
 		Title            string        `bson:"title"`
 		Members          []string      `bson:"members"`
-		LabelIds         []string      `bson:"labelIds"`
+		LabelIDs         []string      `bson:"labelIds"`
 		CustomFields     []CustomField `bson:"customFields"`
 		ListID           string        `bson:"listId"`
 		BoardID          string        `bson:"boardId"`
 		Sort             float64       `bson:"sort"`
-		SwimlaneId       string        `bson:"swimlaneId"`
+		SwimlaneID       string        `bson:"swimlaneId"`
 		Type             string        `bson:"type"`
 		Archived         bool          `bson:"archived"`
-		ParentId         string        `bson:"parentId"`
-		CoverId          string        `bson:"coverId"`
+		ParentID         string        `bson:"parentId"`
+		CoverID          string        `bson:"coverId"`
 		CreatedAt        time.Time     `bson:"createdAt"`
 		ModifiedAt       time.Time     `bson:"modifiedAt"`
 		DateLastActivity time.Time     `bson:"dateLastActivity"`
@@ -308,9 +308,9 @@ func wekanNewCardHandler(c *gin.Context) {
 		LinkedID         string        `bson:"linkedId"`
 		Vote             vote          `bson:"vote"`
 		Poker            poker         `bson:"poker"`
-		TargetIdGantt    []string      `bson:"targetId_gantt"`
+		TargetIDGantt    []string      `bson:"targetId_gantt"`
 		LinkTypeGantt    []string      `bson:"linkType_gantt"`
-		LinkIdGantt      []string      `bson:"linkId_gantt"`
+		LinkIDGantt      []string      `bson:"linkId_gantt"`
 		StartAt          time.Time     `bson:"startAt"`
 	}
 	type newActivity struct {
@@ -323,7 +323,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		CardID       string    `bson:"cardId"`
 		CardTitle    string    `bson:"cardTitle"`
 		SwimlaneName string    `bson:"swimlaneName"`
-		SwimlaneId   string    `bson:"swimlaneId"`
+		SwimlaneID   string    `bson:"swimlaneId"`
 		CreatedAt    time.Time `bson:"createdAt"`
 		ModifiedAt   time.Time `bson:"modifiedAt"`
 	}
@@ -403,19 +403,19 @@ func wekanNewCardHandler(c *gin.Context) {
 		ListID:           listID,
 		Description:      param.Description,
 		UserID:           userId,
-		SwimlaneId:       swimlane.ID,
+		SwimlaneID:       swimlane.ID,
 		Sort:             0,
 		Members:          []string{userId},
 		Archived:         false,
-		ParentId:         "",
-		CoverId:          "",
+		ParentID:         "",
+		CoverID:          "",
 		CreatedAt:        now,
 		ModifiedAt:       now,
 		CustomFields:     customFields,
 		DateLastActivity: now,
 		RequestedBy:      "",
 		AssignedBy:       "",
-		LabelIds:         []string{},
+		LabelIDs:         []string{},
 		Assignees:        []string{},
 		SpentTime:        0,
 		IsOverTime:       false,
@@ -445,9 +445,9 @@ func wekanNewCardHandler(c *gin.Context) {
 			End:                  nil,
 			AllowNonBoardMembers: false,
 		},
-		TargetIdGantt: []string{},
+		TargetIDGantt: []string{},
 		LinkTypeGantt: []string{},
-		LinkIdGantt:   []string{},
+		LinkIDGantt:   []string{},
 		StartAt:       now,
 	}
 
@@ -461,7 +461,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		CardID:       cardID,
 		CardTitle:    etsData.RaisonSociale,
 		SwimlaneName: swimlane.Title,
-		SwimlaneId:   swimlane.ID,
+		SwimlaneID:   swimlane.ID,
 		CreatedAt:    now,
 		ModifiedAt:   now,
 	}
