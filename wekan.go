@@ -557,9 +557,8 @@ func (wcb *WekanConfigBoard) effectifField(effectif int) CustomField {
 	}
 	if effectifIndex >= 0 {
 		return CustomField{wcb.CustomFields.EffectifField.EffectifFieldID, wcb.CustomFields.EffectifField.EffectifFieldItems[effectifIndex]}
-	} else {
-		return CustomField{wcb.CustomFields.EffectifField.EffectifFieldID, ""}
 	}
+	return CustomField{wcb.CustomFields.EffectifField.EffectifFieldID, ""}
 }
 
 // WekanCards est une liste de WekanCard
