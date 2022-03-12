@@ -113,12 +113,12 @@ func wekanGetCardsHandler(c *gin.Context) {
 	}
 
 	type BoardData struct {
-		IsMember bool      `json:"isMember"`
-		ID       string    `json:"id,omitempty"`
-		Title    string    `json:"title,omitempty"`
-		Slug     string    `json:"slug,omitempty"`
-		URL      string    `json:"url,omitempty"`
-		Card     *CardData `json:"card"`
+		IsMember bool        `json:"isMember"`
+		ID       string      `json:"id,omitempty"`
+		Title    string      `json:"title,omitempty"`
+		Slug     string      `json:"slug,omitempty"`
+		URL      string      `json:"url,omitempty"`
+		Card     []*CardData `json:"card"`
 	}
 
 	var s session
@@ -146,7 +146,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 	wc = wekanConfig.copy()
 	wcu := wc.forUser(s.username)
 
-	boardsMap := make(map[*WekanConfigBoard]*WekanCard)
+	boardsMap := make(map[*WekanConfigBoard][]*WekanCard)
 	for _, board := range wcu.Boards {
 		if _, ok := board.Swimlanes[dept]; ok {
 			boardsMap[board] = nil
@@ -154,37 +154,41 @@ func wekanGetCardsHandler(c *gin.Context) {
 	}
 	for _, card := range cards {
 		c := card
-		boardsMap[wc.BoardIds[card.BoardId]] = &c
+		boardsMap[wc.BoardIds[card.BoardId]] = append(boardsMap[wc.BoardIds[card.BoardId]], &c)
 	}
 	wekanURL := viper.GetString("wekanURL")
 	var boardDatas []BoardData
-	for board, card := range boardsMap {
+	for board, cards := range boardsMap {
 		var boardData BoardData
 		boardData.Title = board.Title
-
 		if _, ok := wcu.BoardIds[board.BoardID]; ok {
 			boardData.ID = board.BoardID
 			boardData.Slug = board.Slug
 			boardData.URL = wekanURL + "b/" + board.BoardID + "/" + wc.BoardIds[board.BoardID].Slug
 			boardData.IsMember = true
-			if card != nil {
-				boardData.Card = &CardData{
-					CardID:          card.ID,
-					List:            wc.listForListID(card.ListID, card.BoardId),
-					Archived:        card.Archived,
-					Board:           wc.BoardIds[card.BoardId].Title,
-					CardURL:         wekanURL + "b/" + card.BoardId + "/" + wc.BoardIds[card.BoardId].Slug + "/" + card.ID,
-					CardDescription: card.Description,
-					IsMember:        contains(card.Members, wc.userID(s.username)),
-					Creator:         wc.userForUserID(card.UserID),
+			for _, card := range cards {
+				if card != nil {
+					boardData.Card = append(boardData.Card, &CardData{
+						CardID:          card.ID,
+						List:            wc.listForListID(card.ListID, card.BoardId),
+						Archived:        card.Archived,
+						Board:           wc.BoardIds[card.BoardId].Title,
+						CardURL:         wekanURL + "b/" + card.BoardId + "/" + wc.BoardIds[card.BoardId].Slug + "/" + card.ID,
+						CardDescription: card.Description,
+						IsMember:        contains(card.Members, wc.userID(s.username)),
+						Creator:         wc.userForUserID(card.UserID),
+					})
 				}
 			}
+
 		} else {
 			boardData.IsMember = false
-			boardData.Card = &CardData{
-				Board:    wc.BoardIds[card.BoardId].Title,
-				IsMember: false,
-				Creator:  wc.userForUserID(card.UserID),
+			for _, card := range cards {
+				boardData.Card = append(boardData.Card, &CardData{
+					Board:    wc.BoardIds[card.BoardId].Title,
+					IsMember: false,
+					Creator:  wc.userForUserID(card.UserID),
+				})
 			}
 		}
 		boardDatas = append(boardDatas, boardData)
