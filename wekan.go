@@ -99,9 +99,48 @@ func lookupCard(siret string) (WekanCards, error) {
 	return cards, err
 }
 
+func wekanUnarchiveCardHandler(c *gin.Context) {
+	var s session
+	s.bind(c)
+	userID := wekanConfig.userID(s.username)
+	if userID == "" || !s.hasRole("wekan") {
+		c.JSON(403, "not a wekan user")
+		return
+	}
+
+	cardID := c.Param("cardID")
+	boardIDs := wekanConfig.boardIdsForUser(s.username)
+	fmt.Println(cardID)
+	result, err := mgoDB.Collection("cards").UpdateOne(context.Background(),
+		bson.M{
+			"boardId": bson.M{
+				"$in": boardIDs,
+			},
+			"_id": cardID,
+		},
+		bson.M{
+			"$set": bson.M{
+				"archived": false,
+			},
+		},
+	)
+	if err != nil {
+		c.JSON(500, "wekanUnarchiveCardHandler: "+err.Error())
+		return
+	}
+	if result.MatchedCount == 0 {
+		c.JSON(400, "wekanUnarchiveCardHandler: carte non existante ou non accessible")
+		return
+	}
+	if result.ModifiedCount == 0 {
+		c.JSON(400, "wekanUnarchiveCardHandler: la carte n'est pas archivée")
+		return
+	}
+}
+
 func wekanGetCardsHandler(c *gin.Context) {
 	type CardData struct {
-		CardID          string `json:"cardID,omitempty"`
+		CardID          string `json:"cardId,omitempty"`
 		List            string `json:"listIndex,omitempty"`
 		Archived        bool   `json:"archived,omitempty"`
 		Board           string `json:"board,omitempty"`
@@ -118,7 +157,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 		Title    string      `json:"title,omitempty"`
 		Slug     string      `json:"slug,omitempty"`
 		URL      string      `json:"url,omitempty"`
-		Card     []*CardData `json:"card"`
+		Cards    []*CardData `json:"cards"`
 	}
 
 	var s session
@@ -168,7 +207,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 			boardData.IsMember = true
 			for _, card := range cards {
 				if card != nil {
-					boardData.Card = append(boardData.Card, &CardData{
+					boardData.Cards = append(boardData.Cards, &CardData{
 						CardID:          card.ID,
 						List:            wc.listForListID(card.ListID, card.BoardId),
 						Archived:        card.Archived,
@@ -184,9 +223,10 @@ func wekanGetCardsHandler(c *gin.Context) {
 		} else {
 			boardData.IsMember = false
 			for _, card := range cards {
-				boardData.Card = append(boardData.Card, &CardData{
+				boardData.Cards = append(boardData.Cards, &CardData{
 					Board:    wc.BoardIds[card.BoardId].Title,
 					IsMember: false,
+					Archived: card.Archived,
 					Creator:  wc.userForUserID(card.UserID),
 				})
 			}
