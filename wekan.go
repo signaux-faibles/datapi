@@ -14,49 +14,10 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-// Token type pour faire persister en mémoire les tokens réutilisables
-type Token struct {
-	Value        string
-	CreationDate time.Time
-}
-
-// WekanLogin type pour les réponses du service de login
-type WekanLogin struct {
-	ID           string `json:"id"`
-	Token        string `json:"token"`
-	TokenExpires string `json:"tokenExpires"`
-}
-
-// WekanCreateToken type pour les réponses du service de création de token
-type WekanCreateToken struct {
-	ID        string `json:"_id"`
-	AuthToken string `json:"authToken"`
-}
-
-// WekanGetCard type pour les réponses du service de recherche de carte
-type WekanGetCard []struct {
-	ID          string   `json:"_id"`
-	ListID      string   `json:"listId"`
-	Description string   `json:"description"`
-	Members     []string `json:"members"`
-}
-
-// WekanCreateCard type pour les réponses du service de création de carte
-type WekanCreateCard struct {
-	ID string `json:"_id"`
-}
-
 // CustomField type pour les champs personnalisés lors de l'édition de carte
 type CustomField struct {
 	ID    string `json:"_id" bson:"_id"`
 	Value string `json:"value" bson:"value"`
-}
-
-// FicheCRP type pour les fiches CRP
-type FicheCRP struct {
-	Siret       string
-	Commentaire string
-	Description string
 }
 
 // EtablissementData type pour les données de l'établissement à faire figurer sur la carte Wekan
@@ -68,35 +29,6 @@ type EtablissementData struct {
 	Effectif        int
 	CodeActivite    string
 	LibelleActivite string
-}
-
-// var tokens sync.Map
-
-func lookupCard(siret string) (WekanCards, error) {
-	var cards WekanCards
-	var queryOr []bson.M
-	for _, boardConfig := range wekanConfig.copy().BoardIds {
-		queryOr = append(queryOr,
-			bson.M{
-				"boardId": boardConfig.BoardID,
-				"customFields": bson.D{
-					{Key: "_id", Value: boardConfig.CustomFields.SiretField},
-					{Key: "value", Value: siret},
-				},
-			},
-		)
-	}
-
-	query := bson.M{
-		"$or": queryOr,
-	}
-	cursor, err := mgoDB.Collection("cards").Find(context.Background(), query)
-	if err != nil {
-		return nil, err
-	}
-	err = cursor.All(context.Background(), &cards)
-
-	return cards, err
 }
 
 func wekanUnarchiveCardHandler(c *gin.Context) {
@@ -140,15 +72,19 @@ func wekanUnarchiveCardHandler(c *gin.Context) {
 
 func wekanGetCardsHandler(c *gin.Context) {
 	type CardData struct {
-		CardID          string `json:"cardId,omitempty"`
-		List            string `json:"listIndex,omitempty"`
-		Archived        bool   `json:"archived,omitempty"`
-		Board           string `json:"board,omitempty"`
-		CardURL         string `json:"cardURL,omitempty"`
-		CardDescription string `json:"cardDescription,omitempty"`
-		IsMember        bool   `json:"isMember,omitempty"`
-		Creator         string `json:"creator,omitempty"`
-		IsBoardMember   bool   `json:"isBoardMember,omitempty"`
+		CardID          string     `json:"cardId,omitempty"`
+		List            string     `json:"listIndex,omitempty"`
+		Archived        bool       `json:"archived,omitempty"`
+		Board           string     `json:"board,omitempty"`
+		CardURL         string     `json:"cardURL,omitempty"`
+		CardDescription string     `json:"cardDescription,omitempty"`
+		IsMember        bool       `json:"isMember,omitempty"`
+		Creator         string     `json:"creator,omitempty"`
+		IsBoardMember   bool       `json:"isBoardMember,omitempty"`
+		LastActivity    time.Time  `json:"lastActivity,omitempty"`
+		StartAt         time.Time  `json:"createdAt,omitempty"`
+		EndAt           *time.Time `json:"endAt,omitempty"`
+		LabelIDs        []string   `json:"labelIds,omitempty"`
 	}
 
 	type BoardData struct {
@@ -176,7 +112,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 		return
 	}
 
-	cards, err := lookupCard(siret)
+	cards, err := selectWekanCardsFromSiret(s.username, siret)
 	if err != nil {
 		c.JSON(500, "wekanGetCardsHandler/lookupCard: "+err.Error())
 		return
@@ -193,7 +129,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 	}
 	for _, card := range cards {
 		c := card
-		boardsMap[wc.BoardIds[card.BoardId]] = append(boardsMap[wc.BoardIds[card.BoardId]], &c)
+		boardsMap[wc.BoardIds[card.BoardId]] = append(boardsMap[wc.BoardIds[card.BoardId]], c)
 	}
 	wekanURL := viper.GetString("wekanURL")
 	var boardDatas []BoardData
@@ -216,18 +152,24 @@ func wekanGetCardsHandler(c *gin.Context) {
 						CardDescription: card.Description,
 						IsMember:        contains(card.Members, wc.userID(s.username)),
 						Creator:         wc.userForUserID(card.UserID),
+						LabelIDs:        card.LabelIds,
+						StartAt:         card.StartAt,
+						EndAt:           card.EndAt,
+						LastActivity:    card.LastActivity,
 					})
 				}
 			}
-
 		} else {
 			boardData.IsMember = false
 			for _, card := range cards {
 				boardData.Cards = append(boardData.Cards, &CardData{
-					Board:    wc.BoardIds[card.BoardId].Title,
-					IsMember: false,
-					Archived: card.Archived,
-					Creator:  wc.userForUserID(card.UserID),
+					Board:        wc.BoardIds[card.BoardId].Title,
+					IsMember:     false,
+					Archived:     card.Archived,
+					Creator:      wc.userForUserID(card.UserID),
+					StartAt:      card.StartAt,
+					EndAt:        card.EndAt,
+					LastActivity: card.LastActivity,
 				})
 			}
 		}
@@ -621,6 +563,7 @@ type WekanCard struct {
 	Description  string     `bson:"description"`
 	StartAt      time.Time  `bson:"startAt"`
 	EndAt        *time.Time `bson:"endAt"`
+	LastActivity time.Time  `bson:"lastActivity"`
 	LabelIds     []string   `bson:"labelIds"`
 	Archived     bool       `bson:"archived"`
 	UserID       string     `bson:"userId"`
@@ -783,6 +726,14 @@ func cardPipeline(wcu WekanConfig, siret string) bson.A {
 			},
 		},
 		bson.M{
+			"$lookup": bson.M{
+				"from":         "card_comments",
+				"localField":   "_id",
+				"foreignField": "cardId",
+				"to":           "lastActivity",
+			},
+		},
+		bson.M{
 			"$sort": bson.D{
 				bson.E{Key: "archived", Value: 1},
 				bson.E{Key: "startAt", Value: 1},
@@ -803,6 +754,8 @@ func cardPipeline(wcu WekanConfig, siret string) bson.A {
 				"endAt":        1,
 				"description":  1,
 				"comments":     "$comments.text",
+				"lastActivity": bson.M{
+					"$max": bson.A{bson.M{"$max": "$lastActivity.modifiedAt"}, "$dateLastActivity"}},
 			},
 		},
 	}
