@@ -232,10 +232,11 @@ func getCardsForCurrentUser(c *gin.Context) {
 }
 
 type paramsGetCards struct {
-	Type   string   `json:"type"`
-	Statut []string `json:"statut"`
-	Zone   []string `json:"zone"`
-	Labels []string `json:"labels"`
+	Type   string     `json:"type"`
+	Statut []string   `json:"statut"`
+	Zone   []string   `json:"zone"`
+	Labels []string   `json:"labels"`
+	Since  *time.Time `json:"since"`
 }
 
 type Card struct {
@@ -272,7 +273,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 		boardIds := wcu.boardIds()
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds)
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, params.Since)
 		if err != nil {
 			return nil, err
 		}
@@ -307,7 +308,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 		}
 	} else {
 		boardIds := wcu.boardIds()
-		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil)
+		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil, nil)
 		if err != nil {
 			return nil, err
 		}

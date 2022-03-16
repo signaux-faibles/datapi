@@ -281,25 +281,6 @@ func buildWekanConfigPipeline() []bson.M {
 	}
 }
 
-// func wekanAllConfigHandler(c *gin.Context) {
-// 	roles := scopeFromContext(c)
-// 	if contains(roles, "wekan") {
-// 		c.JSON(200, wekanConfig)
-// 		return
-// 	}
-// 	c.AbortWithStatus(403)
-// }
-
-// func wekanReloadConfigHandler(c *gin.Context) {
-// 	var err error
-// 	wekanConfig, err = lookupWekanConfig()
-// 	if err != nil {
-// 		c.JSON(500, fmt.Sprintf("wekanReloadConfig: %s", err))
-// 		return
-// 	}
-// 	c.JSON(200, true)
-// }
-
 func wekanConfigHandler(c *gin.Context) {
 	roles := scopeFromContext(c)
 	if contains(roles, "wekan") {

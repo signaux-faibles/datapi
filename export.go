@@ -191,7 +191,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
 		labelIds := wcu.labelIdsForLabels(params.Labels)
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds)
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, params.Since)
 		fmt.Println(wekanCards)
 		if err != nil {
 			return nil, err
@@ -250,7 +250,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		var err error
 
 		if s.hasRole("wekan") {
-			wekanCards, err = selectWekanCards(&s.username, boardIds, nil, nil, nil)
+			wekanCards, err = selectWekanCards(&s.username, boardIds, nil, nil, nil, nil)
 			if err != nil {
 				return nil, err
 			}
