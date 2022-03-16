@@ -82,7 +82,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 		Creator         string     `json:"creator,omitempty"`
 		IsBoardMember   bool       `json:"isBoardMember,omitempty"`
 		LastActivity    time.Time  `json:"lastActivity,omitempty"`
-		StartAt         time.Time  `json:"createdAt,omitempty"`
+		StartAt         time.Time  `json:"startAt,omitempty"`
 		EndAt           *time.Time `json:"endAt,omitempty"`
 		LabelIDs        []string   `json:"labelIds,omitempty"`
 	}
@@ -667,7 +667,7 @@ func selectWekanCardsFromSiret(username string, siret string) ([]*WekanCard, err
 
 	var wekanCards []*WekanCard
 
-	pipeline := cardPipeline(wcu, siret)
+	pipeline := cardFromSiretPipeline(wcu, siret)
 	cursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
 	if err != nil {
 		return nil, err
@@ -681,7 +681,7 @@ func selectWekanCardsFromSiret(username string, siret string) ([]*WekanCard, err
 	return wekanCards, nil
 }
 
-func cardPipeline(wcu WekanConfig, siret string) bson.A {
+func cardFromSiretPipeline(wcu WekanConfig, siret string) bson.A {
 	var queryOr []bson.M
 	for _, boardConfig := range wcu.Boards {
 		queryOr = append(queryOr,
@@ -730,7 +730,7 @@ func cardPipeline(wcu WekanConfig, siret string) bson.A {
 				"from":         "card_comments",
 				"localField":   "_id",
 				"foreignField": "cardId",
-				"to":           "lastActivity",
+				"as":           "lastActivity",
 			},
 		},
 		bson.M{
@@ -755,14 +755,18 @@ func cardPipeline(wcu WekanConfig, siret string) bson.A {
 				"description":  1,
 				"comments":     "$comments.text",
 				"lastActivity": bson.M{
-					"$max": bson.A{bson.M{"$max": "$lastActivity.modifiedAt"}, "$dateLastActivity"}},
+					"$max": bson.A{
+						bson.M{"$max": "$lastActivity.modifiedAt"},
+						"$modifiedAt",
+					},
+				},
 			},
 		},
 	}
 	return pipeline
 }
 
-func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID) ([]*WekanCard, error) {
+func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID, since *time.Time) ([]*WekanCard, error) {
 	if username != nil {
 		userID := wekanConfig.userID(*username)
 		if userID == "" {
@@ -770,7 +774,7 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 		}
 	}
 
-	pipeline := cardsPipeline(username, boardIds, swimlaneIds, listIds, labelIds)
+	pipeline := cardsPipeline(username, boardIds, swimlaneIds, listIds, labelIds, since)
 
 	cardsCursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
 	if err != nil {
@@ -784,7 +788,7 @@ func selectWekanCards(username *string, boardIds []string, swimlaneIds []string,
 	return wekanCards, nil
 }
 
-func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID) bson.A {
+func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID, since *time.Time) bson.A {
 	query := bson.M{
 		"type": "cardType-card",
 	}
@@ -816,6 +820,7 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 	if len(swimlaneIds) > 0 {
 		query["swimlaneId"] = bson.M{"$in": swimlaneIds}
 	}
+
 	if len(listIds) > 0 {
 		query["listId"] = bson.M{"$in": listIds}
 	}
@@ -866,6 +871,14 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 			},
 		},
 		bson.M{
+			"$lookup": bson.M{
+				"from":         "card_comments",
+				"localField":   "_id",
+				"foreignField": "cardId",
+				"as":           "lastActivity",
+			},
+		},
+		bson.M{
 			"$sort": bson.D{
 				bson.E{Key: "archived", Value: 1},
 				bson.E{Key: "startAt", Value: 1},
@@ -887,10 +900,23 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 				"description":  1,
 				"assignees":    1,
 				"comments":     "$comments.text",
+				"lastActivity": bson.M{
+					"$max": bson.A{
+						bson.M{"$max": "$lastActivity.modifiedAt"},
+						"$dateLastActivity",
+					},
+				},
 			},
 		},
 	}
 
+	if since != nil {
+		pipeline = append(pipeline, bson.M{
+			"$match": bson.M{
+				"lastActivity": bson.M{"$gte": since},
+			},
+		})
+	}
 	return pipeline
 }
 
