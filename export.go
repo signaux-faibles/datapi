@@ -28,34 +28,35 @@ type WekanExports []WekanExport
 
 // WekanExport fournit les champs nécessaires pour l'export Wekan
 type WekanExport struct {
-	RaisonSociale              string   `json:"raison_sociale"`
-	Siret                      string   `json:"siret"`
-	TypeEtablissement          string   `json:"type_etablissement"`
-	TeteDeGroupe               string   `json:"tete_de_groupe"`
-	Departement                string   `json:"departement"`
-	Commune                    string   `json:"commune"`
-	TerritoireIndustrie        string   `json:"territoire_industrie"`
-	SecteurActivite            string   `json:"secteur_activite"`
-	Activite                   string   `json:"activite"`
-	SecteursCovid              string   `json:"secteurs_covid"`
-	StatutJuridique            string   `json:"statut_juridique"`
-	DateOuvertureEtablissement string   `json:"date_ouverture_etablissement"`
-	DateCreationEntreprise     string   `json:"date_creation_entreprise"`
-	Effectif                   string   `json:"effectif"`
-	ActivitePartielle          string   `json:"activite_partielle"`
-	DetteSociale               string   `json:"dette_sociale"`
-	PartSalariale              string   `json:"part_salariale"`
-	AnneeExercice              string   `json:"annee_exercice"`
-	ChiffreAffaire             string   `json:"ca"`
-	ExcedentBrutExploitation   string   `json:"ebe"`
-	ResultatExploitation       string   `json:"rex"`
-	ProcedureCollective        string   `json:"procol"`
-	DetectionSF                string   `json:"detection_sf"`
-	DateDebutSuivi             string   `json:"date_debut_suivi"`
-	DateFinSuivi               string   `json:"date_fin_suivi"`
-	DescriptionWekan           string   `json:"description_wekan"`
-	Labels                     []string `json:"labels"`
-	Board                      string   `json:"-"`
+	RaisonSociale              string    `json:"raison_sociale"`
+	Siret                      string    `json:"siret"`
+	TypeEtablissement          string    `json:"type_etablissement"`
+	TeteDeGroupe               string    `json:"tete_de_groupe"`
+	Departement                string    `json:"departement"`
+	Commune                    string    `json:"commune"`
+	TerritoireIndustrie        string    `json:"territoire_industrie"`
+	SecteurActivite            string    `json:"secteur_activite"`
+	Activite                   string    `json:"activite"`
+	SecteursCovid              string    `json:"secteurs_covid"`
+	StatutJuridique            string    `json:"statut_juridique"`
+	DateOuvertureEtablissement string    `json:"date_ouverture_etablissement"`
+	DateCreationEntreprise     string    `json:"date_creation_entreprise"`
+	Effectif                   string    `json:"effectif"`
+	ActivitePartielle          string    `json:"activite_partielle"`
+	DetteSociale               string    `json:"dette_sociale"`
+	PartSalariale              string    `json:"part_salariale"`
+	AnneeExercice              string    `json:"annee_exercice"`
+	ChiffreAffaire             string    `json:"ca"`
+	ExcedentBrutExploitation   string    `json:"ebe"`
+	ResultatExploitation       string    `json:"rex"`
+	ProcedureCollective        string    `json:"procol"`
+	DetectionSF                string    `json:"detection_sf"`
+	DateDebutSuivi             string    `json:"date_debut_suivi"`
+	DateFinSuivi               string    `json:"date_fin_suivi"`
+	DescriptionWekan           string    `json:"description_wekan"`
+	Labels                     []string  `json:"labels"`
+	Board                      string    `json:"-"`
+	LastActivity               time.Time `json:"lastActivity"`
 }
 
 type dbExport struct {
@@ -192,7 +193,6 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		listIds := wcu.listIdsForStatuts(params.Statut)
 		labelIds := wcu.labelIdsForLabels(params.Labels)
 		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, params.Since)
-		fmt.Println(wekanCards)
 		if err != nil {
 			return nil, err
 		}
@@ -329,6 +329,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 		row.AddCell().Value = "Présentation de l'enteprise, difficultés et actions"
 		row.AddCell().Value = "Fin du suivi Wekan"
 		row.AddCell().Value = "Tableau"
+		row.AddCell().Value = "Dernière modification Wekan"
 	}
 
 	for _, c := range cards {
@@ -365,6 +366,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 					row.AddCell().Value = e.DescriptionWekan
 					row.AddCell().Value = e.DateFinSuivi
 					row.AddCell().Value = e.Board
+					row.AddCell().Value = e.LastActivity.Format("02/01/2006")
 				}
 			}
 		}
@@ -478,6 +480,7 @@ func (c Card) join() []WekanExport {
 				we.DateFinSuivi = dateUrssaf(*card.EndAt)
 			}
 			we.Board = card.Board()
+			we.LastActivity = card.LastActivity
 		} else {
 			we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
 		}
