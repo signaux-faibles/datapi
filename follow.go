@@ -51,7 +51,6 @@ func followEtablissement(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-
 	if follow.Active {
 		c.JSON(204, follow)
 	} else {
@@ -110,7 +109,7 @@ func unfollowEtablissement(c *gin.Context) {
 }
 
 func (f *Follow) load() error {
-	sqlFollow := `select list.Query.FirstAlert,
+	sqlFollow := `select
         active, since, comment, category        
         from etablissement_follow 
         where
