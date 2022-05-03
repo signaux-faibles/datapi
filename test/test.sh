@@ -70,7 +70,7 @@ cd workspace
 ./datapi &
 
 DATAPI_PID=$!
-sleep 2
+sleep 6 
 
 if [ "$1" = '-u' ]; then rm -f ../data/*.json.gz; GOLDEN_UPDATE=true; else GOLDEN_UPDATE=false; fi
 

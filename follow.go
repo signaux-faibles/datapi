@@ -51,7 +51,6 @@ func followEtablissement(c *gin.Context) {
 		c.AbortWithError(500, err)
 		return
 	}
-
 	if follow.Active {
 		c.JSON(204, follow)
 	} else {
@@ -110,7 +109,7 @@ func unfollowEtablissement(c *gin.Context) {
 }
 
 func (f *Follow) load() error {
-	sqlFollow := `select 
+	sqlFollow := `select
         active, since, comment, category        
         from etablissement_follow 
         where
@@ -167,7 +166,7 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, false, nil,
 		&True, &True, *f.Username, false, "follow", &False, nil,
-		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
+		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
 	sms, err := getSummaries(params)
 	if err != nil {
