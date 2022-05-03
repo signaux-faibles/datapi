@@ -150,6 +150,7 @@ type summaryParams struct {
 	caMax                 *int
 	excludeSecteursCovid  []string
 	etatAdministratif     *string
+	firstAlert            *bool
 }
 
 func (p summaryParams) toSQLParams() []interface{} {
@@ -188,6 +189,7 @@ func (p summaryParams) toSQLParams() []interface{} {
 		p.caMax,
 		p.excludeSecteursCovid,
 		p.etatAdministratif,
+		p.firstAlert,
 	}
 }
 
@@ -196,19 +198,17 @@ func getSummaries(params summaryParams) (summaries, error) {
 	var sqlParams []interface{}
 
 	if params.orderBy == "score" {
-		p := params.toSQLParams()
-		sqlParams = append(sqlParams, p[0:6]...)
-		sqlParams = append(sqlParams, p[7:10]...)
-		sqlParams = append(sqlParams, p[12:]...)
 		if params.currentListe {
-			sql = `select * from get_currentscore($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) as scores;`
+			sqlParams = params.toSQLCurrentScoreParams()
+			sql = sqlCurrentScore
 		} else {
-			sql = `select * from get_score($1, $2, $3, $4, $5, $6, null, $7, $8, $9, 'score', true, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) as scores;`
+			sqlParams = params.toSQLScoreParams()
+			sql = sqlScore
 		}
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
 		sqlParams = append(p[0:10], p[13], p[15], p[18])
-		sqlParams = append(sqlParams, p[19:]...)
+		sqlParams = append(sqlParams, p[19:24]...)
 		sql = `select * from get_search($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19) as raison_sociale;`
 	} else if params.orderBy == "follow" {
 		p := params.toSQLParams()
@@ -223,6 +223,7 @@ func getSummaries(params summaryParams) (summaries, error) {
 
 	rows, err := db.Query(context.Background(), sql, sqlParams...)
 	if err != nil {
+		fmt.Println(err)
 		return summaries{}, err
 	}
 

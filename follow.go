@@ -110,7 +110,7 @@ func unfollowEtablissement(c *gin.Context) {
 }
 
 func (f *Follow) load() error {
-	sqlFollow := `select 
+	sqlFollow := `select list.Query.FirstAlert,
         active, since, comment, category        
         from etablissement_follow 
         where
@@ -167,7 +167,7 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, false, nil,
 		&True, &True, *f.Username, false, "follow", &False, nil,
-		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
+		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
 	sms, err := getSummaries(params)
 	if err != nil {
