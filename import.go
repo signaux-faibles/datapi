@@ -759,7 +759,7 @@ type scoreFile struct {
 	} `json:"explSelection"`
 	MacroRadar            map[string]float64 `json:"macroRadar"`
 	Redressements         []string           `json:"redressements"`
-	AlertPreRedressements string             `json:"alert_pre_redressements"`
+	AlertPreRedressements string             `json:"alertPreRedressements"`
 }
 
 func listImportHandler(c *gin.Context) {
@@ -859,9 +859,6 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 	}
 	if s.Redressements == nil {
 		s.Redressements = make([]string, 0)
-	}
-	if s.AlertPreRedressements == "" {
-		s.AlertPreRedressements = s.Alert
 	}
 
 	batch.Queue(sqlScore,
