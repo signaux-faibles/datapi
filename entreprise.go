@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pgx "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4"
 )
 
 // Entreprise type entreprise pour l'API
@@ -33,6 +33,7 @@ type Entreprise struct {
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
 	Groupe                *ellisphere     `json:"groupe,omitempty"`
+	PGEs                  *PGEs           `json:"pges"`
 }
 
 // EtablissementSummary …
@@ -213,6 +214,22 @@ type EtablissementScore struct {
 	MicroExpl             map[string]float64               `json:"-"`
 	AlertPreRedressements string                           `json:"alertPreRedressements"`
 	Redressements         []string                         `json:"redressements"`
+}
+
+// PGE Prêt Garanti par l'Etat
+type PGE struct {
+	codeBanque            string    `json:"-"`
+	natureFinancement     string    `json:"natureFinancement"`
+	statutUtilisation     string    `json:"statutUtilisation"`
+	dateEcheance          time.Time `json:"dateEcheance"`
+	montant               float64   `json:"montantPge"`
+	stadeVieDossier       string    `json:"stadeVieDossier"`
+	capitalRestantDuADate float64   `json:"capitalRestantDuADate"`
+}
+
+// PGEs ensemble des Prêts Garanti par l'Etat pour une entreprise
+type PGEs struct {
+	value []PGE `json:"value"`
 }
 
 func getEntreprise(c *gin.Context) {
@@ -476,7 +493,55 @@ func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
 		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
 	)
+
+	batch.Queue(
+		`select
+					siren,
+					code_banque,
+					nature_financement,
+					statut_utilisation,
+					date_echeance,
+					montant_pge,
+					stade_vie_dossier,
+					capital_restant_du_a_date
+				from 
+					entreprise_pge
+				where 
+					siren=any($1)
+				order by siren;`,
+		e.sirensFromQuery())
+
 	return &batch
+}
+
+func (e Etablissements) loadPGE(rows *pgx.Rows) error {
+	var pges = make(map[string][]PGE)
+
+	for (*rows).Next() {
+		var pge PGE
+		var siren string
+		err := (*rows).Scan(
+			&siren,
+			&pge.codeBanque,
+			&pge.natureFinancement,
+			&pge.statutUtilisation,
+			&pge.dateEcheance,
+			&pge.montant,
+			&pge.stadeVieDossier,
+			&pge.capitalRestantDuADate,
+		)
+		if err != nil {
+			return err
+		}
+		pges[siren] = append(pges[siren], pge)
+	}
+	for k, v := range pges {
+		pges := PGEs{value: v}
+		entreprise := e.Entreprises[k]
+		entreprise.PGEs = &pges
+		e.Entreprises[k] = entreprise
+	}
+	return nil
 }
 
 func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
@@ -954,6 +1019,18 @@ func (e *Etablissements) load(roles scope, username string) error {
 	if err != nil {
 		return err
 	}
+
+	// pge
+	rows, err = b.Query()
+	if err != nil {
+		return err
+	}
+	err = e.loadPGE(&rows)
+	if err != nil {
+		return err
+	}
+
+	// end
 	return nil
 }
 
