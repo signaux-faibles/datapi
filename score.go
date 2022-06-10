@@ -104,9 +104,16 @@ func getXLSListeScores(c *gin.Context) {
 	var params paramsListeScores
 	err := c.Bind(&params)
 
+	listes, err := findAllListes()
+	if err != nil || len(listes) == 0 {
+		c.AbortWithStatus(204)
+		return
+	}
+
 	liste := Liste{
-		ID:    c.Param("id"),
-		Query: params,
+		ID:          c.Param("id"),
+		Query:       params,
+		CurrentList: listes[0].ID == c.Param("id"),
 	}
 
 	if err != nil || liste.ID == "" {
