@@ -2,6 +2,7 @@ drop table entreprise_bdf;
 drop table entreprise_comments;
 drop table entreprise_diane;
 drop table entreprise_followers;
+drop table entreprise_pge;
 drop table entreprise_scope;
 drop table entreprise;
 drop table etablissement_apconso;
