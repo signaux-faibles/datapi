@@ -7,10 +7,11 @@ create table entreprise_pge
     actif boolean
 );
 
-alter table entreprise_pge
-    owner to datapi;
+-- alter table entreprise_pge
+--     owner to datapi;
 
 -- ajuste la fonction `permissions` pour utiliser la nouvelle permission `pge`
+drop function if exists permissions;
 create or replace function permissions(roles_user text[],
                                        roles_enterprise text[],
                                        first_alert_entreprise text,
@@ -41,5 +42,17 @@ select coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) as visible,
        'pge' = any (coalesce($1, '{}'::text[]))                    pge
 $$;
 
-alter function permissions(text[], text[], text, text, boolean, out boolean, out boolean, out boolean, out boolean, out boolean, out boolean, out boolean) owner to datapi;
+-- alter function permissions(
+--     text[],
+--     text[],
+--     text,
+--     text,
+--     boolean,
+--     out boolean,
+--     out boolean,
+--     out boolean,
+--     out boolean,
+--     out boolean,
+--     out boolean,
+--     out boolean) owner to datapi;
 
