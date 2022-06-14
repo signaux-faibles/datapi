@@ -4,17 +4,19 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-func (e *Etablissements) addPGEsSelection(batch *pgx.Batch) {
+func (e *Etablissements) addPGEsSelection(batch *pgx.Batch, roles scope, username string) {
 	batch.Queue(
-		`select
-					siren,
-					actif
+		`select 
+					e.siren,
+       				bool_or(e.actif) actif
 				from 
-					entreprise_pge
+					entreprise_pge e
+					inner join f_etablissement_permissions($1, $2) p on p.siren = e.siren and pge
 				where 
-					siren=any($1)
-				order by siren;`,
-		e.sirensFromQuery())
+					e.siren=any($3)
+				group by e.siren
+				order by e.siren;`,
+		roles.zoneGeo(), username, e.sirensFromQuery())
 }
 
 func (e Etablissements) loadPGE(rows *pgx.Rows) error {

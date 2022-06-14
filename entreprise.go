@@ -478,7 +478,7 @@ func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
 	)
 
-	e.addPGEsSelection(&batch)
+	e.addPGEsSelection(&batch, roles, username)
 
 	return &batch
 }
