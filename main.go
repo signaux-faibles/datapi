@@ -4,15 +4,14 @@ import (
 	"bytes"
 	"context"
 	"fmt"
-	"io/ioutil"
-	"log"
-	"time"
-
 	gocloak "github.com/Nerzal/gocloak/v10"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"go.mongodb.org/mongo-driver/mongo"
+	"io/ioutil"
+	"log"
+	"time"
 
 	"github.com/spf13/viper"
 
@@ -26,20 +25,24 @@ var ref reference
 var wekanConfig WekanConfig
 
 func main() {
-	loadConfig()
+	loadConfig(".", "config", "./migrations")
+	startDatapi()
+	runAPI()
+}
+
+func startDatapi() {
 	db = connectDB()
 	mgoDB = connectWekanDB()
 	wekanConfig = loadWekanConfig()
 	go watchWekanConfig(time.Minute)
 	keycloak = connectKC()
-	runAPI()
 }
 
-func loadConfig() {
-	viper.SetDefault("MigrationsDir", "./migrations")
-	viper.SetConfigName("config")
+func loadConfig(confDirectory, confFile, migrationDir string) {
+	viper.SetDefault("MigrationsDir", migrationDir)
+	viper.SetConfigName(confFile)
 	viper.SetConfigType("toml")
-	viper.AddConfigPath(".")
+	viper.AddConfigPath(confDirectory)
 	err := viper.ReadInConfig()
 	if err != nil {
 		panic(err)
