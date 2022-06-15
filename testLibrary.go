@@ -245,6 +245,36 @@ func testSearchVAF(t *testing.T, siret string, vaf string) {
 	}
 }
 
+// not a test function
+func followEntreprise(t *testing.T, siren string) {
+	_, data, err := get(t, "/entreprise/get/"+siren)
+	if err != nil {
+		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
+	}
+	entreprise := jsonToEntreprise(t, data)
+	siret := entreprise.EtablissementsSummary[0].Siret
+	t.Logf("will follow etablissement with siret '%s for entreprise with siren '%s'", siret, siren)
+
+	params := map[string]interface{}{
+		"comment":  "test",
+		"category": "test",
+	}
+	resp, _, _ := post(t, "/follow/"+siret, params)
+	if resp.StatusCode != 201 {
+		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
+	}
+
+}
+
+func jsonToEntreprise(t *testing.T, data []byte) Entreprise {
+	var entreprise Entreprise
+	err := json.Unmarshal(data, &entreprise)
+	if err != nil {
+		t.Fatalf("error when unmarshalling entreprise -> %s", err)
+	}
+	return entreprise
+}
+
 type searchVAF struct {
 	Results []etablissementVAF `json:"results"`
 }

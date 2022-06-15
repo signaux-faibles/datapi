@@ -1,7 +1,6 @@
 -- ajoute la table concernant les infos PGE
-drop table if exists entreprise_pge;
 
-create table entreprise_pge
+create table if not exists public.entreprise_pge
 (
     siren text,
     actif boolean
@@ -11,19 +10,32 @@ create table entreprise_pge
 --     owner to datapi;
 
 -- ajuste la fonction `permissions` pour utiliser la nouvelle permission `pge`
-drop function if exists permissions;
-create or replace function permissions(roles_user text[],
-                                       roles_enterprise text[],
-                                       first_alert_entreprise text,
-                                       departement text,
-                                       followed boolean,
-                                       OUT visible boolean,
-                                       OUT in_zone boolean,
-                                       OUT score boolean,
-                                       OUT urssaf boolean,
-                                       OUT dgefp boolean,
-                                       OUT bdf boolean,
-                                       OUT pge boolean) returns record
+-- on précise les arguments parce pgsql accepte le polymorphisme
+drop function if exists public.permissions(roles_user text[],
+                                           roles_enterprise text[],
+                                           first_alert_entreprise text,
+                                           departement text,
+                                           followed boolean,
+                                           OUT visible boolean,
+                                           OUT in_zone boolean,
+                                           OUT score boolean,
+                                           OUT urssaf boolean,
+                                           OUT dgefp boolean,
+                                           OUT bdf boolean);
+
+create or replace function public.permissions(roles_user text[],
+                                              roles_enterprise text[],
+                                              first_alert_entreprise text,
+                                              departement text,
+                                              followed boolean,
+                                              OUT visible boolean,
+                                              OUT in_zone boolean,
+                                              OUT score boolean,
+                                              OUT urssaf boolean,
+                                              OUT dgefp boolean,
+                                              OUT bdf boolean,
+                                              OUT pge boolean)
+    returns record
     immutable
     language sql
 as
@@ -42,17 +54,33 @@ select coalesce($2, '{}'::text[]) && coalesce($1, '{}'::text[]) as visible,
        'pge' = any (coalesce($1, '{}'::text[]))                    pge
 $$;
 
--- alter function permissions(
---     text[],
---     text[],
---     text,
---     text,
---     boolean,
---     out boolean,
---     out boolean,
---     out boolean,
---     out boolean,
---     out boolean,
---     out boolean,
---     out boolean) owner to datapi;
-
+drop function if exists public.f_etablissement_permissions(roles_user text[], username text);
+create or replace function public.f_etablissement_permissions(roles_user text[], username text)
+    returns TABLE
+            (
+                id       integer,
+                siren    character varying,
+                siret    character varying,
+                followed boolean,
+                visible  boolean,
+                in_zone  boolean,
+                score    boolean,
+                urssaf   boolean,
+                dgefp    boolean,
+                bdf      boolean,
+                pge      boolean
+            )
+    immutable
+    language sql
+as
+$$
+select e.id,
+       e.siren,
+       e.siret,
+       f.siren is not null as followed,
+       (permissions($1, r.roles, a.first_list, e.departement, f.siren is not null)).*
+from etablissement0 e
+         inner join v_roles r on r.siren = e.siren
+         left join v_entreprise_follow f on f.siren = e.siren and f.username = $2
+         left join v_alert_entreprise a on a.siren = e.siren
+$$;
