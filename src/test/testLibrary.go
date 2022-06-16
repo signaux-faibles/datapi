@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/pmezard/go-difflib/difflib"
-	core2 "github.com/signaux-faibles/datapi/src/core"
+	"github.com/signaux-faibles/datapi/src/core"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -109,7 +109,6 @@ func Get(t *testing.T, path string) (*http.Response, []byte, error) {
 	return resp, indented, err
 }
 
-// not a test function
 func FollowEntreprise(t *testing.T, siren string) {
 	_, data, err := Get(t, "/entreprise/get/"+siren)
 	if err != nil {
@@ -121,7 +120,6 @@ func FollowEntreprise(t *testing.T, siren string) {
 	FollowEtablissement(t, siret)
 }
 
-// not a test function
 func FollowEtablissement(t *testing.T, siret string) {
 	params := map[string]interface{}{
 		"comment":  "test",
@@ -131,10 +129,11 @@ func FollowEtablissement(t *testing.T, siret string) {
 	if resp.StatusCode != 201 {
 		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 	}
+	t.Logf("nouvel établissement suivi -> '%s'", siret)
 }
 
-func JsonToEntreprise(t *testing.T, data []byte) core2.Entreprise {
-	var entreprise core2.Entreprise
+func JsonToEntreprise(t *testing.T, data []byte) core.Entreprise {
+	var entreprise core.Entreprise
 	err := json.Unmarshal(data, &entreprise)
 	if err != nil {
 		t.Fatalf("error when unmarshalling entreprise -> %s", err)
@@ -166,7 +165,7 @@ func getSiret(t *testing.T, v VAF, n int) []string {
 		(f.siren is not null)=$3     -- follow
 	order by e.siret
 	limit $4`
-	rows, err := core2.Db().Query(
+	rows, err := core.Db().Query(
 		context.Background(),
 		sql,
 		v.visible,
@@ -199,10 +198,11 @@ type VAF struct {
 }
 
 func RazEtablissementFollowing(t *testing.T) {
-	_, err := core2.Db().Exec(context.Background(), "delete from etablissement_follow;")
+	_, err := core.Db().Exec(context.Background(), "delete from etablissement_follow;")
 	if err != nil {
 		t.Fatalf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
 	}
+	t.Log("informations de suivi des etablissements effacées")
 }
 
 // PgeTest struct contenant des données à tester pour le pge
@@ -215,7 +215,7 @@ type PgeTest struct {
 
 // InsertPGE add pge in entreprise_pge for a siren
 func InsertPGE(t *testing.T, pgesData []PgeTest) {
-	tx, err := core2.Db().Begin(context.Background())
+	tx, err := core.Db().Begin(context.Background())
 	if err != nil {
 		t.Fatalf("something bad is happening with database when begining : %s" + err.Error())
 	}

@@ -8,7 +8,7 @@ import (
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/signaux-faibles/datapi/src/core"
-	test "github.com/signaux-faibles/datapi/src/test"
+	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -110,12 +110,15 @@ func TestMain(m *testing.M) {
 }
 
 func TestListes(t *testing.T) {
+	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
+
 	_, indented, _ := test.Get(t, "/listes")
 	test.ProcessGoldenFile(t, "test/data/listes.json.gz", indented)
 }
 
 func TestFollow(t *testing.T) {
-	test.RazEtablissementFollowing(t)
+	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
+
 	sirets := test.SelectSomeSiretsToFollow(t)
 
 	params := map[string]interface{}{
@@ -146,10 +149,7 @@ func TestFollow(t *testing.T) {
 }
 
 func TestSearch(t *testing.T) {
-	test.RazEtablissementFollowing(t)
-	for _, siret := range test.SelectSomeSiretsToFollow(t) {
-		test.FollowEtablissement(t, siret)
-	}
+	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	// tester le retour 400 en cas de recherche trop courte
 	t.Log("/etablissement/search retourne 400")
@@ -301,4 +301,11 @@ func killContainer(resource *dockertest.Resource) {
 	if err := resource.Close(); err != nil {
 		log.Fatalf("Could not purge resource: %s", err)
 	}
+}
+
+func followEtablissementsThenCleanup(t *testing.T, sirets []string) {
+	for _, siret := range sirets {
+		test.FollowEtablissement(t, siret)
+	}
+	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
 }
