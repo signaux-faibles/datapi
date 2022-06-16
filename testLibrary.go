@@ -6,6 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/pmezard/go-difflib/difflib"
+	"github.com/signaux-faibles/datapi/core"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -132,8 +133,8 @@ func followEtab(t *testing.T, siret string) {
 	}
 }
 
-func jsonToEntreprise(t *testing.T, data []byte) Entreprise {
-	var entreprise Entreprise
+func jsonToEntreprise(t *testing.T, data []byte) core.Entreprise {
+	var entreprise core.Entreprise
 	err := json.Unmarshal(data, &entreprise)
 	if err != nil {
 		t.Fatalf("error when unmarshalling entreprise -> %s", err)
@@ -165,7 +166,7 @@ func getSiret(t *testing.T, v VAF, n int) []string {
 		(f.siren is not null)=$3     -- follow
 	order by e.siret
 	limit $4`
-	rows, err := db.Query(
+	rows, err := core.Db().Query(
 		context.Background(),
 		sql,
 		v.visible,
@@ -198,7 +199,7 @@ type VAF struct {
 }
 
 func razEtablissementFollowing(t *testing.T) {
-	_, err := db.Exec(context.Background(), "delete from etablissement_follow;")
+	_, err := core.Db().Exec(context.Background(), "delete from etablissement_follow;")
 	if err != nil {
 		t.Fatalf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
 	}
@@ -214,7 +215,7 @@ type pgeTest struct {
 
 // insertPGE add pge in entreprise_pge for a siren
 func insertPGE(t *testing.T, pgesData []pgeTest) {
-	tx, err := db.Begin(context.Background())
+	tx, err := core.Db().Begin(context.Background())
 	if err != nil {
 		t.Fatalf("something bad is happening with database when begining : %s" + err.Error())
 	}

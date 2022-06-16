@@ -10,6 +10,7 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/signaux-faibles/datapi/core"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -96,8 +97,8 @@ func TestMain(m *testing.M) {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
 	// run datapi
-	startDatapi()
-	go runAPI()
+	core.StartDatapi()
+	go core.RunAPI()
 	time.Sleep(1 * time.Second) // time to expose API
 
 	//Run tests
@@ -141,7 +142,7 @@ func TestFollow(t *testing.T) {
 	}
 
 	t.Log("Vérification de /follow")
-	db.Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	core.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
 	_, indented, _ := get(t, "/follow")
 	processGoldenFile(t, "test/data/follow.json.gz", indented)
 }
@@ -163,7 +164,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	// tester la recherche par chaine de caractères
-	rows, err := db.Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
+	rows, err := core.Db().Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
 	inner join departements d on d.code = e.departement
 	inner join regions r on r.id = d.id_region
 	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
@@ -196,7 +197,7 @@ func TestSearch(t *testing.T) {
 	// tester par département
 	var departements []string
 	var siret string
-	err = db.QueryRow(
+	err = core.Db().QueryRow(
 		context.Background(),
 		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) from etablissement where departement < '10' and departement != '00'`,
 	).Scan(&departements, &siret)
@@ -218,7 +219,7 @@ func TestSearch(t *testing.T) {
 	i++
 
 	// tester par activité
-	err = db.QueryRow(
+	err = core.Db().QueryRow(
 		context.Background(),
 		`select substring(first(siret) from 1 for 3)
 		 from etablissement e
@@ -259,15 +260,15 @@ func TestPGE(t *testing.T) {
 
 	tests := []pgeTest{
 		// pge is true in entreprise_pge and has habilitation => true
-		{siren: "020523337", hasPGE: &True, mustFollow: True, expectedPGE: &True},
+		{siren: "020523337", hasPGE: &core.True, mustFollow: core.True, expectedPGE: &core.True},
 		// pge is true in entreprise_pge and has no habilitation => nil
-		{siren: "221129065", hasPGE: &True, mustFollow: False, expectedPGE: nil},
+		{siren: "221129065", hasPGE: &core.True, mustFollow: core.False, expectedPGE: nil},
 		// pge is false in  entreprise_pge and has no habilitation => nil
-		{siren: "336400422", hasPGE: &False, mustFollow: False, expectedPGE: nil},
+		{siren: "336400422", hasPGE: &core.False, mustFollow: core.False, expectedPGE: nil},
 		// pge is false in  entreprise_pge and has habilitation => false
-		{siren: "386322594", hasPGE: &False, mustFollow: True, expectedPGE: &False},
+		{siren: "386322594", hasPGE: &core.False, mustFollow: core.True, expectedPGE: &core.False},
 		// not exists in entreprise_pge and has habilitation => nil
-		{siren: "417193286", hasPGE: nil, mustFollow: True, expectedPGE: nil},
+		{siren: "417193286", hasPGE: nil, mustFollow: core.True, expectedPGE: nil},
 	}
 	insertPGE(t, tests)
 
@@ -288,7 +289,7 @@ func TestPGE(t *testing.T) {
 
 func loadTestConfig(postgresURL string) {
 	log.Println("loading test config")
-	loadConfig("test", "config", "migrations")
+	core.LoadConfig("test", "config", "migrations")
 	viper.Set("postgres", postgresURL)
 	datapiPort := strconv.Itoa(rand.Intn(500) + 30000)
 	viper.Set("bind", ":"+datapiPort)

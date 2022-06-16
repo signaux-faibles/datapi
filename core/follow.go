@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -117,7 +117,7 @@ func (f *Follow) load() error {
         siret = $2 and
         active`
 
-	return db.QueryRow(context.Background(), sqlFollow, f.Username, f.Siret).Scan(&f.Active, &f.Since, &f.Comment, &f.Category)
+	return Db().QueryRow(context.Background(), sqlFollow, f.Username, f.Siret).Scan(&f.Active, &f.Since, &f.Comment, &f.Category)
 }
 
 func (f *Follow) activate() error {
@@ -129,7 +129,7 @@ func (f *Follow) activate() error {
     where siret = $6
     returning since, true`
 
-	return db.QueryRow(context.Background(),
+	return Db().QueryRow(context.Background(),
 		sqlActivate,
 		*f.Siret,
 		(*f.Siret)[0:9],
@@ -144,7 +144,7 @@ func (f *Follow) deactivate() Jerror {
 	sqlUnactivate := `update etablissement_follow set active = false, until = current_timestamp, unfollow_comment = $3, unfollow_category = $4
         where siret = $1 and username = $2 and active = true`
 
-	commandTag, err := db.Exec(context.Background(),
+	commandTag, err := Db().Exec(context.Background(),
 		sqlUnactivate, f.Siret, f.Username, f.UnfollowComment, f.UnfollowCategory)
 
 	if err != nil {
@@ -294,7 +294,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			return nil, err
 		}
 		var ss summaries
-		cursor, err := db.Query(context.Background(), sqlGetCards, s.roles.zoneGeo(), s.username, sirets)
+		cursor, err := Db().Query(context.Background(), sqlGetCards, s.roles.zoneGeo(), s.username, sirets)
 		if err != nil {
 			return nil, err
 		}
@@ -320,7 +320,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			excludeSirets[siret] = struct{}{}
 		}
 		var ss summaries
-		cursor, err := db.Query(context.Background(), sqlGetFollow, s.roles.zoneGeo(), s.username, params.Zone)
+		cursor, err := Db().Query(context.Background(), sqlGetFollow, s.roles.zoneGeo(), s.username, params.Zone)
 		if err != nil {
 			return nil, err
 		}
@@ -340,7 +340,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 
 func followSiretsFromWekan(username string, sirets []string) error {
 	fmt.Println(sirets)
-	tx, err := db.Begin(context.Background())
+	tx, err := Db().Begin(context.Background())
 	if err != nil {
 		return err
 	}

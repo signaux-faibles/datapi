@@ -1,4 +1,4 @@
-package main
+package core
 
 func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 	var expressionSiret *string

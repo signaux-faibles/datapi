@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -220,7 +220,7 @@ func getSummaries(params summaryParams) (summaries, error) {
 		return summaries{}, fmt.Errorf("not implemented: orderBy=%s", params.orderBy)
 	}
 
-	rows, err := db.Query(context.Background(), sql, sqlParams...)
+	rows, err := Db().Query(context.Background(), sql, sqlParams...)
 	if err != nil {
 		fmt.Println(err)
 		return summaries{}, err

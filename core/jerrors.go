@@ -1,4 +1,4 @@
-package main
+package core
 
 // Jerror interface for JSON errors
 type Jerror interface {

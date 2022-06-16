@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"compress/gzip"
@@ -563,7 +563,7 @@ func (s scoreFile) toLibelle() string {
 // }
 
 func importHandler(c *gin.Context) {
-	tx, err := db.Begin(context.Background())
+	tx, err := Db().Begin(context.Background())
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -597,7 +597,7 @@ func importHandler(c *gin.Context) {
 	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
 	log.Print("drop dead data")
-	_, err = db.Exec(context.Background(), "vacuum;")
+	_, err = Db().Exec(context.Background(), "vacuum;")
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -788,7 +788,7 @@ func listImportHandler(c *gin.Context) {
 		return
 	}
 
-	tx, err := db.Begin(context.Background())
+	tx, err := Db().Begin(context.Background())
 	if err != nil {
 		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
 	}

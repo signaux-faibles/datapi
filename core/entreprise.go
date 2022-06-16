@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -834,7 +834,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 }
 
 func (e *Etablissements) load(roles scope, username string) error {
-	tx, err := db.Begin(context.Background())
+	tx, err := Db().Begin(context.Background())
 	if err != nil {
 		return err
 	}
@@ -1004,7 +1004,7 @@ func getSiegeFromSiren(siren string) (string, error) {
 	sqlSiege := `select siret from etablissement0
 	where siren = $1 and siege`
 	var siret string
-	err := db.QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
+	err := Db().QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
 	return siret, err
 }
 
@@ -1014,7 +1014,7 @@ func getEntrepriseViewers(c *gin.Context) {
 		where siren = $1`
 
 	siren := c.Param("siren")
-	rows, err := db.Query(context.Background(), sqlViewers, siren)
+	rows, err := Db().Query(context.Background(), sqlViewers, siren)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -1042,7 +1042,7 @@ func getEtablissementViewers(c *gin.Context) {
 		where siren = $1`
 
 	siren := c.Param("siret")[0:9]
-	rows, err := db.Query(context.Background(), sqlViewers, siren)
+	rows, err := Db().Query(context.Background(), sqlViewers, siren)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -1087,7 +1087,7 @@ func str(o ...*string) string {
 
 func getDeptFromSiret(siret string) (string, error) {
 	sql := "select departement from etablissement0 where siret = $1"
-	row := db.QueryRow(context.Background(), sql, siret)
+	row := Db().QueryRow(context.Background(), sql, siret)
 	var dept string
 	err := row.Scan(&dept)
 	return dept, err
