@@ -1,6 +1,8 @@
-package main
+package datapi
 
-import "github.com/signaux-faibles/datapi/core"
+import (
+	core "github.com/signaux-faibles/datapi/src/core"
+)
 
 func main() {
 	core.LoadConfig(".", "config", "./migrations")

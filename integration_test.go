@@ -1,7 +1,4 @@
-//go:build integration
-// +build integration
-
-package main
+package datapi
 
 import (
 	"context"
@@ -10,7 +7,8 @@ import (
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
-	"github.com/signaux-faibles/datapi/core"
+	"github.com/signaux-faibles/datapi/src/core"
+	test "github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -112,13 +110,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestListes(t *testing.T) {
-	_, indented, _ := get(t, "/listes")
-	processGoldenFile(t, "test/data/listes.json.gz", indented)
+	_, indented, _ := test.Get(t, "/listes")
+	test.ProcessGoldenFile(t, "test/data/listes.json.gz", indented)
 }
 
 func TestFollow(t *testing.T) {
-	razEtablissementFollowing(t)
-	sirets := selectSomeSiretsToFollow(t)
+	test.RazEtablissementFollowing(t)
+	sirets := test.SelectSomeSiretsToFollow(t)
 
 	params := map[string]interface{}{
 		"comment":  "test",
@@ -127,7 +125,7 @@ func TestFollow(t *testing.T) {
 
 	for _, siret := range sirets {
 		t.Logf("suivi de l'établissement %s", siret)
-		resp, _, _ := post(t, "/follow/"+siret, params)
+		resp, _, _ := test.Post(t, "/follow/"+siret, params)
 		if resp.StatusCode != 201 {
 			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 		}
@@ -135,7 +133,7 @@ func TestFollow(t *testing.T) {
 
 	for _, siret := range sirets {
 		t.Logf("suivi doublon de l'établissement %s", siret)
-		resp, _, _ := post(t, "/follow/"+siret, params)
+		resp, _, _ := test.Post(t, "/follow/"+siret, params)
 		if resp.StatusCode != 204 {
 			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
 		}
@@ -143,14 +141,14 @@ func TestFollow(t *testing.T) {
 
 	t.Log("Vérification de /follow")
 	core.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
-	_, indented, _ := get(t, "/follow")
-	processGoldenFile(t, "test/data/follow.json.gz", indented)
+	_, indented, _ := test.Get(t, "/follow")
+	test.ProcessGoldenFile(t, "test/data/follow.json.gz", indented)
 }
 
 func TestSearch(t *testing.T) {
-	razEtablissementFollowing(t)
-	for _, siret := range selectSomeSiretsToFollow(t) {
-		followEtab(t, siret)
+	test.RazEtablissementFollowing(t)
+	for _, siret := range test.SelectSomeSiretsToFollow(t) {
+		test.FollowEtablissement(t, siret)
 	}
 
 	// tester le retour 400 en cas de recherche trop courte
@@ -158,7 +156,7 @@ func TestSearch(t *testing.T) {
 	params := map[string]interface{}{
 		"search": "t",
 	}
-	resp, _, _ := post(t, "/etablissement/search", params)
+	resp, _, _ := test.Post(t, "/etablissement/search", params)
 	if resp.StatusCode != 400 {
 		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
 	}
@@ -188,9 +186,9 @@ func TestSearch(t *testing.T) {
 		params["ignoreZone"] = false
 		params["ignoreRoles"] = false
 		t.Logf("la recherche %s est bien de la forme attendue", siret)
-		_, indented, _ := post(t, "/etablissement/search", params)
+		_, indented, _ := test.Post(t, "/etablissement/search", params)
 		goldenFilePath := fmt.Sprintf("test/data/search-%d.json.gz", i)
-		processGoldenFile(t, goldenFilePath, indented)
+		test.ProcessGoldenFile(t, goldenFilePath, indented)
 		i++
 	}
 
@@ -213,9 +211,9 @@ func TestSearch(t *testing.T) {
 	}
 
 	t.Log("la recherche filtrée par départements est bien de la forme attendue")
-	_, indented, _ := post(t, "/etablissement/search", params)
+	_, indented, _ := test.Post(t, "/etablissement/search", params)
 	goldenFilePath := "test/data/searchDepartement.json.gz"
-	processGoldenFile(t, goldenFilePath, indented)
+	test.ProcessGoldenFile(t, goldenFilePath, indented)
 	i++
 
 	// tester par activité
@@ -239,9 +237,9 @@ func TestSearch(t *testing.T) {
 	}
 
 	t.Log("la recherche filtrée par activites est bien de la forme attendue")
-	_, indented, _ = post(t, "/etablissement/search", params)
+	_, indented, _ = test.Post(t, "/etablissement/search", params)
 	goldenFilePath = "test/data/searchActivites.json.gz"
-	processGoldenFile(t, goldenFilePath, indented)
+	test.ProcessGoldenFile(t, goldenFilePath, indented)
 }
 
 // TestPGE ; cette fonction teste si le PGE est bien retourné par l'API si
@@ -256,34 +254,34 @@ func TestSearch(t *testing.T) {
 func TestPGE(t *testing.T) {
 	assertions := assert.New(t)
 
-	razEtablissementFollowing(t)
+	test.RazEtablissementFollowing(t)
 
-	tests := []pgeTest{
+	tests := []test.PgeTest{
 		// pge is true in entreprise_pge and has habilitation => true
-		{siren: "020523337", hasPGE: &core.True, mustFollow: core.True, expectedPGE: &core.True},
+		{Siren: "020523337", HasPGE: &core.True, MustFollow: core.True, ExpectedPGE: &core.True},
 		// pge is true in entreprise_pge and has no habilitation => nil
-		{siren: "221129065", hasPGE: &core.True, mustFollow: core.False, expectedPGE: nil},
+		{Siren: "221129065", HasPGE: &core.True, MustFollow: core.False, ExpectedPGE: nil},
 		// pge is false in  entreprise_pge and has no habilitation => nil
-		{siren: "336400422", hasPGE: &core.False, mustFollow: core.False, expectedPGE: nil},
+		{Siren: "336400422", HasPGE: &core.False, MustFollow: core.False, ExpectedPGE: nil},
 		// pge is false in  entreprise_pge and has habilitation => false
-		{siren: "386322594", hasPGE: &core.False, mustFollow: core.True, expectedPGE: &core.False},
+		{Siren: "386322594", HasPGE: &core.False, MustFollow: core.True, ExpectedPGE: &core.False},
 		// not exists in entreprise_pge and has habilitation => nil
-		{siren: "417193286", hasPGE: nil, mustFollow: core.True, expectedPGE: nil},
+		{Siren: "417193286", HasPGE: nil, MustFollow: core.True, ExpectedPGE: nil},
 	}
-	insertPGE(t, tests)
+	test.InsertPGE(t, tests)
 
 	for _, pgeTest := range tests {
-		t.Logf("Test PGE for entreprise '%s'", pgeTest.siren)
-		siren := pgeTest.siren
+		t.Logf("Test PGE for entreprise '%s'", pgeTest.Siren)
+		siren := pgeTest.Siren
 
-		if pgeTest.mustFollow {
-			followEntreprise(t, siren)
+		if pgeTest.MustFollow {
+			test.FollowEntreprise(t, siren)
 		}
 
-		resp, data, _ := get(t, "/entreprise/get/"+siren)
+		resp, data, _ := test.Get(t, "/entreprise/get/"+siren)
 		assertions.Equal(200, resp.StatusCode)
-		actual := jsonToEntreprise(t, data)
-		assertions.Equal(pgeTest.expectedPGE, actual.PGEActif)
+		actual := test.JsonToEntreprise(t, data)
+		assertions.Equal(pgeTest.ExpectedPGE, actual.PGEActif)
 	}
 }
 

@@ -1,4 +1,4 @@
-package main
+package test
 
 import (
 	"bytes"
@@ -6,7 +6,7 @@ import (
 	"context"
 	"encoding/json"
 	"github.com/pmezard/go-difflib/difflib"
-	"github.com/signaux-faibles/datapi/core"
+	core2 "github.com/signaux-faibles/datapi/src/core"
 	"io"
 	"io/ioutil"
 	"net/http"
@@ -67,7 +67,7 @@ func indent(reader io.Reader) ([]byte, error) {
 	return prettyBody.Bytes(), err
 }
 
-func processGoldenFile(t *testing.T, path string, data []byte) (string, error) {
+func ProcessGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 	if update {
 		err := saveGoldenFile(path, data)
 		if err != nil {
@@ -88,7 +88,7 @@ func processGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 	return diff, err
 }
 
-func post(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
+func Post(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
 	jsonValue, _ := json.Marshal(params)
 	resp, err := http.Post(hostname()+path, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
@@ -99,7 +99,7 @@ func post(t *testing.T, path string, params map[string]interface{}) (*http.Respo
 	return resp, indented, err
 }
 
-func get(t *testing.T, path string) (*http.Response, []byte, error) {
+func Get(t *testing.T, path string) (*http.Response, []byte, error) {
 	resp, err := http.Get(hostname() + path)
 	if err != nil {
 		t.Errorf("api non joignable: %s", err)
@@ -110,31 +110,31 @@ func get(t *testing.T, path string) (*http.Response, []byte, error) {
 }
 
 // not a test function
-func followEntreprise(t *testing.T, siren string) {
-	_, data, err := get(t, "/entreprise/get/"+siren)
+func FollowEntreprise(t *testing.T, siren string) {
+	_, data, err := Get(t, "/entreprise/get/"+siren)
 	if err != nil {
 		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
 	}
-	entreprise := jsonToEntreprise(t, data)
+	entreprise := JsonToEntreprise(t, data)
 	siret := entreprise.EtablissementsSummary[0].Siret
 	t.Logf("will follow etablissement with siret '%s for entreprise with siren '%s'", siret, siren)
-	followEtab(t, siret)
+	FollowEtablissement(t, siret)
 }
 
 // not a test function
-func followEtab(t *testing.T, siret string) {
+func FollowEtablissement(t *testing.T, siret string) {
 	params := map[string]interface{}{
 		"comment":  "test",
 		"category": "test",
 	}
-	resp, _, _ := post(t, "/follow/"+siret, params)
+	resp, _, _ := Post(t, "/follow/"+siret, params)
 	if resp.StatusCode != 201 {
 		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 	}
 }
 
-func jsonToEntreprise(t *testing.T, data []byte) core.Entreprise {
-	var entreprise core.Entreprise
+func JsonToEntreprise(t *testing.T, data []byte) core2.Entreprise {
+	var entreprise core2.Entreprise
 	err := json.Unmarshal(data, &entreprise)
 	if err != nil {
 		t.Fatalf("error when unmarshalling entreprise -> %s", err)
@@ -166,7 +166,7 @@ func getSiret(t *testing.T, v VAF, n int) []string {
 		(f.siren is not null)=$3     -- follow
 	order by e.siret
 	limit $4`
-	rows, err := core.Db().Query(
+	rows, err := core2.Db().Query(
 		context.Background(),
 		sql,
 		v.visible,
@@ -198,38 +198,38 @@ type VAF struct {
 	followed bool
 }
 
-func razEtablissementFollowing(t *testing.T) {
-	_, err := core.Db().Exec(context.Background(), "delete from etablissement_follow;")
+func RazEtablissementFollowing(t *testing.T) {
+	_, err := core2.Db().Exec(context.Background(), "delete from etablissement_follow;")
 	if err != nil {
 		t.Fatalf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
 	}
 }
 
-// pgeTest struct contenant des données à tester pour le pge
-type pgeTest struct {
-	siren       string
-	hasPGE      *bool
-	mustFollow  bool
-	expectedPGE *bool
+// PgeTest struct contenant des données à tester pour le pge
+type PgeTest struct {
+	Siren       string
+	HasPGE      *bool
+	MustFollow  bool
+	ExpectedPGE *bool
 }
 
-// insertPGE add pge in entreprise_pge for a siren
-func insertPGE(t *testing.T, pgesData []pgeTest) {
-	tx, err := core.Db().Begin(context.Background())
+// InsertPGE add pge in entreprise_pge for a siren
+func InsertPGE(t *testing.T, pgesData []PgeTest) {
+	tx, err := core2.Db().Begin(context.Background())
 	if err != nil {
 		t.Fatalf("something bad is happening with database when begining : %s" + err.Error())
 	}
 
 	for _, pgeTest := range pgesData {
-		if pgeTest.hasPGE == nil {
+		if pgeTest.HasPGE == nil {
 			continue
 		}
 		_, err = tx.Exec(
 			context.Background(),
-			"insert into entreprise_pge (siren, actif) values ($1, $2)", pgeTest.siren, *pgeTest.hasPGE)
+			"insert into entreprise_pge (siren, actif) values ($1, $2)", pgeTest.Siren, *pgeTest.HasPGE)
 		if err != nil {
 			tx.Rollback(context.Background())
-			t.Fatalf("error inserting pge [%t] for siren '%s'. Cause : %s", *pgeTest.hasPGE, pgeTest.siren, err.Error())
+			t.Fatalf("error inserting pge [%t] for siren '%s'. Cause : %s", *pgeTest.HasPGE, pgeTest.Siren, err.Error())
 		}
 	}
 	err = tx.Commit(context.Background())
@@ -238,8 +238,8 @@ func insertPGE(t *testing.T, pgesData []pgeTest) {
 	}
 }
 
-// selectSomeSiretsToFollow // récupérer une liste de sirets à suivre de toutes les typologies d'établissements
-func selectSomeSiretsToFollow(t *testing.T) []string {
+// SelectSomeSiretsToFollow // récupérer une liste de sirets à suivre de toutes les typologies d'établissements
+func SelectSomeSiretsToFollow(t *testing.T) []string {
 	sirets := getSiret(t, VAF{false, false, false}, 1)
 	sirets = append(sirets, getSiret(t, VAF{false, true, false}, 1)...)
 	sirets = append(sirets, getSiret(t, VAF{true, false, false}, 1)...)
