@@ -5,24 +5,21 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
-	"fmt"
+	"github.com/pmezard/go-difflib/difflib"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
 	"testing"
-	"time"
-
-	"github.com/pmezard/go-difflib/difflib"
 )
 
 var update, _ = strconv.ParseBool(os.Getenv("GOLDEN_UPDATE"))
 
-func compare(golden []byte, result []byte) string {
+func compare(expected []byte, actual []byte) string {
 	diff := difflib.UnifiedDiff{
-		A:       difflib.SplitLines(string(golden)),
-		B:       difflib.SplitLines(string(result)),
+		A:       difflib.SplitLines(string(expected)),
+		B:       difflib.SplitLines(string(actual)),
 		Context: 1,
 	}
 
@@ -111,24 +108,42 @@ func get(t *testing.T, path string) (*http.Response, []byte, error) {
 	return resp, indented, err
 }
 
-//func connect() *pgxpool.Pool {
-//	viper.SetConfigName("config")
-//	viper.SetConfigType("toml")
-//	viper.AddConfigPath("workspace")
-//	viper.ReadInConfig()
-//	pgConnStr := viper.GetString("postgres")
-//	db, err := pgxpool.Connect(context.Background(), pgConnStr)
-//	if err != nil {
-//		log.Fatalf("database connexion: %s", err.Error())
-//	}
-//	// Suppression des éventuels suivi d'un test précédent
-//	_, err = db.Exec(context.Background(), `delete from etablissement_follow;`)
-//	if err != nil {
-//		log.Fatalf("erreur lors de la suppression des suivis: %s", err.Error())
-//	}
-//
-//	return db
-//}
+// not a test function
+func followEntreprise(t *testing.T, siren string) {
+	_, data, err := get(t, "/entreprise/get/"+siren)
+	if err != nil {
+		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
+	}
+	entreprise := jsonToEntreprise(t, data)
+	siret := entreprise.EtablissementsSummary[0].Siret
+	t.Logf("will follow etablissement with siret '%s for entreprise with siren '%s'", siret, siren)
+	followEtab(t, siret)
+}
+
+// not a test function
+func followEtab(t *testing.T, siret string) {
+	params := map[string]interface{}{
+		"comment":  "test",
+		"category": "test",
+	}
+	resp, _, _ := post(t, "/follow/"+siret, params)
+	if resp.StatusCode != 201 {
+		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
+	}
+}
+
+func jsonToEntreprise(t *testing.T, data []byte) Entreprise {
+	var entreprise Entreprise
+	err := json.Unmarshal(data, &entreprise)
+	if err != nil {
+		t.Fatalf("error when unmarshalling entreprise -> %s", err)
+	}
+	return entreprise
+}
+
+func hostname() string {
+	return os.Getenv("DATAPI_URL")
+}
 
 func getSiret(t *testing.T, v VAF, n int) []string {
 	sql := `with etablissement_data_confidentielle as (
@@ -175,110 +190,6 @@ func getSiret(t *testing.T, v VAF, n int) []string {
 	return sirets
 }
 
-func testEtablissementVAF(t *testing.T, siret string, vaf string) {
-	v := VAF{}
-	v.read(vaf)
-
-	goldenFilePath := fmt.Sprintf("data/getEtablissement-%s-%s.json.gz", vaf, siret)
-	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
-	_, indented, _ := get(t, "/etablissement/get/"+siret)
-	processGoldenFile(t, goldenFilePath, indented)
-
-	var e etablissementVAF
-	json.Unmarshal(indented, &e)
-	if !(e.Visible == v.visible && e.Followed == v.followed) {
-		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, vaf)
-	}
-
-	if !((v.visible && v.alert) || v.followed) {
-		if len(e.PeriodeUrssaf.Cotisation) > 0 {
-			t.Errorf("Fuite de cotisations sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-		if len(e.PeriodeUrssaf.PartPatronale) > 0 {
-			t.Errorf("Fuite de part patronale sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-		if len(e.PeriodeUrssaf.PartSalariale) > 0 {
-			t.Errorf("Fuite de part salariale sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-		if len(e.Delai) > 0 {
-			t.Errorf("Fuite de délai urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-		if len(e.APConso) > 0 {
-			t.Errorf("Fuite de consommation d'activité partielle sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-		if len(e.APDemande) > 0 {
-			t.Errorf("Fuite de demande d'activité partielle sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-	} else {
-		if len(e.PeriodeUrssaf.Cotisation) == 0 {
-			t.Errorf("Absence de cotisations urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-		if len(e.PeriodeUrssaf.PartPatronale) == 0 {
-			t.Errorf("Absence de part patronale urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-		if len(e.PeriodeUrssaf.PartSalariale) == 0 {
-			t.Errorf("Absence de part salariale urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
-		}
-	}
-}
-
-func testSearchVAF(t *testing.T, siret string, vaf string) {
-	goldenFilePath := fmt.Sprintf("data/getSearch-%s-%s.json.gz", vaf, siret)
-	t.Logf("la recherche renvoie l'établissement %s sous la forme attendue (ref %s)", siret, goldenFilePath)
-	params := map[string]interface{}{
-		"search":      siret,
-		"ignoreZone":  true,
-		"ignoreRoles": true,
-	}
-	_, indented, _ := post(t, "/etablissement/search", params)
-	diff, _ := processGoldenFile(t, goldenFilePath, indented)
-	if diff != "" {
-		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
-	}
-	visible := vaf[0] == 'V'
-	followed := vaf[2] == 'F'
-	var e searchVAF
-	json.Unmarshal(indented, &e)
-	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].Followed == followed) {
-		fmt.Println(vaf, visible, followed)
-		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, vaf)
-	}
-}
-
-// not a test function
-func followEntreprise(t *testing.T, siren string) {
-	_, data, err := get(t, "/entreprise/get/"+siren)
-	if err != nil {
-		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
-	}
-	entreprise := jsonToEntreprise(t, data)
-	siret := entreprise.EtablissementsSummary[0].Siret
-	t.Logf("will follow etablissement with siret '%s for entreprise with siren '%s'", siret, siren)
-
-	params := map[string]interface{}{
-		"comment":  "test",
-		"category": "test",
-	}
-	resp, _, _ := post(t, "/follow/"+siret, params)
-	if resp.StatusCode != 201 {
-		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
-	}
-
-}
-
-func jsonToEntreprise(t *testing.T, data []byte) Entreprise {
-	var entreprise Entreprise
-	err := json.Unmarshal(data, &entreprise)
-	if err != nil {
-		t.Fatalf("error when unmarshalling entreprise -> %s", err)
-	}
-	return entreprise
-}
-
-type searchVAF struct {
-	Results []etablissementVAF `json:"results"`
-}
-
 // VAF encode le statut d'une entreprise selon la classification VAF
 type VAF struct {
 	visible  bool
@@ -286,28 +197,52 @@ type VAF struct {
 	followed bool
 }
 
-func (v *VAF) read(vaf string) {
-	v.visible = vaf[0] == 'V'
-	v.alert = vaf[1] == 'A'
-	v.followed = vaf[2] == 'F'
-}
-
-type etablissementVAF struct {
-	Visible       bool `json:"visible"`
-	Alert         bool `json:"alert"`
-	Followed      bool `json:"followed"`
-	PeriodeUrssaf struct {
-		Periodes      []*time.Time `json:"periodes"`
-		Cotisation    []*float64   `json:"cotisation"`
-		PartPatronale []*float64   `json:"partPatronale"`
-		PartSalariale []*float64   `json:"partSalariale"`
-		Effectif      []*int       `json:"effectif"`
+func razEtablissementFollowing(t *testing.T) {
+	_, err := db.Exec(context.Background(), "delete from etablissement_follow;")
+	if err != nil {
+		t.Fatalf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
 	}
-	APConso   []interface{} `json:"apConso"`
-	APDemande []interface{} `json:"apDemande"`
-	Delai     []interface{} `json:"delai"`
 }
 
-func hostname() string {
-	return os.Getenv("DATAPI_URL")
+// pgeTest struct contenant des données à tester pour le pge
+type pgeTest struct {
+	siren       string
+	hasPGE      *bool
+	mustFollow  bool
+	expectedPGE *bool
+}
+
+// insertPGE add pge in entreprise_pge for a siren
+func insertPGE(t *testing.T, pgesData []pgeTest) {
+	tx, err := db.Begin(context.Background())
+	if err != nil {
+		t.Fatalf("something bad is happening with database when begining : %s" + err.Error())
+	}
+
+	for _, pgeTest := range pgesData {
+		if pgeTest.hasPGE == nil {
+			continue
+		}
+		_, err = tx.Exec(
+			context.Background(),
+			"insert into entreprise_pge (siren, actif) values ($1, $2)", pgeTest.siren, *pgeTest.hasPGE)
+		if err != nil {
+			tx.Rollback(context.Background())
+			t.Fatalf("error inserting pge [%t] for siren '%s'. Cause : %s", *pgeTest.hasPGE, pgeTest.siren, err.Error())
+		}
+	}
+	err = tx.Commit(context.Background())
+	if err != nil {
+		panic("something bad is happening with database" + err.Error())
+	}
+}
+
+// selectSomeSiretsToFollow // récupérer une liste de sirets à suivre de toutes les typologies d'établissements
+func selectSomeSiretsToFollow(t *testing.T) []string {
+	sirets := getSiret(t, VAF{false, false, false}, 1)
+	sirets = append(sirets, getSiret(t, VAF{false, true, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VAF{true, false, false}, 1)...)
+	sirets = append(sirets, getSiret(t, VAF{true, true, false}, 1)...)
+	t.Logf("sirests to follow -> %s", sirets)
+	return sirets
 }

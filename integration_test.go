@@ -4,6 +4,7 @@
 package main
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
 	_ "github.com/lib/pq"
@@ -68,12 +69,12 @@ func TestMain(m *testing.M) {
 		}
 	})
 	if err != nil {
-		kill(datapiDb)
+		killContainer(datapiDb)
 		log.Fatal("Could not start datapi_db", err)
 	}
 	// container stops after 60 seconds
 	if err = datapiDb.Expire(120); err != nil {
-		kill(datapiDb)
+		killContainer(datapiDb)
 		log.Fatal("Could not set expiration on container datapi_db", err)
 	}
 	hostAndPort := datapiDb.GetHostPort("5432/tcp")
@@ -97,7 +98,7 @@ func TestMain(m *testing.M) {
 	// run datapi
 	startDatapi()
 	go runAPI()
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second) // time to expose API
 
 	//Run tests
 	code := m.Run()
@@ -109,6 +110,182 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
+func TestListes(t *testing.T) {
+	_, indented, _ := get(t, "/listes")
+	processGoldenFile(t, "test/data/listes.json.gz", indented)
+}
+
+func TestFollow(t *testing.T) {
+	razEtablissementFollowing(t)
+	sirets := selectSomeSiretsToFollow(t)
+
+	params := map[string]interface{}{
+		"comment":  "test",
+		"category": "test",
+	}
+
+	for _, siret := range sirets {
+		t.Logf("suivi de l'établissement %s", siret)
+		resp, _, _ := post(t, "/follow/"+siret, params)
+		if resp.StatusCode != 201 {
+			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
+		}
+	}
+
+	for _, siret := range sirets {
+		t.Logf("suivi doublon de l'établissement %s", siret)
+		resp, _, _ := post(t, "/follow/"+siret, params)
+		if resp.StatusCode != 204 {
+			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
+		}
+	}
+
+	t.Log("Vérification de /follow")
+	db.Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	_, indented, _ := get(t, "/follow")
+	processGoldenFile(t, "test/data/follow.json.gz", indented)
+}
+
+func TestSearch(t *testing.T) {
+	razEtablissementFollowing(t)
+	for _, siret := range selectSomeSiretsToFollow(t) {
+		followEtab(t, siret)
+	}
+
+	// tester le retour 400 en cas de recherche trop courte
+	t.Log("/etablissement/search retourne 400")
+	params := map[string]interface{}{
+		"search": "t",
+	}
+	resp, _, _ := post(t, "/etablissement/search", params)
+	if resp.StatusCode != 400 {
+		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
+	}
+
+	// tester la recherche par chaine de caractères
+	rows, err := db.Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
+	inner join departements d on d.code = e.departement
+	inner join regions r on r.id = d.id_region
+	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
+	order by substring(e.siret from 1 for 3)
+	limit 10
+	`)
+	if err != nil {
+		t.Errorf("impossible de se connecter à la base: %s", err.Error())
+	}
+
+	i := 0
+	for rows.Next() {
+		var siret string
+		err := rows.Scan(&siret)
+		if err != nil {
+			t.Errorf("siret illisible: %s", err.Error())
+		}
+
+		params := make(map[string]interface{})
+		params["search"] = siret
+		params["ignoreZone"] = false
+		params["ignoreRoles"] = false
+		t.Logf("la recherche %s est bien de la forme attendue", siret)
+		_, indented, _ := post(t, "/etablissement/search", params)
+		goldenFilePath := fmt.Sprintf("test/data/search-%d.json.gz", i)
+		processGoldenFile(t, goldenFilePath, indented)
+		i++
+	}
+
+	// tester par département
+	var departements []string
+	var siret string
+	err = db.QueryRow(
+		context.Background(),
+		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) from etablissement where departement < '10' and departement != '00'`,
+	).Scan(&departements, &siret)
+	if err != nil {
+		t.Errorf("impossible de se connecter à la base: %s", err.Error())
+	}
+
+	params = map[string]interface{}{
+		"departements": departements,
+		"search":       siret,
+		"ignoreZone":   true,
+		"ignoreRoles":  true,
+	}
+
+	t.Log("la recherche filtrée par départements est bien de la forme attendue")
+	_, indented, _ := post(t, "/etablissement/search", params)
+	goldenFilePath := "test/data/searchDepartement.json.gz"
+	processGoldenFile(t, goldenFilePath, indented)
+	i++
+
+	// tester par activité
+	err = db.QueryRow(
+		context.Background(),
+		`select substring(first(siret) from 1 for 3)
+		 from etablissement e
+		 inner join v_naf n on n.code_n5 = e.code_activite
+		 where code_n1 in ('A', 'B', 'C')
+		`,
+	).Scan(&siret)
+	if err != nil {
+		t.Errorf("impossible de se connecter à la base: %s", err.Error())
+	}
+
+	params = map[string]interface{}{
+		"activites":   []string{"A", "B", "C"},
+		"search":      siret,
+		"ignoreZone":  true,
+		"ignoreRoles": true,
+	}
+
+	t.Log("la recherche filtrée par activites est bien de la forme attendue")
+	_, indented, _ = post(t, "/etablissement/search", params)
+	goldenFilePath = "test/data/searchActivites.json.gz"
+	processGoldenFile(t, goldenFilePath, indented)
+}
+
+// TestPGE ; cette fonction teste si le PGE est bien retourné par l'API si
+// - l'entreprise a un pge actif
+// - l'utilisateur connecté a bien les habilitations
+//
+// pour que ce test fonctionne il faut vérifier que le fichier dump
+// des données de test contient bien les informations suivantes ;
+// 020523337	true
+// 221129065	true
+// 336400422	false
+func TestPGE(t *testing.T) {
+	assertions := assert.New(t)
+
+	razEtablissementFollowing(t)
+
+	tests := []pgeTest{
+		// pge is true in entreprise_pge and has habilitation => true
+		{siren: "020523337", hasPGE: &True, mustFollow: True, expectedPGE: &True},
+		// pge is true in entreprise_pge and has no habilitation => nil
+		{siren: "221129065", hasPGE: &True, mustFollow: False, expectedPGE: nil},
+		// pge is false in  entreprise_pge and has no habilitation => nil
+		{siren: "336400422", hasPGE: &False, mustFollow: False, expectedPGE: nil},
+		// pge is false in  entreprise_pge and has habilitation => false
+		{siren: "386322594", hasPGE: &False, mustFollow: True, expectedPGE: &False},
+		// not exists in entreprise_pge and has habilitation => nil
+		{siren: "417193286", hasPGE: nil, mustFollow: True, expectedPGE: nil},
+	}
+	insertPGE(t, tests)
+
+	for _, pgeTest := range tests {
+		t.Logf("Test PGE for entreprise '%s'", pgeTest.siren)
+		siren := pgeTest.siren
+
+		if pgeTest.mustFollow {
+			followEntreprise(t, siren)
+		}
+
+		resp, data, _ := get(t, "/entreprise/get/"+siren)
+		assertions.Equal(200, resp.StatusCode)
+		actual := jsonToEntreprise(t, data)
+		assertions.Equal(pgeTest.expectedPGE, actual.PGEActif)
+	}
+}
+
 func loadTestConfig(postgresURL string) {
 	log.Println("loading test config")
 	loadConfig("test", "config", "migrations")
@@ -118,150 +295,11 @@ func loadTestConfig(postgresURL string) {
 	os.Setenv("DATAPI_URL", "http://localhost:"+datapiPort)
 }
 
-func kill(resource *dockertest.Resource) {
+func killContainer(resource *dockertest.Resource) {
 	if resource == nil {
 		return
 	}
 	if err := resource.Close(); err != nil {
 		log.Fatalf("Could not purge resource: %s", err)
-	}
-}
-
-func TestListes(t *testing.T) {
-	_, indented, _ := get(t, "/listes")
-	processGoldenFile(t, "test/data/listes.json.gz", indented)
-}
-
-//func TestSearch(t *testing.T) {
-//	// tester le retour 400 en cas de recherche trop courte
-//	t.Log("/etablissement/search retourne 400")
-//	params := map[string]interface{}{
-//		"search": "t",
-//	}
-//	resp, _, _ := post(t, "/etablissement/search", params)
-//	if resp.StatusCode != 400 {
-//		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
-//	}
-//
-//	// tester la recherche par chaine de caractères
-//	rows, err := db.Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
-//	inner join departements d on d.code = e.departement
-//	inner join regions r on r.id = d.id_region
-//	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
-//	order by substring(e.siret from 1 for 3)
-//	limit 10
-//	`)
-//	if err != nil {
-//		t.Errorf("impossible de se connecter à la base: %s", err.Error())
-//	}
-//
-//	i := 0
-//	for rows.Next() {
-//		var siret string
-//		err := rows.Scan(&siret)
-//		if err != nil {
-//			t.Errorf("siret illisible: %s", err.Error())
-//		}
-//
-//		params := make(map[string]interface{})
-//		params["search"] = siret
-//		params["ignoreZone"] = false
-//		params["ignoreRoles"] = false
-//		t.Logf("la recherche %s est bien de la forme attendue", siret)
-//		_, indented, _ := post(t, "/etablissement/search", params)
-//		goldenFilePath := fmt.Sprintf("test/data/search-%d.json.gz", i)
-//		processGoldenFile(t, goldenFilePath, indented)
-//		i++
-//	}
-//
-//	// tester par département
-//	var departements []string
-//	var siret string
-//	err = db.QueryRow(
-//		context.Background(),
-//		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) from etablissement where departement < '10' and departement != '00'`,
-//	).Scan(&departements, &siret)
-//	if err != nil {
-//		t.Errorf("impossible de se connecter à la base: %s", err.Error())
-//	}
-//
-//	params = map[string]interface{}{
-//		"departements": departements,
-//		"search":       siret,
-//		"ignoreZone":   true,
-//		"ignoreRoles":  true,
-//	}
-//
-//	t.Log("la recherche filtrée par départements est bien de la forme attendue")
-//	_, indented, _ := post(t, "/etablissement/search", params)
-//	goldenFilePath := "test/data/searchDepartement.json.gz"
-//	processGoldenFile(t, goldenFilePath, indented)
-//	i++
-//
-//	// tester par activité
-//	err = db.QueryRow(
-//		context.Background(),
-//		`select substring(first(siret) from 1 for 3)
-//		 from etablissement e
-//		 inner join v_naf n on n.code_n5 = e.code_activite
-//		 where code_n1 in ('A', 'B', 'C')
-//		`,
-//	).Scan(&siret)
-//	if err != nil {
-//		t.Errorf("impossible de se connecter à la base: %s", err.Error())
-//	}
-//
-//	params = map[string]interface{}{
-//		"activites":   []string{"A", "B", "C"},
-//		"search":      siret,
-//		"ignoreZone":  true,
-//		"ignoreRoles": true,
-//	}
-//
-//	t.Log("la recherche filtrée par activites est bien de la forme attendue")
-//	_, indented, _ = post(t, "/etablissement/search", params)
-//	goldenFilePath = "test/data/searchActivites.json.gz"
-//	processGoldenFile(t, goldenFilePath, indented)
-//}
-
-// pgeTest struct contenant des données à tester pour le pge
-type pgeTest struct {
-	siren       string
-	mustFollow  bool
-	expectedPGE *bool
-}
-
-// TestPGE ; cette fonction teste si le PGE est bien retourné par l'API si
-// - l'entreprise a un pge actif
-// - l'utilisateur connecté a bien les habilitations
-//
-// pour que ce test fonctionne il faut vérifier que le fichier dump
-// des données de test contient bien les informations suivantes ;
-// 020523337	true -
-// 221129065	true
-// 336400422	false
-func TestPGE(t *testing.T) {
-	assertions := assert.New(t)
-	for _, pgeTest := range []pgeTest{
-		// pge is true in entreprise_pge and has habilitation => true
-		{siren: "020523337", mustFollow: True, expectedPGE: &True},
-		// pge is true in entreprise_pge and has no habilitation => nil
-		{siren: "221129065", mustFollow: False, expectedPGE: nil},
-		// pge is false in  entreprise_pge and has no habilitation => nil
-		{siren: "336400422", mustFollow: False, expectedPGE: nil},
-		// pge is false in  entreprise_pge and has habilitation => false
-		{siren: "336400422", mustFollow: True, expectedPGE: &False},
-		// not exists in entreprise_pge and has habilitation => nil
-		{siren: "417193286", mustFollow: True, expectedPGE: nil},
-	} {
-		t.Logf("Test PGE for entreprise '%s'", pgeTest.siren)
-		siren := pgeTest.siren
-		if pgeTest.mustFollow {
-			followEntreprise(t, siren)
-		}
-		resp, data, _ := get(t, "/entreprise/get/"+siren)
-		assertions.Equal(200, resp.StatusCode)
-		actual := jsonToEntreprise(t, data)
-		assertions.Equal(pgeTest.expectedPGE, actual.PGEActif)
 	}
 }
