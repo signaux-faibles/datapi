@@ -144,7 +144,10 @@ func TestFollow(t *testing.T) {
 	}
 
 	t.Log("Vérification de /follow")
-	core.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	_, err := core.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	if err != nil {
+		t.Errorf("erreur sql : %s", err.Error())
+	}
 	_, indented, _ := test.Get(t, "/follow")
 	test.ProcessGoldenFile(t, "test/data/follow.json.gz", indented)
 }
@@ -269,7 +272,7 @@ func TestPGE(t *testing.T) {
 		// not exists in entreprise_pge and has habilitation => nil
 		{Siren: "417193286", HasPGE: nil, MustFollow: core.True, ExpectedPGE: nil},
 	}
-	test.InsertPGE(t, tests)
+	insertPgeTests(t, tests)
 
 	for _, pgeTest := range tests {
 		t.Logf("Test PGE for entreprise '%s'", pgeTest.Siren)
@@ -339,7 +342,7 @@ func TestPermissions(t *testing.T) {
 	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	t.Log("test de la fonction permissions")
-	type test struct {
+	type input struct {
 		rolesUser            []string
 		rolesEntreprise      []string
 		firstAlertEntreprise *string
@@ -359,14 +362,14 @@ func TestPermissions(t *testing.T) {
 
 	type useCase struct {
 		description string
-		test        test
+		test        input
 		result      expected
 	}
 
 	firstAlert := "firstAlert"
 	tests := []useCase{
 		{"entreprise hors zone, visible, avec alerte et tous les roles",
-			test{
+			input{
 				rolesUser:            []string{"01", "urssaf", "dgefp", "bdf", "score"},
 				rolesEntreprise:      []string{"01", "02", "03"},
 				firstAlertEntreprise: &firstAlert,
@@ -383,7 +386,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise hors zone, hors visible, avec alerte et tous les roles",
-			test{
+			input{
 				rolesUser:            []string{"05", "urssaf", "dgefp", "bdf", "score"},
 				rolesEntreprise:      []string{"01", "02", "03"},
 				firstAlertEntreprise: &firstAlert,
@@ -400,7 +403,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise dans la zone, avec alerte et role score",
-			test{
+			input{
 				rolesUser:            []string{"01", "02", "score"},
 				rolesEntreprise:      []string{"02"},
 				firstAlertEntreprise: &firstAlert,
@@ -417,7 +420,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise dans la zone, avec alerte et role urssaf",
-			test{
+			input{
 				rolesUser:            []string{"01", "02", "urssaf"},
 				rolesEntreprise:      []string{"02"},
 				firstAlertEntreprise: &firstAlert,
@@ -434,7 +437,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise dans la zone, avec alerte et role dgefp",
-			test{
+			input{
 				rolesUser:            []string{"01", "02", "dgefp"},
 				rolesEntreprise:      []string{"02"},
 				firstAlertEntreprise: &firstAlert,
@@ -451,7 +454,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise dans la zone, avec alerte et role bdf",
-			test{
+			input{
 				rolesUser:            []string{"01", "02", "bdf"},
 				rolesEntreprise:      []string{"02"},
 				firstAlertEntreprise: &firstAlert,
@@ -468,7 +471,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise dans la zone, sans alerte avec droits",
-			test{
+			input{
 				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
 				rolesEntreprise:      []string{"01", "02", "03"},
 				firstAlertEntreprise: nil,
@@ -485,7 +488,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise hors zone, avec alerte, avec droits et suivi",
-			test{
+			input{
 				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
 				rolesEntreprise:      []string{"05"},
 				firstAlertEntreprise: &firstAlert,
@@ -502,7 +505,7 @@ func TestPermissions(t *testing.T) {
 			},
 		},
 		{"entreprise hors zone, sans alerte, avec droits et suivi",
-			test{
+			input{
 				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
 				rolesEntreprise:      []string{"05"},
 				firstAlertEntreprise: nil,
@@ -523,9 +526,14 @@ func TestPermissions(t *testing.T) {
 	for _, tt := range tests {
 		var r expected
 		t.Log(tt.description)
-		err := core.Db().QueryRow(context.Background(), "select * from permissions($1, $2, $3, $4, $5)",
-			tt.test.rolesUser, tt.test.rolesEntreprise, tt.test.firstAlertEntreprise,
-			tt.test.departement, tt.test.followed,
+		err := core.Db().QueryRow(
+			context.Background(),
+			"select * from permissions($1, $2, $3, $4, $5)",
+			tt.test.rolesUser,
+			tt.test.rolesEntreprise,
+			tt.test.firstAlertEntreprise,
+			tt.test.departement,
+			tt.test.followed,
 		).Scan(&r.visible, &r.inZone, &r.score, &r.urssaf, &r.dgefp, &r.bdf, &r.pge)
 		if err != nil {
 			t.Errorf("ne peut exécuter la fonction permissions: %s", err.Error())
@@ -632,5 +640,15 @@ func testSearchVAF(t *testing.T, siret string, vaf string) {
 	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].Followed == followed) {
 		fmt.Println(vaf, visible, followed)
 		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, vaf)
+	}
+}
+
+// insertPgeTests add pge in entreprise_pge for a siren
+func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
+	for _, pgeTest := range pgesData {
+		if pgeTest.HasPGE == nil {
+			continue
+		}
+		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
 	}
 }

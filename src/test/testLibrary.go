@@ -214,31 +214,6 @@ type PgeTest struct {
 	ExpectedPGE *bool
 }
 
-// InsertPGE add pge in entreprise_pge for a siren
-func InsertPGE(t *testing.T, pgesData []PgeTest) {
-	tx, err := core.Db().Begin(context.Background())
-	if err != nil {
-		t.Fatalf("something bad is happening with database when begining : %s" + err.Error())
-	}
-
-	for _, pgeTest := range pgesData {
-		if pgeTest.HasPGE == nil {
-			continue
-		}
-		_, err = tx.Exec(
-			context.Background(),
-			"insert into entreprise_pge (siren, actif) values ($1, $2)", pgeTest.Siren, *pgeTest.HasPGE)
-		if err != nil {
-			tx.Rollback(context.Background())
-			t.Fatalf("error inserting pge [%t] for siren '%s'. Cause : %s", *pgeTest.HasPGE, pgeTest.Siren, err.Error())
-		}
-	}
-	err = tx.Commit(context.Background())
-	if err != nil {
-		panic("something bad is happening with database" + err.Error())
-	}
-}
-
 // SelectSomeSiretsToFollow // récupérer une liste de sirets à suivre de toutes les typologies d'établissements
 func SelectSomeSiretsToFollow(t *testing.T) []string {
 	sirets := GetSiret(t, VAF{false, false, false}, 1)
@@ -255,7 +230,9 @@ func ExclureSuivi(t *testing.T) {
 	params["ignoreZone"] = true
 	_, indented, _ := Post(t, "/scores/liste", params)
 	var liste Liste
-	json.Unmarshal(indented, &liste)
+	if err := json.Unmarshal(indented, &liste); err != nil {
+		t.Fatalf("ne peut pas unmarshaller la liste de scores : %s", err)
+	}
 	if len(liste.Scores) < 1 {
 		t.Error("pas assez d'établissements, test faible")
 	}
@@ -272,11 +249,34 @@ func ExclureSuivi(t *testing.T) {
 	}
 
 	_, indented, _ = Post(t, "/scores/liste", params)
-	json.Unmarshal(indented, &liste)
+	if err := json.Unmarshal(indented, &liste); err != nil {
+		t.Fatalf("ne peut pas unmarshaller la liste de résultats : %s", err)
+	}
 	for _, l := range liste.Scores {
 		if l.Followed {
 			t.Fail()
 		}
+	}
+}
+
+func InsertPGE(t *testing.T, siren string, hasPGE *bool) {
+	tx, err := core.Db().Begin(context.Background())
+	if err != nil {
+		t.Fatalf("something bad is happening with database when begining : %s" + err.Error())
+	}
+
+	_, err = tx.Exec(
+		context.Background(),
+		"insert into entreprise_pge (siren, actif) values ($1, $2)", siren, hasPGE)
+	if err != nil {
+		if errRollback := tx.Rollback(context.Background()); errRollback != nil {
+			t.Fatalf("error rolling back. Cause : %s", err.Error())
+		}
+		t.Fatalf("error inserting pge [%t] for siren '%s'. Cause : %s", hasPGE, siren, err.Error())
+	}
+	err = tx.Commit(context.Background())
+	if err != nil {
+		panic("something bad is happening with database" + err.Error())
 	}
 }
 
