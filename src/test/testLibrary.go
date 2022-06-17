@@ -13,6 +13,7 @@ import (
 	"os"
 	"strconv"
 	"testing"
+	"time"
 )
 
 var update, _ = strconv.ParseBool(os.Getenv("GOLDEN_UPDATE"))
@@ -145,7 +146,7 @@ func hostname() string {
 	return os.Getenv("DATAPI_URL")
 }
 
-func getSiret(t *testing.T, v VAF, n int) []string {
+func GetSiret(t *testing.T, v VAF, n int) []string {
 	sql := `with etablissement_data_confidentielle as (
 		select distinct e.siret, et.departement
 		from etablissement_periode_urssaf e
@@ -168,9 +169,9 @@ func getSiret(t *testing.T, v VAF, n int) []string {
 	rows, err := core.Db().Query(
 		context.Background(),
 		sql,
-		v.visible,
-		v.alert,
-		v.followed,
+		v.Visible,
+		v.Alert,
+		v.Followed,
 		n,
 	)
 	if err != nil {
@@ -192,9 +193,9 @@ func getSiret(t *testing.T, v VAF, n int) []string {
 
 // VAF encode le statut d'une entreprise selon la classification VAF
 type VAF struct {
-	visible  bool
-	alert    bool
-	followed bool
+	Visible  bool
+	Alert    bool
+	Followed bool
 }
 
 func RazEtablissementFollowing(t *testing.T) {
@@ -240,10 +241,75 @@ func InsertPGE(t *testing.T, pgesData []PgeTest) {
 
 // SelectSomeSiretsToFollow // récupérer une liste de sirets à suivre de toutes les typologies d'établissements
 func SelectSomeSiretsToFollow(t *testing.T) []string {
-	sirets := getSiret(t, VAF{false, false, false}, 1)
-	sirets = append(sirets, getSiret(t, VAF{false, true, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VAF{true, false, false}, 1)...)
-	sirets = append(sirets, getSiret(t, VAF{true, true, false}, 1)...)
-	t.Logf("sirests to follow -> %s", sirets)
+	sirets := GetSiret(t, VAF{false, false, false}, 1)
+	sirets = append(sirets, GetSiret(t, VAF{false, true, false}, 1)...)
+	sirets = append(sirets, GetSiret(t, VAF{true, false, false}, 1)...)
+	sirets = append(sirets, GetSiret(t, VAF{true, true, false}, 1)...)
+	t.Logf("sirets to follow -> %s", sirets)
 	return sirets
+}
+
+func ExclureSuivi(t *testing.T) {
+	var params = make(map[string]interface{})
+	params["exclureSuivi"] = true
+	params["ignoreZone"] = true
+	_, indented, _ := Post(t, "/scores/liste", params)
+	var liste Liste
+	json.Unmarshal(indented, &liste)
+	if len(liste.Scores) < 1 {
+		t.Error("pas assez d'établissements, test faible")
+	}
+
+	siret := liste.Scores[0].Siret
+	t.Logf("suivi de l'établissement %s", siret)
+	resp, _, _ := Post(t, "/follow/"+siret, map[string]interface{}{
+		"comment":  "test",
+		"category": "test",
+	})
+
+	if resp.StatusCode != 201 {
+		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
+	}
+
+	_, indented, _ = Post(t, "/scores/liste", params)
+	json.Unmarshal(indented, &liste)
+	for _, l := range liste.Scores {
+		if l.Followed {
+			t.Fail()
+		}
+	}
+}
+
+// Liste de détection
+type Liste struct {
+	Scores []struct {
+		Siret    string `json:"siret"`
+		Followed bool   `json:"followed"`
+	} `json:"scores"`
+}
+
+func (v *VAF) Read(vaf string) {
+	v.Visible = vaf[0] == 'V'
+	v.Alert = vaf[1] == 'A'
+	v.Followed = vaf[2] == 'F'
+}
+
+type EtablissementVAF struct {
+	Visible       bool `json:"visible"`
+	Alert         bool `json:"alert"`
+	Followed      bool `json:"followed"`
+	PeriodeUrssaf struct {
+		Periodes      []*time.Time `json:"periodes"`
+		Cotisation    []*float64   `json:"cotisation"`
+		PartPatronale []*float64   `json:"partPatronale"`
+		PartSalariale []*float64   `json:"partSalariale"`
+		Effectif      []*int       `json:"effectif"`
+	}
+	APConso   []interface{} `json:"apConso"`
+	APDemande []interface{} `json:"apDemande"`
+	Delai     []interface{} `json:"delai"`
+}
+
+type SearchVAF struct {
+	Results []EtablissementVAF `json:"results"`
 }

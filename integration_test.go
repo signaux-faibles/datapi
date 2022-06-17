@@ -3,6 +3,7 @@ package datapi
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
@@ -285,6 +286,260 @@ func TestPGE(t *testing.T) {
 	}
 }
 
+func TestScores(t *testing.T) {
+	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
+
+	t.Log("/scores/liste retourne le même résultat qu'attendu")
+	_, indented, _ := test.Post(t, "/scores/liste", nil)
+	test.ProcessGoldenFile(t, "test/data/scores.json.gz", indented)
+
+	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true")
+	params := map[string]interface{}{
+		"ignoreZone": true,
+	}
+	_, indented, _ = test.Post(t, "/scores/liste", params)
+	test.ProcessGoldenFile(t, "test/data/scores-ignoreZone.json.gz", indented)
+
+	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true et siegeUniquement=true")
+	params["siegeUniquement"] = true
+	_, indented, _ = test.Post(t, "/scores/liste", params)
+	test.ProcessGoldenFile(t, "test/data/scores-siegeUniquement.json.gz", indented)
+
+	t.Log("/scores/liste traite correctement les établissements suivis")
+	test.ExclureSuivi(t)
+}
+
+// TestVAF traite la problématique du respect des traitements des droits utilisateurs
+// le test échantillonne des entreprises en fonction de leur statut VAF (pour visible / alert / followed) afin de tester toutes les combinaisons
+// le test de base sur des golden files pour vérifier que les propriétés ne changent pas, mais va également valider la présence effective des données
+// les entreprises échantillonnées disposent toutes de données confidentielles pour éviter les faux positifs.
+// le sigle vaf encode le statut de l'entreprise:
+// V = entreprise visible, v = entreprise non visible
+// A = entreprise dont un établissement a déjà été en alerte, a = entreprise sans aucune alerte
+// F = entreprise dont un établissement est suivi par l'utilisateur du test, f = enterprise non suivie
+func TestVAF(t *testing.T) {
+	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
+
+	for _, vaf := range []string{"vaf", "vaF", "vAf", "vAF", "Vaf", "VaF", "VAf", "VAF"} {
+		v := test.VAF{}
+		v.Read(vaf)
+
+		sirets := test.GetSiret(t, v, 1)
+		if len(sirets) == 0 {
+			t.Errorf("aucun siret pour tester la catégorie, test faible (%s)", vaf)
+		}
+		for _, siret := range sirets {
+			testEtablissementVAF(t, siret, vaf)
+			testSearchVAF(t, siret, vaf)
+		}
+	}
+}
+
+func TestPermissions(t *testing.T) {
+	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
+
+	t.Log("test de la fonction permissions")
+	type test struct {
+		rolesUser            []string
+		rolesEntreprise      []string
+		firstAlertEntreprise *string
+		departement          string
+		followed             bool
+	}
+
+	type expected struct {
+		visible bool
+		inZone  bool
+		score   bool
+		urssaf  bool
+		dgefp   bool
+		bdf     bool
+		pge     bool
+	}
+
+	type useCase struct {
+		description string
+		test        test
+		result      expected
+	}
+
+	firstAlert := "firstAlert"
+	tests := []useCase{
+		{"entreprise hors zone, visible, avec alerte et tous les roles",
+			test{
+				rolesUser:            []string{"01", "urssaf", "dgefp", "bdf", "score"},
+				rolesEntreprise:      []string{"01", "02", "03"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: true,
+				inZone:  false,
+				score:   true,
+				urssaf:  true,
+				dgefp:   true,
+				bdf:     true,
+			},
+		},
+		{"entreprise hors zone, hors visible, avec alerte et tous les roles",
+			test{
+				rolesUser:            []string{"05", "urssaf", "dgefp", "bdf", "score"},
+				rolesEntreprise:      []string{"01", "02", "03"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: false,
+				inZone:  false,
+				score:   false,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role score",
+			test{
+				rolesUser:            []string{"01", "02", "score"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: true,
+				inZone:  true,
+				score:   true,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role urssaf",
+			test{
+				rolesUser:            []string{"01", "02", "urssaf"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  true,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role dgefp",
+			test{
+				rolesUser:            []string{"01", "02", "dgefp"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  false,
+				dgefp:   true,
+				bdf:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role bdf",
+			test{
+				rolesUser:            []string{"01", "02", "bdf"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     true,
+			},
+		},
+		{"entreprise dans la zone, sans alerte avec droits",
+			test{
+				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
+				rolesEntreprise:      []string{"01", "02", "03"},
+				firstAlertEntreprise: nil,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     false,
+			},
+		},
+		{"entreprise hors zone, avec alerte, avec droits et suivi",
+			test{
+				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
+				rolesEntreprise:      []string{"05"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "05",
+				followed:             true,
+			},
+			expected{
+				visible: false,
+				inZone:  false,
+				score:   true,
+				urssaf:  true,
+				dgefp:   true,
+				bdf:     true,
+			},
+		},
+		{"entreprise hors zone, sans alerte, avec droits et suivi",
+			test{
+				rolesUser:            []string{"02", "urssaf", "score", "dgefp", "bdf"},
+				rolesEntreprise:      []string{"05"},
+				firstAlertEntreprise: nil,
+				departement:          "05",
+				followed:             true,
+			},
+			expected{
+				visible: false,
+				inZone:  false,
+				score:   true,
+				urssaf:  true,
+				dgefp:   true,
+				bdf:     true,
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		var r expected
+		t.Log(tt.description)
+		err := core.Db().QueryRow(context.Background(), "select * from permissions($1, $2, $3, $4, $5)",
+			tt.test.rolesUser, tt.test.rolesEntreprise, tt.test.firstAlertEntreprise,
+			tt.test.departement, tt.test.followed,
+		).Scan(&r.visible, &r.inZone, &r.score, &r.urssaf, &r.dgefp, &r.bdf, &r.pge)
+		if err != nil {
+			t.Errorf("ne peut exécuter la fonction permissions: %s", err.Error())
+		}
+		if tt.result != r {
+			t.Error("le résultat est incorrect")
+			fmt.Println("attendu", tt.result)
+			fmt.Println("obtenu", r)
+
+		}
+	}
+
+}
+
 func loadTestConfig(postgresURL string) {
 	log.Println("loading test config")
 	core.LoadConfig("test", "config", "migrations")
@@ -308,4 +563,74 @@ func followEtablissementsThenCleanup(t *testing.T, sirets []string) {
 		test.FollowEtablissement(t, siret)
 	}
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
+}
+
+func testEtablissementVAF(t *testing.T, siret string, vaf string) {
+	v := test.VAF{}
+	v.Read(vaf)
+
+	goldenFilePath := fmt.Sprintf("test/data/getEtablissement-%s-%s.json.gz", vaf, siret)
+	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
+	_, indented, _ := test.Get(t, "/etablissement/get/"+siret)
+	test.ProcessGoldenFile(t, goldenFilePath, indented)
+
+	var e test.EtablissementVAF
+	json.Unmarshal(indented, &e)
+	if !(e.Visible == v.Visible && e.Followed == v.Followed) {
+		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, vaf)
+	}
+
+	if !((v.Visible && v.Alert) || v.Followed) {
+		if len(e.PeriodeUrssaf.Cotisation) > 0 {
+			t.Errorf("Fuite de cotisations sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+		if len(e.PeriodeUrssaf.PartPatronale) > 0 {
+			t.Errorf("Fuite de part patronale sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+		if len(e.PeriodeUrssaf.PartSalariale) > 0 {
+			t.Errorf("Fuite de part salariale sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+		if len(e.Delai) > 0 {
+			t.Errorf("Fuite de délai urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+		if len(e.APConso) > 0 {
+			t.Errorf("Fuite de consommation d'activité partielle sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+		if len(e.APDemande) > 0 {
+			t.Errorf("Fuite de demande d'activité partielle sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+	} else {
+		if len(e.PeriodeUrssaf.Cotisation) == 0 {
+			t.Errorf("Absence de cotisations urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+		if len(e.PeriodeUrssaf.PartPatronale) == 0 {
+			t.Errorf("Absence de part patronale urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+		if len(e.PeriodeUrssaf.PartSalariale) == 0 {
+			t.Errorf("Absence de part salariale urssaf sur l'établissement %s (ref %s)", siret, goldenFilePath)
+		}
+	}
+}
+
+func testSearchVAF(t *testing.T, siret string, vaf string) {
+	goldenFilePath := fmt.Sprintf("test/data/getSearch-%s-%s.json.gz", vaf, siret)
+	t.Logf("la recherche renvoie l'établissement %s sous la forme attendue (ref %s)", siret, goldenFilePath)
+	params := map[string]interface{}{
+		"search":      siret,
+		"ignoreZone":  true,
+		"ignoreRoles": true,
+	}
+	_, indented, _ := test.Post(t, "/etablissement/search", params)
+	diff, _ := test.ProcessGoldenFile(t, goldenFilePath, indented)
+	if diff != "" {
+		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
+	}
+	visible := vaf[0] == 'V'
+	followed := vaf[2] == 'F'
+	var e test.SearchVAF
+	json.Unmarshal(indented, &e)
+	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].Followed == followed) {
+		fmt.Println(vaf, visible, followed)
+		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, vaf)
+	}
 }
