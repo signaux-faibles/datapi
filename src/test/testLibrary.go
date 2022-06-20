@@ -208,10 +208,11 @@ func RazEtablissementFollowing(t *testing.T) {
 
 // PgeTest struct contenant des données à tester pour le pge
 type PgeTest struct {
-	Siren       string
-	HasPGE      *bool
-	MustFollow  bool
-	ExpectedPGE *bool
+	Siren           string
+	HasPGE          *bool
+	MustFollow      bool
+	ExpectedPGE     *bool
+	ExpectedPermPGE bool
 }
 
 // SelectSomeSiretsToFollow // récupérer une liste de sirets à suivre de toutes les typologies d'établissements

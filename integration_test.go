@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 	datapiDb := startDatapiDBContainer(pool)
 	datapiDbHostAndPort := datapiDb.GetHostPort("5432/tcp")
 	datapiDBUrl := fmt.Sprintf("postgres://postgres:test@%s/datapi_test?sslmode=disable", datapiDbHostAndPort)
-	log.Println("Connecting to datapi database on url: ", datapiDBUrl)
+
 	testConfig["postgres"] = datapiDBUrl
 	datapiPort := strconv.Itoa(rand.Intn(500) + 30000)
 	os.Setenv("DATAPI_URL", "http://localhost:"+datapiPort)
@@ -234,15 +234,15 @@ func TestPGE(t *testing.T) {
 
 	tests := []test.PgeTest{
 		// pge is true in entreprise_pge and has habilitation => true
-		{Siren: "020523337", HasPGE: &core.True, MustFollow: core.True, ExpectedPGE: &core.True},
+		{Siren: "020523337", HasPGE: &core.True, MustFollow: core.True, ExpectedPGE: &core.True, ExpectedPermPGE: true},
 		// pge is true in entreprise_pge and has no habilitation => nil
-		{Siren: "221129065", HasPGE: &core.True, MustFollow: core.False, ExpectedPGE: nil},
+		{Siren: "221129065", HasPGE: &core.True, MustFollow: core.False, ExpectedPGE: nil, ExpectedPermPGE: false},
 		// pge is false in  entreprise_pge and has no habilitation => nil
-		{Siren: "336400422", HasPGE: &core.False, MustFollow: core.False, ExpectedPGE: nil},
+		{Siren: "336400422", HasPGE: &core.False, MustFollow: core.False, ExpectedPGE: nil, ExpectedPermPGE: false},
 		// pge is false in  entreprise_pge and has habilitation => false
-		{Siren: "386322594", HasPGE: &core.False, MustFollow: core.True, ExpectedPGE: &core.False},
+		{Siren: "386322594", HasPGE: &core.False, MustFollow: core.True, ExpectedPGE: &core.False, ExpectedPermPGE: true},
 		// not exists in entreprise_pge and has habilitation => nil
-		{Siren: "417193286", HasPGE: nil, MustFollow: core.True, ExpectedPGE: nil},
+		{Siren: "417193286", HasPGE: nil, MustFollow: core.True, ExpectedPGE: nil, ExpectedPermPGE: true},
 	}
 	insertPgeTests(t, tests)
 
@@ -258,6 +258,9 @@ func TestPGE(t *testing.T) {
 		assertions.Equal(200, resp.StatusCode)
 		actual := test.JsonToEntreprise(t, data)
 		assertions.Equal(pgeTest.ExpectedPGE, actual.PGEActif)
+		for _, etab := range actual.Etablissements {
+			assertions.Equal(pgeTest.ExpectedPermPGE, etab.PermPGE)
+		}
 	}
 }
 
