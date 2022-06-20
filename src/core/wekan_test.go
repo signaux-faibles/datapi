@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"sync"
 	"testing"
 	"time"
@@ -35,7 +36,7 @@ func loadFollowExportsFromFile(exports *dbExports, path string) error {
 func readTestData() (Cards, error) {
 	var wekanCards WekanCards
 	wekanConfig.mu = &sync.Mutex{}
-	err := loadCardsFromFile(&wekanCards, "test/wekan/cards.json")
+	err := loadCardsFromFile(&wekanCards, "../../test/wekan/cards.json")
 	if err != nil {
 		return nil, errors.New("can't read wekan cards")
 	}
@@ -44,7 +45,7 @@ func readTestData() (Cards, error) {
 	var cards Cards
 
 	var exports dbExports
-	err = loadFollowExportsFromFile(&exports, "test/wekan/followExports.json")
+	err = loadFollowExportsFromFile(&exports, "../../test/wekan/followExports.json")
 	if err != nil {
 		return nil, errors.New("can't read follow exports: " + err.Error())
 	}
@@ -75,8 +76,11 @@ func Test_WekanExportsDOCX(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
-	viper.Set("docxifyPath", "./docxify3.py")
-	viper.Set("docxifyWorkingDir", "./build-container")
+	docxifyPath, _ := filepath.Abs("../../build-container/docxify3.py")
+	docxifyWorkingDir, _ := filepath.Abs("../../build-container")
+
+	viper.Set("docxifyPath", docxifyPath)
+	viper.Set("docxifyWorkingDir", docxifyWorkingDir)
 	viper.Set("docxifyPython", "python3")
 	dateHeader, _ := time.Parse("02/01/2006", "05/06/2018")
 	header := ExportHeader{
@@ -84,19 +88,21 @@ func Test_WekanExportsDOCX(t *testing.T) {
 		Date:   dateHeader,
 	}
 	var docxs Docxs
+	var docx Docx
 	for _, card := range cards {
-		docx, err := card.docx(header)
+		docx, err = card.docx(header)
 		if err != nil {
+			t.Logf("Error -> %s", err.Error())
 			t.Fail()
 		}
 		docxs = append(docxs, docx)
 	}
+	if err != nil {
+		t.Error(err)
+	}
 	data := docxs.zip()
 	if len(data) == 0 {
 		t.Error("empty docx file returned")
-	}
-	if err != nil {
-		t.Error(err)
 	}
 	if os.Getenv("WRITE_DOCX") == "true" {
 		err := ioutil.WriteFile("test_output.docx", data, 0755)
@@ -113,9 +119,6 @@ func Test_WekanExportsXLSX(t *testing.T) {
 		t.Error(err.Error())
 		return
 	}
-	viper.Set("docxifyPath", "./docxify3.py")
-	viper.Set("docxifyWorkingDir", "./build-container")
-	viper.Set("docxifyPython", "python3")
 	xlsx, err := wekanExports.xlsx(true)
 	if len(xlsx) == 0 {
 		t.Error("empty xlsx file returned")
