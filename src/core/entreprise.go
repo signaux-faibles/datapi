@@ -127,6 +127,7 @@ type Etablissement struct {
 	PermUrssaf         bool                       `json:"permUrssaf"`
 	PermDGEFP          bool                       `json:"permDGEFP"`
 	PermBDF            bool                       `json:"permBDF"`
+	PermPGE            bool                       `json:"permPGE"`
 }
 
 // EtablissementTerrInd …
