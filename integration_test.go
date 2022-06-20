@@ -82,85 +82,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func startWekanDBContainer(pool *dockertest.Pool) *dockertest.Resource {
-	// pulls an image, creates a container based on it and runs it
-	mongoContainerName := "mongodb-ti-" + strconv.Itoa(time.Now().Nanosecond())
-	log.Println("trying start mongo-db")
-
-	wekanDb, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Name:       mongoContainerName,
-		Repository: "mongo",
-		Tag:        "4.0-xenial",
-		Env: []string{
-			"MONGO_INITDB_ROOT_PASSWORD=test",
-			"MONGO_INITDB_ROOT_USERNAME=mgo",
-			"MONGO_INITDB_DATABASE=test",
-			"listen_addresses = '*'"},
-	}, func(config *docker.HostConfig) {
-		//set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-	if err != nil {
-		killContainer(wekanDb)
-		log.Fatal("Could not start datapi_db", err)
-	}
-	// container stops after 60 seconds
-	if err = wekanDb.Expire(120); err != nil {
-		killContainer(wekanDb)
-		log.Fatal("Could not set expiration on container datapi_db", err)
-	}
-	return wekanDb
-}
-
-func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
-	// configuration file for postgres
-	postgresConfig, err := filepath.Abs("test/postgresql.conf")
-	if err != nil {
-		log.Panicf("Could not get absolute path: %s", err)
-	}
-	// sql dump to initialize postgres data
-	sqlDump, err := filepath.Abs("test/data")
-
-	// pulls an image, creates a container based on it and runs it
-	datapiContainerName := "datapidb-ti-" + strconv.Itoa(time.Now().Nanosecond())
-	log.Println("trying start datapi-db")
-
-	datapiDb, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Name:       datapiContainerName,
-		Repository: "postgres",
-		Tag:        "10-alpine",
-		//Tag:    "14-alpine",
-		Env: []string{
-			"POSTGRES_PASSWORD=test",
-			"POSTGRES_USER=postgres",
-			"POSTGRES_DB=datapi_test",
-			"listen_addresses = '*'"},
-		Mounts: []string{
-			postgresConfig + ":/etc/postgresql/postgresql.conf",
-			sqlDump + ":/docker-entrypoint-initdb.d",
-		},
-	}, func(config *docker.HostConfig) {
-		//set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-	if err != nil {
-		killContainer(datapiDb)
-		log.Fatal("Could not start datapi_db", err)
-	}
-	// container stops after 60 seconds
-	if err = datapiDb.Expire(120); err != nil {
-		killContainer(datapiDb)
-		log.Fatal("Could not set expiration on container datapi_db", err)
-	}
-	return datapiDb
-}
-
 func TestListes(t *testing.T) {
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
 
@@ -619,6 +540,85 @@ func TestPermissions(t *testing.T) {
 		}
 	}
 
+}
+
+func startWekanDBContainer(pool *dockertest.Pool) *dockertest.Resource {
+	// pulls an image, creates a container based on it and runs it
+	mongoContainerName := "mongodb-ti-" + strconv.Itoa(time.Now().Nanosecond())
+	log.Println("trying start mongo-db")
+
+	wekanDb, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Name:       mongoContainerName,
+		Repository: "mongo",
+		Tag:        "4.0-xenial",
+		Env: []string{
+			"MONGO_INITDB_ROOT_PASSWORD=test",
+			"MONGO_INITDB_ROOT_USERNAME=mgo",
+			"MONGO_INITDB_DATABASE=test",
+			"listen_addresses = '*'"},
+	}, func(config *docker.HostConfig) {
+		//set AutoRemove to true so that stopped container goes away by itself
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{
+			Name: "no",
+		}
+	})
+	if err != nil {
+		killContainer(wekanDb)
+		log.Fatal("Could not start datapi_db", err)
+	}
+	// container stops after 60 seconds
+	if err = wekanDb.Expire(120); err != nil {
+		killContainer(wekanDb)
+		log.Fatal("Could not set expiration on container datapi_db", err)
+	}
+	return wekanDb
+}
+
+func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
+	// configuration file for postgres
+	postgresConfig, err := filepath.Abs("test/postgresql.conf")
+	if err != nil {
+		log.Panicf("Could not get absolute path: %s", err)
+	}
+	// sql dump to initialize postgres data
+	sqlDump, err := filepath.Abs("test/data")
+
+	// pulls an image, creates a container based on it and runs it
+	datapiContainerName := "datapidb-ti-" + strconv.Itoa(time.Now().Nanosecond())
+	log.Println("trying start datapi-db")
+
+	datapiDb, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Name:       datapiContainerName,
+		Repository: "postgres",
+		Tag:        "10-alpine",
+		//Tag:    "14-alpine",
+		Env: []string{
+			"POSTGRES_PASSWORD=test",
+			"POSTGRES_USER=postgres",
+			"POSTGRES_DB=datapi_test",
+			"listen_addresses = '*'"},
+		Mounts: []string{
+			postgresConfig + ":/etc/postgresql/postgresql.conf",
+			sqlDump + ":/docker-entrypoint-initdb.d",
+		},
+	}, func(config *docker.HostConfig) {
+		//set AutoRemove to true so that stopped container goes away by itself
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{
+			Name: "no",
+		}
+	})
+	if err != nil {
+		killContainer(datapiDb)
+		log.Fatal("Could not start datapi_db", err)
+	}
+	// container stops after 60 seconds
+	if err = datapiDb.Expire(120); err != nil {
+		killContainer(datapiDb)
+		log.Fatal("Could not set expiration on container datapi_db", err)
+	}
+	return datapiDb
 }
 
 func addTestConfig(testConfig map[string]string) {
