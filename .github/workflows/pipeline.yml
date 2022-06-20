@@ -1,8 +1,11 @@
-name: e2e test
+name: CI
 
 on:
   push:
-    branches: [ master ]
+    branches:
+      - 'master'
+      - 'feat-*'
+      - 'feat/*'
   pull_request:
     branches: [ master ]
 
