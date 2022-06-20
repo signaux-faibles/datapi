@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build
+    name: Build & Test
     runs-on: ubuntu-latest
     steps:
 
@@ -39,6 +39,11 @@ jobs:
 
     - name: Integration Tests
       run: go test -tags=integration
+
+  container:
+    name: Push container
+    runs-on: ubuntu-latest
+    steps:
 
     - name: Login to GitHub Container Registry
       id: login
