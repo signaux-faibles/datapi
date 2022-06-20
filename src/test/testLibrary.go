@@ -5,18 +5,18 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"flag"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/signaux-faibles/datapi/src/core"
 	"io"
 	"io/ioutil"
 	"net/http"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 )
 
-var update, _ = strconv.ParseBool(os.Getenv("GOLDEN_UPDATE"))
+var update = flag.Bool("overwriteGoldenFiles", false, "true pour écraser les golden files pas les réponses générées par les tests d'intégration")
 
 func compare(expected []byte, actual []byte) string {
 	diff := difflib.UnifiedDiff{
@@ -69,7 +69,7 @@ func indent(reader io.Reader) ([]byte, error) {
 }
 
 func ProcessGoldenFile(t *testing.T, path string, data []byte) (string, error) {
-	if update {
+	if *update {
 		err := saveGoldenFile(path, data)
 		if err != nil {
 			return "", err
@@ -272,7 +272,7 @@ func InsertPGE(t *testing.T, siren string, hasPGE *bool) {
 		if errRollback := tx.Rollback(context.Background()); errRollback != nil {
 			t.Fatalf("error rolling back. Cause : %s", err.Error())
 		}
-		t.Fatalf("error inserting pge [%t] for siren '%s'. Cause : %s", hasPGE, siren, err.Error())
+		t.Fatalf("error inserting pge [%v] for siren '%s'. Cause : %s", hasPGE, siren, err.Error())
 	}
 	err = tx.Commit(context.Background())
 	if err != nil {

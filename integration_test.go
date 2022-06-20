@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package datapi
 
 import (
@@ -27,7 +30,6 @@ import (
 // - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
-
 	rand.Seed(time.Now().UnixNano())
 
 	// configuration file for postgres
@@ -370,7 +372,7 @@ func TestPermissions(t *testing.T) {
 	tests := []useCase{
 		{"entreprise hors zone, visible, avec alerte et tous les roles",
 			input{
-				rolesUser:            []string{"01", "urssaf", "dgefp", "bdf", "score"},
+				rolesUser:            []string{"01", "urssaf", "dgefp", "bdf", "score", "pge"},
 				rolesEntreprise:      []string{"01", "02", "03"},
 				firstAlertEntreprise: &firstAlert,
 				departement:          "02",
@@ -383,11 +385,12 @@ func TestPermissions(t *testing.T) {
 				urssaf:  true,
 				dgefp:   true,
 				bdf:     true,
+				pge:     true,
 			},
 		},
 		{"entreprise hors zone, hors visible, avec alerte et tous les roles",
 			input{
-				rolesUser:            []string{"05", "urssaf", "dgefp", "bdf", "score"},
+				rolesUser:            []string{"05", "urssaf", "dgefp", "bdf", "score", "pge"},
 				rolesEntreprise:      []string{"01", "02", "03"},
 				firstAlertEntreprise: &firstAlert,
 				departement:          "02",
@@ -400,6 +403,7 @@ func TestPermissions(t *testing.T) {
 				urssaf:  false,
 				dgefp:   false,
 				bdf:     false,
+				pge:     false,
 			},
 		},
 		{"entreprise dans la zone, avec alerte et role score",
@@ -434,6 +438,25 @@ func TestPermissions(t *testing.T) {
 				urssaf:  true,
 				dgefp:   false,
 				bdf:     false,
+				pge:     false,
+			},
+		},
+		{"entreprise dans la zone, avec alerte et role pge",
+			input{
+				rolesUser:            []string{"01", "02", "pge"},
+				rolesEntreprise:      []string{"02"},
+				firstAlertEntreprise: &firstAlert,
+				departement:          "02",
+				followed:             false,
+			},
+			expected{
+				visible: true,
+				inZone:  true,
+				score:   false,
+				urssaf:  false,
+				dgefp:   false,
+				bdf:     false,
+				pge:     true,
 			},
 		},
 		{"entreprise dans la zone, avec alerte et role dgefp",
@@ -451,6 +474,7 @@ func TestPermissions(t *testing.T) {
 				urssaf:  false,
 				dgefp:   true,
 				bdf:     false,
+				pge:     false,
 			},
 		},
 		{"entreprise dans la zone, avec alerte et role bdf",
