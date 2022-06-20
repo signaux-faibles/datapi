@@ -41,32 +41,32 @@ func lookupWekanConfig() (WekanConfig, error) {
 	return config, nil
 }
 
-func loadWekanConfig() WekanConfig {
-	if wekanConfig.mu == nil {
-		wekanConfig.mu = &sync.Mutex{}
+func loadWekanConfig(input *WekanConfig) {
+	if input == nil {
+		log.Printf("loadWekanConfig() -> ERROR : provided config is nil, can't build it")
+	}
+	if input.mu == nil {
+		input.mu = &sync.Mutex{}
 	}
 	wc, err := lookupWekanConfig()
 	if err != nil {
-		log.Printf("wekanConfigLoader() -> problem loading config: %s", err.Error())
+		log.Printf("loadWekanConfig() -> ERROR : problem loading config: %s", err.Error())
 	} else {
-		wekanConfig.mu.Lock()
-		wekanConfig.BoardIds = wc.BoardIds
-		wekanConfig.Boards = wc.Boards
-		wekanConfig.Regions = wc.Regions
-		wekanConfig.Slugs = wc.Slugs
-		wekanConfig.Users = wc.Users
-		wekanConfig.mu.Unlock()
+		input.mu.Lock()
+		input.BoardIds = wc.BoardIds
+		input.Boards = wc.Boards
+		input.Regions = wc.Regions
+		input.Slugs = wc.Slugs
+		input.Users = wc.Users
+		input.mu.Unlock()
 	}
-	return wekanConfig
 }
 
-func watchWekanConfig(period time.Duration) {
-	go func() {
-		for {
-			loadWekanConfig()
-			time.Sleep(period)
-		}
-	}()
+func watchWekanConfig(toUpdate *WekanConfig, period time.Duration) {
+	for {
+		loadWekanConfig(toUpdate)
+		time.Sleep(period)
+	}
 }
 
 func buildWekanConfigPipeline() []bson.M {

@@ -25,8 +25,9 @@ var wekanConfig WekanConfig
 func StartDatapi() {
 	connectDB() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	mgoDB = connectWekanDB()
-	wekanConfig = loadWekanConfig()
-	go watchWekanConfig(time.Minute)
+	//wekanConfig := WekanConfig{}
+	//wekanConfig = loadWekanConfig()
+	go watchWekanConfig(&wekanConfig, time.Second)
 	keycloak = connectKC()
 }
 

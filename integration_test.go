@@ -31,7 +31,91 @@ import (
 // - la configuration du container
 func TestMain(m *testing.M) {
 	rand.Seed(time.Now().UnixNano())
+	testConfig := map[string]string{}
 
+	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		log.Panicf("Could not connect to docker: %s", err)
+	}
+	// launch database container for datapi
+	datapiDb := startDatapiDBContainer(pool)
+	datapiDbHostAndPort := datapiDb.GetHostPort("5432/tcp")
+	datapiDBUrl := fmt.Sprintf("postgres://postgres:test@%s/datapi_test?sslmode=disable", datapiDbHostAndPort)
+	log.Println("Connecting to datapi database on url: ", datapiDBUrl)
+	testConfig["postgres"] = datapiDBUrl
+	datapiPort := strconv.Itoa(rand.Intn(500) + 30000)
+	os.Setenv("DATAPI_URL", "http://localhost:"+datapiPort)
+	testConfig["bind"] = ":" + datapiPort
+
+	// launch wekan db container for datapi
+	wekanDb := startWekanDBContainer(pool)
+	wekanDbHostAndPort := wekanDb.GetHostPort("27017/tcp")
+	wekanDbUrl := fmt.Sprintf("mongodb://mgo:test@%s/", wekanDbHostAndPort)
+	testConfig["wekanMgoURL"] = wekanDbUrl
+
+	addTestConfig(testConfig)
+
+	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
+	pool.MaxWait = 120 * time.Second
+	if err = pool.Retry(func() error {
+		db, err := sql.Open("postgres", datapiDBUrl)
+		if err != nil {
+			return err
+		}
+		return db.Ping()
+	}); err != nil {
+		log.Fatalf("Could not connect to docker: %s", err)
+	}
+	// run datapi
+	core.StartDatapi()
+	go core.RunAPI()
+	time.Sleep(1 * time.Second) // time to expose API
+
+	//Run tests
+	code := m.Run()
+
+	// You can't defer this because os.Exit doesn't care for defer
+	if err := pool.Purge(datapiDb); err != nil {
+		log.Fatalf("Could not purge resource: %s", err)
+	}
+	os.Exit(code)
+}
+
+func startWekanDBContainer(pool *dockertest.Pool) *dockertest.Resource {
+	// pulls an image, creates a container based on it and runs it
+	mongoContainerName := "mongodb-ti-" + strconv.Itoa(time.Now().Nanosecond())
+	log.Println("trying start mongo-db")
+
+	wekanDb, err := pool.RunWithOptions(&dockertest.RunOptions{
+		Name:       mongoContainerName,
+		Repository: "mongo",
+		Tag:        "4.0-xenial",
+		Env: []string{
+			"MONGO_INITDB_ROOT_PASSWORD=test",
+			"MONGO_INITDB_ROOT_USERNAME=mgo",
+			"MONGO_INITDB_DATABASE=test",
+			"listen_addresses = '*'"},
+	}, func(config *docker.HostConfig) {
+		//set AutoRemove to true so that stopped container goes away by itself
+		config.AutoRemove = true
+		config.RestartPolicy = docker.RestartPolicy{
+			Name: "no",
+		}
+	})
+	if err != nil {
+		killContainer(wekanDb)
+		log.Fatal("Could not start datapi_db", err)
+	}
+	// container stops after 60 seconds
+	if err = wekanDb.Expire(120); err != nil {
+		killContainer(wekanDb)
+		log.Fatal("Could not set expiration on container datapi_db", err)
+	}
+	return wekanDb
+}
+
+func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 	// configuration file for postgres
 	postgresConfig, err := filepath.Abs("test/postgresql.conf")
 	if err != nil {
@@ -40,11 +124,6 @@ func TestMain(m *testing.M) {
 	// sql dump to initialize postgres data
 	sqlDump, err := filepath.Abs("test/data")
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		log.Panicf("Could not connect to docker: %s", err)
-	}
 	// pulls an image, creates a container based on it and runs it
 	datapiContainerName := "datapidb-ti-" + strconv.Itoa(time.Now().Nanosecond())
 	log.Println("trying start datapi-db")
@@ -79,37 +158,7 @@ func TestMain(m *testing.M) {
 		killContainer(datapiDb)
 		log.Fatal("Could not set expiration on container datapi_db", err)
 	}
-	hostAndPort := datapiDb.GetHostPort("5432/tcp")
-	databaseUrl := fmt.Sprintf("postgres://postgres:test@%s/datapi_test?sslmode=disable", hostAndPort)
-
-	log.Println("Connecting to database on url: ", databaseUrl)
-
-	loadTestConfig(databaseUrl)
-
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	pool.MaxWait = 120 * time.Second
-	if err = pool.Retry(func() error {
-		db, err := sql.Open("postgres", databaseUrl)
-		if err != nil {
-			return err
-		}
-		return db.Ping()
-	}); err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
-	}
-	// run datapi
-	core.StartDatapi()
-	go core.RunAPI()
-	time.Sleep(1 * time.Second) // time to expose API
-
-	//Run tests
-	code := m.Run()
-
-	// You can't defer this because os.Exit doesn't care for defer
-	if err := pool.Purge(datapiDb); err != nil {
-		log.Fatalf("Could not purge resource: %s", err)
-	}
-	os.Exit(code)
+	return datapiDb
 }
 
 func TestListes(t *testing.T) {
@@ -572,13 +621,13 @@ func TestPermissions(t *testing.T) {
 
 }
 
-func loadTestConfig(postgresURL string) {
+func addTestConfig(testConfig map[string]string) {
 	log.Println("loading test config")
 	core.LoadConfig("test", "config", "migrations")
-	viper.Set("postgres", postgresURL)
-	datapiPort := strconv.Itoa(rand.Intn(500) + 30000)
-	viper.Set("bind", ":"+datapiPort)
-	os.Setenv("DATAPI_URL", "http://localhost:"+datapiPort)
+	for k, v := range testConfig {
+		log.Printf("add to Viper %s : %s", k, v)
+		viper.Set(k, v)
+	}
 }
 
 func killContainer(resource *dockertest.Resource) {
