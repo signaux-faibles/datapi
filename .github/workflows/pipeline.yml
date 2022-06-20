@@ -10,8 +10,8 @@ on:
     branches: [ master ]
 
 jobs:
-  build:
-    name: Build & Test
+  build_datapi:
+    name: Build & Test Datapi
     runs-on: ubuntu-latest
     steps:
 
@@ -43,8 +43,9 @@ jobs:
     - name: Integration Tests
       run: go test -tags=integration
 
-  container:
-    name: Push container
+  container_datapi:
+    name: Push Datapi container
+    needs: build_datapi
     runs-on: ubuntu-latest
     steps:
 
