@@ -14,8 +14,8 @@
 -   l'image est dépourvue de configuration, elle devra être fournie à l'exécution avec l'option `-v /foo/volume/config.toml:/app/config.toml`
 
 ## Tests
-- `go test integration_test.go -v` pour lancer les test d'intégration
-- `go test integration_test.go -v -overwriteGoldenFiles` en remplaçant les golden files par les réponses générées 
+- `go test -tags=integration -v` pour lancer les test d'intégration
+- `go test -tags=integration -v -overwriteGoldenFiles` en remplaçant les golden files par les réponses générées 
   par l'exécution des tests. C'est pratique dans le cas où de nouvelles features nécessitent de modifier les golden sources.
   __ATTENTION : __Ce cas de figure est rare. Il ne faut pas utiliser ce flag si l'on est pas sûr que le code est correct. 
 
