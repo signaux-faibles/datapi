@@ -1,7 +1,7 @@
-package datapi
+package main
 
 import (
-	core "github.com/signaux-faibles/datapi/src/core"
+	"github.com/signaux-faibles/datapi/src/core"
 )
 
 func main() {
