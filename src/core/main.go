@@ -53,6 +53,7 @@ func RunAPI() {
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
+	router.SetTrustedProxies(nil)
 
 	entreprise := router.Group("/entreprise", getKeycloakMiddleware(), logMiddleware)
 	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
