@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pgx "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4"
 )
 
 // Entreprise type entreprise pour l'API
@@ -33,6 +33,7 @@ type Entreprise struct {
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
 	Groupe                *ellisphere     `json:"groupe,omitempty"`
+	PGEActif              *bool           `json:"pge,omitempty"`
 }
 
 // EtablissementSummary …
@@ -126,6 +127,7 @@ type Etablissement struct {
 	PermUrssaf         bool                       `json:"permUrssaf"`
 	PermDGEFP          bool                       `json:"permDGEFP"`
 	PermBDF            bool                       `json:"permBDF"`
+	PermPGE            bool                       `json:"permPGE"`
 }
 
 // EtablissementTerrInd …
@@ -341,6 +343,7 @@ func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 		p.urssaf as permUrssaf,
 		p.dgefp as permDGEFP,
 		p.bdf as permBDF,
+		p.pge as permPGE,
 		p.in_zone as in_zone
 		from etablissement0 et
 		inner join f_etablissement_permissions($1, $2) p on p.id = et.id
@@ -476,6 +479,9 @@ func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
 		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
 	)
+
+	e.addPGEsSelection(&batch, roles, username)
+
 	return &batch
 }
 
@@ -810,7 +816,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&el.CodeGroupe, &el.RefIDGroupe, &el.RaisocGroupe, &el.AdresseGroupe,
 			&el.PersonnePouMGroupe, &el.NiveauDetention, &el.PartFinanciere,
 			&el.CodeFiliere, &el.RefIDFiliere, &el.PersonnePouMFiliere, &ti.Code, &ti.Libelle,
-			&et.PermScore, &et.PermUrssaf, &et.PermDGEFP, &et.PermBDF, &et.InZone,
+			&et.PermScore, &et.PermUrssaf, &et.PermDGEFP, &et.PermBDF, &et.PermPGE, &et.InZone,
 		)
 
 		if err != nil {
@@ -830,7 +836,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 }
 
 func (e *Etablissements) load(roles scope, username string) error {
-	tx, err := db.Begin(context.Background())
+	tx, err := Db().Begin(context.Background())
 	if err != nil {
 		return err
 	}
@@ -954,6 +960,17 @@ func (e *Etablissements) load(roles scope, username string) error {
 	if err != nil {
 		return err
 	}
+
+	// pge
+	rows, err = b.Query()
+	if err != nil {
+		return err
+	}
+	err = e.loadPGE(&rows)
+	if err != nil {
+		return err
+	}
+	// end
 	return nil
 }
 
@@ -989,7 +1006,7 @@ func getSiegeFromSiren(siren string) (string, error) {
 	sqlSiege := `select siret from etablissement0
 	where siren = $1 and siege`
 	var siret string
-	err := db.QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
+	err := Db().QueryRow(context.Background(), sqlSiege, siren).Scan(&siret)
 	return siret, err
 }
 
@@ -999,7 +1016,7 @@ func getEntrepriseViewers(c *gin.Context) {
 		where siren = $1`
 
 	siren := c.Param("siren")
-	rows, err := db.Query(context.Background(), sqlViewers, siren)
+	rows, err := Db().Query(context.Background(), sqlViewers, siren)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -1027,7 +1044,7 @@ func getEtablissementViewers(c *gin.Context) {
 		where siren = $1`
 
 	siren := c.Param("siret")[0:9]
-	rows, err := db.Query(context.Background(), sqlViewers, siren)
+	rows, err := Db().Query(context.Background(), sqlViewers, siren)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -1072,7 +1089,7 @@ func str(o ...*string) string {
 
 func getDeptFromSiret(siret string) (string, error) {
 	sql := "select departement from etablissement0 where siret = $1"
-	row := db.QueryRow(context.Background(), sql, siret)
+	row := Db().QueryRow(context.Background(), sql, siret)
 	var dept string
 	err := row.Scan(&dept)
 	return dept, err

@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -72,7 +72,7 @@ func insertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync
 }
 
 func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
-	tx, err := db.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := Db().BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -205,7 +205,7 @@ func insertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.
 }
 
 func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL) error {
-	tx, err := db.BeginTx(ctx, pgx.TxOptions{})
+	tx, err := Db().BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -368,11 +368,11 @@ func null(s string) *string {
 }
 
 func truncateSirens() error {
-	_, err := db.Exec(context.Background(), "truncate table etablissement")
+	_, err := Db().Exec(context.Background(), "truncate table etablissement")
 	if err != nil {
 		return err
 	}
-	_, err = db.Exec(context.Background(), "truncate table entreprise")
+	_, err = Db().Exec(context.Background(), "truncate table entreprise")
 	return err
 }
 

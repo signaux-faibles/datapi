@@ -1,4 +1,4 @@
-package main
+package core
 
 // func wekanImportHandler(c *gin.Context) {
 // 	region := c.Query("region")

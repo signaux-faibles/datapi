@@ -1,4 +1,4 @@
-package main
+package core
 
 import (
 	"context"
@@ -19,32 +19,42 @@ import (
 	_ "github.com/lib/pq"
 )
 
+var db *pgxpool.Pool
+
 type migrationScript struct {
 	fileName string
 	content  []byte
 	hash     string
 }
 
-func connectDB() *pgxpool.Pool {
+// Db : expose le pool de connexion Datapi
+func Db() *pgxpool.Pool {
+	if db == nil {
+		connectDB()
+	}
+	return db
+}
+
+func connectDB() {
 	pgConnStr := viper.GetString("postgres")
-	db, err := pgxpool.Connect(context.Background(), pgConnStr)
+	pool, err := pgxpool.Connect(context.Background(), pgConnStr)
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
 	}
 
 	log.Print("connected to postgresql database")
-	dbMigrations := listDatabaseMigrations(db)
+	dbMigrations := listDatabaseMigrations(pool)
 	dirMigrations := listDirMigrations()
 	updateMigrations := compareMigrations(dbMigrations, dirMigrations)
 	log.Printf("%d embedded migrations, %d db migrations", len(dirMigrations), len(dbMigrations))
 	if len(dbMigrations) < len(dirMigrations) {
 		log.Printf("running %d new migrations", len(updateMigrations))
-		runMigrations(updateMigrations, db)
+		runMigrations(updateMigrations, pool)
 	}
 
-	ref = loadReferences(db)
+	ref = loadReferences(pool)
 
-	return db
+	db = pool
 }
 
 func listDatabaseMigrations(db *pgxpool.Pool) []migrationScript {
