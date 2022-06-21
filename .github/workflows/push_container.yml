@@ -8,6 +8,8 @@ on:
       - 'feat/*'
       - 'fix/*'
       - 'fix-*'
+    tags:
+      - '*'
 
 jobs:
   container_datapi:
