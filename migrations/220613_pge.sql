@@ -6,8 +6,7 @@ create table if not exists public.entreprise_pge
     actif boolean
 );
 
--- alter table entreprise_pge
---     owner to datapi;
+create index if not exists idx_entreprise_pge_siren on public.entreprise_pge(siren);
 
 -- ajuste la fonction `permissions` pour utiliser la nouvelle permission `pge`
 -- on précise les arguments parce pgsql accepte le polymorphisme
