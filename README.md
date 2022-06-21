@@ -1,3 +1,5 @@
+[![CI](https://github.com/signaux-faibles/datapi/actions/workflows/pipeline.yml/badge.svg)](https://github.com/signaux-faibles/datapi/actions/workflows/pipeline.yml)
+
 # datAPI - API des applications web signaux-faibles
 
 ## Installation/Prise en main
