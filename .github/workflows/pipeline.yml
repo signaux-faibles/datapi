@@ -60,6 +60,13 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
 
+    - name: Prepare container sources & resources
+      shell: bash
+      run: |
+        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+        cp ./datapi ./build-container
+        cp -r ./migrations ./build-container
+
     - name: Extract metadata (tags, labels) for Docker
       id: meta
       uses: docker/metadata-action@v4
@@ -70,13 +77,6 @@ jobs:
           type=ref,event=tag
         flavor: |
           latest=true
-
-    - name: Prepare container sources & resources
-      shell: bash
-      run: |
-        CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
-        cp ./datapi ./build-container
-        cp -r ./migrations ./build-container
 
     - name: Build and push Docker image
       uses: docker/build-push-action@v3
