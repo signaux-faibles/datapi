@@ -1,13 +1,13 @@
-name: CI
+name: CI v2
 
 on:
   push:
     branches:
       - 'master'
     tags:
-      - '*'
   pull_request:
-    branches: [ master ]
+    branches:
+      - 'master'
 
 jobs:
   build_datapi:
