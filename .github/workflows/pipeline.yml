@@ -1,0 +1,88 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - 'master'
+    tags:
+      - '*'
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build_datapi:
+    name: Build & Test Datapi
+    runs-on: ubuntu-latest
+    steps:
+
+    - name: Check out code
+      uses: actions/checkout@v3
+
+    - name: Set up Go 1.18
+      uses: actions/setup-go@v3
+      with:
+        go-version: 1.18.x
+      id: go
+
+    - name: Set up Python 3.8
+      uses: actions/setup-python@v4
+      with:
+        python-version: 3.8
+
+    - name: Build package
+      run: go build -v .
+
+    - name: Install docx-mailmerge
+      run: |
+        python3 -m pip install --upgrade pip
+        python3 -m pip install docx-mailmerge
+
+    - name: Unit Tests
+      run: go test ./...
+
+    - name: Integration Tests
+      run: go test -tags=integration
+
+  container_datapi:
+    name: Push Datapi container
+    needs: build_datapi
+    runs-on: ubuntu-latest
+    steps:
+
+      - name: Check out code
+        uses: actions/checkout@v3
+
+      - name: Prepare container sources & resources
+        shell: bash
+        run: |
+          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+          cp ./datapi ./build-container
+          cp -r ./migrations ./build-container
+
+      - name: Extract metadata (tags, labels) for Docker
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=ref,event=pr
+          flavor: |
+            latest=true
+
+      - name: Login to GitHub Container Registry
+        id: login
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: ./build-container
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
