@@ -16,7 +16,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.12.2
 	github.com/signaux-faibles/goSirene v0.2.4
-	github.com/spf13/viper v1.12.0
+	github.com/spf13/viper v1.11.0
 	github.com/stretchr/testify v1.7.3
 	github.com/tealeg/xlsx v1.0.5
 	go.mongodb.org/mongo-driver v1.9.1
