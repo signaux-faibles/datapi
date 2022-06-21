@@ -22,6 +22,7 @@ var mgoDB *mongo.Database
 var ref reference
 var wekanConfig WekanConfig
 
+// StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() {
 	connectDB() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	mgoDB = connectWekanDB()
@@ -31,6 +32,7 @@ func StartDatapi() {
 	keycloak = connectKC()
 }
 
+// LoadConfig charge la config toml
 func LoadConfig(confDirectory, confFile, migrationDir string) {
 	viper.SetDefault("MigrationsDir", migrationDir)
 	viper.SetConfigName(confFile)
@@ -42,6 +44,7 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 	}
 }
 
+// RunAPI expose l'api
 func RunAPI() {
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)

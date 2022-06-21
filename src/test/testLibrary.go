@@ -68,6 +68,7 @@ func indent(reader io.Reader) ([]byte, error) {
 	return prettyBody.Bytes(), err
 }
 
+// ProcessGoldenFile compare les golden files. (Ecrase le golden file existant si `update == true`
 func ProcessGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 	if *update {
 		err := saveGoldenFile(path, data)
@@ -89,6 +90,7 @@ func ProcessGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 	return diff, err
 }
 
+// Post fonction helper pour faire du POST http
 func Post(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
 	jsonValue, _ := json.Marshal(params)
 	resp, err := http.Post(hostname()+path, "application/json", bytes.NewBuffer(jsonValue))
@@ -100,6 +102,7 @@ func Post(t *testing.T, path string, params map[string]interface{}) (*http.Respo
 	return resp, indented, err
 }
 
+// Get fonction helper pour faire du GET http
 func Get(t *testing.T, path string) (*http.Response, []byte, error) {
 	resp, err := http.Get(hostname() + path)
 	if err != nil {
@@ -110,6 +113,7 @@ func Get(t *testing.T, path string) (*http.Response, []byte, error) {
 	return resp, indented, err
 }
 
+// FollowEntreprise fonction qui suit un établissement de l'entreprise dont le siren est passé en argument
 func FollowEntreprise(t *testing.T, siren string) {
 	_, data, err := Get(t, "/entreprise/get/"+siren)
 	if err != nil {
@@ -121,6 +125,7 @@ func FollowEntreprise(t *testing.T, siren string) {
 	FollowEtablissement(t, siret)
 }
 
+// FollowEtablissement fonction qui suit l'établissement dont le siret est passé en argument
 func FollowEtablissement(t *testing.T, siret string) {
 	params := map[string]interface{}{
 		"comment":  "test",
@@ -133,6 +138,7 @@ func FollowEtablissement(t *testing.T, siret string) {
 	t.Logf("nouvel établissement suivi -> '%s'", siret)
 }
 
+// JsonToEntreprise fonction qui unmarshalle un json en Entreprise
 func JsonToEntreprise(t *testing.T, data []byte) core.Entreprise {
 	var entreprise core.Entreprise
 	err := json.Unmarshal(data, &entreprise)
@@ -146,6 +152,7 @@ func hostname() string {
 	return os.Getenv("DATAPI_URL")
 }
 
+// GetSiret fonction qui récupère des Sirets à partir de critères VAF (Visible / Authorized / Followed)
 func GetSiret(t *testing.T, v VAF, n int) []string {
 	sql := `with etablissement_data_confidentielle as (
 		select distinct e.siret, et.departement
@@ -198,12 +205,13 @@ type VAF struct {
 	Followed bool
 }
 
+// RazEtablissementFollowing fonction qui supprime le suivi de tous les établissements
 func RazEtablissementFollowing(t *testing.T) {
 	_, err := core.Db().Exec(context.Background(), "delete from etablissement_follow;")
 	if err != nil {
 		t.Fatalf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
 	}
-	t.Log("informations de suivi des etablissements effacées")
+	t.Log("les informations de suivi des etablissements ont été supprimées")
 }
 
 // PgeTest struct contenant des données à tester pour le pge
@@ -225,6 +233,7 @@ func SelectSomeSiretsToFollow(t *testing.T) []string {
 	return sirets
 }
 
+// ExclureSuivi il faut que je demande à Christophe ce que fait cette fonction en plus de la fonction `RazEtablissementFollowing`
 func ExclureSuivi(t *testing.T) {
 	var params = make(map[string]interface{})
 	params["exclureSuivi"] = true
@@ -260,6 +269,7 @@ func ExclureSuivi(t *testing.T) {
 	}
 }
 
+// InsertPGE fonction qui suit un Etablissement de l'Entreprise dont le siren est passé en argument
 func InsertPGE(t *testing.T, siren string, hasPGE *bool) {
 	tx, err := core.Db().Begin(context.Background())
 	if err != nil {
@@ -289,12 +299,14 @@ type Liste struct {
 	} `json:"scores"`
 }
 
+// Read methode de la structure VAF qui la transforme en string
 func (v *VAF) Read(vaf string) {
 	v.Visible = vaf[0] == 'V'
 	v.Alert = vaf[1] == 'A'
 	v.Followed = vaf[2] == 'F'
 }
 
+// EtablissementVAF structure encapsulant un élément de SearchVAF
 type EtablissementVAF struct {
 	Visible       bool `json:"visible"`
 	Alert         bool `json:"alert"`
@@ -311,6 +323,7 @@ type EtablissementVAF struct {
 	Delai     []interface{} `json:"delai"`
 }
 
+// SearchVAF structure correspondant à la réponse JSON de l'appel à un POST http sur `/etablissement/search`
 type SearchVAF struct {
 	Results []EtablissementVAF `json:"results"`
 }

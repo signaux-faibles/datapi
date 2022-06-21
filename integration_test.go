@@ -51,8 +51,8 @@ func TestMain(m *testing.M) {
 	// launch wekan db container for datapi
 	wekanDb := startWekanDBContainer(pool)
 	wekanDbHostAndPort := wekanDb.GetHostPort("27017/tcp")
-	wekanDbUrl := fmt.Sprintf("mongodb://mgo:test@%s/", wekanDbHostAndPort)
-	testConfig["wekanMgoURL"] = wekanDbUrl
+	wekanDbURL := fmt.Sprintf("mongodb://mgo:test@%s/", wekanDbHostAndPort)
+	testConfig["wekanMgoURL"] = wekanDbURL
 
 	addTestConfig(testConfig)
 
@@ -646,6 +646,7 @@ func followEtablissementsThenCleanup(t *testing.T, sirets []string) {
 	for _, siret := range sirets {
 		test.FollowEtablissement(t, siret)
 	}
+	// a la fin du test, tout le suivi des Etablissements est supprimé
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
 }
 

@@ -27,6 +27,7 @@ type migrationScript struct {
 	hash     string
 }
 
+// Db : expose le pool de connexion Datapi
 func Db() *pgxpool.Pool {
 	if db == nil {
 		connectDB()
