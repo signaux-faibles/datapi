@@ -42,7 +42,6 @@ func wekanUnarchiveCardHandler(c *gin.Context) {
 
 	cardID := c.Param("cardID")
 	boardIDs := wekanConfig.boardIdsForUser(s.username)
-	fmt.Println(cardID)
 	result, err := mgoDB.Collection("cards").UpdateOne(context.Background(),
 		bson.M{
 			"boardId": bson.M{
