@@ -625,6 +625,7 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 		var e entreprise
 		err := decoder.Decode(&e)
 		if err != nil {
+			batches <- batch
 			close(batches)
 			wg.Wait()
 			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
@@ -671,6 +672,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 		var e etablissement
 		err := decoder.Decode(&e)
 		if err != nil {
+			batches <- batch
 			close(batches)
 			wg.Wait()
 			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
