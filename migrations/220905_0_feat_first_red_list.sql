@@ -3,26 +3,24 @@ DROP MATERIALIZED VIEW IF EXISTS public.v_summaries;
 
 DROP MATERIALIZED VIEW IF EXISTS public.v_alert_entreprise;
 
-
 CREATE MATERIALIZED VIEW IF NOT EXISTS public.v_alert_entreprise
 TABLESPACE pg_default
 AS
-
-
-with first_lists as (
- SELECT distinct siren,
-   first(libelle_liste) over (window_siren) as first_list,
-   first(libelle_liste) filter(where alert='Alerte seuil F1') over (window_siren) as first_red_list
-   FROM score0 sc
-  WHERE sc.alert = ANY (ARRAY['Alerte seuil F1'::text, 'Alerte seuil F2'::text])
-   WINDOW window_siren as (partition by sc.siren order by batch)
-)
-select * from first_lists where first_list is not null 
-with data;
-
-ALTER TABLE IF EXISTS public.v_alert_entreprise
-    OWNER TO datapi;
-
+ WITH first_lists AS (
+         SELECT DISTINCT sc.siren,
+            first(sc.libelle_liste) OVER (window_siren) AS first_list,
+            first(sc.libelle_liste) FILTER (WHERE sc.alert = 'Alerte seuil F1'::text) OVER (window_siren) AS first_red_list
+           FROM score0 sc
+          WHERE sc.alert = ANY (ARRAY['Alerte seuil F1'::text, 'Alerte seuil F2'::text])
+          WINDOW window_siren AS (PARTITION BY sc.siren ORDER BY sc.batch)
+        )
+ SELECT first_lists.siren,
+    max(first_lists.first_list) as first_list,
+    max(first_lists.first_red_list) as first_red_list
+  FROM first_lists
+  WHERE first_lists.first_list IS NOT NULL
+  group by siren
+WITH DATA;
 
 CREATE INDEX idx_v_alert_entreprise_siren
     ON public.v_alert_entreprise USING btree
@@ -115,9 +113,6 @@ AS
      LEFT JOIN categorie_juridique cj2 ON "substring"(cj.code, 0, 3) = cj2.code
      LEFT JOIN categorie_juridique cj1 ON "substring"(cj.code, 0, 2) = cj1.code
 WITH DATA;
-
-ALTER TABLE IF EXISTS public.v_summaries
-    OWNER TO datapi;
 
 
 CREATE INDEX idx_v_summaries_order_raison_sociale
