@@ -157,7 +157,7 @@ var sqlScore = `select
   s.libelle_departement, s.code_departement,
   case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then sc.score end as valeur_score,
   case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then sc.detail end as detail_score,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then coalesce(s.first_list_entreprise = $23 or s.first_red_list_entreprise = $23, false) end as first_alert,
+  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then coalesce(s.first_list_etablissement = $23 or s.first_red_list_etablissement = $23, false) end as first_alert,
   s.chiffre_affaire, s.arrete_bilan, s.exercice_diane, s.variation_ca, s.resultat_expl, s.effectif, s.effectif_entreprise,
   s.libelle_n5, s.libelle_n1, s.code_activite, s.last_procol,
   case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.activite_partielle end as activite_partielle,
@@ -204,6 +204,6 @@ var sqlScore = `select
   and (not (s.secteur_covid = any($20)) or $20 is null)
   and (n.code_n1 = any($15) or $15 is null)
   and (s.etat_administratif = $21 or $21 is null)
-  and ((s.first_list_entreprise = $23 or s.first_red_list_entreprise = $23) and $22 or $22 is null)
+  and ((s.first_list_etablissement = $23 or s.first_red_list_etablissement = $23) and $22 or $22 is null)
   order by s.alert, s.valeur_score desc, s.siret
   limit $2 offset $3`
