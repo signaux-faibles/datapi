@@ -204,5 +204,5 @@ var sqlScore = `select
   and (n.code_n1 = any($15) or $15 is null)
   and (s.etat_administratif = $21 or $21 is null)
   and ((s.first_list_etablissement = $23 or s.first_red_list_etablissement = $23) and $22 or $22 is null)
-  order by s.alert, s.valeur_score desc, s.siret
+  order by sc.alert, sc.score desc, s.siret
   limit $2 offset $3`
