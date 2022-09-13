@@ -187,7 +187,6 @@ var sqlScore = `select
   left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $8
   where 
   (s.roles && $1 or $6)
-  and s.alert != 'Pas d''alerte'
   and (s.code_departement=any($1) or $7)
   and (s.siege or not $9)
   and (s.last_procol = any($10) or $10 is null)
