@@ -130,6 +130,9 @@ func buildWekanConfigPipeline() []bson.M {
 			"let":  bson.M{"board": "$boardId"},
 			"pipeline": []bson.M{
 				{"$match": bson.M{
+					"archived": false,
+				}},
+				{"$match": bson.M{
 					"$expr": bson.M{"$eq": bson.A{"$boardId", "$$board"}},
 				}},
 				{"$sort": bson.M{"order": 1}},
