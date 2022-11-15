@@ -339,7 +339,6 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 }
 
 func followSiretsFromWekan(username string, sirets []string) error {
-	fmt.Println(sirets)
 	tx, err := Db().Begin(context.Background())
 	if err != nil {
 		return err
