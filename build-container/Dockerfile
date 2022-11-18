@@ -1,6 +1,5 @@
-FROM alpine:3.17
-RUN apk add --no-cache python3 python3-dev musl-dev libxml2 libxml2-dev libxslt libxslt-dev gcc
-RUN python3 -m ensurepip
+FROM ubuntu:latest
+RUN apt-get update && apt-get install -y python3 python3-dev python3-pip libc6-dev libxml2 libxml2-dev libxslt-dev gcc
 RUN pip3 install docx-mailmerge==0.5.0
 ARG datapiDir
 COPY ./docxify3.py /app/docxify3.py
