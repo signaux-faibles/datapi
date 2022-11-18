@@ -57,7 +57,7 @@ jobs:
       - name: Prepare container sources & resources
         shell: bash
         run: |
-          CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+          GOOS=linux GOARCH=amd64 go build
           cp ./datapi ./build-container
           cp -r ./migrations ./build-container
 
