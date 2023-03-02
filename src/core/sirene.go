@@ -231,8 +231,8 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL) error {
 	etat_administratif text, 
 	economie_sociale_solidaire boolean,
 	caractere_employeur boolean,
-	code_naf text,
-	nomenclature_naf text,
+	code_activite text,
+	nomen_activite text,
   insert bool)
 	on commit drop;`)
 
@@ -258,8 +258,8 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL) error {
 		etat_administratif, 
 		economie_sociale_solidaire,
 		caractere_employeur,
-	    code_naf,
-	    nomenclature_naf) values 
+	    code_activite,
+	    nomen_activite) values 
 		($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,
 		 $12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22);`
 	for _, sirene := range data {
@@ -273,7 +273,7 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL) error {
 			identifiant_association, tranche_effectif, annee_effectif,
 			categorie, annee_categorie, etat_administratif,
 		    economie_sociale_solidaire, caractere_employeur, 
-		    code_naf, nomenclature_naf) select
+		    code_activite, nomen_activite) select
 		ul.siren,
 		ul.siret_siege,
 		ul.raison_sociale,
@@ -294,8 +294,8 @@ func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL) error {
 		ul.etat_administratif,
 		ul.economie_sociale_solidaire,
 		ul.caractere_employeur,
-		ul.code_naf,
-		ul.nomenclature_naf
+		ul.code_activite,
+		ul.nomen_activite
 		from tmp_sirene_ul ul
 	`)
 	results := tx.SendBatch(ctx, batch)
