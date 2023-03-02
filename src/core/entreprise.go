@@ -26,6 +26,7 @@ type Entreprise struct {
 		Nom               *string   `json:"nom,omitempty"`
 		NomUsage          *string   `json:"nomUsage,omitempty"`
 		Creation          time.Time `json:"creation,omitempty"`
+		NAF               NAF       `json:"naf,omitempty"`
 	}
 	Paydex                *Paydex         `json:"paydex,omitempty"`
 	Diane                 []diane         `json:"diane"`
@@ -71,6 +72,17 @@ type Etablissements struct {
 	Entreprises    map[string]Entreprise    `json:"entreprises,omitempty"`
 }
 
+type NAF struct {
+	LibelleActivite *string `json:"libelleActivite,omitempty"`
+	LibelleSecteur  *string `json:"libelleSecteur,omitempty"`
+	CodeSecteur     *string `json:"codeSecteur,omitempty"`
+	CodeActivite    *string `json:"codeActivite,omitempty"`
+	LibelleN2       *string `json:"libelleN2,omitempty"`
+	LibelleN3       *string `json:"libelleN3,omitempty"`
+	LibelleN4       *string `json:"libelleN4,omitempty"`
+	NomenActivite   *string `json:"nomenActivite,omitempty"`
+}
+
 // Etablissement type établissement pour l'API
 type Etablissement struct {
 	Siren      string      `json:"siren"`
@@ -100,16 +112,7 @@ type Etablissement struct {
 		Region               *string    `json:"region"`
 		Latitude             *float64   `json:"latitude"`
 		Longitude            *float64   `json:"longitude"`
-		NAF                  struct {
-			LibelleActivite *string `json:"libelleActivite"`
-			LibelleSecteur  *string `json:"libelleSecteur"`
-			CodeSecteur     *string `json:"codeSecteur"`
-			CodeActivite    *string `json:"codeActivite"`
-			LibelleN2       *string `json:"libelleN2"`
-			LibelleN3       *string `json:"libelleN3"`
-			LibelleN4       *string `json:"libelleN4"`
-			NomenActivite   *string `json:"nomenActivite"`
-		} `json:"naf"`
+		NAF                  NAF        `json:"naf"`
 	} `json:"sirene"`
 	PeriodeUrssaf      EtablissementPeriodeUrssaf `json:"periodeUrssaf,omitempty"`
 	Delai              []EtablissementDelai       `json:"delai,omitempty"`
@@ -344,7 +347,15 @@ func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 		p.dgefp as permDGEFP,
 		p.bdf as permBDF,
 		p.pge as permPGE,
-		p.in_zone as in_zone
+		p.in_zone as in_zone,
+		ne.libelle_n1 as libelle_n1_entreprise,
+        ne.code_n1 as code_n1_entreprise, 
+        ne.libelle_n5 as libelle_n5_entreprise,
+        ne.code_n5 as code_n5_entreprise, 
+        ne.libelle_n2 as libelle_n2_entreprise,
+		ne.libelle_n3 as libelle_n3_entreprise, 
+		ne.libelle_n4 as libelle_n4_entreprise,
+		en.nomen_activite as nomen_activite_entreprise
 		from etablissement0 et
 		inner join f_etablissement_permissions($1, $2) p on p.id = et.id
 		inner join departements d on d.code = et.departement
@@ -353,6 +364,7 @@ func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
 		left join v_naf n on n.code_n5 = et.code_activite
 		left join etablissement_follow f on f.siret = et.siret and f.active and f.username = $2
 		left join entreprise0 en on en.siren = et.siren
+		left join v_naf ne on ne.code_n5 = en.code_activite
 		left join categorie_juridique j on j.code = en.statut_juridique
 		left join categorie_juridique j2 on substring(j.code from 0 for 3) = j2.code
 		left join categorie_juridique j1 on substring(j.code from 0 for 2) = j1.code
@@ -817,6 +829,8 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 			&el.PersonnePouMGroupe, &el.NiveauDetention, &el.PartFinanciere,
 			&el.CodeFiliere, &el.RefIDFiliere, &el.PersonnePouMFiliere, &ti.Code, &ti.Libelle,
 			&et.PermScore, &et.PermUrssaf, &et.PermDGEFP, &et.PermBDF, &et.PermPGE, &et.InZone,
+			&en.Sirene.NAF.LibelleSecteur, &en.Sirene.NAF.CodeSecteur, &en.Sirene.NAF.LibelleActivite, &en.Sirene.NAF.CodeActivite,
+			&en.Sirene.NAF.LibelleN2, &en.Sirene.NAF.LibelleN3, &en.Sirene.NAF.LibelleN4, &en.Sirene.NAF.NomenActivite,
 		)
 
 		if err != nil {
