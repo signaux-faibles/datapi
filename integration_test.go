@@ -607,7 +607,7 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 		},
 	}, func(config *docker.HostConfig) {
 		//set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
+		config.AutoRemove = false
 		config.RestartPolicy = docker.RestartPolicy{
 			Name: "no",
 		}
