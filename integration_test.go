@@ -729,3 +729,12 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
 	}
 }
+
+func TestRunRefreshScript(t *testing.T) {
+	// add Script path in config
+	//viper.Set("refreshScript", "test/refreshScript.sql")
+	err := core.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+	if err != nil {
+		t.Errorf("Erreur survenue lors de l'exécution du script de refresh : %s", err.Error())
+	}
+}

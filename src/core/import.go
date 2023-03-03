@@ -4,6 +4,7 @@ import (
 	"compress/gzip"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/datapi/src/refresh"
@@ -11,6 +12,7 @@ import (
 	"log"
 	"math"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -880,32 +882,43 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 	)
 }
 
-func execRefreshScript(ctx context.Context, db *pgxpool.Pool) error {
-	scriptPath := viper.GetString("refreshScript")
+func ExecRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) error {
+	//scriptPath := viper.GetString("refreshScript")
 	sql, err := os.ReadFile(scriptPath)
+	if len(sql) <= 0 {
+		return errors.New("le script sql est vide")
+	}
+	sqls := strings.SplitAfter(string(sql), ";\n")
 	if err != nil {
 		return err
 	}
-	go executeRefresh(ctx, db, string(sql))
+	go executeRefresh(ctx, db, sqls)
 	return nil
 }
 
-func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string) {
+func executeRefresh(ctx context.Context, db *pgxpool.Pool, sqls []string) {
 	refreshingState := refresh.New()
 	tx, err := db.Begin(ctx)
 	if err != nil {
-		log.Fatal("erreur à l'ouverture de la transaction pour le refresh des vues : " + err.Error())
+		log.Fatalf("Erreur à l'ouverture de la transaction pour le refresh des vues : %s", err.Error())
 	}
 	refreshingState.Run()
-	_, err = tx.Exec(ctx, sql)
-	if err != nil {
-		refreshingState.Fail()
-		log.Fatal("erreur lors de l'exécution du script de refresh : " + err.Error())
+	for _, current := range sqls {
+		log.Printf("Exécute la requête : '%s'", current)
+		_, err = tx.Exec(ctx, current)
+		if err != nil {
+			refreshingState.Fail()
+			err := tx.Rollback(ctx)
+			if err != nil {
+				log.Fatalf("Erreur lors du rollback de transaction. Cause : %s", err.Error())
+			}
+			log.Fatalf("Erreur lors de l'exécution de la requête '%s'. Cause : %s", current, err.Error())
+		}
 	}
 	err = tx.Commit(ctx)
 	if err != nil {
 		refreshingState.Fail()
-		log.Fatal("erreur lors du commit de transaction : " + err.Error())
+		log.Fatalf("Erreur lors du commit de transaction : %s", err.Error())
 	}
 	refreshingState.Finish()
 }

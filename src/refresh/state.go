@@ -1,6 +1,7 @@
 package refresh
 
 import (
+	"github.com/google/martian/log"
 	"github.com/google/uuid"
 	"sync"
 	"time"
@@ -30,20 +31,21 @@ func New() *Refresh {
 	return r
 }
 
-func (r Refresh) Run() {
+func (r *Refresh) Run() {
 	r.save(Running)
 }
 
-func (r Refresh) Fail() {
+func (r *Refresh) Fail() {
 	r.save(Failed)
 }
 
-func (r Refresh) Finish() {
+func (r *Refresh) Finish() {
 	r.save(Finished)
 }
 
-func (r Refresh) save(status Status) {
+func (r *Refresh) save(status Status) {
 	r.Status = status
 	r.Date = time.Now()
+	log.Infof("refresh script : %s", status)
 	refreshingState.Store("refreshing", r)
 }
