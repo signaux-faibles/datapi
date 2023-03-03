@@ -5,8 +5,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/signaux-faibles/datapi/src/refresh"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
 	"os"
@@ -738,7 +739,7 @@ func prepareImport(tx *pgx.Tx) error {
 	}
 
 	for _, table := range tables {
-		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("truncate table %s;", table))
+		_, err := (*tx).Exec(context.Background(), "truncate table $1;", table)
 		if err != nil {
 			return err
 		}
@@ -777,7 +778,7 @@ func listImportHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(500, "open file: "+err.Error())
 		return
 	}
-	raw, err := ioutil.ReadAll(file)
+	raw, err := io.ReadAll(file)
 	file.Close()
 	if err != nil {
 		c.AbortWithStatusJSON(500, "read file: "+err.Error())
@@ -877,4 +878,34 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 		s.AlertPreRedressements,
 		s.Redressements,
 	)
+}
+
+func execRefreshScript(ctx context.Context, db *pgxpool.Pool) error {
+	scriptPath := viper.GetString("refreshScript")
+	sql, err := os.ReadFile(scriptPath)
+	if err != nil {
+		return err
+	}
+	go executeRefresh(ctx, db, string(sql))
+	return nil
+}
+
+func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string) {
+	refreshingState := refresh.New()
+	tx, err := db.Begin(ctx)
+	if err != nil {
+		log.Fatal("erreur à l'ouverture de la transaction pour le refresh des vues : " + err.Error())
+	}
+	refreshingState.Run()
+	_, err = tx.Exec(ctx, sql)
+	if err != nil {
+		refreshingState.Fail()
+		log.Fatal("erreur lors de l'exécution du script de refresh : " + err.Error())
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		refreshingState.Fail()
+		log.Fatal("erreur lors du commit de transaction : " + err.Error())
+	}
+	refreshingState.Finish()
 }

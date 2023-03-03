@@ -4,8 +4,8 @@ import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"sort"
 	"sync"
 
@@ -101,14 +101,14 @@ func compareMigrations(db []migrationScript, dir []migrationScript) []migrationS
 }
 
 func listDirMigrations() []migrationScript {
-	files, err := ioutil.ReadDir(viper.GetString("migrationsDir"))
+	files, err := os.ReadDir(viper.GetString("migrationsDir"))
 	if err != nil {
 		panic("migrations not found: " + err.Error())
 	}
 	var dirMigrations []migrationScript
 	hasher := sha1.New()
 	for _, f := range files {
-		content, err := ioutil.ReadFile("./migrations/" + f.Name())
+		content, err := os.ReadFile("./migrations/" + f.Name())
 		if err != nil {
 			panic("error reading migration files: " + err.Error())
 		}
