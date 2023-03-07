@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/refresh"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"log"
@@ -108,11 +109,11 @@ func RunAPI() {
 	utils.GET("/sireneImport", sireneImportHandler)
 	utils.GET("/listImport/:algo", listImportHandler)
 
-	//refreshRoute := router.Group("/refresh", getKeycloakMiddleware(), logMiddleware)
-	//refreshRoute.GET("/start", refresh.StartHandler)
-	//refreshRoute.GET("/status/:uuid", refresh.StatusHandler)
-	//refreshRoute.GET("/last", refresh.LastHandler)
-	//refreshRoute.GET("/list/:status", refresh.ListHandler)
+	refreshRoute := router.Group("/refresh", getKeycloakMiddleware(), logMiddleware)
+	refreshRoute.GET("/start", refresh.StartHandler)
+	refreshRoute.GET("/status/:uuid", refresh.StatusHandler)
+	refreshRoute.GET("/last", refresh.LastHandler)
+	refreshRoute.GET("/list/:status", refresh.ListHandler)
 
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", validSiret, wekanGetCardsHandler)
