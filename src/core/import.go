@@ -885,25 +885,24 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 func ExecRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) error {
 	//scriptPath := viper.GetString("refreshScript")
 	sql, err := os.ReadFile(scriptPath)
-	if len(sql) <= 0 {
-		return errors.New("le script sql est vide")
-	}
-	sqls := strings.SplitAfter(string(sql), ";\n")
 	if err != nil {
 		return err
 	}
-	go executeRefresh(ctx, db, sqls)
+	if len(sql) <= 0 {
+		return errors.New("le script sql est vide")
+	}
+	executeRefresh(ctx, db, string(sql))
 	return nil
 }
 
-func executeRefresh(ctx context.Context, db *pgxpool.Pool, sqls []string) {
+func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string) {
 	refreshingState := refresh.New()
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		log.Fatalf("Erreur à l'ouverture de la transaction pour le refresh des vues : %s", err.Error())
 	}
 	refreshingState.Run()
-	for _, current := range sqls {
+	for _, current := range strings.SplitAfter(sql, ";\n") {
 		log.Printf("Exécute la requête : '%s'", current)
 		_, err = tx.Exec(ctx, current)
 		if err != nil {

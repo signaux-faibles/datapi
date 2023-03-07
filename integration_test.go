@@ -1,6 +1,3 @@
-//go:build integration
-// +build integration
-
 package main
 
 import (
@@ -24,7 +21,7 @@ import (
 	"time"
 )
 
-// TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétrer
+// TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
 // - le fichier de configuration de test -> test/config.toml
 // - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
@@ -594,8 +591,7 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 	datapiDb, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Name:       datapiContainerName,
 		Repository: "postgres",
-		Tag:        "10-alpine",
-		//Tag:    "14-alpine",
+		Tag:        "15-alpine",
 		Env: []string{
 			"POSTGRES_PASSWORD=test",
 			"POSTGRES_USER=postgres",
@@ -607,7 +603,7 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 		},
 	}, func(config *docker.HostConfig) {
 		//set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
+		config.AutoRemove = false
 		config.RestartPolicy = docker.RestartPolicy{
 			Name: "no",
 		}
@@ -616,8 +612,8 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 		killContainer(datapiDb)
 		log.Fatal("Could not start datapi_db", err)
 	}
-	// container stops after 60 seconds
-	if err = datapiDb.Expire(120); err != nil {
+	// container stops after 20'
+	if err = datapiDb.Expire(1200); err != nil {
 		killContainer(datapiDb)
 		log.Fatal("Could not set expiration on container datapi_db", err)
 	}
