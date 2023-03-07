@@ -7,8 +7,9 @@ import (
 	gocloak "github.com/Nerzal/gocloak/v10"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
+	"github.com/signaux-faibles/datapi/src/db"
 	"go.mongodb.org/mongo-driver/mongo"
-	"io/ioutil"
+	"io"
 	"log"
 	"time"
 
@@ -19,12 +20,11 @@ import (
 
 var keycloak gocloak.GoCloak
 var mgoDB *mongo.Database
-var ref reference
 var wekanConfig WekanConfig
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() {
-	connectDB() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
+	db.InitDb() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	mgoDB = connectWekanDB()
 	//wekanConfig := WekanConfig{}
 	//wekanConfig = loadWekanConfig()
@@ -108,6 +108,12 @@ func RunAPI() {
 	utils.GET("/sireneImport", sireneImportHandler)
 	utils.GET("/listImport/:algo", listImportHandler)
 
+	//refreshRoute := router.Group("/refresh", getKeycloakMiddleware(), logMiddleware)
+	//refreshRoute.GET("/start", refresh.StartHandler)
+	//refreshRoute.GET("/status/:uuid", refresh.StatusHandler)
+	//refreshRoute.GET("/last", refresh.LastHandler)
+	//refreshRoute.GET("/list/:status", refresh.ListHandler)
+
 	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
 	wekan.GET("/cards/:siret", validSiret, wekanGetCardsHandler)
 	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
@@ -148,8 +154,8 @@ func getAdminAuthMiddleware() gin.HandlerFunc {
 func logMiddleware(c *gin.Context) {
 	path := c.Request.URL.Path
 	method := c.Request.Method
-	body, _ := ioutil.ReadAll(c.Request.Body)
-	c.Request.Body = ioutil.NopCloser(bytes.NewBuffer(body))
+	body, _ := io.ReadAll(c.Request.Body)
+	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	var token []string
 	var err error
@@ -163,7 +169,7 @@ func logMiddleware(c *gin.Context) {
 		token = []string{"", "fakeKeycloak"}
 	}
 
-	_, err = Db().Exec(context.Background(), `insert into logs (path, method, body, token) 
+	_, err = db.Db().Exec(context.Background(), `insert into logs (path, method, body, token) 
 	values ($1, $2, $3, $4);`, path, method, string(body), token[1])
 	if err != nil {
 		c.AbortWithStatus(500)

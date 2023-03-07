@@ -1,4 +1,4 @@
-package core
+package db
 
 import (
 	"context"
@@ -11,16 +11,17 @@ import (
 
 	pgx "github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-
 	"github.com/spf13/viper"
 
 	_ "github.com/lib/pq"
 )
 
 var db *pgxpool.Pool
+var ref reference
 
+type reference struct {
+	zones map[string][]string
+}
 type migrationScript struct {
 	fileName string
 	content  []byte
@@ -30,12 +31,12 @@ type migrationScript struct {
 // Db : expose le pool de connexion Datapi
 func Db() *pgxpool.Pool {
 	if db == nil {
-		connectDB()
+		InitDb()
 	}
 	return db
 }
 
-func connectDB() {
+func InitDb() {
 	pgConnStr := viper.GetString("postgres")
 	pool, err := pgxpool.Connect(context.Background(), pgConnStr)
 	if err != nil {
@@ -163,7 +164,7 @@ func runBatch(tx *pgx.Tx, batch *pgx.Batch) {
 	}
 }
 
-func newBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
+func NewBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
 	var batches = make(chan pgx.Batch)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -178,8 +179,8 @@ func newBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
 	return batches, &wg
 }
 
-type reference struct {
-	zones map[string][]string
+func GetDepartementForRole(role string) []string {
+	return ref.zones[role]
 }
 
 func loadReferences(db *pgxpool.Pool) reference {
@@ -214,21 +215,4 @@ func loadReferences(db *pgxpool.Pool) reference {
 	}
 
 	return result
-}
-
-func connectWekanDB() *mongo.Database {
-	mongoURI := viper.GetString("wekanMgoURL")
-	if mongoURI != "" {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = client.Connect(context.Background())
-		if err != nil {
-			log.Fatal(err)
-		}
-		mgoDb := client.Database(viper.GetString("wekanMgoDB"))
-		return mgoDb
-	}
-	return nil
 }

@@ -5,10 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/signaux-faibles/datapi/src/core"
+	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/refresh"
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
@@ -114,7 +116,7 @@ func TestFollow(t *testing.T) {
 	}
 
 	t.Log("Vérification de /follow")
-	_, err := core.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	_, err := db.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
 	if err != nil {
 		t.Errorf("erreur sql : %s", err.Error())
 	}
@@ -136,7 +138,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	// tester la recherche par chaine de caractères
-	rows, err := core.Db().Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
+	rows, err := db.Db().Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
 	inner join departements d on d.code = e.departement
 	inner join regions r on r.id = d.id_region
 	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
@@ -169,7 +171,7 @@ func TestSearch(t *testing.T) {
 	// tester par département
 	var departements []string
 	var siret string
-	err = core.Db().QueryRow(
+	err = db.Db().QueryRow(
 		context.Background(),
 		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) 
 			from etablissement 
@@ -193,7 +195,7 @@ func TestSearch(t *testing.T) {
 	i++
 
 	// tester par activité
-	err = core.Db().QueryRow(
+	err = db.Db().QueryRow(
 		context.Background(),
 		`select substring(first(siret) from 1 for 3)
 		 from etablissement e
@@ -523,7 +525,7 @@ func TestPermissions(t *testing.T) {
 	for _, tt := range tests {
 		var r expected
 		t.Log(tt.description)
-		err := core.Db().QueryRow(
+		err := db.Db().QueryRow(
 			context.Background(),
 			"select * from permissions($1, $2, $3, $4, $5)",
 			tt.test.rolesUser,
@@ -729,9 +731,16 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 	}
 }
 
+func TestFetchNonExistentRefresh(t *testing.T) {
+	ass := assert.New(t)
+	result, err := refresh.Fetch(uuid.New())
+	ass.Equal(refresh.Empty, result)
+	ass.NotNil(err)
+}
+
 func TestRunRefreshScript(t *testing.T) {
 	ass := assert.New(t)
-	refreshId := refresh.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+	refreshId := refresh.StartRefreshScript(context.Background(), db.Db(), "test/refreshScript.sql")
 	t.Logf("refreshId is running with id : %s", refreshId)
 	time.Sleep(5 * time.Second)
 	result, err := refresh.Fetch(refreshId)
@@ -743,7 +752,7 @@ func TestLastRefreshState(t *testing.T) {
 	ass := assert.New(t)
 	lastRefreshState := refresh.FetchLastRefreshState()
 	if lastRefreshState == refresh.Empty {
-		refresh.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+		refresh.StartRefreshScript(context.Background(), db.Db(), "test/refreshScript.sql")
 	}
 	time.Sleep(100 * time.Millisecond)
 	lastRefreshState = refresh.FetchLastRefreshState()
@@ -753,9 +762,9 @@ func TestLastRefreshState(t *testing.T) {
 
 func TestFetchRefreshWithState(t *testing.T) {
 	ass := assert.New(t)
-	refresh.ExecRefreshScript(context.Background(), core.Db(), "test/script qui n'existe pas")
-	refresh.ExecRefreshScript(context.Background(), core.Db(), "test/autre script foireux")
-	refresh.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+	refresh.StartRefreshScript(context.Background(), db.Db(), "test/script qui n'existe pas")
+	refresh.StartRefreshScript(context.Background(), db.Db(), "test/autre script foireux")
+	refresh.StartRefreshScript(context.Background(), db.Db(), "test/refreshScript.sql")
 	time.Sleep(100 * time.Millisecond)
 
 	failedRefresh := refresh.FetchRefreshWithState(refresh.Failed)

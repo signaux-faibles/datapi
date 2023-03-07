@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/signaux-faibles/datapi/src/db"
 	"io"
 	"log"
 	"math"
@@ -562,7 +563,7 @@ func (s scoreFile) toLibelle() string {
 // }
 
 func importHandler(c *gin.Context) {
-	tx, err := Db().Begin(context.Background())
+	tx, err := db.Db().Begin(context.Background())
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -596,7 +597,7 @@ func importHandler(c *gin.Context) {
 	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
 	log.Print("drop dead data")
-	_, err = Db().Exec(context.Background(), "vacuum;")
+	_, err = db.Db().Exec(context.Background(), "vacuum;")
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -611,7 +612,7 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 		return err
 	}
 	defer file.Close()
-	batches, wg := newBatchRunner(tx)
+	batches, wg := db.NewBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	if err != nil {
 		return err
@@ -657,7 +658,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 	if err != nil {
 		return err
 	}
-	batches, wg := newBatchRunner(tx)
+	batches, wg := db.NewBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	if err != nil {
 		return err
@@ -789,7 +790,7 @@ func listImportHandler(c *gin.Context) {
 		return
 	}
 
-	tx, err := Db().Begin(context.Background())
+	tx, err := db.Db().Begin(context.Background())
 	if err != nil {
 		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
 	}

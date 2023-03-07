@@ -9,19 +9,19 @@ import (
 	"strings"
 )
 
-func ExecRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) uuid.UUID {
-	current := New(uuid.New())
+func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) uuid.UUID {
+	current := new(uuid.New())
 	sql, err := os.ReadFile(scriptPath)
 	if err != nil {
-		current.Fail(err.Error())
-		return current.Id
+		current.fail(err.Error())
+		return current.Uuid
 	}
 	if len(sql) <= 0 {
-		current.Fail("le script sql est vide")
-		return current.Id
+		current.fail("le script sql est vide")
+		return current.Uuid
 	}
 	go executeRefresh(ctx, db, string(sql), current)
-	return current.Id
+	return current.Uuid
 }
 
 func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, refresh *Refresh) {
@@ -31,10 +31,10 @@ func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, refresh *
 	}
 	for _, current := range strings.Split(sql, ";\n") {
 		log.Printf("Refresh - %s - Exécute la requête : '%s'", refresh, current)
-		refresh.Run(current)
+		refresh.run(current)
 		_, err = tx.Exec(ctx, current)
 		if err != nil {
-			refresh.Fail(err.Error())
+			refresh.fail(err.Error())
 			err := tx.Rollback(ctx)
 			if err != nil {
 				log.Fatalf("Erreur lors du rollback de transaction. Cause : %s", err.Error())
@@ -44,8 +44,8 @@ func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, refresh *
 	}
 	err = tx.Commit(ctx)
 	if err != nil {
-		refresh.Fail(err.Error())
+		refresh.fail(err.Error())
 		log.Fatalf("Erreur lors du commit de transaction : %s", err.Error())
 	}
-	refresh.Finish()
+	refresh.finish()
 }
