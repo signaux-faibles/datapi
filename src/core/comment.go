@@ -88,7 +88,7 @@ func (c *Comment) save() Jerror {
 	where e.siret = $4 and (m.id is not null or $7 is null)
 	returning id, siret, date_history, message_history;`
 
-	err := db.Db().QueryRow(
+	err := db.Get().QueryRow(
 		context.Background(),
 		sqlSaveComment,
 		c.IDParent,
@@ -124,7 +124,7 @@ func (c *Comment) load() Jerror {
 	left join users u on u.username = e.username
 	where e.siret = $1 order by e.id`
 
-	rows, err := db.Db().Query(context.Background(), sqlListComment, c.Siret)
+	rows, err := db.Get().Query(context.Background(), sqlListComment, c.Siret)
 	if err != nil {
 		return errorToJSON(500, err)
 	}
@@ -164,7 +164,7 @@ func (c *Comment) update() Jerror {
 	 where username = $2 and id = $3 and message_history[1] != $4
 	 returning id, id_parent, siret, username, date_history, message_history, null`
 
-	err := db.Db().QueryRow(context.Background(), sqlUpdateComment,
+	err := db.Get().QueryRow(context.Background(), sqlUpdateComment,
 		c.Message,
 		c.Username,
 		c.ID,

@@ -264,7 +264,7 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, Jerror) 
 }
 
 func importUsersAndRoles(userMap map[string]keycloakUser, roleMap map[string]*string) Jerror {
-	tx, err := db.Db().Begin(context.Background())
+	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		return errorToJSON(500, err)
 	}
@@ -304,7 +304,7 @@ type user struct {
 
 func getUser(username string) (user, error) {
 	var u user
-	err := db.Db().QueryRow(context.Background(),
+	err := db.Get().QueryRow(context.Background(),
 		`select username, firstName, lastname from users where username = $1`,
 		username).Scan(
 		&u.Username,

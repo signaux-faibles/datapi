@@ -170,7 +170,7 @@ func logMiddleware(c *gin.Context) {
 		token = []string{"", "fakeKeycloak"}
 	}
 
-	_, err = db.Db().Exec(context.Background(), `insert into logs (path, method, body, token) 
+	_, err = db.Get().Exec(context.Background(), `insert into logs (path, method, body, token) 
 	values ($1, $2, $3, $4);`, path, method, string(body), token[1])
 	if err != nil {
 		c.AbortWithStatus(500)

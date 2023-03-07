@@ -563,7 +563,7 @@ func (s scoreFile) toLibelle() string {
 // }
 
 func importHandler(c *gin.Context) {
-	tx, err := db.Db().Begin(context.Background())
+	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -597,7 +597,7 @@ func importHandler(c *gin.Context) {
 	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
 	log.Print("drop dead data")
-	_, err = db.Db().Exec(context.Background(), "vacuum;")
+	_, err = db.Get().Exec(context.Background(), "vacuum;")
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -790,7 +790,7 @@ func listImportHandler(c *gin.Context) {
 		return
 	}
 
-	tx, err := db.Db().Begin(context.Background())
+	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
 	}

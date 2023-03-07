@@ -28,8 +28,8 @@ type migrationScript struct {
 	hash     string
 }
 
-// Db : expose le pool de connexion Datapi
-func Db() *pgxpool.Pool {
+// Get : expose le pool de connexion Datapi
+func Get() *pgxpool.Pool {
 	if db == nil {
 		InitDb()
 	}

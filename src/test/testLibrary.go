@@ -174,7 +174,7 @@ func GetSiret(t *testing.T, v VAF, n int) []string {
 		(f.siren is not null)=$3     -- follow
 	order by e.siret
 	limit $4`
-	rows, err := db.Db().Query(
+	rows, err := db.Get().Query(
 		context.Background(),
 		sql,
 		v.Visible,
@@ -208,7 +208,7 @@ type VAF struct {
 
 // RazEtablissementFollowing fonction qui supprime le suivi de tous les établissements
 func RazEtablissementFollowing(t *testing.T) {
-	_, err := db.Db().Exec(context.Background(), "delete from etablissement_follow;")
+	_, err := db.Get().Exec(context.Background(), "delete from etablissement_follow;")
 	if err != nil {
 		t.Fatalf("Erreur d'accès lors du nettoyage pre-test de la base: %s", err.Error())
 	}
@@ -272,7 +272,7 @@ func ExclureSuivi(t *testing.T) {
 
 // InsertPGE fonction qui suit un Etablissement de l'Entreprise dont le siren est passé en argument
 func InsertPGE(t *testing.T, siren string, hasPGE *bool) {
-	tx, err := db.Db().Begin(context.Background())
+	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		t.Fatalf("something bad is happening with database when begining : %s" + err.Error())
 	}

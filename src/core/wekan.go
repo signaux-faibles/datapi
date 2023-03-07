@@ -526,7 +526,7 @@ func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
 	inner join departements d on d.code = s.code_departement
 	inner join regions r on r.id = d.id_region
 	where s.siret = $1`
-	rows, err := db.Db().Query(context.Background(), sql, siret)
+	rows, err := db.Get().Query(context.Background(), sql, siret)
 	var etsData EtablissementData
 	if err != nil {
 		return etsData, err

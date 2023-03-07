@@ -10,7 +10,7 @@ import (
 )
 
 func getCodesNaf(c *gin.Context) {
-	rows, err := db.Db().Query(context.Background(), "select code, libelle from naf where niveau=1")
+	rows, err := db.Get().Query(context.Background(), "select code, libelle from naf where niveau=1")
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -30,7 +30,7 @@ func getCodesNaf(c *gin.Context) {
 }
 
 func getDepartements(c *gin.Context) {
-	rows, err := db.Db().Query(context.Background(), "select code, libelle from departements")
+	rows, err := db.Get().Query(context.Background(), "select code, libelle from departements")
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -50,7 +50,7 @@ func getDepartements(c *gin.Context) {
 }
 
 func getRegions(c *gin.Context) {
-	rows, err := db.Db().Query(context.Background(), `select r.libelle, array_agg(d.code order by d.code) from regions r
+	rows, err := db.Get().Query(context.Background(), `select r.libelle, array_agg(d.code order by d.code) from regions r
 	inner join departements d on d.id_region = r.id
 	group by r.libelle`)
 

@@ -73,7 +73,7 @@ func insertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync
 }
 
 func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
-	tx, err := db.Db().BeginTx(ctx, pgx.TxOptions{})
+	tx, err := db.Get().BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -206,7 +206,7 @@ func insertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.
 }
 
 func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL) error {
-	tx, err := db.Db().BeginTx(ctx, pgx.TxOptions{})
+	tx, err := db.Get().BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -378,11 +378,11 @@ func null(s string) *string {
 }
 
 func truncateSirens() error {
-	_, err := db.Db().Exec(context.Background(), "truncate table etablissement")
+	_, err := db.Get().Exec(context.Background(), "truncate table etablissement")
 	if err != nil {
 		return err
 	}
-	_, err = db.Db().Exec(context.Background(), "truncate table entreprise")
+	_, err = db.Get().Exec(context.Background(), "truncate table entreprise")
 	return err
 }
 

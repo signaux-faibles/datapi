@@ -155,7 +155,7 @@ func (exports dbExports) newDbExport() (dbExports, []interface{}) {
 func getExportSiret(s session, siret string) (Card, error) {
 	var exports dbExports
 	exports, exportsFields := exports.newDbExport()
-	err := db.Db().QueryRow(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret).Scan(exportsFields...)
+	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret).Scan(exportsFields...)
 	if err != nil {
 		return Card{}, err
 	}
@@ -222,7 +222,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 			sirets = followedSirets
 		}
 		var cursor pgx.Rows
-		cursor, err = db.Db().Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
+		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
 
 		if err != nil {
 			return nil, err
@@ -269,7 +269,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		}
 		var exports dbExports
 		var cursor pgx.Rows
-		cursor, err = db.Db().Query(
+		cursor, err = db.Get().Query(
 			context.Background(),
 			sqlDbExportFollow,
 			s.roles.zoneGeo(),

@@ -116,7 +116,7 @@ func TestFollow(t *testing.T) {
 	}
 
 	t.Log("Vérification de /follow")
-	_, err := db.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	_, err := db.Get().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
 	if err != nil {
 		t.Errorf("erreur sql : %s", err.Error())
 	}
@@ -138,7 +138,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	// tester la recherche par chaine de caractères
-	rows, err := db.Db().Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
+	rows, err := db.Get().Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
 	inner join departements d on d.code = e.departement
 	inner join regions r on r.id = d.id_region
 	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
@@ -171,7 +171,7 @@ func TestSearch(t *testing.T) {
 	// tester par département
 	var departements []string
 	var siret string
-	err = db.Db().QueryRow(
+	err = db.Get().QueryRow(
 		context.Background(),
 		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) 
 			from etablissement 
@@ -195,7 +195,7 @@ func TestSearch(t *testing.T) {
 	i++
 
 	// tester par activité
-	err = db.Db().QueryRow(
+	err = db.Get().QueryRow(
 		context.Background(),
 		`select substring(first(siret) from 1 for 3)
 		 from etablissement e
@@ -525,7 +525,7 @@ func TestPermissions(t *testing.T) {
 	for _, tt := range tests {
 		var r expected
 		t.Log(tt.description)
-		err := db.Db().QueryRow(
+		err := db.Get().QueryRow(
 			context.Background(),
 			"select * from permissions($1, $2, $3, $4, $5)",
 			tt.test.rolesUser,
@@ -740,7 +740,7 @@ func TestFetchNonExistentRefresh(t *testing.T) {
 
 func TestRunRefreshScript(t *testing.T) {
 	ass := assert.New(t)
-	refreshId := refresh.StartRefreshScript(context.Background(), db.Db(), "test/refreshScript.sql")
+	refreshId := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
 	t.Logf("refreshId is running with id : %s", refreshId)
 	time.Sleep(5 * time.Second)
 	result, err := refresh.Fetch(refreshId)
@@ -752,7 +752,7 @@ func TestLastRefreshState(t *testing.T) {
 	ass := assert.New(t)
 	lastRefreshState := refresh.FetchLastRefreshState()
 	if lastRefreshState == refresh.Empty {
-		refresh.StartRefreshScript(context.Background(), db.Db(), "test/refreshScript.sql")
+		refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
 	}
 	time.Sleep(100 * time.Millisecond)
 	lastRefreshState = refresh.FetchLastRefreshState()
@@ -762,9 +762,9 @@ func TestLastRefreshState(t *testing.T) {
 
 func TestFetchRefreshWithState(t *testing.T) {
 	ass := assert.New(t)
-	refresh.StartRefreshScript(context.Background(), db.Db(), "test/script qui n'existe pas")
-	refresh.StartRefreshScript(context.Background(), db.Db(), "test/autre script foireux")
-	refresh.StartRefreshScript(context.Background(), db.Db(), "test/refreshScript.sql")
+	refresh.StartRefreshScript(context.Background(), db.Get(), "test/script qui n'existe pas")
+	refresh.StartRefreshScript(context.Background(), db.Get(), "test/autre script foireux")
+	refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
 	time.Sleep(100 * time.Millisecond)
 
 	failedRefresh := refresh.FetchRefreshWithState(refresh.Failed)
@@ -775,3 +775,15 @@ func TestFetchRefreshWithState(t *testing.T) {
 	t.Logf("Description du refresh en cours : %s", runningRefresh)
 	ass.Len(runningRefresh, 1)
 }
+
+//func TestHandler(t *testing.T) {
+//	refreshId := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+//	rPath := "/refresh/status/" + refreshId.String()
+//	router := gin.Default()
+//	router.GET(rPath, refresh.ListHandler)
+//	req, _ := http.NewRequest("GET", rPath, strings.NewReader(`{"id": "1","name": "joe"}`))
+//	w := httptest.NewRecorder()
+//	router.ServeHTTP(w, req)
+//	t.Logf("status: %d", w.Code)
+//	t.Logf("response: %s", w.Body.String())
+//}
