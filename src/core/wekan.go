@@ -4,6 +4,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/signaux-faibles/datapi/src/db"
+	"go.mongodb.org/mongo-driver/mongo/options"
+	"log"
 	"math/rand"
 	"sort"
 	"time"
@@ -13,6 +16,23 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 )
+
+func connectWekanDB() *mongo.Database {
+	mongoURI := viper.GetString("wekanMgoURL")
+	if mongoURI != "" {
+		client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = client.Connect(context.Background())
+		if err != nil {
+			log.Fatal(err)
+		}
+		mgoDb := client.Database(viper.GetString("wekanMgoDB"))
+		return mgoDb
+	}
+	return nil
+}
 
 // CustomField type pour les champs personnalisés lors de l'édition de carte
 type CustomField struct {
@@ -506,7 +526,7 @@ func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
 	inner join departements d on d.code = s.code_departement
 	inner join regions r on r.id = d.id_region
 	where s.siret = $1`
-	rows, err := Db().Query(context.Background(), sql, siret)
+	rows, err := db.Db().Query(context.Background(), sql, siret)
 	var etsData EtablissementData
 	if err != nil {
 		return etsData, err

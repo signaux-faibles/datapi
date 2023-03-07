@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"fmt"
+	"github.com/signaux-faibles/datapi/src/db"
 	"time"
 )
 
@@ -220,7 +221,7 @@ func getSummaries(params summaryParams) (summaries, error) {
 		return summaries{}, fmt.Errorf("not implemented: orderBy=%s", params.orderBy)
 	}
 
-	rows, err := Db().Query(context.Background(), sql, sqlParams...)
+	rows, err := db.Db().Query(context.Background(), sql, sqlParams...)
 	if err != nil {
 		fmt.Println(err)
 		return summaries{}, err

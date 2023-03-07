@@ -14,7 +14,7 @@ var states = sync.Map{}
 var last = atomic.Value{}
 
 type Refresh struct {
-	Id      uuid.UUID
+	Uuid    uuid.UUID
 	Status  Status
 	Date    time.Time
 	Message string
@@ -31,12 +31,11 @@ const (
 
 var Empty = Refresh{}
 
-func New(id uuid.UUID) *Refresh {
-	r := new(Refresh)
-	r.Id = id
+func new(uuid uuid.UUID) *Refresh {
+	r := Refresh{Uuid: uuid}
 	r.save(Prepare, "🙏")
 	last.Store(r)
-	return r
+	return &r
 }
 
 func Fetch(id uuid.UUID) (Refresh, error) {
@@ -52,7 +51,7 @@ func FetchLastRefreshState() Refresh {
 	if val == nil {
 		return Empty
 	}
-	return *val.(*Refresh)
+	return val.(Refresh)
 }
 
 func FetchRefreshWithState(status Status) []Refresh {
@@ -67,15 +66,15 @@ func FetchRefreshWithState(status Status) []Refresh {
 	return retour
 }
 
-func (r *Refresh) Run(run string) {
+func (r *Refresh) run(run string) {
 	r.save(Running, run)
 }
 
-func (r *Refresh) Fail(error string) {
+func (r *Refresh) fail(error string) {
 	r.save(Failed, error)
 }
 
-func (r *Refresh) Finish() {
+func (r *Refresh) finish() {
 	r.save(Finished, "👍")
 }
 
@@ -84,13 +83,13 @@ func (r *Refresh) save(status Status, message string) {
 	r.Message = message
 	r.Date = time.Now()
 	log.Infof("refresh script : %s", status)
-	states.Store(r.Id, r)
+	states.Store(r.Uuid, r)
 }
 
 func (r Refresh) String() string {
 	return fmt.Sprintf(
 		"Refresh{%s, date: %s, état: '%s', message: '%s'}",
-		r.Id,
+		r.Uuid,
 		r.Date.Format("2006-01-02 15:04:05.999999999"),
 		r.Status,
 		r.Message,
