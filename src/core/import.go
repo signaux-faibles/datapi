@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/datapi/src/refresh"
 	"io"
@@ -882,31 +883,32 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 	)
 }
 
-func ExecRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) error {
+func ExecRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) (*uuid.UUID, error) {
 	//scriptPath := viper.GetString("refreshScript")
 	sql, err := os.ReadFile(scriptPath)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	if len(sql) <= 0 {
-		return errors.New("le script sql est vide")
+		return nil, errors.New("le script sql est vide")
 	}
-	executeRefresh(ctx, db, string(sql))
-	return nil
+	resfreshID := uuid.New()
+	go executeRefresh(ctx, db, string(sql), resfreshID)
+	return &resfreshID, nil
 }
 
-func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string) {
-	refreshingState := refresh.New()
+func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, id uuid.UUID) {
+	refreshingState := refresh.New(id)
 	tx, err := db.Begin(ctx)
 	if err != nil {
 		log.Fatalf("Erreur à l'ouverture de la transaction pour le refresh des vues : %s", err.Error())
 	}
-	refreshingState.Run()
-	for _, current := range strings.SplitAfter(sql, ";\n") {
+	for _, current := range strings.Split(sql, ";\n") {
 		log.Printf("Exécute la requête : '%s'", current)
+		refreshingState.Run(current)
 		_, err = tx.Exec(ctx, current)
 		if err != nil {
-			refreshingState.Fail()
+			refreshingState.Fail(err.Error())
 			err := tx.Rollback(ctx)
 			if err != nil {
 				log.Fatalf("Erreur lors du rollback de transaction. Cause : %s", err.Error())
@@ -916,7 +918,7 @@ func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string) {
 	}
 	err = tx.Commit(ctx)
 	if err != nil {
-		refreshingState.Fail()
+		refreshingState.Fail(err.Error())
 		log.Fatalf("Erreur lors du commit de transaction : %s", err.Error())
 	}
 	refreshingState.Finish()

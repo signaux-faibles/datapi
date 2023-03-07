@@ -10,9 +10,10 @@ import (
 var refreshingState = sync.Map{}
 
 type Refresh struct {
-	Id     uuid.UUID
-	Status Status
-	Date   time.Time
+	Id      uuid.UUID
+	Status  Status
+	Date    time.Time
+	Message string
 }
 
 type Status string
@@ -24,18 +25,20 @@ const (
 	Finished Status = "has finished"
 )
 
-func New() *Refresh {
+func New(id uuid.UUID) *Refresh {
 	r := new(Refresh)
-	r.Id = uuid.New()
+	r.Id = id
 	r.save(Prepare)
 	return r
 }
 
-func (r *Refresh) Run() {
+func (r *Refresh) Run(run string) {
+	r.Message = run
 	r.save(Running)
 }
 
-func (r *Refresh) Fail() {
+func (r *Refresh) Fail(error string) {
+	r.Message = error
 	r.save(Failed)
 }
 

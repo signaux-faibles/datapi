@@ -73,9 +73,9 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
-	if err := pool.Purge(datapiDb); err != nil {
-		log.Fatalf("Could not purge resource: %s", err)
-	}
+	//if err := pool.Purge(datapiDb); err != nil {
+	//	log.Fatalf("Could not purge resource: %s", err)
+	//}
 	os.Exit(code)
 }
 
@@ -170,7 +170,9 @@ func TestSearch(t *testing.T) {
 	var siret string
 	err = core.Db().QueryRow(
 		context.Background(),
-		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) from etablissement where departement < '10' and departement != '00'`,
+		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) 
+			from etablissement 
+			where departement < '10' and departement != '00'`,
 	).Scan(&departements, &siret)
 	if err != nil {
 		t.Errorf("impossible de se connecter à la base: %s", err.Error())
@@ -603,7 +605,7 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 		},
 	}, func(config *docker.HostConfig) {
 		//set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = false
+		config.AutoRemove = true
 		config.RestartPolicy = docker.RestartPolicy{
 			Name: "no",
 		}
@@ -729,8 +731,9 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 func TestRunRefreshScript(t *testing.T) {
 	// add Script path in config
 	//viper.Set("refreshScript", "test/refreshScript.sql")
-	err := core.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+	refreshId, err := core.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
 	if err != nil {
 		t.Errorf("Erreur survenue lors de l'exécution du script de refresh : %s", err.Error())
 	}
+	t.Logf("refreshId is running with id : %s", refreshId)
 }
