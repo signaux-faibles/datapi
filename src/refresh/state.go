@@ -34,7 +34,7 @@ var Empty = Refresh{}
 func New(id uuid.UUID) *Refresh {
 	r := new(Refresh)
 	r.Id = id
-	r.save(Prepare)
+	r.save(Prepare, "🙏")
 	last.Store(r)
 	return r
 }
@@ -42,12 +42,12 @@ func New(id uuid.UUID) *Refresh {
 func Fetch(id uuid.UUID) (Refresh, error) {
 	value, found := states.Load(id)
 	if found {
-		return value.(Refresh), nil
+		return *value.(*Refresh), nil
 	}
 	return Refresh{}, errors.New("No refreshing with ID : " + id.String())
 }
 
-func FetchLast() Refresh {
+func FetchLastRefreshState() Refresh {
 	val := last.Load()
 	if val == nil {
 		return Empty
@@ -68,21 +68,20 @@ func FetchRefreshWithState(status Status) []Refresh {
 }
 
 func (r *Refresh) Run(run string) {
-	r.Message = run
-	r.save(Running)
+	r.save(Running, run)
 }
 
 func (r *Refresh) Fail(error string) {
-	r.Message = error
-	r.save(Failed)
+	r.save(Failed, error)
 }
 
 func (r *Refresh) Finish() {
-	r.save(Finished)
+	r.save(Finished, "👍")
 }
 
-func (r *Refresh) save(status Status) {
+func (r *Refresh) save(status Status, message string) {
 	r.Status = status
+	r.Message = message
 	r.Date = time.Now()
 	log.Infof("refresh script : %s", status)
 	states.Store(r.Id, r)
@@ -92,7 +91,7 @@ func (r Refresh) String() string {
 	return fmt.Sprintf(
 		"Refresh{%s, date: %s, état: '%s', message: '%s'}",
 		r.Id,
-		r.Date.Format("2006-01-02 15:04:05 -070000"),
+		r.Date.Format("2006-01-02 15:04:05.999999999"),
 		r.Status,
 		r.Message,
 	)

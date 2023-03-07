@@ -731,38 +731,38 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 
 func TestRunRefreshScript(t *testing.T) {
 	ass := assert.New(t)
-	refreshId := core.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+	refreshId := refresh.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
 	t.Logf("refreshId is running with id : %s", refreshId)
 	time.Sleep(5 * time.Second)
-	result, err := core.FetchRefreshStatus(refreshId)
+	result, err := refresh.Fetch(refreshId)
 	ass.Nil(err)
-	ass.Nil(result)
+	ass.NotNil(result)
 }
 
 func TestLastRefreshState(t *testing.T) {
 	ass := assert.New(t)
-	lastRefreshState := core.FetchLastRefreshState()
+	lastRefreshState := refresh.FetchLastRefreshState()
 	if lastRefreshState == refresh.Empty {
-		core.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+		refresh.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
 	}
 	time.Sleep(100 * time.Millisecond)
-	lastRefreshState = core.FetchLastRefreshState()
+	lastRefreshState = refresh.FetchLastRefreshState()
 	ass.NotEmpty(lastRefreshState)
 	t.Logf("Description du dernier refresh : %s", lastRefreshState)
 }
 
 func TestFetchRefreshWithState(t *testing.T) {
 	ass := assert.New(t)
-	core.ExecRefreshScript(context.Background(), core.Db(), "test/script qui n'existe pas")
-	core.ExecRefreshScript(context.Background(), core.Db(), "test/autre script foireux")
-	core.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
+	refresh.ExecRefreshScript(context.Background(), core.Db(), "test/script qui n'existe pas")
+	refresh.ExecRefreshScript(context.Background(), core.Db(), "test/autre script foireux")
+	refresh.ExecRefreshScript(context.Background(), core.Db(), "test/refreshScript.sql")
 	time.Sleep(100 * time.Millisecond)
 
-	failedRefresh := core.FetchRefreshWithState(refresh.Failed)
+	failedRefresh := refresh.FetchRefreshWithState(refresh.Failed)
 	t.Logf("Description des refresh erronés : %s", failedRefresh)
 	ass.Len(failedRefresh, 2)
 
-	runningRefresh := core.FetchRefreshWithState(refresh.Running)
+	runningRefresh := refresh.FetchRefreshWithState(refresh.Running)
 	t.Logf("Description du refresh en cours : %s", runningRefresh)
 	ass.Len(runningRefresh, 1)
 }
