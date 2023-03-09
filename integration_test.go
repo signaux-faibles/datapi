@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"github.com/google/uuid"
 	_ "github.com/lib/pq"
@@ -15,8 +16,10 @@ import (
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -59,19 +62,20 @@ func TestMain(m *testing.M) {
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	pool.MaxWait = 120 * time.Second
 	if err = pool.Retry(func() error {
-		db, err := sql.Open("postgres", datapiDBUrl)
+		pg, err := sql.Open("postgres", datapiDBUrl)
 		if err != nil {
 			return err
 		}
-		return db.Ping()
+		return pg.Ping()
 	}); err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
 	// run datapi
 	core.StartDatapi()
-	go core.RunAPI()
-	time.Sleep(1 * time.Second) // time to expose API
 
+	go core.StartAPI()
+	// time to API be ready
+	time.Sleep(1 * time.Second)
 	//Run tests
 	code := m.Run()
 
@@ -85,8 +89,8 @@ func TestMain(m *testing.M) {
 func TestListes(t *testing.T) {
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
 
-	_, indented, _ := test.Get(t, "/listes")
-	test.ProcessGoldenFile(t, "test/data/listes.json.gz", indented)
+	_, body, _ := test.HttpGetAndFormatBody(t, "/listes")
+	test.ProcessGoldenFile(t, "test/data/listes.json.gz", body)
 }
 
 func TestFollow(t *testing.T) {
@@ -101,7 +105,7 @@ func TestFollow(t *testing.T) {
 
 	for _, siret := range sirets {
 		t.Logf("suivi de l'établissement %s", siret)
-		resp, _, _ := test.Post(t, "/follow/"+siret, params)
+		resp := test.HttpPost(t, "/follow/"+siret, params)
 		if resp.StatusCode != 201 {
 			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 		}
@@ -109,7 +113,7 @@ func TestFollow(t *testing.T) {
 
 	for _, siret := range sirets {
 		t.Logf("suivi doublon de l'établissement %s", siret)
-		resp, _, _ := test.Post(t, "/follow/"+siret, params)
+		resp := test.HttpPost(t, "/follow/"+siret, params)
 		if resp.StatusCode != 204 {
 			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
 		}
@@ -120,7 +124,7 @@ func TestFollow(t *testing.T) {
 	if err != nil {
 		t.Errorf("erreur sql : %s", err.Error())
 	}
-	_, indented, _ := test.Get(t, "/follow")
+	_, indented, _ := test.HttpGetAndFormatBody(t, "/follow")
 	test.ProcessGoldenFile(t, "test/data/follow.json.gz", indented)
 }
 
@@ -132,7 +136,7 @@ func TestSearch(t *testing.T) {
 	params := map[string]interface{}{
 		"search": "t",
 	}
-	resp, _, _ := test.Post(t, "/etablissement/search", params)
+	resp := test.HttpPost(t, "/etablissement/search", params)
 	if resp.StatusCode != 400 {
 		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
 	}
@@ -162,7 +166,7 @@ func TestSearch(t *testing.T) {
 		params["ignoreZone"] = false
 		params["ignoreRoles"] = false
 		t.Logf("la recherche %s est bien de la forme attendue", siret)
-		_, indented, _ := test.Post(t, "/etablissement/search", params)
+		_, indented, _ := test.HttpPostAndFormatBody(t, "/etablissement/search", params)
 		goldenFilePath := fmt.Sprintf("test/data/search-%d.json.gz", i)
 		test.ProcessGoldenFile(t, goldenFilePath, indented)
 		i++
@@ -189,7 +193,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	t.Log("la recherche filtrée par départements est bien de la forme attendue")
-	_, indented, _ := test.Post(t, "/etablissement/search", params)
+	_, indented, _ := test.HttpPostAndFormatBody(t, "/etablissement/search", params)
 	goldenFilePath := "test/data/searchDepartement.json.gz"
 	test.ProcessGoldenFile(t, goldenFilePath, indented)
 	i++
@@ -215,7 +219,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	t.Log("la recherche filtrée par activites est bien de la forme attendue")
-	_, indented, _ = test.Post(t, "/etablissement/search", params)
+	_, indented, _ = test.HttpPostAndFormatBody(t, "/etablissement/search", params)
 	goldenFilePath = "test/data/searchActivites.json.gz"
 	test.ProcessGoldenFile(t, goldenFilePath, indented)
 }
@@ -256,7 +260,7 @@ func TestPGE(t *testing.T) {
 			test.FollowEntreprise(t, siren)
 		}
 
-		resp, data, _ := test.Get(t, "/entreprise/get/"+siren)
+		resp, data, _ := test.HttpGetAndFormatBody(t, "/entreprise/get/"+siren)
 		assertions.Equal(200, resp.StatusCode)
 		actual := test.JsonToEntreprise(t, data)
 		assertions.Equal(pgeTest.ExpectedPGE, actual.PGEActif)
@@ -270,19 +274,19 @@ func TestScores(t *testing.T) {
 	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
-	_, indented, _ := test.Post(t, "/scores/liste", nil)
+	_, indented, _ := test.HttpPostAndFormatBody(t, "/scores/liste", nil)
 	test.ProcessGoldenFile(t, "test/data/scores.json.gz", indented)
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true")
 	params := map[string]interface{}{
 		"ignoreZone": true,
 	}
-	_, indented, _ = test.Post(t, "/scores/liste", params)
+	_, indented, _ = test.HttpPostAndFormatBody(t, "/scores/liste", params)
 	test.ProcessGoldenFile(t, "test/data/scores-ignoreZone.json.gz", indented)
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true et siegeUniquement=true")
 	params["siegeUniquement"] = true
-	_, indented, _ = test.Post(t, "/scores/liste", params)
+	_, indented, _ = test.HttpPostAndFormatBody(t, "/scores/liste", params)
 	test.ProcessGoldenFile(t, "test/data/scores-siegeUniquement.json.gz", indented)
 
 	t.Log("/scores/liste traite correctement les établissements suivis")
@@ -657,7 +661,7 @@ func testEtablissementVAF(t *testing.T, siret string, vaf string) {
 
 	goldenFilePath := fmt.Sprintf("test/data/getEtablissement-%s-%s.json.gz", vaf, siret)
 	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
-	_, indented, _ := test.Get(t, "/etablissement/get/"+siret)
+	_, indented, _ := test.HttpGetAndFormatBody(t, "/etablissement/get/"+siret)
 	test.ProcessGoldenFile(t, goldenFilePath, indented)
 
 	var e test.EtablissementVAF
@@ -706,7 +710,7 @@ func testSearchVAF(t *testing.T, siret string, vaf string) {
 		"ignoreZone":  true,
 		"ignoreRoles": true,
 	}
-	_, indented, _ := test.Post(t, "/etablissement/search", params)
+	_, indented, _ := test.HttpPostAndFormatBody(t, "/etablissement/search", params)
 	diff, _ := test.ProcessGoldenFile(t, goldenFilePath, indented)
 	if diff != "" {
 		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
@@ -776,14 +780,70 @@ func TestFetchRefreshWithState(t *testing.T) {
 	ass.Len(runningRefresh, 1)
 }
 
-//func TestHandler(t *testing.T) {
-//	refreshId := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
-//	rPath := "/refresh/status/" + refreshId.String()
-//	router := gin.Default()
-//	router.GET(rPath, refresh.ListHandler)
-//	req, _ := http.NewRequest("GET", rPath, strings.NewReader(`{"id": "1","name": "joe"}`))
-//	w := httptest.NewRecorder()
-//	router.ServeHTTP(w, req)
-//	t.Logf("status: %d", w.Code)
-//	t.Logf("response: %s", w.Body.String())
-//}
+func TestStartHandler(t *testing.T) {
+	ass := assert.New(t)
+	path := "/refresh/start"
+	response, body, _ := test.HttpGetAndFormatBody(t, path)
+
+	t.Logf("response: %s", body)
+	ass.Equal(http.StatusOK, response.StatusCode)
+}
+
+func TestStatusHandler(t *testing.T) {
+	ass := assert.New(t)
+	refreshId := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	path := "/refresh/status/" + refreshId.String()
+	response := test.HttpGet(t, path)
+
+	t.Logf("response: %s", response.Body)
+	ass.Equal(200, response.StatusCode)
+	retour := &refresh.Refresh{}
+	body := json.NewDecoder(response.Body)
+	body.Decode(retour)
+	ass.Equal(refreshId, retour.Uuid)
+}
+
+func TestListHandler(t *testing.T) {
+	ass := assert.New(t)
+	expectidUuid := refresh.StartRefreshScript(context.Background(), db.Get(), "erreur !!! pas de script !!!")
+	expectedStatus := refresh.Failed
+	rPath := "/refresh/list/" + string(expectedStatus)
+
+	response := test.HttpGet(t, rPath)
+
+	ass.Equal(http.StatusOK, response.StatusCode)
+	actual, err := decodeRefreshArray(response)
+	ass.Nil(err)
+	ass.GreaterOrEqual(len(actual), 1)
+	ass.Conditionf(func() bool {
+		// tous les refresh doivent avoir le status `failed`
+		for _, current := range actual {
+			if current.Status != expectedStatus {
+				return false
+			}
+
+		}
+		return true
+	}, "Un des refresh n'a pas le status `failed`")
+	ass.Conditionf(func() bool {
+		for _, current := range actual {
+			if current.Uuid == expectidUuid {
+				return true
+			}
+		}
+		return false
+	}, "Le refresh avec l'uuid %s n'existe pas", expectidUuid)
+}
+
+func decodeRefreshArray(response *http.Response) ([]refresh.Refresh, error) {
+	var actual []refresh.Refresh
+	all, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, errors.New("erreur pendant la lecture de la réponse")
+	}
+	err = json.Unmarshal(all, &actual)
+	if err != nil {
+		return nil, errors.New("erreur pendant l'unmarshalling de la réponse")
+	}
+	return actual, nil
+}

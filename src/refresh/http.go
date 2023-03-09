@@ -2,7 +2,6 @@ package refresh
 
 import (
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/signaux-faibles/datapi/src/db"
@@ -13,13 +12,14 @@ import (
 func StartHandler(c *gin.Context) {
 	refreshScriptPath := viper.GetString("refreshScript")
 	id := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
-	c.JSON(http.StatusOK, fmt.Sprintf("Le refresh a l'UUID %s", id))
+	c.JSON(http.StatusOK, gin.H{"refreshUuid": id.String()})
 }
 
 func StatusHandler(c *gin.Context) {
-	param := c.Params.ByName("uuid")
+	param := c.Param("uuid")
 	if len(param) <= 0 {
 		c.JSON(http.StatusBadRequest, "il manque le paramètre 'uuid'")
+		return
 	}
 	id, err := uuid.Parse(param)
 	if err != nil {
@@ -40,10 +40,10 @@ func LastHandler(c *gin.Context) {
 }
 
 func ListHandler(c *gin.Context) {
-	param := c.Params.ByName("status")
-	//param := c.Query("status")
+	param := c.Param("status")
 	if len(param) <= 0 {
-		c.JSON(http.StatusBadRequest, "il manque le paramètre 'status'")
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "il manque le paramètre 'status'"})
+		return
 	}
 	last := FetchRefreshWithState(Status(param))
 	c.JSON(http.StatusOK, last)

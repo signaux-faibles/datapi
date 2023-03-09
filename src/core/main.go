@@ -12,6 +12,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/spf13/viper"
@@ -45,8 +46,8 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 	}
 }
 
-// RunAPI expose l'api
-func RunAPI() {
+// StartAPI expose l'api
+func StartAPI() {
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -153,13 +154,20 @@ func getAdminAuthMiddleware() gin.HandlerFunc {
 }
 
 func logMiddleware(c *gin.Context) {
+	if c.Request.Body == nil {
+		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "request has nil body"})
+		return
+	}
 	path := c.Request.URL.Path
 	method := c.Request.Method
-	body, _ := io.ReadAll(c.Request.Body)
+	body, err := io.ReadAll(c.Request.Body)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
+	}
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
 	var token []string
-	var err error
 	if viper.GetBool("enableKeycloak") {
 		token, err = getRawToken(c)
 		if err != nil {
@@ -170,8 +178,14 @@ func logMiddleware(c *gin.Context) {
 		token = []string{"", "fakeKeycloak"}
 	}
 
-	_, err = db.Get().Exec(context.Background(), `insert into logs (path, method, body, token) 
-	values ($1, $2, $3, $4);`, path, method, string(body), token[1])
+	_, err = db.Get().Exec(
+		context.Background(),
+		`insert into logs (path, method, body, token) values ($1, $2, $3, $4);`,
+		path,
+		method,
+		string(body),
+		token[1],
+	)
 	if err != nil {
 		c.AbortWithStatus(500)
 		return

@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"time"
 
@@ -792,7 +793,8 @@ func listImportHandler(c *gin.Context) {
 
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
-		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
+		c.AbortWithStatusJSON(http.StatusBadRequest, "begin TX: "+err.Error())
+		return
 	}
 
 	_, err = tx.Exec(context.Background(), `create table tmp_score (
@@ -841,6 +843,7 @@ func listImportHandler(c *gin.Context) {
 	err = tx.Commit(context.Background())
 	if err != nil {
 		c.AbortWithStatusJSON(500, "commit: "+err.Error())
+		return
 	}
 }
 

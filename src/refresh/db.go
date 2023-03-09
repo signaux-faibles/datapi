@@ -10,7 +10,7 @@ import (
 )
 
 func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) uuid.UUID {
-	current := new(uuid.New())
+	current := Create(uuid.New())
 	sql, err := os.ReadFile(scriptPath)
 	if err != nil {
 		current.fail(err.Error())
@@ -30,7 +30,7 @@ func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, refresh *
 		log.Fatalf("Erreur à l'ouverture de la transaction pour le refresh des vues : %s", err.Error())
 	}
 	for _, current := range strings.Split(sql, ";\n") {
-		log.Printf("Refresh - %s - Exécute la requête : '%s'", refresh, current)
+		log.Printf("Refresh - %s - Exécute la requête : '%s'", refresh.Uuid, current)
 		refresh.run(current)
 		_, err = tx.Exec(ctx, current)
 		if err != nil {

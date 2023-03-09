@@ -14,24 +14,24 @@ var states = sync.Map{}
 var last = atomic.Value{}
 
 type Refresh struct {
-	Uuid    uuid.UUID
-	Status  Status
-	Date    time.Time
-	Message string
+	Uuid    uuid.UUID `json:"Uuid,omitempty"`
+	Status  Status    `json:"Status,omitempty"`
+	Date    time.Time `json:"Date,omitempty"`
+	Message string    `json:"Message,omitempty"`
 }
 
 type Status string
 
 const (
 	Prepare  Status = "prepare"
-	Running  Status = "is running"
-	Failed   Status = "has failed"
-	Finished Status = "has finished"
+	Running  Status = "running"
+	Failed   Status = "failed"
+	Finished Status = "finished"
 )
 
 var Empty = Refresh{}
 
-func new(uuid uuid.UUID) *Refresh {
+func Create(uuid uuid.UUID) *Refresh {
 	r := Refresh{Uuid: uuid}
 	r.save(Prepare, "🙏")
 	last.Store(r)

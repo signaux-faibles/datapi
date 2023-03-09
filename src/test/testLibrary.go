@@ -10,7 +10,6 @@ import (
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
@@ -40,7 +39,7 @@ func loadGoldenFile(file string) ([]byte, error) {
 	if err != nil {
 		return nil, err
 	}
-	return ioutil.ReadAll(gzipReader)
+	return io.ReadAll(gzipReader)
 }
 
 func saveGoldenFile(fileName string, goldenData []byte) error {
@@ -60,7 +59,7 @@ func saveGoldenFile(fileName string, goldenData []byte) error {
 }
 
 func indent(reader io.Reader) ([]byte, error) {
-	body, err := ioutil.ReadAll(reader)
+	body, err := io.ReadAll(reader)
 	if err != nil {
 		return nil, err
 	}
@@ -91,32 +90,44 @@ func ProcessGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 	return diff, err
 }
 
-// Post fonction helper pour faire du POST http
-func Post(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
+// HttpPost fonction helper pour faire du POST http
+func HttpPost(t *testing.T, path string, params map[string]interface{}) *http.Response {
 	jsonValue, _ := json.Marshal(params)
 	resp, err := http.Post(hostname()+path, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
 		t.Errorf("api non joignable: %s", err)
-		return nil, nil, err
+		t.Fail()
 	}
+	return resp
+}
+
+// HttpPostAndFormatBody fonction helper pour faire du POST http
+func HttpPostAndFormatBody(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
+	resp := HttpPost(t, path, params)
 	indented, err := indent(resp.Body)
 	return resp, indented, err
 }
 
-// Get fonction helper pour faire du GET http
-func Get(t *testing.T, path string) (*http.Response, []byte, error) {
+// HttpGet fonction helper pour faire du GET http
+func HttpGet(t *testing.T, path string) *http.Response {
 	resp, err := http.Get(hostname() + path)
 	if err != nil {
 		t.Errorf("api non joignable: %s", err)
-		return nil, nil, err
+		t.Fail()
 	}
+	return resp
+}
+
+// HttpGetAndFormatBody fonction helper pour faire du GET http
+func HttpGetAndFormatBody(t *testing.T, path string) (*http.Response, []byte, error) {
+	resp := HttpGet(t, path)
 	indented, err := indent(resp.Body)
 	return resp, indented, err
 }
 
 // FollowEntreprise fonction qui suit un établissement de l'entreprise dont le siren est passé en argument
 func FollowEntreprise(t *testing.T, siren string) {
-	_, data, err := Get(t, "/entreprise/get/"+siren)
+	_, data, err := HttpGetAndFormatBody(t, "/entreprise/get/"+siren)
 	if err != nil {
 		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
 	}
@@ -132,8 +143,8 @@ func FollowEtablissement(t *testing.T, siret string) {
 		"comment":  "test",
 		"category": "test",
 	}
-	resp, _, _ := Post(t, "/follow/"+siret, params)
-	if resp.StatusCode != 201 {
+	resp := HttpPost(t, "/follow/"+siret, params)
+	if resp.StatusCode != http.StatusCreated {
 		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 	}
 	t.Logf("nouvel établissement suivi -> '%s'", siret)
@@ -239,7 +250,7 @@ func ExclureSuivi(t *testing.T) {
 	var params = make(map[string]interface{})
 	params["exclureSuivi"] = true
 	params["ignoreZone"] = true
-	_, indented, _ := Post(t, "/scores/liste", params)
+	_, indented, _ := HttpPostAndFormatBody(t, "/scores/liste", params)
 	var liste Liste
 	if err := json.Unmarshal(indented, &liste); err != nil {
 		t.Fatalf("ne peut pas unmarshaller la liste de scores : %s", err)
@@ -250,7 +261,7 @@ func ExclureSuivi(t *testing.T) {
 
 	siret := liste.Scores[0].Siret
 	t.Logf("suivi de l'établissement %s", siret)
-	resp, _, _ := Post(t, "/follow/"+siret, map[string]interface{}{
+	resp := HttpPost(t, "/follow/"+siret, map[string]interface{}{
 		"comment":  "test",
 		"category": "test",
 	})
@@ -259,7 +270,7 @@ func ExclureSuivi(t *testing.T) {
 		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 	}
 
-	_, indented, _ = Post(t, "/scores/liste", params)
+	_, indented, _ = HttpPostAndFormatBody(t, "/scores/liste", params)
 	if err := json.Unmarshal(indented, &liste); err != nil {
 		t.Fatalf("ne peut pas unmarshaller la liste de résultats : %s", err)
 	}

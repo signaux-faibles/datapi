@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"net/http"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -32,11 +33,14 @@ func followEtablissement(c *gin.Context) {
 	}
 	paramErr := c.ShouldBind(&param)
 	if paramErr != nil {
-		c.AbortWithError(500, paramErr)
+		c.AbortWithError(http.StatusInternalServerError, paramErr)
 		return
 	}
 	if param.Category == "" {
-		c.JSON(400, "mandatory non-empty `category` property")
+		c.AbortWithStatusJSON(
+			http.StatusBadRequest,
+			gin.H{"message": "la propriété `category` est obligatoire"},
+		)
 		return
 	}
 
@@ -49,22 +53,25 @@ func followEtablissement(c *gin.Context) {
 
 	err := follow.load()
 	if err != nil && err.Error() != "no rows in result set" {
-		c.AbortWithError(500, err)
+		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
 	if follow.Active {
-		c.JSON(204, follow)
-	} else {
-		err := follow.activate()
-		if err != nil && err.Error() != "no rows in result set" {
-			c.AbortWithError(500, err)
-			return
-		} else if err != nil && err.Error() == "no rows in result set" {
-			c.JSON(403, "unknown establishment")
+		c.JSON(http.StatusNoContent, follow)
+		return
+	}
+
+	err = follow.activate()
+	if err != nil {
+		if err.Error() == "no rows in result set" {
+			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"message": "établissement inconnu"})
 			return
 		}
-		c.JSON(201, follow)
+		c.AbortWithError(http.StatusInternalServerError, err)
+		return
 	}
+	c.JSON(http.StatusCreated, follow)
+	return
 }
 
 func unfollowEtablissement(c *gin.Context) {
@@ -118,7 +125,18 @@ func (f *Follow) load() error {
         siret = $2 and
         active`
 
-	return db.Get().QueryRow(context.Background(), sqlFollow, f.Username, f.Siret).Scan(&f.Active, &f.Since, &f.Comment, &f.Category)
+	row := db.Get().QueryRow(
+		context.Background(),
+		sqlFollow,
+		f.Username,
+		f.Siret,
+	)
+	return row.Scan(
+		&f.Active,
+		&f.Since,
+		&f.Comment,
+		&f.Category,
+	)
 }
 
 func (f *Follow) activate() error {

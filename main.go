@@ -7,5 +7,5 @@ import (
 func main() {
 	core.LoadConfig(".", "config", "./migrations")
 	core.StartDatapi()
-	core.RunAPI()
+	core.StartAPI()
 }

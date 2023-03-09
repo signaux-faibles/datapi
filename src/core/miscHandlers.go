@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"github.com/signaux-faibles/datapi/src/db"
+	"net/http"
 	"regexp"
 	"time"
 
@@ -86,7 +87,7 @@ func validSiret(c *gin.Context) {
 	siren := c.Param("siret")
 	match, err := regexp.MatchString("^[0-9]{14}$", siren)
 	if err != nil || !match {
-		c.AbortWithStatusJSON(400, "SIRET valide obligatoire")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "SIRET valide obligatoire")
 	}
 	c.Next()
 }
