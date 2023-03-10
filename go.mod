@@ -3,6 +3,7 @@ module github.com/signaux-faibles/datapi
 go 1.18
 
 require (
+	bou.ke/monkey v1.0.2
 	github.com/Nerzal/gocloak/v10 v10.0.1
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08
 	github.com/gin-contrib/cors v1.3.1
