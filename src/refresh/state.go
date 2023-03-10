@@ -43,7 +43,7 @@ func Fetch(id uuid.UUID) (Refresh, error) {
 	if found {
 		return *value.(*Refresh), nil
 	}
-	return Refresh{}, errors.New("No refreshing with ID : " + id.String())
+	return Refresh{}, errors.New("No refresh started with ID : " + id.String())
 }
 
 func FetchLastRefreshState() Refresh {
