@@ -1,9 +1,5 @@
-// Copyright 2023 The Signaux Faibles team
-// license that can be found in the LICENSE file.
-//
-// ce package contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
-// c'est à dire l'exécution du script sql configuré
-
+// Package refresh : contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
+// c'est-à-dire l'exécution du script sql configuré
 package refresh
 
 import (

@@ -1,8 +1,4 @@
-// Copyright 2023 The Signaux Faibles team
-// license that can be found in the LICENSE file.
-//
-// ce package contient tout le code de base de `Datapi`
-
+// Package core : contient tout le code de base de `Datapi`
 package core
 
 import (

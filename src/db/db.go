@@ -1,8 +1,4 @@
-// Copyright 2023 The Signaux Faibles team
-// license that can be found in the LICENSE file.
-//
-// Ce package contient les méthodes qui concernent la base de données.
-
+// Package db : contient les méthodes qui concernent la base de données.
 package db
 
 import (
