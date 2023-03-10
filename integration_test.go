@@ -620,7 +620,7 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 		log.Fatal("Could not start datapi_db", err)
 	}
 	// container stops after 20'
-	if err = datapiDb.Expire(1200); err != nil {
+	if err = datapiDb.Expire(600); err != nil {
 		killContainer(datapiDb)
 		log.Fatal("Could not set expiration on container datapi_db", err)
 	}

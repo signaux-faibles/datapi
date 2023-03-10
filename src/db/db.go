@@ -10,10 +10,11 @@ import (
 	"sort"
 	"sync"
 
-	pgx "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/spf13/viper"
-
+	// 🤷‍je ne sais pas pourquoi c'est là mais c'est nécessaire
+	// sinon le driver `postgres` n'est pas chargé
 	_ "github.com/lib/pq"
 )
 
