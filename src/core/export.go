@@ -7,6 +7,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/signaux-faibles/datapi/src/db"
 	"os/exec"
 	"strings"
 	"time"
@@ -154,7 +155,7 @@ func (exports dbExports) newDbExport() (dbExports, []interface{}) {
 func getExportSiret(s session, siret string) (Card, error) {
 	var exports dbExports
 	exports, exportsFields := exports.newDbExport()
-	err := Db().QueryRow(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret).Scan(exportsFields...)
+	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret).Scan(exportsFields...)
 	if err != nil {
 		return Card{}, err
 	}
@@ -221,7 +222,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 			sirets = followedSirets
 		}
 		var cursor pgx.Rows
-		cursor, err = Db().Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
+		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
 
 		if err != nil {
 			return nil, err
@@ -268,7 +269,13 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		}
 		var exports dbExports
 		var cursor pgx.Rows
-		cursor, err = Db().Query(context.Background(), sqlDbExportFollow, s.roles.zoneGeo(), s.username, params.Zone)
+		cursor, err = db.Get().Query(
+			context.Background(),
+			sqlDbExportFollow,
+			s.roles.zoneGeo(),
+			s.username,
+			params.Zone,
+		)
 
 		if err != nil {
 			return nil, err

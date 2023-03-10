@@ -36,6 +36,8 @@ sourceEntreprise = "/foo/bar/dbmongo-data-export-entreprises.json.gz"
 sourceEtablissement = "/foo/bar/dbmongo-data-export-etablissements.json.gz"
 algoIgnore = ["algo_sans_urssaf"]
 batchIgnore = ["1910_8", "1906_7", "1901_interim"]
+refreshScript = "/foo/bar/so_fresh_so_clean.sql"
+
 
 # Fiche Commune Entreprise
 apiFceURL = "apiFceURL"

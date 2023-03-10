@@ -5,16 +5,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/signaux-faibles/datapi/src/db"
 	"io"
-	"io/ioutil"
 	"log"
 	"math"
+	"net/http"
 	"os"
 	"time"
 
 	"github.com/gin-gonic/gin"
 	"github.com/globalsign/mgo/bson"
-	pgx "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
 )
 
@@ -563,7 +564,7 @@ func (s scoreFile) toLibelle() string {
 // }
 
 func importHandler(c *gin.Context) {
-	tx, err := Db().Begin(context.Background())
+	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -597,7 +598,7 @@ func importHandler(c *gin.Context) {
 	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
 	log.Print("drop dead data")
-	_, err = Db().Exec(context.Background(), "vacuum;")
+	_, err = db.Get().Exec(context.Background(), "vacuum;")
 	if err != nil {
 		c.AbortWithError(500, err)
 		return
@@ -612,7 +613,7 @@ func processEntreprise(fileName string, tx *pgx.Tx) error {
 		return err
 	}
 	defer file.Close()
-	batches, wg := newBatchRunner(tx)
+	batches, wg := db.NewBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	if err != nil {
 		return err
@@ -658,7 +659,7 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 	if err != nil {
 		return err
 	}
-	batches, wg := newBatchRunner(tx)
+	batches, wg := db.NewBatchRunner(tx)
 	unzip, err := gzip.NewReader(file)
 	if err != nil {
 		return err
@@ -738,7 +739,7 @@ func prepareImport(tx *pgx.Tx) error {
 	}
 
 	for _, table := range tables {
-		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("truncate table %s;", table))
+		_, err := (*tx).Exec(context.Background(), "truncate table $1;", table)
 		if err != nil {
 			return err
 		}
@@ -777,7 +778,7 @@ func listImportHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(500, "open file: "+err.Error())
 		return
 	}
-	raw, err := ioutil.ReadAll(file)
+	raw, err := io.ReadAll(file)
 	file.Close()
 	if err != nil {
 		c.AbortWithStatusJSON(500, "read file: "+err.Error())
@@ -790,9 +791,10 @@ func listImportHandler(c *gin.Context) {
 		return
 	}
 
-	tx, err := Db().Begin(context.Background())
+	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
-		c.AbortWithStatusJSON(500, "begin TX: "+err.Error())
+		c.AbortWithStatusJSON(http.StatusBadRequest, "begin TX: "+err.Error())
+		return
 	}
 
 	_, err = tx.Exec(context.Background(), `create table tmp_score (
@@ -841,6 +843,7 @@ func listImportHandler(c *gin.Context) {
 	err = tx.Commit(context.Background())
 	if err != nil {
 		c.AbortWithStatusJSON(500, "commit: "+err.Error())
+		return
 	}
 }
 

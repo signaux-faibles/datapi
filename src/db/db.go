@@ -1,41 +1,45 @@
-package core
+// Package db : contient les méthodes qui concernent la base de données.
+package db
 
 import (
 	"context"
 	"crypto/sha1"
 	"fmt"
-	"io/ioutil"
 	"log"
+	"os"
 	"sort"
 	"sync"
 
-	pgx "github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4"
 	"github.com/jackc/pgx/v4/pgxpool"
-	"go.mongodb.org/mongo-driver/mongo"
-	"go.mongodb.org/mongo-driver/mongo/options"
-
 	"github.com/spf13/viper"
-
+	// 🤷‍je ne sais pas pourquoi c'est là mais c'est nécessaire
+	// sinon le driver `postgres` n'est pas chargé
 	_ "github.com/lib/pq"
 )
 
 var db *pgxpool.Pool
+var ref reference
 
+type reference struct {
+	zones map[string][]string
+}
 type migrationScript struct {
 	fileName string
 	content  []byte
 	hash     string
 }
 
-// Db : expose le pool de connexion Datapi
-func Db() *pgxpool.Pool {
+// Get : expose le pool de connexion Datapi
+func Get() *pgxpool.Pool {
 	if db == nil {
-		connectDB()
+		Init()
 	}
 	return db
 }
 
-func connectDB() {
+// Init : se connecte à la base de données et exécute les scripts de migrations nécessaires
+func Init() {
 	pgConnStr := viper.GetString("postgres")
 	pool, err := pgxpool.Connect(context.Background(), pgConnStr)
 	if err != nil {
@@ -101,14 +105,14 @@ func compareMigrations(db []migrationScript, dir []migrationScript) []migrationS
 }
 
 func listDirMigrations() []migrationScript {
-	files, err := ioutil.ReadDir(viper.GetString("migrationsDir"))
+	files, err := os.ReadDir(viper.GetString("migrationsDir"))
 	if err != nil {
 		panic("migrations not found: " + err.Error())
 	}
 	var dirMigrations []migrationScript
 	hasher := sha1.New()
 	for _, f := range files {
-		content, err := ioutil.ReadFile("./migrations/" + f.Name())
+		content, err := os.ReadFile("./migrations/" + f.Name())
 		if err != nil {
 			panic("error reading migration files: " + err.Error())
 		}
@@ -163,7 +167,8 @@ func runBatch(tx *pgx.Tx, batch *pgx.Batch) {
 	}
 }
 
-func newBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
+// NewBatchRunner : crée un channel d'exécution de Batch
+func NewBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
 	var batches = make(chan pgx.Batch)
 	var wg sync.WaitGroup
 	wg.Add(1)
@@ -178,8 +183,9 @@ func newBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
 	return batches, &wg
 }
 
-type reference struct {
-	zones map[string][]string
+// GetDepartementForRole : retourne une liste de départements liés à un `role`
+func GetDepartementForRole(role string) []string {
+	return ref.zones[role]
 }
 
 func loadReferences(db *pgxpool.Pool) reference {
@@ -214,21 +220,4 @@ func loadReferences(db *pgxpool.Pool) reference {
 	}
 
 	return result
-}
-
-func connectWekanDB() *mongo.Database {
-	mongoURI := viper.GetString("wekanMgoURL")
-	if mongoURI != "" {
-		client, err := mongo.NewClient(options.Client().ApplyURI(mongoURI))
-		if err != nil {
-			log.Fatal(err)
-		}
-		err = client.Connect(context.Background())
-		if err != nil {
-			log.Fatal(err)
-		}
-		mgoDb := client.Database(viper.GetString("wekanMgoDB"))
-		return mgoDb
-	}
-	return nil
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"github.com/signaux-faibles/datapi/src/db"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -245,7 +246,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 
 func findAllListes() ([]Liste, error) {
 	var listes []Liste
-	rows, err := Db().Query(context.Background(), `
+	rows, err := db.Get().Query(context.Background(), `
 		select algo, batch, libelle, description from liste l
 		left join liste_description d on d.libelle_liste = l.libelle
 		where version=0 order by batch desc, algo asc
@@ -272,7 +273,7 @@ func findAllListes() ([]Liste, error) {
 
 func (liste *Liste) load() Jerror {
 	sqlListe := `select batch, algo from liste where libelle=$1 and version=0`
-	row := Db().QueryRow(context.Background(), sqlListe, liste.ID)
+	row := db.Get().QueryRow(context.Background(), sqlListe, liste.ID)
 	batch, algo := "", ""
 	err := row.Scan(&batch, &algo)
 	if err != nil {

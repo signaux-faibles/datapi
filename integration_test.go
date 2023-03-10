@@ -1,22 +1,24 @@
-//go:build integration
-// +build integration
-
 package main
 
 import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
-	_ "github.com/lib/pq"
+	"github.com/google/uuid"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
 	"github.com/signaux-faibles/datapi/src/core"
+	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/refresh"
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
+	"io"
 	"log"
 	"math/rand"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -24,13 +26,12 @@ import (
 	"time"
 )
 
-// TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétrer
+// TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
 // - le fichier de configuration de test -> test/config.toml
 // - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
-	rand.Seed(time.Now().UnixNano())
 	testConfig := map[string]string{}
 
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
@@ -59,34 +60,35 @@ func TestMain(m *testing.M) {
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	pool.MaxWait = 120 * time.Second
 	if err = pool.Retry(func() error {
-		db, err := sql.Open("postgres", datapiDBUrl)
+		pg, err := sql.Open("postgres", datapiDBUrl)
 		if err != nil {
 			return err
 		}
-		return db.Ping()
+		return pg.Ping()
 	}); err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
 	// run datapi
 	core.StartDatapi()
-	go core.RunAPI()
-	time.Sleep(1 * time.Second) // time to expose API
 
+	go core.StartAPI()
+	// time to API be ready
+	time.Sleep(1 * time.Second)
 	//Run tests
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
-	if err := pool.Purge(datapiDb); err != nil {
-		log.Fatalf("Could not purge resource: %s", err)
-	}
+	//if err := pool.Purge(datapiDb); err != nil {
+	//	log.Fatalf("Could not purge resource: %s", err)
+	//}
 	os.Exit(code)
 }
 
 func TestListes(t *testing.T) {
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
 
-	_, indented, _ := test.Get(t, "/listes")
-	test.ProcessGoldenFile(t, "test/data/listes.json.gz", indented)
+	_, body, _ := test.HTTPGetAndFormatBody(t, "/listes")
+	test.ProcessGoldenFile(t, "test/data/listes.json.gz", body)
 }
 
 func TestFollow(t *testing.T) {
@@ -101,7 +103,7 @@ func TestFollow(t *testing.T) {
 
 	for _, siret := range sirets {
 		t.Logf("suivi de l'établissement %s", siret)
-		resp, _, _ := test.Post(t, "/follow/"+siret, params)
+		resp := test.HTTPPost(t, "/follow/"+siret, params)
 		if resp.StatusCode != 201 {
 			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 		}
@@ -109,18 +111,18 @@ func TestFollow(t *testing.T) {
 
 	for _, siret := range sirets {
 		t.Logf("suivi doublon de l'établissement %s", siret)
-		resp, _, _ := test.Post(t, "/follow/"+siret, params)
+		resp := test.HTTPPost(t, "/follow/"+siret, params)
 		if resp.StatusCode != 204 {
 			t.Errorf("le doublon n'a pas été détecté correctement: %d", resp.StatusCode)
 		}
 	}
 
 	t.Log("Vérification de /follow")
-	_, err := core.Db().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
+	_, err := db.Get().Exec(context.Background(), "update etablissement_follow set since='2020-03-01'")
 	if err != nil {
 		t.Errorf("erreur sql : %s", err.Error())
 	}
-	_, indented, _ := test.Get(t, "/follow")
+	_, indented, _ := test.HTTPGetAndFormatBody(t, "/follow")
 	test.ProcessGoldenFile(t, "test/data/follow.json.gz", indented)
 }
 
@@ -132,13 +134,13 @@ func TestSearch(t *testing.T) {
 	params := map[string]interface{}{
 		"search": "t",
 	}
-	resp, _, _ := test.Post(t, "/etablissement/search", params)
+	resp := test.HTTPPost(t, "/etablissement/search", params)
 	if resp.StatusCode != 400 {
 		t.Errorf("mauvais status retourné: %d", resp.StatusCode)
 	}
 
 	// tester la recherche par chaine de caractères
-	rows, err := core.Db().Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
+	rows, err := db.Get().Query(context.Background(), `select distinct substring(e.siret from 1 for 3) from etablissement e
 	inner join departements d on d.code = e.departement
 	inner join regions r on r.id = d.id_region
 	where r.libelle in ('Bourgogne-Franche-Comté', 'Auvergne-Rhône-Alpes')
@@ -162,7 +164,7 @@ func TestSearch(t *testing.T) {
 		params["ignoreZone"] = false
 		params["ignoreRoles"] = false
 		t.Logf("la recherche %s est bien de la forme attendue", siret)
-		_, indented, _ := test.Post(t, "/etablissement/search", params)
+		_, indented, _ := test.HTTPPostAndFormatBody(t, "/etablissement/search", params)
 		goldenFilePath := fmt.Sprintf("test/data/search-%d.json.gz", i)
 		test.ProcessGoldenFile(t, goldenFilePath, indented)
 		i++
@@ -171,9 +173,11 @@ func TestSearch(t *testing.T) {
 	// tester par département
 	var departements []string
 	var siret string
-	err = core.Db().QueryRow(
+	err = db.Get().QueryRow(
 		context.Background(),
-		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) from etablissement where departement < '10' and departement != '00'`,
+		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) 
+			from etablissement 
+			where departement < '10' and departement != '00'`,
 	).Scan(&departements, &siret)
 	if err != nil {
 		t.Errorf("impossible de se connecter à la base: %s", err.Error())
@@ -187,13 +191,13 @@ func TestSearch(t *testing.T) {
 	}
 
 	t.Log("la recherche filtrée par départements est bien de la forme attendue")
-	_, indented, _ := test.Post(t, "/etablissement/search", params)
+	_, indented, _ := test.HTTPPostAndFormatBody(t, "/etablissement/search", params)
 	goldenFilePath := "test/data/searchDepartement.json.gz"
 	test.ProcessGoldenFile(t, goldenFilePath, indented)
 	i++
 
 	// tester par activité
-	err = core.Db().QueryRow(
+	err = db.Get().QueryRow(
 		context.Background(),
 		`select substring(first(siret) from 1 for 3)
 		 from etablissement e
@@ -213,7 +217,7 @@ func TestSearch(t *testing.T) {
 	}
 
 	t.Log("la recherche filtrée par activites est bien de la forme attendue")
-	_, indented, _ = test.Post(t, "/etablissement/search", params)
+	_, indented, _ = test.HTTPPostAndFormatBody(t, "/etablissement/search", params)
 	goldenFilePath = "test/data/searchActivites.json.gz"
 	test.ProcessGoldenFile(t, goldenFilePath, indented)
 }
@@ -254,7 +258,7 @@ func TestPGE(t *testing.T) {
 			test.FollowEntreprise(t, siren)
 		}
 
-		resp, data, _ := test.Get(t, "/entreprise/get/"+siren)
+		resp, data, _ := test.HTTPGetAndFormatBody(t, "/entreprise/get/"+siren)
 		assertions.Equal(200, resp.StatusCode)
 		actual := test.JsonToEntreprise(t, data)
 		assertions.Equal(pgeTest.ExpectedPGE, actual.PGEActif)
@@ -268,19 +272,19 @@ func TestScores(t *testing.T) {
 	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
-	_, indented, _ := test.Post(t, "/scores/liste", nil)
+	_, indented, _ := test.HTTPPostAndFormatBody(t, "/scores/liste", nil)
 	test.ProcessGoldenFile(t, "test/data/scores.json.gz", indented)
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true")
 	params := map[string]interface{}{
 		"ignoreZone": true,
 	}
-	_, indented, _ = test.Post(t, "/scores/liste", params)
+	_, indented, _ = test.HTTPPostAndFormatBody(t, "/scores/liste", params)
 	test.ProcessGoldenFile(t, "test/data/scores-ignoreZone.json.gz", indented)
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true et siegeUniquement=true")
 	params["siegeUniquement"] = true
-	_, indented, _ = test.Post(t, "/scores/liste", params)
+	_, indented, _ = test.HTTPPostAndFormatBody(t, "/scores/liste", params)
 	test.ProcessGoldenFile(t, "test/data/scores-siegeUniquement.json.gz", indented)
 
 	t.Log("/scores/liste traite correctement les établissements suivis")
@@ -523,7 +527,7 @@ func TestPermissions(t *testing.T) {
 	for _, tt := range tests {
 		var r expected
 		t.Log(tt.description)
-		err := core.Db().QueryRow(
+		err := db.Get().QueryRow(
 			context.Background(),
 			"select * from permissions($1, $2, $3, $4, $5)",
 			tt.test.rolesUser,
@@ -594,8 +598,7 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 	datapiDb, err := pool.RunWithOptions(&dockertest.RunOptions{
 		Name:       datapiContainerName,
 		Repository: "postgres",
-		Tag:        "10-alpine",
-		//Tag:    "14-alpine",
+		Tag:        "15-alpine",
 		Env: []string{
 			"POSTGRES_PASSWORD=test",
 			"POSTGRES_USER=postgres",
@@ -616,8 +619,8 @@ func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
 		killContainer(datapiDb)
 		log.Fatal("Could not start datapi_db", err)
 	}
-	// container stops after 60 seconds
-	if err = datapiDb.Expire(120); err != nil {
+	// container stops after 20'
+	if err = datapiDb.Expire(600); err != nil {
 		killContainer(datapiDb)
 		log.Fatal("Could not set expiration on container datapi_db", err)
 	}
@@ -656,7 +659,7 @@ func testEtablissementVAF(t *testing.T, siret string, vaf string) {
 
 	goldenFilePath := fmt.Sprintf("test/data/getEtablissement-%s-%s.json.gz", vaf, siret)
 	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
-	_, indented, _ := test.Get(t, "/etablissement/get/"+siret)
+	_, indented, _ := test.HTTPGetAndFormatBody(t, "/etablissement/get/"+siret)
 	test.ProcessGoldenFile(t, goldenFilePath, indented)
 
 	var e test.EtablissementVAF
@@ -705,7 +708,7 @@ func testSearchVAF(t *testing.T, siret string, vaf string) {
 		"ignoreZone":  true,
 		"ignoreRoles": true,
 	}
-	_, indented, _ := test.Post(t, "/etablissement/search", params)
+	_, indented, _ := test.HTTPPostAndFormatBody(t, "/etablissement/search", params)
 	diff, _ := test.ProcessGoldenFile(t, goldenFilePath, indented)
 	if diff != "" {
 		t.Errorf("differences entre le résultat et le golden file: %s \n%s", goldenFilePath, diff)
@@ -728,4 +731,117 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 		}
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
 	}
+}
+
+func TestFetchNonExistentRefresh(t *testing.T) {
+	ass := assert.New(t)
+	result, err := refresh.Fetch(uuid.New())
+	ass.Equal(refresh.Empty, result)
+	ass.NotNil(err)
+}
+
+func TestRunRefreshScript(t *testing.T) {
+	ass := assert.New(t)
+	refreshID := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	t.Logf("refreshID is running with id : %s", refreshID)
+	time.Sleep(5 * time.Second)
+	result, err := refresh.Fetch(refreshID)
+	ass.Nil(err)
+	ass.NotNil(result)
+}
+
+func TestLastRefreshState(t *testing.T) {
+	ass := assert.New(t)
+	lastRefreshState := refresh.FetchLast()
+	if lastRefreshState == refresh.Empty {
+		refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	}
+	time.Sleep(100 * time.Millisecond)
+	lastRefreshState = refresh.FetchLast()
+	ass.NotEmpty(lastRefreshState)
+	t.Logf("Description du dernier refresh : %s", lastRefreshState)
+}
+
+func TestFetchRefreshWithState(t *testing.T) {
+	ass := assert.New(t)
+	refresh.StartRefreshScript(context.Background(), db.Get(), "test/script qui n'existe pas")
+	refresh.StartRefreshScript(context.Background(), db.Get(), "test/autre script foireux")
+	refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	time.Sleep(100 * time.Millisecond)
+
+	failedRefresh := refresh.FetchRefreshsWithState(refresh.Failed)
+	t.Logf("Description des refresh erronés : %s", failedRefresh)
+	ass.Len(failedRefresh, 2)
+
+	runningRefresh := refresh.FetchRefreshsWithState(refresh.Running)
+	t.Logf("Description du refresh en cours : %s", runningRefresh)
+	ass.Len(runningRefresh, 1)
+}
+
+func TestStartHandler(t *testing.T) {
+	ass := assert.New(t)
+	path := "/refresh/start"
+	response, body, _ := test.HTTPGetAndFormatBody(t, path)
+
+	t.Logf("response: %s", body)
+	ass.Equal(http.StatusOK, response.StatusCode)
+}
+
+func TestStatusHandler(t *testing.T) {
+	ass := assert.New(t)
+	refreshID := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	path := "/refresh/status/" + refreshID.String()
+	response := test.HTTPGet(t, path)
+
+	t.Logf("response: %s", response.Body)
+	ass.Equal(200, response.StatusCode)
+	retour := &refresh.Refresh{}
+	body := json.NewDecoder(response.Body)
+	body.Decode(retour)
+	ass.Equal(refreshID, retour.UUID)
+}
+
+func TestListHandler(t *testing.T) {
+	ass := assert.New(t)
+	expectedUUID := refresh.StartRefreshScript(context.Background(), db.Get(), "erreur !!! pas de script !!!")
+	expectedStatus := refresh.Failed
+	rPath := "/refresh/list/" + string(expectedStatus)
+
+	response := test.HTTPGet(t, rPath)
+
+	ass.Equal(http.StatusOK, response.StatusCode)
+	actual, err := decodeRefreshArray(response)
+	ass.Nil(err)
+	ass.GreaterOrEqual(len(actual), 1)
+	ass.Conditionf(func() bool {
+		// tous les refresh doivent avoir le status `failed`
+		for _, current := range actual {
+			if current.Status != expectedStatus {
+				return false
+			}
+
+		}
+		return true
+	}, "Un des refresh n'a pas le status `failed`")
+	ass.Conditionf(func() bool {
+		for _, current := range actual {
+			if current.UUID == expectedUUID {
+				return true
+			}
+		}
+		return false
+	}, "Le refresh avec l'uuid %s n'existe pas", expectedUUID)
+}
+
+func decodeRefreshArray(response *http.Response) ([]refresh.Refresh, error) {
+	var actual []refresh.Refresh
+	all, err := io.ReadAll(response.Body)
+	if err != nil {
+		return nil, errors.New("erreur pendant la lecture de la réponse")
+	}
+	err = json.Unmarshal(all, &actual)
+	if err != nil {
+		return nil, errors.New("erreur pendant l'unmarshalling de la réponse")
+	}
+	return actual, nil
 }

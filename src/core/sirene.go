@@ -1,15 +1,17 @@
+// Package core : contient tout le code de base de `Datapi`
 package core
 
 import (
 	"context"
 	"fmt"
+	"github.com/google/btree"
+	"github.com/signaux-faibles/datapi/src/db"
 	"log"
 	"os"
 	"strings"
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/btree"
 	"github.com/jackc/pgx/v4"
 	"github.com/signaux-faibles/goSirene"
 	"github.com/spf13/viper"
@@ -72,7 +74,7 @@ func insertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync
 }
 
 func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
-	tx, err := Db().BeginTx(ctx, pgx.TxOptions{})
+	tx, err := db.Get().BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -205,7 +207,7 @@ func insertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.
 }
 
 func sqlSireneUL(ctx context.Context, data []goSirene.SireneUL) error {
-	tx, err := Db().BeginTx(ctx, pgx.TxOptions{})
+	tx, err := db.Get().BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -377,20 +379,24 @@ func null(s string) *string {
 }
 
 func truncateSirens() error {
-	_, err := Db().Exec(context.Background(), "truncate table etablissement")
+	_, err := db.Get().Exec(context.Background(), "truncate table etablissement")
 	if err != nil {
 		return err
 	}
-	_, err = Db().Exec(context.Background(), "truncate table entreprise")
+	_, err = db.Get().Exec(context.Background(), "truncate table entreprise")
 	return err
 }
 
+// Siret : représente l'indifiant `Siret` d'un établissement
 type Siret string
 
+// Less : ordonne un `Siret` et un `btree.Item`
+// TODO : est-ce encore utilisé ?
 func (s Siret) Less(than btree.Item) bool {
 	return string(s) > fmt.Sprint(than)
 }
 
+// Siren : interpole la valeur Siren depuis le Siret d'un établissement
 func (s Siret) Siren() Siret {
 	return s[0:9]
 }
