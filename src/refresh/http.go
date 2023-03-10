@@ -1,3 +1,9 @@
+// Copyright 2023 The Signaux Faibles team
+// license that can be found in the LICENSE file.
+//
+// ce package contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
+// c'est à dire l'exécution du script sql configuré
+
 package refresh
 
 import (
@@ -9,12 +15,14 @@ import (
 	"net/http"
 )
 
+// StartHandler : point d'entrée de l'API qui démarre un nouveau `Refresh` et retourne son `UUID`
 func StartHandler(c *gin.Context) {
 	refreshScriptPath := viper.GetString("refreshScript")
 	id := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
 	c.JSON(http.StatusOK, gin.H{"refreshUuid": id.String()})
 }
 
+// StatusHandler : point d'entrée de l'API qui retourne les infos d'un `Refresh` depuis son `UUID`
 func StatusHandler(c *gin.Context) {
 	param := c.Param("uuid")
 	if len(param) <= 0 {
@@ -34,17 +42,19 @@ func StatusHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, state)
 }
 
+// LastHandler : point d'entrée de l'API qui retourne le dernier `Refresh` démarré
 func LastHandler(c *gin.Context) {
-	last := FetchLastRefreshState()
+	last := FetchLast()
 	c.JSON(http.StatusOK, last)
 }
 
+// ListHandler : point d'entrée de l'API qui retourne les `Refresh` selon le `status` passé en paramètre
 func ListHandler(c *gin.Context) {
 	param := c.Param("status")
 	if len(param) <= 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "il manque le paramètre 'status'"})
 		return
 	}
-	last := FetchRefreshWithState(Status(param))
+	last := FetchRefreshsWithState(Status(param))
 	c.JSON(http.StatusOK, last)
 }

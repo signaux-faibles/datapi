@@ -90,8 +90,8 @@ func ProcessGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 	return diff, err
 }
 
-// HttpPost fonction helper pour faire du POST http
-func HttpPost(t *testing.T, path string, params map[string]interface{}) *http.Response {
+// HTTPPost fonction helper pour faire du POST HTTP
+func HTTPPost(t *testing.T, path string, params map[string]interface{}) *http.Response {
 	jsonValue, _ := json.Marshal(params)
 	resp, err := http.Post(hostname()+path, "application/json", bytes.NewBuffer(jsonValue))
 	if err != nil {
@@ -101,15 +101,15 @@ func HttpPost(t *testing.T, path string, params map[string]interface{}) *http.Re
 	return resp
 }
 
-// HttpPostAndFormatBody fonction helper pour faire du POST http
-func HttpPostAndFormatBody(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
-	resp := HttpPost(t, path, params)
+// HTTPPostAndFormatBody fonction helper pour faire du POST HTTP
+func HTTPPostAndFormatBody(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
+	resp := HTTPPost(t, path, params)
 	indented, err := indent(resp.Body)
 	return resp, indented, err
 }
 
-// HttpGet fonction helper pour faire du GET http
-func HttpGet(t *testing.T, path string) *http.Response {
+// HTTPGet fonction helper pour faire du GET HTTP
+func HTTPGet(t *testing.T, path string) *http.Response {
 	resp, err := http.Get(hostname() + path)
 	if err != nil {
 		t.Errorf("api non joignable: %s", err)
@@ -118,16 +118,16 @@ func HttpGet(t *testing.T, path string) *http.Response {
 	return resp
 }
 
-// HttpGetAndFormatBody fonction helper pour faire du GET http
-func HttpGetAndFormatBody(t *testing.T, path string) (*http.Response, []byte, error) {
-	resp := HttpGet(t, path)
+// HTTPGetAndFormatBody fonction helper pour faire du GET HTTP
+func HTTPGetAndFormatBody(t *testing.T, path string) (*http.Response, []byte, error) {
+	resp := HTTPGet(t, path)
 	indented, err := indent(resp.Body)
 	return resp, indented, err
 }
 
 // FollowEntreprise fonction qui suit un établissement de l'entreprise dont le siren est passé en argument
 func FollowEntreprise(t *testing.T, siren string) {
-	_, data, err := HttpGetAndFormatBody(t, "/entreprise/get/"+siren)
+	_, data, err := HTTPGetAndFormatBody(t, "/entreprise/get/"+siren)
 	if err != nil {
 		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
 	}
@@ -143,7 +143,7 @@ func FollowEtablissement(t *testing.T, siret string) {
 		"comment":  "test",
 		"category": "test",
 	}
-	resp := HttpPost(t, "/follow/"+siret, params)
+	resp := HTTPPost(t, "/follow/"+siret, params)
 	if resp.StatusCode != http.StatusCreated {
 		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 	}
@@ -250,7 +250,7 @@ func ExclureSuivi(t *testing.T) {
 	var params = make(map[string]interface{})
 	params["exclureSuivi"] = true
 	params["ignoreZone"] = true
-	_, indented, _ := HttpPostAndFormatBody(t, "/scores/liste", params)
+	_, indented, _ := HTTPPostAndFormatBody(t, "/scores/liste", params)
 	var liste Liste
 	if err := json.Unmarshal(indented, &liste); err != nil {
 		t.Fatalf("ne peut pas unmarshaller la liste de scores : %s", err)
@@ -261,7 +261,7 @@ func ExclureSuivi(t *testing.T) {
 
 	siret := liste.Scores[0].Siret
 	t.Logf("suivi de l'établissement %s", siret)
-	resp := HttpPost(t, "/follow/"+siret, map[string]interface{}{
+	resp := HTTPPost(t, "/follow/"+siret, map[string]interface{}{
 		"comment":  "test",
 		"category": "test",
 	})
@@ -270,7 +270,7 @@ func ExclureSuivi(t *testing.T) {
 		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 	}
 
-	_, indented, _ = HttpPostAndFormatBody(t, "/scores/liste", params)
+	_, indented, _ = HTTPPostAndFormatBody(t, "/scores/liste", params)
 	if err := json.Unmarshal(indented, &liste); err != nil {
 		t.Fatalf("ne peut pas unmarshaller la liste de résultats : %s", err)
 	}
@@ -335,7 +335,7 @@ type EtablissementVAF struct {
 	Delai     []interface{} `json:"delai"`
 }
 
-// SearchVAF structure correspondant à la réponse JSON de l'appel à un POST http sur `/etablissement/search`
+// SearchVAF structure correspondant à la réponse JSON de l'appel à un POST HTTP sur `/etablissement/search`
 type SearchVAF struct {
 	Results []EtablissementVAF `json:"results"`
 }

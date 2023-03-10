@@ -26,10 +26,8 @@ var wekanConfig WekanConfig
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() {
-	db.InitDb() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
+	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	mgoDB = connectWekanDB()
-	//wekanConfig := WekanConfig{}
-	//wekanConfig = loadWekanConfig()
 	go watchWekanConfig(&wekanConfig, time.Second)
 	keycloak = connectKC()
 }

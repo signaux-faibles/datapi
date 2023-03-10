@@ -1,3 +1,8 @@
+// Copyright 2023 The Signaux Faibles team
+// license that can be found in the LICENSE file.
+//
+// Ce package contient les méthodes qui concernent la base de données.
+
 package db
 
 import (
@@ -31,12 +36,13 @@ type migrationScript struct {
 // Get : expose le pool de connexion Datapi
 func Get() *pgxpool.Pool {
 	if db == nil {
-		InitDb()
+		Init()
 	}
 	return db
 }
 
-func InitDb() {
+// Init : se connecte à la base de données et exécute les scripts de migrations nécessaires
+func Init() {
 	pgConnStr := viper.GetString("postgres")
 	pool, err := pgxpool.Connect(context.Background(), pgConnStr)
 	if err != nil {
@@ -164,6 +170,7 @@ func runBatch(tx *pgx.Tx, batch *pgx.Batch) {
 	}
 }
 
+// NewBatchRunner : crée un channel d'exécution de Batch
 func NewBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
 	var batches = make(chan pgx.Batch)
 	var wg sync.WaitGroup
@@ -179,6 +186,7 @@ func NewBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
 	return batches, &wg
 }
 
+// GetDepartementForRole : retourne une liste de départements liés à un `role`
 func GetDepartementForRole(role string) []string {
 	return ref.zones[role]
 }

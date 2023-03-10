@@ -1,8 +1,14 @@
+// Copyright 2023 The Signaux Faibles team
+// license that can be found in the LICENSE file.
+//
+// ce package contient tout le code de base de `Datapi`
+
 package core
 
 import (
 	"context"
 	"fmt"
+	"github.com/google/btree"
 	"github.com/signaux-faibles/datapi/src/db"
 	"log"
 	"os"
@@ -10,7 +16,6 @@ import (
 	"sync"
 
 	"github.com/gin-gonic/gin"
-	"github.com/google/btree"
 	"github.com/jackc/pgx/v4"
 	"github.com/signaux-faibles/goSirene"
 	"github.com/spf13/viper"
@@ -386,12 +391,16 @@ func truncateSirens() error {
 	return err
 }
 
+// Siret : représente l'indifiant `Siret` d'un établissement
 type Siret string
 
+// Less : ordonne un `Siret` et un `btree.Item`
+// TODO : est-ce encore utilisé ?
 func (s Siret) Less(than btree.Item) bool {
 	return string(s) > fmt.Sprint(than)
 }
 
+// Siren : interpole la valeur Siren depuis le Siret d'un établissement
 func (s Siret) Siren() Siret {
 	return s[0:9]
 }

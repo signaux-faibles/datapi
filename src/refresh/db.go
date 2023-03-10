@@ -1,3 +1,9 @@
+// Copyright 2023 The Signaux Faibles team
+// license that can be found in the LICENSE file.
+//
+// ce package contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
+// c'est à dire l'exécution du script sql configuré
+
 package refresh
 
 import (
@@ -9,19 +15,20 @@ import (
 	"strings"
 )
 
+// StartRefreshScript : crée un évènement de refresh, le démarre dans une routine et retourne son UUID
 func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) uuid.UUID {
-	current := Create(uuid.New())
+	current := New(uuid.New())
 	sql, err := os.ReadFile(scriptPath)
 	if err != nil {
 		current.fail(err.Error())
-		return current.Uuid
+		return current.UUID
 	}
 	if len(sql) <= 0 {
 		current.fail("le script sql est vide")
-		return current.Uuid
+		return current.UUID
 	}
 	go executeRefresh(ctx, db, string(sql), current)
-	return current.Uuid
+	return current.UUID
 }
 
 func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, refresh *Refresh) {
@@ -30,7 +37,7 @@ func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, refresh *
 		log.Fatalf("Erreur à l'ouverture de la transaction pour le refresh des vues : %s", err.Error())
 	}
 	for _, current := range strings.Split(sql, ";\n") {
-		log.Printf("Refresh - %s - Exécute la requête : '%s'", refresh.Uuid, current)
+		log.Printf("Refresh - %s - Exécute la requête : '%s'", refresh.UUID, current)
 		refresh.run(current)
 		_, err = tx.Exec(ctx, current)
 		if err != nil {
