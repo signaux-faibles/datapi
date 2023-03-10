@@ -3,10 +3,10 @@
 # datAPI - API des applications web signaux-faibles
 
 ## Installation/Prise en main
-- Cloner le repository: `git clone git@github.com:signaux-faibles/datapi.git`  
+- Cloner le repository: `git clone git@github.com:signaux-faibles/datapi.git`    
 - Compiler: `go build`  
-- Préparer une base de données vierge
-- Copier `config.toml.example` en `config.toml` et configurer les valeurs qu'il contient
+- Préparer une base de données vierge  
+- Copier `config.toml.example` en `config.toml` et configurer les valeurs qu'il contient  
 - Exécuter le binaire  
 
 ## Conteneur
