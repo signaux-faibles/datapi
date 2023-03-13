@@ -302,6 +302,7 @@ type sirene struct {
 }
 
 func (e entreprise) intoBatch(batch *pgx.Batch) {
+	// TODO a supprimer
 	sqlEntrepriseBDF := `insert into entreprise_bdf
 	(siren, arrete_bilan_bdf, annee_bdf, delai_fournisseur, financier_court_terme,
 	 poids_frng, dette_fiscale, frais_financier, taux_marge)
@@ -321,7 +322,7 @@ func (e entreprise) intoBatch(batch *pgx.Batch) {
 			b.TauxMarge,
 		)
 	}
-
+	// TODO a remplacer par l'import du fichier de Yan
 	sqlEntrepriseDiane := `insert into entreprise_diane
 		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
 		autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
