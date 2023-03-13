@@ -60,12 +60,12 @@ func InitAPI() *gin.Engine {
 	router.Use(cors.New(config))
 	router.SetTrustedProxies(nil)
 
-	entreprise := router.Group("/entreprise", GetKeycloakMiddleware(), LogMiddleware)
+	entreprise := router.Group("/entreprise", AuthMiddleware(), LogMiddleware)
 	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
 	entreprise.GET("/get/:siren", validSiren, getEntreprise)
 	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
 
-	etablissement := router.Group("/etablissement", GetKeycloakMiddleware(), LogMiddleware)
+	etablissement := router.Group("/etablissement", AuthMiddleware(), LogMiddleware)
 	etablissement.GET("/viewers/:siret", validSiret, getEtablissementViewers)
 	etablissement.GET("/get/:siret", validSiret, getEtablissement)
 	etablissement.GET("/comments/:siret", validSiret, getEntrepriseComments)
@@ -73,36 +73,36 @@ func InitAPI() *gin.Engine {
 	etablissement.PUT("/comments/:id", updateEntrepriseComment)
 	etablissement.POST("/search", searchEtablissementHandler)
 
-	follow := router.Group("/follow", GetKeycloakMiddleware(), LogMiddleware)
+	follow := router.Group("/follow", AuthMiddleware(), LogMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
 	follow.POST("", getCardsForCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
 
-	export := router.Group("/export/", GetKeycloakMiddleware(), LogMiddleware)
+	export := router.Group("/export/", AuthMiddleware(), LogMiddleware)
 	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", validSiret, getDOCXFromSiret)
 
-	listes := router.Group("/listes", GetKeycloakMiddleware(), LogMiddleware)
+	listes := router.Group("/listes", AuthMiddleware(), LogMiddleware)
 	listes.GET("", getListes)
 
-	scores := router.Group("/scores", GetKeycloakMiddleware(), LogMiddleware)
+	scores := router.Group("/scores", AuthMiddleware(), LogMiddleware)
 	scores.POST("/liste", getLastListeScores)
 	scores.POST("/liste/:id", getListeScores)
 	scores.POST("/xls/:id", getXLSListeScores)
 
-	reference := router.Group("/reference", GetKeycloakMiddleware(), LogMiddleware)
+	reference := router.Group("/reference", AuthMiddleware(), LogMiddleware)
 	reference.GET("/naf", getCodesNaf)
 	reference.GET("/departements", getDepartements)
 	reference.GET("/regions", getRegions)
 
-	fce := router.Group("/fce", GetKeycloakMiddleware(), LogMiddleware)
+	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
 	fce.GET("/:siret", validSiret, getFceURL)
 
-	utils := router.Group("/utils", getAdminAuthMiddleware())
+	utils := router.Group("/utils", adminAuthMiddleware())
 	utils.GET("/import", importHandler) // 1
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
@@ -110,7 +110,7 @@ func InitAPI() *gin.Engine {
 	utils.GET("/sireneImport", sireneImportHandler)   // 2
 	utils.GET("/listImport/:algo", listImportHandler) // 3
 
-	wekan := router.Group("/wekan", GetKeycloakMiddleware(), LogMiddleware)
+	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
 	wekan.GET("/cards/:siret", validSiret, wekanGetCardsHandler)
 	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
@@ -119,7 +119,8 @@ func InitAPI() *gin.Engine {
 	return router
 }
 
-func ConfigureApi(router *gin.Engine, endpoints ...Endpoint) {
+// ConfigureAPI permet de rajouter un endpoint au niveau de l'API
+func ConfigureAPI(router *gin.Engine, endpoints ...Endpoint) {
 	for _, current := range endpoints {
 		current(router)
 	}
@@ -134,14 +135,15 @@ func StartAPI(router *gin.Engine) {
 	}
 }
 
-func GetKeycloakMiddleware() gin.HandlerFunc {
+// AuthMiddleware définit le middleware qui gère l'authentification
+func AuthMiddleware() gin.HandlerFunc {
 	if viper.GetBool("enableKeycloak") {
 		return keycloakMiddleware
 	}
 	return fakeCloakMiddleware
 }
 
-func getAdminAuthMiddleware() gin.HandlerFunc {
+func adminAuthMiddleware() gin.HandlerFunc {
 	var whitelist = viper.GetStringSlice("adminWhitelist")
 	var wlmap = make(map[string]bool)
 	for _, ip := range whitelist {
@@ -157,6 +159,7 @@ func getAdminAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
+// LogMiddleware définit le middleware qui gère les logs
 func LogMiddleware(c *gin.Context) {
 	if c.Request.Body == nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "request has nil body"})
