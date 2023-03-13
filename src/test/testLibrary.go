@@ -6,15 +6,19 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"io"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 )
+
+var apiHostAndPort = atomic.Value{}
 
 var update = flag.Bool("overwriteGoldenFiles", false, "true pour écraser les golden files pas les réponses générées par les tests d'intégration")
 
@@ -161,7 +165,14 @@ func JsonToEntreprise(t *testing.T, data []byte) core.Entreprise {
 }
 
 func hostname() string {
-	return os.Getenv("DATAPI_URL")
+	val := apiHostAndPort.Load()
+	return fmt.Sprint(val)
+	//return os.Getenv("DATAPI_URL")
+}
+
+// SetHostAndPort pour renseigner l'url où sera déployée l'API
+func SetHostAndPort(hostAndPort string) {
+	apiHostAndPort.Store(hostAndPort)
 }
 
 // GetSiret fonction qui récupère des Sirets à partir de critères VAF (Visible / Authorized / Followed)
