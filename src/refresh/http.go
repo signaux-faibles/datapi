@@ -6,20 +6,30 @@ import (
 	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/spf13/viper"
 	"net/http"
 )
 
-// StartHandler : point d'entrée de l'API qui démarre un nouveau `Refresh` et retourne son `UUID`
-func StartHandler(c *gin.Context) {
+func ConfigureEndpoint(api *gin.Engine) {
+
+	refreshRoute := api.Group("/refresh", core.GetKeycloakMiddleware(), core.LogMiddleware)
+	refreshRoute.GET("/start", startHandler)
+	refreshRoute.GET("/status/:uuid", statusHandler)
+	refreshRoute.GET("/last", lastHandler)
+	refreshRoute.GET("/list/:status", listHandler)
+}
+
+// startHandler : point d'entrée de l'API qui démarre un nouveau `Refresh` et retourne son `UUID`
+func startHandler(c *gin.Context) {
 	refreshScriptPath := viper.GetString("refreshScript")
 	id := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
 	c.JSON(http.StatusOK, gin.H{"refreshUuid": id.String()})
 }
 
-// StatusHandler : point d'entrée de l'API qui retourne les infos d'un `Refresh` depuis son `UUID`
-func StatusHandler(c *gin.Context) {
+// statusHandler : point d'entrée de l'API qui retourne les infos d'un `Refresh` depuis son `UUID`
+func statusHandler(c *gin.Context) {
 	param := c.Param("uuid")
 	if len(param) <= 0 {
 		c.JSON(http.StatusBadRequest, "il manque le paramètre 'uuid'")
@@ -27,25 +37,25 @@ func StatusHandler(c *gin.Context) {
 	}
 	id, err := uuid.Parse(param)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithError(http.StatusInternalServerError, err) // nolint: errcheck
 		return
 	}
 	state, err := Fetch(id)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		c.AbortWithError(http.StatusInternalServerError, err) // nolint: errcheck
 		return
 	}
 	c.JSON(http.StatusOK, state)
 }
 
-// LastHandler : point d'entrée de l'API qui retourne le dernier `Refresh` démarré
-func LastHandler(c *gin.Context) {
+// lastHandler : point d'entrée de l'API qui retourne le dernier `Refresh` démarré
+func lastHandler(c *gin.Context) {
 	last := FetchLast()
 	c.JSON(http.StatusOK, last)
 }
 
-// ListHandler : point d'entrée de l'API qui retourne les `Refresh` selon le `status` passé en paramètre
-func ListHandler(c *gin.Context) {
+// listHandler : point d'entrée de l'API qui retourne les `Refresh` selon le `status` passé en paramètre
+func listHandler(c *gin.Context) {
 	param := c.Param("status")
 	if len(param) <= 0 {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"message": "il manque le paramètre 'status'"})

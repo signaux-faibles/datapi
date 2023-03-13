@@ -73,8 +73,9 @@ func TestMain(m *testing.M) {
 	}
 	// run datapi
 	core.StartDatapi()
-
-	go core.StartAPI()
+	api := core.ConfigureAPI()
+	refresh.ConfigureEndpoint(api)
+	go core.StartAPI(api)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	//Run tests
