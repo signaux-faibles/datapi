@@ -13,7 +13,6 @@ import (
 )
 
 func ConfigureEndpoint(api *gin.Engine) {
-
 	refreshRoute := api.Group("/refresh", core.GetKeycloakMiddleware(), core.LogMiddleware)
 	refreshRoute.GET("/start", startHandler)
 	refreshRoute.GET("/status/:uuid", statusHandler)

@@ -23,6 +23,9 @@ var keycloak gocloak.GoCloak
 var mgoDB *mongo.Database
 var wekanConfig WekanConfig
 
+// Endpoint handler pour définir un endpoint sur gin
+type Endpoint func(*gin.Engine)
+
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() {
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
@@ -43,8 +46,8 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 	}
 }
 
-// ConfigureAPI configure l'api
-func ConfigureAPI() *gin.Engine {
+// InitAPI initialise l'api
+func InitAPI() *gin.Engine {
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -114,6 +117,12 @@ func ConfigureAPI() *gin.Engine {
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 	wekan.GET("/config", wekanConfigHandler)
 	return router
+}
+
+func ConfigureApi(router *gin.Engine, endpoints ...Endpoint) {
+	for _, current := range endpoints {
+		current(router)
+	}
 }
 
 // StartAPI : démarre le serveur
