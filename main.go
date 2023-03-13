@@ -8,7 +8,7 @@ import (
 func main() {
 	core.LoadConfig(".", "config", "./migrations")
 	core.StartDatapi()
-	api := core.InitAPI()
-	core.ConfigureAPI(api, refresh.ConfigureEndpoint)
+	api := core.ConfigureAPI()
+	refresh.ConfigureEndpoint(api)
 	core.StartAPI(api)
 }
