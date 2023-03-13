@@ -1,22 +1,14 @@
 package refresh
 
 import (
-	"bou.ke/monkey"
+	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/stretchr/testify/assert"
 	"testing"
 	"time"
 )
 
-var TuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
-
-func fakeTime(t time.Time) {
-	monkey.Patch(time.Now, func() time.Time {
-		return t
-	})
-}
-
 func TestMain(m *testing.M) {
-	fakeTime(TuTime)
+	test.FakeTime(test.TuTime)
 	m.Run()
 }
 
@@ -25,7 +17,7 @@ func Test_NewRefresh(t *testing.T) {
 	current := New()
 	ass.Equal(Prepare, current.Status)
 	ass.NotNil(current.Message)
-	ass.Equal(TuTime, current.Date)
+	ass.Equal(test.TuTime, current.Date)
 	ass.NotNil(current.Date)
 	ass.Exactly(*current, last.Load())
 	value, found := list.Load(current.UUID)
@@ -39,11 +31,11 @@ func Test_Run(t *testing.T) {
 	expectedMessage := "mega test"
 
 	// wait 5"
-	expectedTime := TuTime.Add(5 * time.Second)
-	fakeTime(expectedTime)
+	expectedTime := test.TuTime.Add(5 * time.Second)
+	test.FakeTime(expectedTime)
 
 	current.run(expectedMessage)
 	ass.Exactly(expectedMessage, current.Message)
 	ass.Exactly(Running, current.Status)
-	ass.Exactly(TuTime.Add(5*time.Second), current.Date)
+	ass.Exactly(test.TuTime.Add(5*time.Second), current.Date)
 }
