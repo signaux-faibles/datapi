@@ -7,8 +7,10 @@ import (
 	"time"
 )
 
+var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
+
 func TestMain(m *testing.M) {
-	test.FakeTime(test.TuTime)
+	test.FakeTime(tuTime)
 	m.Run()
 }
 
@@ -17,7 +19,7 @@ func Test_NewRefresh(t *testing.T) {
 	current := New()
 	ass.Equal(Prepare, current.Status)
 	ass.NotNil(current.Message)
-	ass.Equal(test.TuTime, current.Date)
+	ass.Equal(tuTime, current.Date)
 	ass.NotNil(current.Date)
 	ass.Exactly(*current, last.Load())
 	value, found := list.Load(current.UUID)
@@ -31,11 +33,11 @@ func Test_Run(t *testing.T) {
 	expectedMessage := "mega test"
 
 	// wait 5"
-	expectedTime := test.TuTime.Add(5 * time.Second)
+	expectedTime := tuTime.Add(5 * time.Second)
 	test.FakeTime(expectedTime)
 
 	current.run(expectedMessage)
 	ass.Exactly(expectedMessage, current.Message)
 	ass.Exactly(Running, current.Status)
-	ass.Exactly(test.TuTime.Add(5*time.Second), current.Date)
+	ass.Exactly(expectedTime, current.Date)
 }
