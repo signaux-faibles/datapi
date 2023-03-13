@@ -1,3 +1,4 @@
+// Package test ajoute les méthodes utilisées pour les tests
 package test
 
 import (
