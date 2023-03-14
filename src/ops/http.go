@@ -17,6 +17,8 @@ func ConfigureEndpoint(path string, api *gin.Engine) {
 	endpoint.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	endpoint.GET("/sireneImport", importSireneHandler)       // 2
 	endpoint.GET("/importListes/:algo", importListesHandler) // 3
+	endpoint.GET("/mep", importHandler, importSireneHandler)
+	endpoint.GET("/mep/:algo", importHandler, importSireneHandler, importListesHandler)
 }
 
 func adminAuthMiddleware() gin.HandlerFunc {
