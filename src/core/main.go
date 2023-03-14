@@ -22,7 +22,7 @@ var mgoDB *mongo.Database
 var wekanConfig WekanConfig
 
 // Endpoint handler pour définir un endpoint sur gin
-type Endpoint func(*gin.Engine)
+type Endpoint func(path string, api *gin.Engine)
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() {
@@ -109,11 +109,9 @@ func InitAPI() *gin.Engine {
 	return router
 }
 
-// ConfigureAPI permet de rajouter un endpoint au niveau de l'API
-func ConfigureAPI(router *gin.Engine, endpoints ...Endpoint) {
-	for _, current := range endpoints {
-		current(router)
-	}
+// AddEndpoint permet de rajouter un endpoint au niveau de l'API
+func AddEndpoint(router *gin.Engine, path string, endpoint Endpoint) {
+	endpoint(path, router)
 }
 
 // StartAPI : démarre le serveur

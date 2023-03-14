@@ -10,8 +10,8 @@ import (
 )
 
 // ConfigureEndpoint configure l'endpoint du package `ops`
-func ConfigureEndpoint(api *gin.Engine) {
-	endpoint := api.Group("/endpoint", adminAuthMiddleware())
+func ConfigureEndpoint(path string, api *gin.Engine) {
+	endpoint := api.Group(path, adminAuthMiddleware())
 	endpoint.GET("/import", importHandler) // 1
 	endpoint.GET("/keycloak", getKeycloakUsers)
 	endpoint.GET("/metrics", gin.WrapH(promhttp.Handler()))

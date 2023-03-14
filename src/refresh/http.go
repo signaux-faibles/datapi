@@ -13,8 +13,8 @@ import (
 )
 
 // ConfigureEndpoint configure le endpoint du package `refresh`
-func ConfigureEndpoint(api *gin.Engine) {
-	refreshRoute := api.Group("/refresh", core.AuthMiddleware(), core.LogMiddleware)
+func ConfigureEndpoint(path string, api *gin.Engine) {
+	refreshRoute := api.Group(path, core.AuthMiddleware(), core.LogMiddleware)
 	refreshRoute.GET("/start", startHandler)
 	refreshRoute.GET("/status/:uuid", statusHandler)
 	refreshRoute.GET("/last", lastHandler)

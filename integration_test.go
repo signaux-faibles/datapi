@@ -12,7 +12,6 @@ import (
 	"github.com/ory/dockertest/v3"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
-	"github.com/signaux-faibles/datapi/src/ops"
 	"github.com/signaux-faibles/datapi/src/refresh"
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
@@ -55,10 +54,7 @@ func TestMain(m *testing.M) {
 
 	// run datapi
 	core.StartDatapi()
-	api := core.InitAPI()
-	core.ConfigureAPI(api, refresh.ConfigureEndpoint)
-	core.ConfigureAPI(api, ops.ConfigureEndpoint)
-	go core.StartAPI(api)
+	go initAndStartAPI()
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	//Run tests
@@ -653,7 +649,6 @@ func TestRunRefreshScript(t *testing.T) {
 	ass := assert.New(t)
 	current := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
 	t.Logf("refreshID is running with id : %s", current.UUID)
-	time.Sleep(5 * time.Second)
 	result, err := refresh.Fetch(current.UUID)
 	ass.Nil(err)
 	ass.NotNil(result)
@@ -675,7 +670,7 @@ func TestFetchRefreshWithState(t *testing.T) {
 	ass := assert.New(t)
 	refresh.StartRefreshScript(context.Background(), db.Get(), "test/script qui n'existe pas")
 	refresh.StartRefreshScript(context.Background(), db.Get(), "test/autre script foireux")
-	refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	expected := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
 	time.Sleep(100 * time.Millisecond)
 
 	failedRefresh := refresh.FetchRefreshsWithState(refresh.Failed)
@@ -684,7 +679,14 @@ func TestFetchRefreshWithState(t *testing.T) {
 
 	runningRefresh := refresh.FetchRefreshsWithState(refresh.Running)
 	t.Logf("Description du refresh en cours : %s", runningRefresh)
-	ass.Len(runningRefresh, 1)
+	ass.Condition(func() bool {
+		for _, current := range runningRefresh {
+			if current.UUID == expected.UUID {
+				return true
+			}
+		}
+		return false
+	})
 }
 
 func TestStartHandler(t *testing.T) {
