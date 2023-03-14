@@ -12,6 +12,7 @@ import (
 	"github.com/ory/dockertest/v3"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/ops"
 	"github.com/signaux-faibles/datapi/src/refresh"
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
@@ -56,6 +57,7 @@ func TestMain(m *testing.M) {
 	core.StartDatapi()
 	api := core.InitAPI()
 	core.ConfigureAPI(api, refresh.ConfigureEndpoint)
+	core.ConfigureAPI(api, ops.ConfigureEndpoint)
 	go core.StartAPI(api)
 	// time to API be ready
 	time.Sleep(1 * time.Second)

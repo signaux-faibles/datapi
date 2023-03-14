@@ -30,11 +30,11 @@ type Entreprise struct {
 		NAF               NAF       `json:"naf,omitempty"`
 	}
 	Paydex                *Paydex         `json:"paydex,omitempty"`
-	Diane                 []diane         `json:"diane"`
-	Bdf                   []bdf           `json:"-"`
+	Diane                 []Diane         `json:"diane"`
+	Bdf                   []Bdf           `json:"-"`
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
-	Groupe                *ellisphere     `json:"groupe,omitempty"`
+	Groupe                *Ellisphere     `json:"groupe,omitempty"`
 	PGEActif              *bool           `json:"pge,omitempty"`
 }
 
@@ -313,7 +313,7 @@ func (e Etablissements) sirensFromQuery() []string {
 	return list
 }
 
-func (e *Etablissements) intoBatch(roles scope, username string) *pgx.Batch {
+func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 	var batch pgx.Batch
 	listes, _ := findAllListes()
 	lastListe := listes[0].ID
@@ -591,7 +591,7 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows, roles scope) error {
+func (e *Etablissements) loadPeriodeUrssaf(rows *pgx.Rows) error {
 	var cotisations = make(map[string][]*float64)
 	var partPatronales = make(map[string][]*float64)
 	var partSalariales = make(map[string][]*float64)
@@ -706,7 +706,7 @@ func (e *Etablissements) loadProcol(rows *pgx.Rows) error {
 // 	return nil
 // }
 
-func (e *Etablissements) loadAPDemande(rows *pgx.Rows, roles scope) error {
+func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
 	var apdemandes = make(map[string][]EtablissementAPDemande)
 	for (*rows).Next() {
 		var ap EtablissementAPDemande
@@ -727,7 +727,7 @@ func (e *Etablissements) loadAPDemande(rows *pgx.Rows, roles scope) error {
 	return nil
 }
 
-func (e *Etablissements) loadAPConso(rows *pgx.Rows, roles scope) error {
+func (e *Etablissements) loadAPConso(rows *pgx.Rows) error {
 	var apconsos = make(map[string][]EtablissementAPConso)
 	for (*rows).Next() {
 		var ap EtablissementAPConso
@@ -747,9 +747,9 @@ func (e *Etablissements) loadAPConso(rows *pgx.Rows, roles scope) error {
 }
 
 func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
-	var dianes = make(map[string][]diane)
+	var dianes = make(map[string][]Diane)
 	for (*rows).Next() {
-		var di diane
+		var di Diane
 		var siren string
 
 		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.AchatMarchandises, &di.AchatMatieresPremieres, &di.AutonomieFinanciere,
@@ -788,13 +788,16 @@ func (e *Etablissements) loadPaydex(rows *pgx.Rows) error {
 	var nbJours = make(map[string][]int)
 
 	for (*rows).Next() {
-		var pd paydex // resultat DB
-		err := (*rows).Scan(&pd.Siren, &pd.DateValeur, &pd.NBJours)
+		var siren string
+		var dateValeur time.Time
+		var nBJours int
+		//var pd ops.paydex // resultat DB
+		err := (*rows).Scan(&siren, &dateValeur, &nBJours)
 		if err != nil {
 			return err
 		}
-		dateValeurs[pd.Siren] = append(dateValeurs[pd.Siren], pd.DateValeur)
-		nbJours[pd.Siren] = append(nbJours[pd.Siren], pd.NBJours)
+		dateValeurs[siren] = append(dateValeurs[siren], dateValeur)
+		nbJours[siren] = append(nbJours[siren], nBJours)
 	}
 	for siren, v := range dateValeurs {
 		entreprise := e.Entreprises[siren]
@@ -814,7 +817,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 		var et Etablissement
 		var en Entreprise
 		var ti EtablissementTerrInd
-		var el ellisphere
+		var el Ellisphere
 		err := (*rows).Scan(&et.Siret, &et.Siren, &en.Siren,
 			&en.Sirene.RaisonSociale, &en.Sirene.StatutJuridique, &en.Sirene.StatutJuridiqueN2, &en.Sirene.StatutJuridiqueN1,
 			&et.Sirene.ComplementAdresse, &et.Sirene.NumVoie, &et.Sirene.IndRep, &et.Sirene.TypeVoie, &et.Sirene.Voie,
@@ -850,7 +853,7 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 	return nil
 }
 
-func (e *Etablissements) load(roles scope, username string) error {
+func (e *Etablissements) load(roles Scope, username string) error {
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		return err
@@ -911,7 +914,7 @@ func (e *Etablissements) load(roles scope, username string) error {
 	if err != nil {
 		return err
 	}
-	err = e.loadAPConso(&rows, roles)
+	err = e.loadAPConso(&rows)
 	if err != nil {
 		return err
 	}
@@ -921,7 +924,7 @@ func (e *Etablissements) load(roles scope, username string) error {
 	if err != nil {
 		return err
 	}
-	err = e.loadAPDemande(&rows, roles)
+	err = e.loadAPDemande(&rows)
 	if err != nil {
 		return err
 	}
@@ -931,7 +934,7 @@ func (e *Etablissements) load(roles scope, username string) error {
 	if err != nil {
 		return err
 	}
-	err = e.loadPeriodeUrssaf(&rows, roles)
+	err = e.loadPeriodeUrssaf(&rows)
 	if err != nil {
 		return err
 	}

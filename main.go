@@ -2,6 +2,7 @@ package main
 
 import (
 	"github.com/signaux-faibles/datapi/src/core"
+	"github.com/signaux-faibles/datapi/src/ops"
 	"github.com/signaux-faibles/datapi/src/refresh"
 )
 
@@ -10,5 +11,6 @@ func main() {
 	core.StartDatapi()
 	api := core.InitAPI()
 	core.ConfigureAPI(api, refresh.ConfigureEndpoint)
+	core.ConfigureAPI(api, ops.ConfigureEndpoint)
 	core.StartAPI(api)
 }

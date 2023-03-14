@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
+	"net/http"
 	"os/exec"
 	"strings"
 	"time"
@@ -213,7 +215,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 				cardsMap[siret].WekanCards = c
 			}
 
-			if contains(append(w.Members, w.Assignees...), userID) {
+			if utils.Contains(append(w.Members, w.Assignees...), userID) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
@@ -303,7 +305,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
 	if err != nil {
-		return nil, errorToJSON(500, err)
+		return nil, utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 
 	row := xlSheet.AddRow()

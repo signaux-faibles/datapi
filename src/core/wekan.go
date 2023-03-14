@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
 	"math/rand"
@@ -169,7 +170,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 						Board:           wc.BoardIds[card.BoardId].Title,
 						CardURL:         wekanURL + "b/" + card.BoardId + "/" + wc.BoardIds[card.BoardId].Slug + "/" + card.ID,
 						CardDescription: card.Description,
-						IsMember:        contains(card.Members, wc.userID(s.username)),
+						IsMember:        utils.Contains(card.Members, wc.userID(s.username)),
 						Creator:         wc.userForUserID(card.UserID),
 						LabelIDs:        card.LabelIds,
 						StartAt:         card.StartAt,
@@ -347,7 +348,7 @@ func wekanNewCardHandler(c *gin.Context) {
 	}
 
 	wcu := wekanConfig.forUser(s.username)
-	if !contains(wekanConfig.boardIdsForUser(s.username), param.BoardID) {
+	if !utils.Contains(wekanConfig.boardIdsForUser(s.username), param.BoardID) {
 		c.JSON(403, "wekanNewCardHandler: accès refusé")
 		return
 	}
@@ -942,7 +943,6 @@ func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, li
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 
 func meteorID() string {
-	rand.Seed(time.Now().UTC().UnixNano())
 	b := make([]rune, 17)
 	for i := range b {
 		b[i] = letters[rand.Intn(len(letters))]

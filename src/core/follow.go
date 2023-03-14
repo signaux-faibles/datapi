@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"net/http"
 	"time"
 
@@ -159,7 +160,7 @@ func (f *Follow) activate() error {
 	).Scan(&f.Since, &f.Active)
 }
 
-func (f *Follow) deactivate() Jerror {
+func (f *Follow) deactivate() utils.Jerror {
 	sqlUnactivate := `update etablissement_follow set active = false, until = current_timestamp, unfollow_comment = $3, unfollow_category = $4
         where siret = $1 and username = $2 and active = true`
 
@@ -167,20 +168,20 @@ func (f *Follow) deactivate() Jerror {
 		sqlUnactivate, f.Siret, f.Username, f.UnfollowComment, f.UnfollowCategory)
 
 	if err != nil {
-		return errorToJSON(500, err)
+		return utils.ErrorToJSON(500, err)
 	}
 
 	if commandTag.RowsAffected() == 0 {
-		return newJSONerror(204, "this establishment is already not followed")
+		return utils.NewJSONerror(204, "this establishment is already not followed")
 	}
 
 	return nil
 }
 
-func (f *Follow) list(roles scope) (Follows, Jerror) {
+func (f *Follow) list(roles Scope) (Follows, utils.Jerror) {
 	liste, err := findAllListes()
 	if err != nil {
-		return nil, errorToJSON(500, err)
+		return nil, utils.ErrorToJSON(500, err)
 	}
 
 	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, false, nil,
@@ -189,7 +190,7 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 
 	sms, err := getSummaries(params)
 	if err != nil {
-		return nil, errorToJSON(500, err)
+		return nil, utils.ErrorToJSON(500, err)
 	}
 	var follows Follows
 
@@ -204,7 +205,7 @@ func (f *Follow) list(roles scope) (Follows, Jerror) {
 	}
 
 	if len(follows) == 0 {
-		return nil, newJSONerror(204, "aucun suivi")
+		return nil, utils.NewJSONerror(204, "aucun suivi")
 	}
 
 	return follows, nil
@@ -223,7 +224,7 @@ func getCardsForCurrentUser(c *gin.Context) {
 		return
 	}
 	types := []string{"no-card", "my-cards", "all-cards"}
-	if !contains(types, params.Type) {
+	if !utils.Contains(types, params.Type) {
 		c.AbortWithStatusJSON(400, fmt.Sprintf("`%s` n'est pas un type supporté", params.Type))
 		return
 	}
@@ -304,7 +305,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			cards = append(cards, &card)
 			cardsMap[siret] = &card
 			sirets = append(sirets, siret)
-			if contains(append(w.Members, w.Assignees...), userID) {
+			if utils.Contains(append(w.Members, w.Assignees...), userID) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}

@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"net/http"
 	"regexp"
 	"time"
@@ -113,7 +114,7 @@ func coalescepTime(pointers ...*time.Time) *time.Time {
 type session struct {
 	username string
 	auteur   string
-	roles    scope
+	roles    Scope
 }
 
 func (s *session) bind(c *gin.Context) {
@@ -123,5 +124,5 @@ func (s *session) bind(c *gin.Context) {
 }
 
 func (s session) hasRole(role string) bool {
-	return contains(s.roles, role)
+	return utils.Contains(s.roles, role)
 }

@@ -1,4 +1,4 @@
-package core
+package utils
 
 // Jerror interface for JSON errors
 type Jerror interface {
@@ -22,11 +22,11 @@ func (j JSONerror) Code() int {
 	return j.code
 }
 
-// newJSONerror return JSON error from string
-func newJSONerror(code int, e string) JSONerror {
+// NewJSONerror return JSON error from string
+func NewJSONerror(code int, e string) JSONerror {
 	return JSONerror{error: e, code: code}
 }
 
-func errorToJSON(code int, e error) JSONerror {
+func ErrorToJSON(code int, e error) JSONerror {
 	return JSONerror{error: e.Error(), code: code}
 }

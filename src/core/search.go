@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/spf13/viper"
 )
 
@@ -19,7 +20,7 @@ type searchParams struct {
 	IgnoreRoles           bool     `json:"ignoreRoles"`
 	IgnoreZone            bool     `json:"ignoreZone"`
 	username              string
-	roles                 scope
+	roles                 Scope
 	ExcludeSecteursCovid  []string `json:"excludeSecteursCovid"`
 	EtatAdministratif     *string  `json:"etatAdministratif"`
 }
@@ -73,10 +74,10 @@ func searchEtablissementHandler(c *gin.Context) {
 
 }
 
-func searchEtablissement(params searchParams) (searchResult, Jerror) {
+func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 	liste, err := findAllListes()
 	if err != nil {
-		return searchResult{}, errorToJSON(500, err)
+		return searchResult{}, utils.ErrorToJSON(500, err)
 	}
 	zoneGeo := params.roles.zoneGeo()
 	limit := viper.GetInt("searchPageLength")
@@ -91,7 +92,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	}
 	summaries, err := getSummaries(summaryparams)
 	if err != nil {
-		return searchResult{}, errorToJSON(500, err)
+		return searchResult{}, utils.ErrorToJSON(500, err)
 	}
 
 	var search searchResult
@@ -108,7 +109,7 @@ func searchEtablissement(params searchParams) (searchResult, Jerror) {
 	search.PageMax = (search.Total - 1) / limit
 
 	if len(search.Results) == 0 {
-		return searchResult{}, newJSONerror(204, "empty page")
+		return searchResult{}, utils.NewJSONerror(204, "empty page")
 	}
 
 	return search, nil

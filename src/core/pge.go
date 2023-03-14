@@ -4,7 +4,7 @@ import (
 	"github.com/jackc/pgx/v4"
 )
 
-func (e *Etablissements) addPGEsSelection(batch *pgx.Batch, roles scope, username string) {
+func (e *Etablissements) addPGEsSelection(batch *pgx.Batch, roles Scope, username string) {
 	batch.Queue(
 		`select 
 					e.siren,

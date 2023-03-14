@@ -15,8 +15,6 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var keycloak gocloak.GoCloak
@@ -102,14 +100,6 @@ func InitAPI() *gin.Engine {
 	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
 	fce.GET("/:siret", validSiret, getFceURL)
 
-	utils := router.Group("/utils", adminAuthMiddleware())
-	utils.GET("/import", importHandler) // 1
-	utils.GET("/keycloak", getKeycloakUsers)
-	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	// utils.GET("/wekanImport", wekanImportHandler)
-	utils.GET("/sireneImport", sireneImportHandler)   // 2
-	utils.GET("/listImport/:algo", listImportHandler) // 3
-
 	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
 	wekan.GET("/cards/:siret", validSiret, wekanGetCardsHandler)
 	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
@@ -143,22 +133,6 @@ func AuthMiddleware() gin.HandlerFunc {
 	return fakeCloakMiddleware
 }
 
-func adminAuthMiddleware() gin.HandlerFunc {
-	var whitelist = viper.GetStringSlice("adminWhitelist")
-	var wlmap = make(map[string]bool)
-	for _, ip := range whitelist {
-		wlmap[ip] = true
-	}
-
-	return func(c *gin.Context) {
-		if !wlmap[c.ClientIP()] {
-			log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
-			c.AbortWithStatus(403)
-			return
-		}
-	}
-}
-
 // LogMiddleware définit le middleware qui gère les logs
 func LogMiddleware(c *gin.Context) {
 	if c.Request.Body == nil {
@@ -178,7 +152,7 @@ func LogMiddleware(c *gin.Context) {
 	if viper.GetBool("enableKeycloak") {
 		token, err = getRawToken(c)
 		if err != nil {
-			c.AbortWithStatus(500)
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 	} else {
