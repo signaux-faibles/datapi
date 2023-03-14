@@ -8,6 +8,7 @@ import (
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/spf13/viper"
+	"net/http"
 )
 
 type keycloakUser struct {
@@ -26,14 +27,12 @@ func getKeycloakUsers() error {
 	}
 	err = importUsersAndRoles(userMap, roleMap)
 	if err != nil {
-		//log.Print(err.Error())\c.JSON(err.Code(), err.Error())
 		return err
 	}
-	//c.JSON(200, "utilisateurs mis à jour")
 	return nil
 }
 
-func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Jerror) {
+func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, error) {
 	realm := viper.GetString("keycloakRealm")
 	client := viper.GetString("keycloakClient")
 	kcAdmin := gocloak.NewClient(viper.GetString("keycloakHostname"))
@@ -44,7 +43,7 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Je
 		realm,
 	)
 	if err != nil {
-		return nil, nil, utils.ErrorToJSON(500, err)
+		return nil, nil, err
 	}
 
 	var i = 100000
@@ -57,7 +56,7 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Je
 		},
 	)
 	if err != nil {
-		return nil, nil, utils.ErrorToJSON(500, err)
+		return nil, nil, err
 	}
 
 	clients, err := kcAdmin.GetClients(
@@ -69,10 +68,10 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Je
 		},
 	)
 	if err != nil {
-		return nil, nil, utils.ErrorToJSON(500, err)
+		return nil, nil, err
 	}
 	if len(clients) != 1 {
-		return nil, nil, utils.NewJSONerror(500, "client not found")
+		return nil, nil, err
 	}
 
 	userMap := make(map[string]keycloakUser)
@@ -85,7 +84,7 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Je
 			*u.ID,
 		)
 		if err != nil {
-			return nil, nil, utils.ErrorToJSON(500, err)
+			return nil, nil, err
 		}
 		var userRoles []string
 		for _, r := range roles {
@@ -101,7 +100,7 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Je
 	}
 
 	if len(userMap) == 0 {
-		return nil, nil, utils.NewJSONerror(204, "no users")
+		return nil, nil, utils.NewJSONerror(http.StatusNoContent, "no users")
 	}
 
 	roles, err := kcAdmin.GetClientRoles(
@@ -112,7 +111,7 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Je
 		gocloak.GetRoleParams{})
 
 	if err != nil {
-		return nil, nil, utils.ErrorToJSON(500, err)
+		return nil, nil, err
 	}
 
 	roleMap := make(map[string]*string)
