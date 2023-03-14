@@ -13,7 +13,7 @@ import (
 func ConfigureEndpoint(path string, api *gin.Engine) {
 	endpoint := api.Group(path, adminAuthMiddleware())
 	endpoint.GET("/import", importHandler) // 1
-	endpoint.GET("/keycloak", getKeycloakUsers)
+	endpoint.GET("/keycloak", keycloakUsersHandler)
 	endpoint.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	endpoint.GET("/sireneImport", importSireneHandler)       // 2
 	endpoint.GET("/importListes/:algo", importListesHandler) // 3
@@ -38,31 +38,36 @@ func adminAuthMiddleware() gin.HandlerFunc {
 func importSireneHandler(c *gin.Context) {
 	err := importSirene()
 	if err != nil {
-		if err, ok := err.(utils.Jerror); ok {
-			c.AbortWithError(err.Code(), err)
-			return
-		}
-		c.AbortWithError(http.StatusInternalServerError, err)
+		utils.AbortWithError(c, err)
+		return
 	}
-	//c.JSON(http.StatusOK, "sirenes mis à jour")
+	c.JSON(http.StatusOK, "sirenes mis à jour")
 }
 
 func importHandler(c *gin.Context) {
 	err := importEntreprisesAndEntablissement()
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		utils.AbortWithError(c, err)
 		return
 	}
+	c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
 }
 
 func importListesHandler(c *gin.Context) {
 	algo := c.Params.ByName("algo")
 	err := importListes(algo)
 	if err != nil {
-		if err, ok := err.(utils.Jerror); ok {
-			c.AbortWithError(err.Code(), err)
-			return
-		}
-		c.AbortWithError(http.StatusInternalServerError, err)
+		utils.AbortWithError(c, err)
+		return
 	}
+	c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
+}
+
+func keycloakUsersHandler(c *gin.Context) {
+	err := getKeycloakUsers()
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
+	c.JSON(http.StatusOK, "utilisateurs mis à jour")
 }

@@ -3,13 +3,11 @@ package ops
 import (
 	"context"
 	"github.com/Nerzal/gocloak/v10"
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/spf13/viper"
-	"log"
 )
 
 type keycloakUser struct {
@@ -20,19 +18,19 @@ type keycloakUser struct {
 	Roles     core.Scope
 }
 
-func getKeycloakUsers(c *gin.Context) {
+func getKeycloakUsers() error {
+	var err error
 	userMap, roleMap, err := fetchUsersAndRoles()
 	if err != nil {
-		c.JSON(err.Code(), err.Error())
-		return
+		return err
 	}
 	err = importUsersAndRoles(userMap, roleMap)
 	if err != nil {
-		log.Print(err.Error())
-		c.JSON(err.Code(), err.Error())
-		return
+		//log.Print(err.Error())\c.JSON(err.Code(), err.Error())
+		return err
 	}
-	c.JSON(200, "utilisateurs mis à jour")
+	//c.JSON(200, "utilisateurs mis à jour")
+	return nil
 }
 
 func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Jerror) {
@@ -125,10 +123,10 @@ func fetchUsersAndRoles() (map[string]keycloakUser, map[string]*string, utils.Je
 	return userMap, roleMap, nil
 }
 
-func importUsersAndRoles(userMap map[string]keycloakUser, roleMap map[string]*string) utils.Jerror {
+func importUsersAndRoles(userMap map[string]keycloakUser, roleMap map[string]*string) error {
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
-		return utils.ErrorToJSON(500, err)
+		return err
 	}
 	defer tx.Commit(context.Background())
 
@@ -152,7 +150,7 @@ func importUsersAndRoles(userMap map[string]keycloakUser, roleMap map[string]*st
 	b := tx.SendBatch(context.Background(), &batch)
 	err = b.Close()
 	if err != nil {
-		return utils.ErrorToJSON(500, err)
+		return err
 	}
 
 	return nil
