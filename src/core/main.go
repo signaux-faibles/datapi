@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"log"
@@ -141,7 +142,7 @@ func LogMiddleware(c *gin.Context) {
 	method := c.Request.Method
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))

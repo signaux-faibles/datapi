@@ -34,7 +34,7 @@ func followEtablissement(c *gin.Context) {
 	}
 	paramErr := c.ShouldBind(&param)
 	if paramErr != nil {
-		c.AbortWithError(http.StatusInternalServerError, paramErr)
+		utils.AbortWithError(c, paramErr)
 		return
 	}
 	if param.Category == "" {
@@ -54,7 +54,7 @@ func followEtablissement(c *gin.Context) {
 
 	err := follow.load()
 	if err != nil && err.Error() != "no rows in result set" {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	if follow.Active {
@@ -68,7 +68,7 @@ func followEtablissement(c *gin.Context) {
 			c.AbortWithStatusJSON(http.StatusForbidden, gin.H{"message": "établissement inconnu"})
 			return
 		}
-		c.AbortWithError(http.StatusInternalServerError, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	c.JSON(http.StatusCreated, follow)
@@ -86,7 +86,7 @@ func unfollowEtablissement(c *gin.Context) {
 	}
 	paramErr := c.ShouldBind(&param)
 	if paramErr != nil {
-		c.AbortWithError(500, paramErr)
+		utils.AbortWithError(c, paramErr)
 		return
 	}
 	if param.UnfollowCategory == "" {

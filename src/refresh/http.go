@@ -8,6 +8,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/spf13/viper"
 	"net/http"
 )
@@ -37,12 +38,12 @@ func statusHandler(c *gin.Context) {
 	}
 	id, err := uuid.Parse(param)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) // nolint: errcheck
+		utils.AbortWithError(c, err) // nolint: errcheck
 		return
 	}
 	state, err := Fetch(id)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) // nolint: errcheck
+		utils.AbortWithError(c, err) // nolint: errcheck
 		return
 	}
 	c.JSON(http.StatusOK, state)

@@ -57,7 +57,7 @@ package core
 // 	var config WekanConfig
 // 	err = json.Unmarshal(fileContent, &config)
 // 	if err != nil {
-// 		c.AbortWithError(500, err)
+// 		utils.AbortWithError(c,  err)
 // 	}
 // 	board, ok := config.Boards[region]
 // 	if !ok {
