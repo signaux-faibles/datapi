@@ -1,25 +1,22 @@
 package ops
 
 import (
-	"context"
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"github.com/signaux-faibles/datapi/src/core"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/spf13/viper"
 	"log"
 	"net/http"
-	"sync"
 )
 
-// ConfigureEndpoint configure le endpoint du package `ops`
+// ConfigureEndpoint configure l'endpoint du package `ops`
 func ConfigureEndpoint(api *gin.Engine) {
-	utils := api.Group("/utils", adminAuthMiddleware())
-	utils.GET("/import", importHandler) // 1
-	utils.GET("/keycloak", getKeycloakUsers)
-	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	// utils.GET("/wekanImport", wekanImportHandler)
-	utils.GET("/sireneImport", sireneImportHandler)   // 2
-	utils.GET("/listImport/:algo", listImportHandler) // 3
+	endpoint := api.Group("/endpoint", adminAuthMiddleware())
+	endpoint.GET("/import", importHandler) // 1
+	endpoint.GET("/keycloak", getKeycloakUsers)
+	endpoint.GET("/metrics", gin.WrapH(promhttp.Handler()))
+	endpoint.GET("/sireneImport", importSireneHandler)       // 2
+	endpoint.GET("/importListes/:algo", importListesHandler) // 3
 }
 
 func adminAuthMiddleware() gin.HandlerFunc {
@@ -38,24 +35,34 @@ func adminAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func sireneImportHandler(c *gin.Context) {
-	if viper.GetString("sireneULPath") == "" || viper.GetString("geoSirenePath") == "" {
-		c.AbortWithStatusJSON(http.StatusConflict, "not supported, missing parameters in server configuration")
-		return
+func importSireneHandler(c *gin.Context) {
+	err := importSirene()
+	if err != nil {
+		if err, ok := err.(utils.Jerror); ok {
+			c.AbortWithError(err.Code(), err)
+			return
+		}
+		c.AbortWithError(http.StatusInternalServerError, err)
 	}
-	log.Println("Truncate etablissement & entreprise table")
+	//c.JSON(http.StatusOK, "sirenes mis à jour")
+}
 
-	err := core.TruncateSirens()
+func importHandler(c *gin.Context) {
+	err := importEntreprisesAndEntablissement()
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 		return
 	}
-	log.Println("Tables truncated")
+}
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	go core.InsertSireneUL(ctx, cancelCtx, &wg)
-	go core.InsertGeoSirene(ctx, cancelCtx, &wg)
-	wg.Wait()
+func importListesHandler(c *gin.Context) {
+	algo := c.Params.ByName("algo")
+	err := importListes(algo)
+	if err != nil {
+		if err, ok := err.(utils.Jerror); ok {
+			c.AbortWithError(err.Code(), err)
+			return
+		}
+		c.AbortWithError(http.StatusInternalServerError, err)
+	}
 }

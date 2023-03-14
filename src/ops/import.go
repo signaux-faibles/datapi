@@ -5,16 +5,18 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/pkg/errors"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"io"
 	"log"
 	"math"
 	"net/http"
 	"os"
+	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/globalsign/mgo/bson"
 	"github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
@@ -419,53 +421,36 @@ func (s scoreFile) toLibelle() string {
 	return months[month] + " " + year
 }
 
-// func scoreToListe() pgx.Batch {
-// 	var batch pgx.Batch
-// 	batch.Queue(`insert into liste (libelle, batch, algo)
-// 	select distinct libelle_liste as libelle, batch, algo from score;`)
-// 	return batch
-// }
-
-func importHandler(c *gin.Context) {
+func importEntreprisesAndEntablissement() error {
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
+		return err
 	}
 	log.Print("preparing import (truncate tables)")
 	err = prepareImport(&tx)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
+		return err
 	}
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
 	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
+		return err
 	}
 	sourceEtablissement := viper.GetString("sourceEtablissement")
 	log.Printf("processing etablissement file %s", sourceEtablissement)
 	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
+		return err
 	}
-	// log.Print("refreshing materialized views")
-	// err = refreshMaterializedViews(&tx)
-	// if err != nil {
-	// 	c.AbortWithError(500, err)
-	// 	return
-	// }
 	log.Print("commiting changes to database")
 	tx.Commit(context.Background())
 	log.Print("drop dead data")
 	_, err = db.Get().Exec(context.Background(), "vacuum;")
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
-		return
+		return err
 	}
+	return nil
 }
 
 func processEntreprise(fileName string, tx *pgx.Tx) error {
@@ -560,33 +545,6 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 	}
 }
 
-// func refreshMaterializedViews(tx *pgx.Tx) error {
-// 	//!\ v_summaries doit être rafraichie en dernier
-// 	views := []string{
-// 		"v_alert_entreprise",
-// 		"v_alert_etablissement",
-// 		"v_apdemande",
-// 		"v_diane_variation_ca",
-// 		"v_etablissement_raison_sociale",
-// 		"v_hausse_urssaf",
-// 		"v_last_effectif",
-// 		"v_last_procol",
-// 		"v_naf",
-// 		"v_roles",
-// 		"v_summaries",
-// 	}
-// 	for _, v := range views {
-// 		fmt.Printf("\033[2K\rrefreshing %s", v)
-// 		_, err := (*tx).Exec(context.Background(), fmt.Sprintf("refresh materialized view %s", v))
-// 		if err != nil {
-// 			return err
-// 		}
-// 	}
-// 	fmt.Println("")
-// 	log.Printf("success: %d views refreshed\n", len(views))
-// 	return nil
-// }
-
 func prepareImport(tx *pgx.Tx) error {
 	// var batch pgx.Batch
 	var tables = []string{
@@ -628,36 +586,32 @@ type scoreFile struct {
 	AlertPreRedressements string             `json:"alertPreRedressements"`
 }
 
-func listImportHandler(c *gin.Context) {
-	algo := c.Params.ByName("algo")
+func importListes(algo string) error {
 	if algo == "" {
-		c.AbortWithStatusJSON(400, "please provide algo name !")
-		return
+		return utils.NewJSONerror(http.StatusBadRequest, "`algo` parameter is mandatory")
 	}
 
 	filename := viper.GetString("listPath")
 	file, err := os.Open(filename)
 	if err != nil {
-		c.AbortWithStatusJSON(500, "open file: "+err.Error())
-		return
+		return errors.New("open file: " + err.Error())
 	}
 	raw, err := io.ReadAll(file)
 	file.Close()
 	if err != nil {
-		c.AbortWithStatusJSON(500, "read file: "+err.Error())
-		return
+		return errors.New("read file: " + err.Error())
 	}
 	var scores []scoreFile
 	err = json.Unmarshal(raw, &scores)
 	if err != nil {
-		c.AbortWithStatusJSON(500, "unmarshal JSON: "+err.Error())
-		return
+		if err != nil {
+			return errors.New("unmarshall JSON : " + err.Error())
+		}
 	}
 
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
-		c.AbortWithStatusJSON(http.StatusBadRequest, "begin TX: "+err.Error())
-		return
+		return utils.NewJSONerror(http.StatusBadRequest, "begin TX: "+err.Error())
 	}
 
 	_, err = tx.Exec(context.Background(), `create table tmp_score (
@@ -675,8 +629,7 @@ func listImportHandler(c *gin.Context) {
 		redressements text[] default '{}'
 	);`)
 	if err != nil {
-		c.AbortWithStatusJSON(500, "create tmp_score: "+err.Error())
-		return
+		return errors.New("create tmp_score: " + err.Error())
 	}
 
 	batch := &pgx.Batch{}
@@ -700,14 +653,13 @@ func listImportHandler(c *gin.Context) {
 	err = results.Close()
 
 	if err != nil {
-		c.AbortWithStatusJSON(500, "execute batch: "+err.Error())
-		return
+		return errors.New("execute batch: " + err.Error())
 	}
 	err = tx.Commit(context.Background())
 	if err != nil {
-		c.AbortWithStatusJSON(500, "commit: "+err.Error())
-		return
+		return errors.New("commit: " + err.Error())
 	}
+	return nil
 }
 
 func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
@@ -743,4 +695,25 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 		s.AlertPreRedressements,
 		s.Redressements,
 	)
+}
+
+func importSirene() error {
+	if viper.GetString("sireneULPath") == "" || viper.GetString("geoSirenePath") == "" {
+		return utils.NewJSONerror(http.StatusConflict, "not supported, missing parameters in server configuration")
+	}
+	log.Println("Truncate etablissement & entreprise table")
+
+	err := core.TruncateSirens()
+	if err != nil {
+		return err
+	}
+	log.Println("Tables truncated")
+
+	wg := sync.WaitGroup{}
+	wg.Add(2)
+	ctx, cancelCtx := context.WithCancel(context.Background())
+	go core.InsertSireneUL(ctx, cancelCtx, &wg)
+	go core.InsertGeoSirene(ctx, cancelCtx, &wg)
+	wg.Wait()
+	return nil
 }
