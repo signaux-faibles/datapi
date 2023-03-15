@@ -105,10 +105,10 @@ type delai struct {
 type entreprise struct {
 	ID    string `json:"_id"`
 	Value struct {
-		Sirets     []string         `json:"sirets" hash:"-"`
-		Siren      string           `json:"siren"`
-		Diane      []core.Diane     `json:"diane"`
-		BDF        []core.Bdf       `json:"bdf"`
+		Sirets []string     `json:"sirets" hash:"-"`
+		Siren  string       `json:"siren"`
+		Diane  []core.Diane `json:"diane"`
+		//BDF        []core.Bdf       `json:"bdf"`
 		Ellisphere *core.Ellisphere `json:"ellisphere"`
 		SireneUL   sireneUL         `json:"sirene_ul"`
 		Paydex     *[]paydex        `json:"paydex"`

@@ -29,9 +29,9 @@ type Entreprise struct {
 		Creation          time.Time `json:"creation,omitempty"`
 		NAF               NAF       `json:"naf,omitempty"`
 	}
-	Paydex                *Paydex         `json:"paydex,omitempty"`
-	Diane                 []Diane         `json:"diane"`
-	Bdf                   []Bdf           `json:"-"`
+	Paydex *Paydex `json:"paydex,omitempty"`
+	Diane  []Diane `json:"diane"`
+	//Bdf                   []Bdf           `json:"-"`
 	EtablissementsSummary []Summary       `json:"etablissementsSummary,omitempty"`
 	Etablissements        []Etablissement `json:"etablissements,omitempty"`
 	Groupe                *Ellisphere     `json:"groupe,omitempty"`

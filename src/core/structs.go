@@ -87,18 +87,18 @@ type Diane struct {
 	NomEntreprise                   string    `json:"nom_entreprise,omitempty"`
 }
 
-// Bdf représente les infos Bdf sur une entreprise
-type Bdf struct {
-	Siren               string    `json:"siren,omitempty"`
-	Annee               int       `json:"annee_bdf"`
-	ArreteBilan         time.Time `json:"arrete_bilan_bdf"`
-	DelaiFournisseur    float64   `json:"delai_fournisseur"`
-	DetteFiscale        float64   `json:"dette_fiscale"`
-	FinancierCourtTerme float64   `json:"financier_court_terme"`
-	FraisFinancier      float64   `json:"FraisFinancier"`
-	PoidsFrng           float64   `json:"poids_frng"`
-	TauxMarge           float64   `json:"taux_marge"`
-}
+//// Bdf représente les infos Bdf sur une entreprise
+//type Bdf struct {
+//	Siren               string    `json:"siren,omitempty"`
+//	Annee               int       `json:"annee_bdf"`
+//	ArreteBilan         time.Time `json:"arrete_bilan_bdf"`
+//	DelaiFournisseur    float64   `json:"delai_fournisseur"`
+//	DetteFiscale        float64   `json:"dette_fiscale"`
+//	FinancierCourtTerme float64   `json:"financier_court_terme"`
+//	FraisFinancier      float64   `json:"FraisFinancier"`
+//	PoidsFrng           float64   `json:"poids_frng"`
+//	TauxMarge           float64   `json:"taux_marge"`
+//}
 
 // Ellisphere représente les infos Ellisphere sur une entreprise
 type Ellisphere struct {
