@@ -424,31 +424,36 @@ func (s scoreFile) toLibelle() string {
 }
 
 func importEntreprisesAndEtablissement() error {
-	tx, err := db.Get().Begin(context.Background())
+	contexte := context.Background()
+	tx, err := db.Get().Begin(contexte)
 	if err != nil {
+		tx.Rollback(contexte)
 		return err
 	}
 	log.Print("preparing import (truncate tables)")
 	err = prepareImport(&tx)
 	if err != nil {
+		tx.Rollback(contexte)
 		return err
 	}
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
 	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
+		tx.Rollback(contexte)
 		return err
 	}
 	sourceEtablissement := viper.GetString("sourceEtablissement")
 	log.Printf("processing etablissement file %s", sourceEtablissement)
 	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
+		tx.Rollback(contexte)
 		return err
 	}
 	log.Print("commiting changes to database")
-	tx.Commit(context.Background())
+	tx.Commit(contexte)
 	log.Print("drop dead data")
-	_, err = db.Get().Exec(context.Background(), "vacuum;")
+	_, err = db.Get().Exec(contexte, "vacuum;")
 	if err != nil {
 		return err
 	}
