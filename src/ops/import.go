@@ -14,6 +14,7 @@ import (
 	"math"
 	"net/http"
 	"os"
+	"strings"
 	"sync"
 	"time"
 
@@ -421,7 +422,7 @@ func (s scoreFile) toLibelle() string {
 	return months[month] + " " + year
 }
 
-func importEntreprisesAndEntablissement() error {
+func importEntreprisesAndEtablissement() error {
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		return err
@@ -559,13 +560,13 @@ func prepareImport(tx *pgx.Tx) error {
 		"etablissement_procol",
 	}
 
-	for _, table := range tables {
-		_, err := (*tx).Exec(context.Background(), "truncate table $1;", table)
-		if err != nil {
-			return err
-		}
+	//for _, table := range tables {
+	allTables := strings.Join(tables, ", ")
+	_, err := (*tx).Exec(context.Background(), fmt.Sprintf("truncate table %s;", allTables))
+	if err != nil {
+		return err
 	}
-
+	//}
 	return nil
 }
 

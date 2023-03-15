@@ -47,7 +47,7 @@ func importSireneHandler(c *gin.Context) {
 }
 
 func importHandler(c *gin.Context) {
-	err := importEntreprisesAndEntablissement()
+	err := importEntreprisesAndEtablissement()
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
