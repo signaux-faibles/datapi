@@ -16,6 +16,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// InsertGeoSirene insère les informations géographiques des établissements dans la base
 func InsertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.WaitGroup) {
 	file, err := os.Open(viper.GetString("geoSirenePath"))
 	if err != nil {
@@ -154,6 +155,7 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
 	return err
 }
 
+// InsertSireneUL insère des trucs rapport aux sirene mais je sais pas trop quoi
 func InsertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.WaitGroup) {
 	sireneUL := goSirene.SireneULParser(ctx, viper.GetString("sireneULPath"))
 	count := 0
@@ -355,6 +357,7 @@ func null(s string) *string {
 	return &s
 }
 
+// TruncateSirens supprime le contene des tables `etablissement` et `entreprise`
 func TruncateSirens() error {
 	_, err := db.Get().Exec(context.Background(), "truncate table etablissement")
 	if err != nil {

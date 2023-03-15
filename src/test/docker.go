@@ -1,3 +1,4 @@
+// Package test contient le code commun aux tests
 package test
 
 import (

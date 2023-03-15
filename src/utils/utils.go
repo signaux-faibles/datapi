@@ -1,3 +1,4 @@
+// Package utils contient le code technique commun
 package utils
 
 import (
@@ -5,6 +6,7 @@ import (
 	"net/http"
 )
 
+// Contains retourne `vrai` si array contient `test`
 func Contains(array []string, test string) bool {
 	for _, s := range array {
 		if s == test {
@@ -14,11 +16,12 @@ func Contains(array []string, test string) bool {
 	return false
 }
 
+// AbortWithError gère le statut http en fonction de l'erreur
 func AbortWithError(c *gin.Context, err error) {
+	message := err.Error()
+	code := http.StatusInternalServerError
 	if err, ok := err.(Jerror); ok {
-		c.AbortWithStatusJSON(err.Code(), err.Error())
-		return
+		code = err.Code()
 	}
-	c.AbortWithStatusJSON(http.StatusInternalServerError, err.Error())
-	return
+	c.AbortWithStatusJSON(code, message)
 }

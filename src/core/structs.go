@@ -1,3 +1,4 @@
+// Package core contient le code de base de Datapi. Pour le moment c'est encore le fourre-tout mais un jour ça sera beau !!!
 package core
 
 import "time"

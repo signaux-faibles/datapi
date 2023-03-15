@@ -13,6 +13,7 @@ import (
 	"github.com/spf13/viper"
 )
 
+// Scope représente les habilitations d'un utilisateur (rôle vs département)
 type Scope []string
 
 func connectKC() gocloak.GoCloak {

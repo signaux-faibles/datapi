@@ -1,3 +1,4 @@
+// Package utils contient le code technique commun
 package utils
 
 // Jerror interface for JSON errors
@@ -27,6 +28,7 @@ func NewJSONerror(code int, e string) JSONerror {
 	return JSONerror{error: e, code: code}
 }
 
+// ErrorToJSON retourne une JSONerror avec un code http
 func ErrorToJSON(code int, e error) JSONerror {
 	return JSONerror{error: e.Error(), code: code}
 }
