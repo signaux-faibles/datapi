@@ -3,13 +3,8 @@ name: CI v2
 on:
   push:
     branches:
-      - 'master'
-    tags:
   release:
-    types: [published, edited]
-  pull_request:
-    branches:
-      - 'master'
+    types: [published]
 
 jobs:
   build_datapi:
@@ -68,7 +63,7 @@ jobs:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=ref,event=branch
-            type=ref,event=tag
+#            type=ref,event=tag
             type=ref,event=pr
           flavor: |
             latest=true
@@ -88,7 +83,6 @@ jobs:
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-
   analyse_codacy:
     name: Codacy Analysis CLI
     runs-on: ubuntu-latest
