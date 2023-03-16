@@ -74,8 +74,6 @@ func startDatapiDb() *dockertest.Resource {
 			postgresConfig + ":/etc/postgresql/postgresql.conf",
 			sqlDump + ":/docker-entrypoint-initdb.d",
 		},
-		// mandatory to be searchable by #findContainerByLabel
-		Labels: map[string]string{"type": "datapiDbName"},
 	}, func(config *docker.HostConfig) {
 		//set AutoRemove to true so that stopped container goes away by itself
 		config.AutoRemove = true
@@ -109,7 +107,6 @@ func startWekanDb() *dockertest.Resource {
 			"MONGO_INITDB_ROOT_USERNAME=mgo",
 			"MONGO_INITDB_DATABASE=test",
 			"listen_addresses = '*'"},
-		Labels: map[string]string{"type": "wekanDbName"},
 	}, func(config *docker.HostConfig) {
 		//set AutoRemove to true so that stopped container goes away by itself
 		config.AutoRemove = true

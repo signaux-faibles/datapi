@@ -10,9 +10,7 @@ import (
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/test"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"log"
 	"math/rand"
 	"os"
 	"strconv"
@@ -42,7 +40,7 @@ func TestMain(m *testing.M) {
 	adminWhitelist := "::1"
 	testConfig["adminWhitelist"] = adminWhitelist
 
-	addTestConfig(testConfig)
+	test.Viperize(testConfig)
 
 	test.Wait4DatapiDb(test.GetDatapiDbURL())
 
@@ -524,15 +522,6 @@ func TestPermissions(t *testing.T) {
 		}
 	}
 
-}
-
-func addTestConfig(testConfig map[string]string) {
-	log.Println("loading test config")
-	core.LoadConfig("test", "config", "migrations")
-	for k, v := range testConfig {
-		log.Printf("add to Viper %s : %s", k, v)
-		viper.Set(k, v)
-	}
 }
 
 func followEtablissementsThenCleanup(t *testing.T, sirets []string) {

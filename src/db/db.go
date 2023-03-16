@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -105,14 +106,35 @@ func compareMigrations(db []migrationScript, dir []migrationScript) []migrationS
 }
 
 func listDirMigrations() []migrationScript {
-	files, err := os.ReadDir(viper.GetString("migrationsDir"))
+	migrationsDir := viper.GetString("migrationsDir")
+	wd, err := os.Getwd()
 	if err != nil {
-		panic("migrations not found: " + err.Error())
+		log.Panicf(
+			"erreur lors de la récupération du répertoire de travail : %s",
+			err.Error(),
+		)
+	}
+	absolutePath, err := filepath.Abs(filepath.Join(wd, migrationsDir))
+	if err != nil {
+		log.Panicf(
+			"erreur lors de la récupération du chemin absolu du répertoire de migration '%s' : %s",
+			migrationsDir,
+			err.Error(),
+		)
+	}
+	files, err := os.ReadDir(absolutePath)
+	if err != nil {
+		log.Panicf(
+			"le répertoire des fichiers de migrations '%s' dans '%s' est introuvable : %s",
+			absolutePath,
+			wd,
+			err.Error(),
+		)
 	}
 	var dirMigrations []migrationScript
 	hasher := sha1.New()
 	for _, f := range files {
-		content, err := os.ReadFile("./migrations/" + f.Name())
+		content, err := os.ReadFile(filepath.Join(absolutePath, f.Name()))
 		if err != nil {
 			panic("error reading migration files: " + err.Error())
 		}

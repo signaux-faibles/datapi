@@ -440,8 +440,9 @@ func importEntreprisesAndEtablissement() error {
 		}
 		return err
 	}
-	sourceEntreprise := viper.GetString("sourceEntreprise")
-	log.Printf("processing entreprise file %s", sourceEntreprise)
+	enterpriseFileConfigKey := "sourceEntreprise"
+	sourceEntreprise := viper.GetString(enterpriseFileConfigKey)
+	log.Printf("integration du fichier entreprise '%s' (clé de configuration : '%s')", sourceEntreprise, enterpriseFileConfigKey)
 	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
 		if txErr := tx.Rollback(contexte); txErr != nil {
@@ -449,8 +450,10 @@ func importEntreprisesAndEtablissement() error {
 		}
 		return err
 	}
-	sourceEtablissement := viper.GetString("sourceEtablissement")
-	log.Printf("processing etablissement file %s", sourceEtablissement)
+
+	etablissementFileConfigKey := "sourceEtablissement"
+	sourceEtablissement := viper.GetString(etablissementFileConfigKey)
+	log.Printf("integration du fichier etablissement '%s' (clé de configuration : '%s')", sourceEtablissement, etablissementFileConfigKey)
 	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
 		if txErr := tx.Rollback(contexte); txErr != nil {
@@ -473,8 +476,7 @@ func importEntreprisesAndEtablissement() error {
 func processEntreprise(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Printf("error opening file: %s", err.Error())
-
+		log.Printf("erreur pendant l'ouverture du fichier '%s' : %s", fileName, err.Error())
 		return err
 	}
 	defer file.Close()

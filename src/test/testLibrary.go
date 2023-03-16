@@ -10,7 +10,9 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/spf13/viper"
 	"io"
+	"log"
 	"net/http"
 	"os"
 	"sync/atomic"
@@ -365,4 +367,16 @@ type EtablissementVAF struct {
 // SearchVAF structure correspondant à la réponse JSON de l'appel à un POST HTTP sur `/etablissement/search`
 type SearchVAF struct {
 	Results []EtablissementVAF `json:"results"`
+}
+
+func Viperize(testConfig map[string]string) error {
+	log.Println("loading test config")
+	core.LoadConfig("test", "config", "migrations")
+
+	for k, v := range testConfig {
+		log.Printf("add to Viper %s : %s", k, v)
+		viper.Set(k, v)
+	}
+
+	return viper.ReadInConfig()
 }

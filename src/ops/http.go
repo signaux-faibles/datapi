@@ -6,6 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/spf13/viper"
+	"io"
 	"log"
 	"net/http"
 )
@@ -44,7 +45,11 @@ func importSireneHandler(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, "sirenes mis à jour")
+	c.Stream(func(w io.Writer) bool {
+		w.Write([]byte("sirenes mis à jour"))
+		return true
+	})
+	//c.JSON(http.StatusOK, "sirenes mis à jour")
 }
 
 func importHandler(c *gin.Context) {
@@ -53,7 +58,8 @@ func importHandler(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
+	c.Next()
+	//c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
 }
 
 func importListesHandler(c *gin.Context) {
@@ -63,7 +69,8 @@ func importListesHandler(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
+	c.Next()
+	//c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
 }
 
 func keycloakUsersHandler(c *gin.Context) {

@@ -35,7 +35,7 @@ func StartDatapi() {
 
 // LoadConfig charge la config toml
 func LoadConfig(confDirectory, confFile, migrationDir string) {
-	viper.SetDefault("MigrationsDir", migrationDir)
+	viper.SetDefault("migrationsDir", migrationDir)
 	viper.SetConfigName(confFile)
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(confDirectory)

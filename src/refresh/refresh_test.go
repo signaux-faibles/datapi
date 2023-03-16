@@ -27,7 +27,7 @@ func Test_NewRefresh(t *testing.T) {
 	ass.Exactly(current, value)
 }
 
-func Test_Run(t *testing.T) {
+func Test_changeRefreshStateToRun(t *testing.T) {
 	ass := assert.New(t)
 	current := New()
 	expectedMessage := "mega test"
