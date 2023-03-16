@@ -12,7 +12,6 @@ import (
 	"github.com/signaux-faibles/datapi/src/refresh"
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/stretchr/testify/assert"
-	"io"
 	"net/http"
 	"testing"
 	"time"
@@ -54,11 +53,9 @@ func TestFetchRefreshWithState(t *testing.T) {
 	time.Sleep(100 * time.Millisecond)
 
 	failedRefresh := refresh.FetchRefreshsWithState(refresh.Failed)
-	t.Logf("Description des refresh erronés : %s", failedRefresh)
 	ass.Len(failedRefresh, 2)
 
 	runningRefresh := refresh.FetchRefreshsWithState(refresh.Running)
-	t.Logf("Description du refresh en cours : %s", runningRefresh)
 	ass.Condition(func() bool {
 		for _, current := range runningRefresh {
 			if current.UUID == expected.UUID {
@@ -72,10 +69,9 @@ func TestFetchRefreshWithState(t *testing.T) {
 func TestStartHandler(t *testing.T) {
 	ass := assert.New(t)
 	path := "/refresh/start"
-	response, body, _ := test.HTTPGetAndFormatBody(t, path)
+	response := test.HTTPGet(t, path)
 
-	t.Logf("response: %s", body)
-	ass.Equal(http.StatusOK, response.StatusCode)
+	ass.Equalf(http.StatusOK, response.StatusCode, "body de la réponse : %s", test.GetBodyQuietly(response))
 }
 
 func TestStatusHandler(t *testing.T) {
@@ -84,12 +80,14 @@ func TestStatusHandler(t *testing.T) {
 	path := "/refresh/status/" + current.UUID.String()
 	response := test.HTTPGet(t, path)
 
-	ass.Equal(http.StatusOK, response.StatusCode)
+	body := test.GetBodyQuietly(response)
+	ass.Equalf(http.StatusOK, response.StatusCode, "body de la réponse : %s", body)
+
 	retour := &refresh.Refresh{}
-	body := json.NewDecoder(response.Body)
-	body.Decode(retour)
-	t.Logf("expected : %s", current)
-	t.Logf("actual : %s", retour)
+	err := json.Unmarshal(body, &retour)
+	if err != nil {
+		t.Errorf("erreur survenur pendant l'unmarshalling de la réponse '%s' (cause : %s)", body, err.Error())
+	}
 	ass.Equal(current.UUID, retour.UUID)
 }
 
@@ -100,9 +98,9 @@ func TestListHandler(t *testing.T) {
 	rPath := "/refresh/list/" + string(expectedStatus)
 
 	response := test.HTTPGet(t, rPath)
-
-	ass.Equal(http.StatusOK, response.StatusCode)
-	actual, err := decodeRefreshArray(response)
+	body := test.GetBodyQuietly(response)
+	ass.Equal(http.StatusOK, response.StatusCode, "body de la réponse : %s", body)
+	actual, err := decodeRefreshArray(body)
 	ass.Nil(err)
 	ass.GreaterOrEqual(len(actual), 1)
 	ass.Conditionf(func() bool {
@@ -125,13 +123,9 @@ func TestListHandler(t *testing.T) {
 	}, "Le refresh avec l'uuid %s n'existe pas", current)
 }
 
-func decodeRefreshArray(response *http.Response) ([]refresh.Refresh, error) {
+func decodeRefreshArray(body []byte) ([]refresh.Refresh, error) {
 	var actual []refresh.Refresh
-	all, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, errors.New("erreur pendant la lecture de la réponse")
-	}
-	err = json.Unmarshal(all, &actual)
+	err := json.Unmarshal(body, &actual)
 	if err != nil {
 		return nil, errors.New("erreur pendant l'unmarshalling de la réponse")
 	}

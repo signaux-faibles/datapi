@@ -62,8 +62,24 @@ func saveGoldenFile(fileName string, goldenData []byte) error {
 	return err
 }
 
-func indent(reader io.Reader) ([]byte, error) {
-	body, err := io.ReadAll(reader)
+func GetBodyQuietly(r *http.Response) []byte {
+	body, err := GetBody(r)
+	if err != nil {
+		return []byte(fmt.Sprintf("Erreur pendant la lecture de la réponse : %s", err.Error()))
+	}
+	return body
+}
+
+func GetBody(r *http.Response) ([]byte, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+func GetIndentedBody(r *http.Response) ([]byte, error) {
+	body, err := GetBody(r)
 	if err != nil {
 		return nil, err
 	}
@@ -108,7 +124,7 @@ func HTTPPost(t *testing.T, path string, params map[string]interface{}) *http.Re
 // HTTPPostAndFormatBody fonction helper pour faire du POST HTTP
 func HTTPPostAndFormatBody(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
 	resp := HTTPPost(t, path, params)
-	indented, err := indent(resp.Body)
+	indented, err := GetIndentedBody(resp)
 	return resp, indented, err
 }
 
@@ -125,7 +141,7 @@ func HTTPGet(t *testing.T, path string) *http.Response {
 // HTTPGetAndFormatBody fonction helper pour faire du GET HTTP
 func HTTPGetAndFormatBody(t *testing.T, path string) (*http.Response, []byte, error) {
 	resp := HTTPGet(t, path)
-	indented, err := indent(resp.Body)
+	indented, err := GetIndentedBody(resp)
 	return resp, indented, err
 }
 
