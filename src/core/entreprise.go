@@ -315,6 +315,7 @@ func (e Etablissements) sirensFromQuery() []string {
 
 func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 	var batch pgx.Batch
+	now := time.Now()
 	listes, _ := findAllListes()
 	lastListe := listes[0].ID
 
@@ -396,20 +397,6 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 			order by en.arrete_bilan_diane;`,
 		e.sirensFromQuery())
 
-	// A remettre en service lorsque nous aurons des données BDF
-	// batch.Queue(`select en.siren, annee_bdf, arrete_bilan_bdf, delai_fournisseur, financier_court_terme, poids_frng,
-	// 	dette_fiscale, frais_financier, taux_marge
-	// 	from entreprise_bdf0 en
-	// 	left join v_alert_entreprise s on s.siren = en.siren
-	// 	left join (select distinct siren from etablissement_follow where username=$3 and active) f on f.siren = en.siren
-	// 	inner join v_roles ro on ro.siren = en.siren and $2 @> array['bdf'] and (s.siren is not null and (ro.roles && $2) or f.siren is not null)
-	// 	where en.siren=any($1)
-	// 	order by arrete_bilan_bdf;`,
-	// 	e.sirensFromQuery(),
-	// 	roles.zoneGeo(),
-	// 	username,
-	// )
-
 	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert, 
 		case when s.libelle_liste = $5 then s.expl_selection_concerning else '[]' end,			
 		case when s.libelle_liste = $5 then s.expl_selection_reassuring else '[]' end, 
@@ -485,9 +472,9 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 
 	batch.Queue(`select e.siren, e.date_valeur, e.nb_jours
 	from entreprise_paydex0 e
-	where e.siren=any($1) and date_valeur + '24 month'::interval >= current_date
+	where e.siren=any($1) and date_valeur + '24 month'::interval >= $2
 	order by e.siren, date_valeur;`,
-		e.sirensFromQuery())
+		e.sirensFromQuery(), now)
 
 	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
 		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),

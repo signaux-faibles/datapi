@@ -427,31 +427,41 @@ func importEntreprisesAndEtablissement() error {
 	contexte := context.Background()
 	tx, err := db.Get().Begin(contexte)
 	if err != nil {
-		tx.Rollback(contexte)
+		if txErr := tx.Rollback(contexte); txErr != nil {
+			return txErr
+		}
 		return err
 	}
 	log.Print("preparing import (truncate tables)")
 	err = prepareImport(&tx)
 	if err != nil {
-		tx.Rollback(contexte)
+		if txErr := tx.Rollback(contexte); txErr != nil {
+			return txErr
+		}
 		return err
 	}
 	sourceEntreprise := viper.GetString("sourceEntreprise")
 	log.Printf("processing entreprise file %s", sourceEntreprise)
 	err = processEntreprise(sourceEntreprise, &tx)
 	if err != nil {
-		tx.Rollback(contexte)
+		if txErr := tx.Rollback(contexte); txErr != nil {
+			return txErr
+		}
 		return err
 	}
 	sourceEtablissement := viper.GetString("sourceEtablissement")
 	log.Printf("processing etablissement file %s", sourceEtablissement)
 	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
-		tx.Rollback(contexte)
+		if txErr := tx.Rollback(contexte); txErr != nil {
+			return txErr
+		}
 		return err
 	}
 	log.Print("commiting changes to database")
-	tx.Commit(contexte)
+	if txErr := tx.Commit(contexte); txErr != nil {
+		return txErr
+	}
 	log.Print("drop dead data")
 	_, err = db.Get().Exec(contexte, "vacuum;")
 	if err != nil {
@@ -615,7 +625,7 @@ func importListes(algo string) error {
 			return errors.New("unmarshall JSON : " + err.Error())
 		}
 	}
-
+	now := time.Now()
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
 		return utils.NewJSONerror(http.StatusBadRequest, "begin TX: "+err.Error())
@@ -650,11 +660,11 @@ func importListes(algo string) error {
 			redressements, alert_pre_redressements)
 		select
 			e.siret, t.siren, t.libelle_liste, batch, $1,
-			current_date, score, diff, alert, expl_selection_concerning,
+			$2, score, diff, alert, expl_selection_concerning,
 			expl_selection_reassuring, macro_radar,
 			redressements, alert_pre_redressements
 		from tmp_score t
-		inner join etablissement e on e.siren = t.siren and e.siege`, algo)
+		inner join etablissement e on e.siren = t.siren and e.siege`, algo, now)
 
 	results := tx.SendBatch(context.Background(), batch)
 	err = results.Close()
