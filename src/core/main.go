@@ -46,11 +46,7 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 }
 
 // InitAPI initialise l'api
-func InitAPI() *gin.Engine {
-	if viper.GetBool("prod") {
-		gin.SetMode(gin.ReleaseMode)
-	}
-	router := gin.Default()
+func InitAPI(router *gin.Engine) {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
@@ -107,7 +103,6 @@ func InitAPI() *gin.Engine {
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 	wekan.GET("/config", wekanConfigHandler)
-	return router
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API
@@ -170,8 +165,16 @@ func LogMiddleware(c *gin.Context) {
 		c.AbortWithStatus(500)
 		return
 	}
-
 	c.Next()
+}
+
+func AdminAuthMiddleware(c *gin.Context) {
+	var whitelist = viper.GetStringSlice("adminWhitelist")
+	if !utils.Contains(whitelist, c.ClientIP()) {
+		log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
 }
 
 // True made global to ease pointers
