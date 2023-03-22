@@ -64,6 +64,7 @@ func saveGoldenFile(fileName string, goldenData []byte) error {
 	return err
 }
 
+// GetBodyQuietly retourne le body de la réponse sous forme de tableau de bytes et ne retourne pas d'erreur
 func GetBodyQuietly(r *http.Response) []byte {
 	body, err := GetBody(r)
 	if err != nil {
@@ -72,6 +73,7 @@ func GetBodyQuietly(r *http.Response) []byte {
 	return body
 }
 
+// GetBody retourne le body de la réponse sous forme de tableau de bytes et retourne une erreur en cas de problème
 func GetBody(r *http.Response) ([]byte, error) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -80,6 +82,7 @@ func GetBody(r *http.Response) ([]byte, error) {
 	return body, nil
 }
 
+// GetIndentedBody retourne le body de la réponse sous forme pretty
 func GetIndentedBody(r *http.Response) ([]byte, error) {
 	body, err := GetBody(r)
 	if err != nil {
@@ -369,6 +372,7 @@ type SearchVAF struct {
 	Results []EtablissementVAF `json:"results"`
 }
 
+// Viperize ajoute la map passée en paramètre dans la configuration Viper
 func Viperize(testConfig map[string]string) error {
 	log.Println("loading test config")
 	core.LoadConfig("test", "config", "migrations")

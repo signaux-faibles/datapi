@@ -168,6 +168,7 @@ func LogMiddleware(c *gin.Context) {
 	c.Next()
 }
 
+// AdminAuthMiddleware stoppe la requˆete si l'ip client n'est pas contenue dans la whitelist
 func AdminAuthMiddleware(c *gin.Context) {
 	var whitelist = viper.GetStringSlice("adminWhitelist")
 	if !utils.Contains(whitelist, c.ClientIP()) {
