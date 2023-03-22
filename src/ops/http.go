@@ -58,5 +58,5 @@ func keycloakUsersHandler(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.JSON(http.StatusOK, "utilisateurs mis à jour")
+	c.JSON(http.StatusOK, gin.H{"message": "utilisateurs mis à jour"})
 }

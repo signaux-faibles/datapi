@@ -25,8 +25,8 @@ func ConfigureEndpoint(path string, api *gin.Engine) {
 // startHandler : point d'entrée de l'API qui démarre un nouveau `Refresh` et retourne son `UUID`
 func startHandler(c *gin.Context) {
 	refreshScriptPath := viper.GetString("refreshScript")
-	id := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
-	c.JSON(http.StatusOK, gin.H{"refreshUuid": id.String()})
+	refresh := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
+	c.JSON(http.StatusOK, refresh)
 }
 
 // statusHandler : point d'entrée de l'API qui retourne les infos d'un `Refresh` depuis son `UUID`
@@ -41,12 +41,12 @@ func statusHandler(c *gin.Context) {
 		utils.AbortWithError(c, err) // nolint: errcheck
 		return
 	}
-	state, err := Fetch(id)
+	refresh, err := Fetch(id)
 	if err != nil {
 		utils.AbortWithError(c, err) // nolint: errcheck
 		return
 	}
-	c.JSON(http.StatusOK, state)
+	c.JSON(http.StatusOK, refresh)
 }
 
 // lastHandler : point d'entrée de l'API qui retourne le dernier `Refresh` démarré
