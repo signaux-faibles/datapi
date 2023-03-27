@@ -17,7 +17,7 @@ func TestMain(m *testing.M) {
 
 	// You can't defer this because os.Exit doesn't care for defer
 	// on peut placer ici du code de nettoyage si nécessaire
-	test.UnfakeTime(tuTime)
+	test.UnfakeTime()
 
 	os.Exit(code)
 }
