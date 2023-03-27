@@ -23,6 +23,7 @@ import (
 var apiHostAndPort = atomic.Value{}
 var update = flag.Bool("overwriteGoldenFiles", false, "true pour écraser les golden files pas les réponses générées par les tests d'intégration")
 
+// DatapiDatabaseName contient le nom de la base de données de test
 const DatapiDatabaseName = "datapi_test"
 
 func compare(expected []byte, actual []byte) string {

@@ -1,4 +1,4 @@
-// Package ops contient le code lié aux opérations d'administration dans datapi
+// Package imports contient le code lié aux opérations d'administration dans datapi
 package imports
 
 import (
