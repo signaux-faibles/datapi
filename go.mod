@@ -1,6 +1,7 @@
 module github.com/signaux-faibles/datapi
 
-go 1.18
+go 1.20
+
 
 require (
 	bou.ke/monkey v1.0.2
@@ -21,6 +22,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.15.0
 	github.com/signaux-faibles/goSirene v0.2.4
+	github.com/signaux-faibles/libwekan v0.1.4-0.20230405131132-ed02bb47f057
 	github.com/spf13/viper v1.15.0
 	github.com/stretchr/testify v1.8.2
 	github.com/tealeg/xlsx v1.0.5
