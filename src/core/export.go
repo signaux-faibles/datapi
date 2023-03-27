@@ -157,7 +157,7 @@ func (exports dbExports) newDbExport() (dbExports, []interface{}) {
 func getExportSiret(s session, siret string) (Card, error) {
 	var exports dbExports
 	exports, exportsFields := exports.newDbExport()
-	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles.zoneGeo(), s.username, siret).Scan(exportsFields...)
+	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.username, siret).Scan(exportsFields...)
 	if err != nil {
 		return Card{}, err
 	}
@@ -182,10 +182,10 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 	var cardsMap = make(map[string]*Card)
 	var sirets []string
 	var followedSirets []string
-	wcu := wekanConfig.forUser(s.username)
-	userID := wekanConfig.userID(s.username)
+	wcu := oldWekanConfig.forUser(s.username)
+	userID := oldWekanConfig.userID(s.username)
 
-	if _, ok := wekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
+	if _, ok := oldWekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
 		// Export wekan + DB
 		var username *string
 		if params.Type == "my-cards" {
@@ -195,7 +195,9 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
 		labelIds := wcu.labelIdsForLabels(params.Labels)
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, params.Since)
+		labelMode := params.LabelMode
+
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
 		if err != nil {
 			return nil, err
 		}
@@ -224,7 +226,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 			sirets = followedSirets
 		}
 		var cursor pgx.Rows
-		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles.zoneGeo(), s.username, sirets)
+		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles, s.username, sirets)
 
 		if err != nil {
 			return nil, err
@@ -253,7 +255,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		var err error
 
 		if s.hasRole("wekan") {
-			wekanCards, err = selectWekanCards(&s.username, boardIds, nil, nil, nil, nil)
+			wekanCards, err = selectWekanCards(&s.username, boardIds, nil, nil, nil, false, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -274,7 +276,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		cursor, err = db.Get().Query(
 			context.Background(),
 			sqlDbExportFollow,
-			s.roles.zoneGeo(),
+			s.roles,
 			s.username,
 			params.Zone,
 		)
@@ -424,7 +426,7 @@ func (c Card) docx(head ExportHeader) (Docx, error) {
 }
 
 func (c Card) join() []WekanExport {
-	wc := wekanConfig.copy()
+	wc := oldWekanConfig.copy()
 	apartSwitch := map[bool]string{
 		true:  "Demande sur les 12 derniers mois",
 		false: "Pas de demande récente",

@@ -79,7 +79,7 @@ func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 	if err != nil {
 		return searchResult{}, utils.ErrorToJSON(500, err)
 	}
-	zoneGeo := params.roles.zoneGeo()
+	zoneGeo := params.roles
 	limit := viper.GetInt("searchPageLength")
 
 	offset := params.Page * limit

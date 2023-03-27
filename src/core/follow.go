@@ -100,9 +100,9 @@ func unfollowEtablissement(c *gin.Context) {
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
 	}
-	userID := wekanConfig.userID(s.username)
+	userID := oldWekanConfig.userID(s.username)
 	if userID != "" && s.hasRole("wekan") {
-		boardIds := wekanConfig.boardIdsForUser(s.username)
+		boardIds := oldWekanConfig.boardIdsForUser(s.username)
 		err := wekanPartCard(userID, siret, boardIds)
 		if err != nil {
 			fmt.Println(err)
@@ -184,7 +184,7 @@ func (f *Follow) list(roles Scope) (Follows, utils.Jerror) {
 		return nil, utils.ErrorToJSON(500, err)
 	}
 
-	params := summaryParams{roles.zoneGeo(), nil, nil, &liste[0].ID, false, nil,
+	params := summaryParams{roles, nil, nil, &liste[0].ID, false, nil,
 		&True, &True, *f.Username, false, "follow", &False, nil,
 		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
@@ -251,11 +251,13 @@ func getCardsForCurrentUser(c *gin.Context) {
 }
 
 type paramsGetCards struct {
-	Type   string     `json:"type"`
-	Statut []string   `json:"statut"`
-	Zone   []string   `json:"zone"`
-	Labels []string   `json:"labels"`
-	Since  *time.Time `json:"since"`
+	Type      string     `json:"type"`
+	Statut    []string   `json:"statut"`
+	Boards    []string   `json:"boards"`
+	Zone      []string   `json:"zone"`
+	Labels    []string   `json:"labels"`
+	LabelMode bool       `json:"labelMode"`
+	Since     *time.Time `json:"since"`
 }
 
 type Card struct {
@@ -281,18 +283,23 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 	var cardsMap = make(map[string]*Card)
 	var sirets []string
 	var followedSirets []string
-	wcu := wekanConfig.forUser(s.username)
-	userID := wekanConfig.userID(s.username)
+	wcu := oldWekanConfig.forUser(s.username)
+	userID := oldWekanConfig.userID(s.username)
 	labelIds := wcu.labelIdsForLabels(params.Labels)
+	labelMode := params.LabelMode
 	if userID != "" && s.hasRole("wekan") && params.Type != "no-card" {
 		var username *string
 		if params.Type == "my-cards" {
 			username = &s.username
 		}
-		boardIds := wcu.boardIds()
+
+		if len(params.Boards) == 0 {
+			params.Boards = wcu.boardIds()
+		}
+		boardIds := params.Boards
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
 		listIds := wcu.listIdsForStatuts(params.Statut)
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, params.Since)
+		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
 		if err != nil {
 			return nil, err
 		}
@@ -314,20 +321,23 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			return nil, err
 		}
 		var ss summaries
-		cursor, err := db.Get().Query(context.Background(), sqlGetCards, s.roles.zoneGeo(), s.username, sirets)
+		cursor, err := db.Get().Query(context.Background(), sqlGetCards, s.roles, s.username, sirets)
 		if err != nil {
 			return nil, err
 		}
 		for cursor.Next() {
 			s := ss.newSummary()
-			cursor.Scan(s...)
+			err := cursor.Scan(s...)
+			if err != nil {
+				return nil, err
+			}
 		}
 		for _, s := range ss.summaries {
 			cardsMap[s.Siret].Summary = s
 		}
 	} else {
 		boardIds := wcu.boardIds()
-		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil, nil)
+		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil, labelMode, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -340,13 +350,16 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			excludeSirets[siret] = struct{}{}
 		}
 		var ss summaries
-		cursor, err := db.Get().Query(context.Background(), sqlGetFollow, s.roles.zoneGeo(), s.username, params.Zone)
+		cursor, err := db.Get().Query(context.Background(), sqlGetFollow, s.roles, s.username, params.Zone)
 		if err != nil {
 			return nil, err
 		}
 		for cursor.Next() {
 			s := ss.newSummary()
-			cursor.Scan(s...)
+			err := cursor.Scan(s...)
+			if err != nil {
+				return nil, err
+			}
 		}
 		for _, s := range ss.summaries {
 			if _, ok := excludeSirets[s.Siret]; !ok {
