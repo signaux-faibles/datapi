@@ -13,16 +13,16 @@ import (
 
 // Comment commentaire sur une enterprise
 type Comment struct {
-	ID             *int        `json:"id,omitempty"`
-	IDParent       *int        `json:"idParent,omitempty"`
-	Comments       []*Comment  `json:"comments,omitempty"`
-	Siret          *string     `json:"siret,omitempty"`
-	Username       *string     `json:"username,omitempty"`
-	User           *user       `json:"author,omitempty"`
-	DateHistory    []time.Time `json:"dateHistory,omitempty"`
-	Message        *string     `json:"message,omitempty"`
-	MessageHistory []string    `json:"messageHistory,omitempty"`
-	Scope          [][]string  `json:"scope,omitempty"`
+	ID             *int          `json:"id,omitempty"`
+	IDParent       *int          `json:"idParent,omitempty"`
+	Comments       []*Comment    `json:"comments,omitempty"`
+	Siret          *string       `json:"siret,omitempty"`
+	Username       *string       `json:"username,omitempty"`
+	User           *keycloakUser `json:"author,omitempty"`
+	DateHistory    []time.Time   `json:"dateHistory,omitempty"`
+	Message        *string       `json:"message,omitempty"`
+	MessageHistory []string      `json:"messageHistory,omitempty"`
+	Scope          [][]string    `json:"scope,omitempty"`
 }
 
 func getEntrepriseComments(c *gin.Context) {
@@ -137,7 +137,7 @@ func (c *Comment) load() utils.Jerror {
 	for rows.Next() {
 		var c Comment
 
-		c.User = &user{}
+		c.User = &keycloakUser{}
 		err := rows.Scan(&c.ID, &c.IDParent, &c.User.Username, &c.DateHistory, &c.MessageHistory, &c.User.FirstName, &c.User.LastName)
 		if err != nil {
 			return utils.ErrorToJSON(http.StatusInternalServerError, err)

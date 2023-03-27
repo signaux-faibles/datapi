@@ -411,6 +411,8 @@ github.com/shopspring/decimal v1.2.0/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFR
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/signaux-faibles/goSirene v0.2.4 h1:m74h4GNNTI2aQryakGj2vJIWl6/JUSLSdxetHOQxYQg=
 github.com/signaux-faibles/goSirene v0.2.4/go.mod h1:YdHQWRCIiyAmPievzBtFwsvA61MXrPkuPkJuGUu9kmU=
+github.com/signaux-faibles/libwekan v0.1.4-0.20230405131132-ed02bb47f057 h1:yDinioVJK1cdA/aNoT3yL1znEpcLaN/RjDXzY3aOtY0=
+github.com/signaux-faibles/libwekan v0.1.4-0.20230405131132-ed02bb47f057/go.mod h1:W0292splqeipGmEwjleyZRY3zXa4HW4QX+FG9AI1TQI=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=
 github.com/sirupsen/logrus v1.4.2/go.mod h1:tLMulIdttU9McNUspp0xgXVQah82FyeX6MwdIuYE2rE=

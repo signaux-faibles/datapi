@@ -9,6 +9,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
+	"github.com/signaux-faibles/libwekan"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"log"
@@ -20,17 +21,41 @@ import (
 
 var keycloak gocloak.GoCloak
 var mgoDB *mongo.Database
-var wekanConfig WekanConfig
+
+var oldWekanConfig WekanConfig
 
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(path string, api *gin.Engine)
 
 // StartDatapi se connecte aux bases de données et keycloak
-func StartDatapi() {
+func StartDatapi() error {
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
+	err := loadDepartementReferentiel()
+	if err != nil {
+		return err
+	}
+	err = loadRegionsReferentiel()
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
+	wekan, err = libwekan.Init(
+		context.Background(),
+		viper.GetString("wekanMgoURL"),
+		viper.GetString("wekanMgoDB"),
+		libwekan.Username(viper.GetString("wekanAdminUsername")),
+		viper.GetString("wekanSlugDomainRegexp"),
+	)
+	if err != nil {
+		return err
+	}
+
+	// TODO supprimer
 	mgoDB = connectWekanDB()
-	go watchWekanConfig(&wekanConfig, time.Second)
+	go watchOldWekanConfig(&oldWekanConfig, time.Minute)
+	go watchWekanConfig(time.Minute)
 	keycloak = connectKC()
+	return nil
 }
 
 // LoadConfig charge la config toml
@@ -91,8 +116,8 @@ func InitAPI(router *gin.Engine) {
 
 	reference := router.Group("/reference", AuthMiddleware(), LogMiddleware)
 	reference.GET("/naf", getCodesNaf)
-	reference.GET("/departements", getDepartements)
-	reference.GET("/regions", getRegions)
+	reference.GET("/departements", departementsHandler)
+	reference.GET("/regions", regionsHandler)
 
 	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
 	fce.GET("/:siret", validSiret, getFceURL)
@@ -102,7 +127,9 @@ func InitAPI(router *gin.Engine) {
 	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
-	wekan.GET("/config", wekanConfigHandler)
+
+	kanban := router.Group("/kanban", AuthMiddleware(), LogMiddleware)
+	kanban.GET("/config", kanbanConfigHandler)
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API
@@ -122,6 +149,7 @@ func StartAPI(router *gin.Engine) {
 // AuthMiddleware définit le middleware qui gère l'authentification
 func AuthMiddleware() gin.HandlerFunc {
 	if viper.GetBool("enableKeycloak") {
+
 		return keycloakMiddleware
 	}
 	return fakeCloakMiddleware

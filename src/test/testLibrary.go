@@ -120,12 +120,23 @@ func ProcessGoldenFile(t *testing.T, path string, data []byte) (string, error) {
 // HTTPPost fonction helper pour faire du POST HTTP
 func HTTPPost(t *testing.T, path string, params map[string]interface{}) *http.Response {
 	jsonValue, _ := json.Marshal(params)
-	resp, err := http.Post(hostname()+path, "application/json", bytes.NewBuffer(jsonValue))
+
+	request, err := http.NewRequest("POST", hostname()+path, bytes.NewBuffer(jsonValue))
 	if err != nil {
 		t.Errorf("api non joignable: %s", err)
 		t.Fail()
 	}
-	return resp
+	request.Header = http.Header{
+		"Host":          {"go.unit"},
+		"Authorization": {kcBearer},
+		"Content-Type":  {"application/json"},
+	}
+	done, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Errorf("api non joignable: %s", err)
+		t.Fail()
+	}
+	return done
 }
 
 // HTTPPostAndFormatBody fonction helper pour faire du POST HTTP
@@ -137,12 +148,21 @@ func HTTPPostAndFormatBody(t *testing.T, path string, params map[string]interfac
 
 // HTTPGet fonction helper pour faire du GET HTTP
 func HTTPGet(t *testing.T, path string) *http.Response {
-	resp, err := http.Get(hostname() + path)
+	request, err := http.NewRequest("GET", hostname()+path, nil)
 	if err != nil {
 		t.Errorf("api non joignable: %s", err)
 		t.Fail()
 	}
-	return resp
+	request.Header = http.Header{
+		"Host":          {"go.unit"},
+		"Authorization": {kcBearer},
+	}
+	done, err := http.DefaultClient.Do(request)
+	if err != nil {
+		t.Errorf("api non joignable: %s", err)
+		t.Fail()
+	}
+	return done
 }
 
 // HTTPGetAndFormatBody fonction helper pour faire du GET HTTP
