@@ -3,8 +3,9 @@ package main
 import (
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/core"
-	"github.com/signaux-faibles/datapi/src/ops"
-	"github.com/signaux-faibles/datapi/src/refresh"
+	"github.com/signaux-faibles/datapi/src/ops/imports"
+	"github.com/signaux-faibles/datapi/src/ops/misc"
+	"github.com/signaux-faibles/datapi/src/ops/refresh"
 	"github.com/spf13/viper"
 )
 
@@ -20,7 +21,8 @@ func main() {
 func initAndStartAPI() {
 	router := gin.Default()
 	core.InitAPI(router)
-	core.AddEndpoint(router, "/refresh", refresh.ConfigureEndpoint)
-	core.AddEndpoint(router, "/utils", ops.ConfigureEndpoint)
+	core.AddEndpoint(router, "ops/utils", misc.ConfigureEndpoint)
+	core.AddEndpoint(router, "ops/imports", imports.ConfigureEndpoint)
+	core.AddEndpoint(router, "ops/refresh", refresh.ConfigureEndpoint)
 	core.StartAPI(router)
 }

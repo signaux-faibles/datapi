@@ -1,5 +1,5 @@
 // Package ops contient le code lié aux opérations d'administration dans datapi
-package ops
+package imports
 
 import (
 	"compress/gzip"
@@ -197,7 +197,7 @@ type sirene struct {
 }
 
 func (e entreprise) intoBatch(batch *pgx.Batch) {
-	// TODO a remplacer par l'import du fichier de Yan
+	// TODO a remplacer par l'imports du fichier de Yan
 	sqlEntrepriseDiane := `insert into entreprise_diane
 		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
 		autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
@@ -606,9 +606,6 @@ type scoreFile struct {
 }
 
 func importListes(algo string) error {
-	if algo == "" {
-		return utils.NewJSONerror(http.StatusBadRequest, "`algo` parameter is mandatory")
-	}
 
 	filename := viper.GetString("listPath")
 	file, err := os.Open(filename)

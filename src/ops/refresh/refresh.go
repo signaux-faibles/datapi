@@ -102,7 +102,7 @@ func (r *Refresh) save(status Status, message string) {
 func (r Refresh) String() string {
 	return fmt.Sprintf(
 		"Refresh{%s, date: %s, état: '%s', message: '%s'}",
-		r.UUID,
+		r.UUID.String(),
 		r.Date.Format("2006-01-02 15:04:05.999999999"),
 		r.Status,
 		r.Message,

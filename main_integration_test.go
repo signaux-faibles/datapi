@@ -29,7 +29,6 @@ func TestMain(m *testing.M) {
 	test.FakeTime(tuTime)
 
 	testConfig := map[string]string{}
-
 	testConfig["postgres"] = test.GetDatapiDbURL()
 	testConfig["wekanMgoURL"] = test.GetWekanDbURL()
 
@@ -53,9 +52,8 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
-	//if err := pool.Purge(datapiDb); err != nil {
-	//	log.Fatalf("Could not purge resource: %s", err)
-	//}
+	// on peut placer ici du code de nettoyage si nécessaire
+
 	os.Exit(code)
 }
 

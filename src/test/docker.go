@@ -9,7 +9,6 @@ import (
 	"github.com/ory/dockertest/v3/docker"
 	"log"
 	"path/filepath"
-	"sync/atomic"
 	"time"
 )
 
@@ -25,16 +24,34 @@ const (
 	wekanDbName  containerName = "wekanDbName"
 )
 
-var current atomic.Value
+var d *dockerContext
+
+func init() {
+	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	pool, err := dockertest.NewPool("")
+	if err != nil {
+		log.Panicf("Could not connect to docker: %s", err)
+	}
+	newContext := dockerContext{
+		pool: pool,
+		containerNames: map[containerName]string{
+			datapiDbName: "datapidb-ti-" + uuid.New().String(),
+			wekanDbName:  "mongodb-ti-" + uuid.New().String(),
+		},
+	}
+	d = &newContext
+}
 
 // GetDatapiDbURL démarre si nécessaire un container postgres et retourne l'URL pour y accéder
 func GetDatapiDbURL() string {
 	datapiDb, found := getContainer(datapiDbName)
 	if !found {
 		datapiDb = startDatapiDb()
+	} else {
+		log.Printf("le container %s a bien été retrouvé", datapiDb.Container.Name)
 	}
 	hostAndPort := datapiDb.GetHostPort("5432/tcp")
-	dbURL := fmt.Sprintf("postgres://postgres:test@%s/datapi_test?sslmode=disable", hostAndPort)
+	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiDatabaseName)
 	return dbURL
 }
 
@@ -56,10 +73,10 @@ func startDatapiDb() *dockertest.Resource {
 		log.Panicf("Could not get absolute path: %s", err)
 	}
 	// sql dump to currentContext postgres data
-	sqlDump, err := filepath.Abs("test/data")
+	sqlDump, _ := filepath.Abs("test/data")
 	// pulls an image, creates a container based on it and runs it
-	datapiContainerName := currentContext().containerNames[datapiDbName]
-	log.Println("trying start datapi-db")
+	datapiContainerName := d.containerNames[datapiDbName]
+	log.Println("démarre le container datapi-db avec le nom : ", datapiContainerName)
 
 	datapiDb, err := currentPool().RunWithOptions(&dockertest.RunOptions{
 		Name:       datapiContainerName,
@@ -68,7 +85,7 @@ func startDatapiDb() *dockertest.Resource {
 		Env: []string{
 			"POSTGRES_PASSWORD=test",
 			"POSTGRES_USER=postgres",
-			"POSTGRES_DB=datapi_test",
+			"POSTGRES_DB=" + DatapiDatabaseName,
 			"listen_addresses = '*'"},
 		Mounts: []string{
 			postgresConfig + ":/etc/postgresql/postgresql.conf",
@@ -95,8 +112,8 @@ func startDatapiDb() *dockertest.Resource {
 
 func startWekanDb() *dockertest.Resource {
 	// pulls an image, creates a container based on it and runs it
-	mongoContainerName := currentContext().containerNames[wekanDbName]
-	log.Println("trying start mongo-db")
+	mongoContainerName := d.containerNames[wekanDbName]
+	log.Println("démarre le container mongo-db avec le nom : ", mongoContainerName)
 
 	wekanDb, err := currentPool().RunWithOptions(&dockertest.RunOptions{
 		Name:       mongoContainerName,
@@ -152,32 +169,10 @@ func Wait4DatapiDb(datapiDBUrl string) {
 	}
 }
 
-func currentContext() dockerContext {
-	contexte := current.Load()
-	if contexte != nil {
-		return contexte.(dockerContext)
-	}
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		log.Panicf("Could not connect to docker: %s", err)
-	}
-	newContext := dockerContext{
-		pool: pool,
-		containerNames: map[containerName]string{
-			datapiDbName: "datapidb-ti-" + uuid.New().String(),
-			wekanDbName:  "mongodb-ti-" + uuid.New().String(),
-		},
-	}
-	current.Store(newContext)
-	return newContext
-}
-
 func getContainer(name containerName) (*dockertest.Resource, bool) {
-	contexte := currentContext()
-	return contexte.pool.ContainerByName(contexte.containerNames[name])
+	return d.pool.ContainerByName(d.containerNames[name])
 }
 
 func currentPool() *dockertest.Pool {
-	return currentContext().pool
+	return d.pool
 }
