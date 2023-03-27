@@ -374,7 +374,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		left join entreprise_ellisphere0 g on g.siren = et.siren
 		left join terrind ti on ti.code_commune = et.code_commune
 		where (et.siret=any($3) or et.siren=any($4));
-	`, roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+	`, roles, username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
 				autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
@@ -409,14 +409,14 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
 		where (p.siret=any($3) or p.siren=any($4))
 		order by s.siret, s.batch desc, s.score desc;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens, lastListe)
+		roles, username, e.Query.Sirets, e.Query.Sirens, lastListe)
 
 	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
 		from etablissement_apconso0 e
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and dgefp
 		where (e.siret=any($3) or e.siren=any($4))
 		order by siret, periode;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, 
 		periode_end, hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme
@@ -424,7 +424,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and dgefp
 		where e.siret=any($3) or e.siren=any($4)
 		order by siret, periode_start;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, e.periode, 
 		case when urssaf and cotisation != 0 then cotisation end, 
@@ -436,7 +436,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret
 		where e.siret=any($3) or e.siren=any($4)
 		order by siret, periode;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, action, annee_creation, date_creation, date_echeance, denomination,
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
@@ -444,7 +444,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and urssaf
 		where e.siret=any($3) or e.siren=any($4)
 		order by e.siret, date_creation;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`
 	SELECT p.siren,
@@ -477,7 +477,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		e.sirensFromQuery(), now)
 
 	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
-		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
+		roles, listes[0].ID, username, e.sirensFromQuery(),
 	)
 
 	e.addPGEsSelection(&batch, roles, username)
@@ -1026,9 +1026,9 @@ func getEntrepriseViewers(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	var users []user
+	var users []keycloakUser
 	for rows.Next() {
-		var u user
+		var u keycloakUser
 		err := rows.Scan(&u.Username, &u.FirstName, &u.LastName)
 		if err != nil {
 			c.JSON(500, err.Error())
@@ -1054,9 +1054,9 @@ func getEtablissementViewers(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	var users []user
+	var users []keycloakUser
 	for rows.Next() {
-		var u user
+		var u keycloakUser
 		err := rows.Scan(&u.Username, &u.FirstName, &u.LastName)
 		if err != nil {
 			c.JSON(500, err.Error())

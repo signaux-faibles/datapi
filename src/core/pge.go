@@ -16,7 +16,7 @@ func (e *Etablissements) addPGEsSelection(batch *pgx.Batch, roles Scope, usernam
 					e.siren=any($3)
 				group by e.siren
 				order by e.siren;`,
-		roles.zoneGeo(), username, e.sirensFromQuery())
+		roles, username, e.sirensFromQuery())
 }
 
 func (e Etablissements) loadPGE(rows *pgx.Rows) error {

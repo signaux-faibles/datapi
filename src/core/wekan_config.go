@@ -7,7 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -42,16 +41,16 @@ func lookupWekanConfig() (WekanConfig, error) {
 	return config, nil
 }
 
-func loadWekanConfig(input *WekanConfig) {
+func loadOldWekanConfig(input *WekanConfig) {
 	if input == nil {
-		log.Printf("loadWekanConfig() -> ERROR : provided config is nil, can't build it")
+		log.Printf("loadOldWekanConfig() -> ERROR : provided config is nil, can't build it")
 	}
 	if input.mu == nil {
 		input.mu = &sync.Mutex{}
 	}
 	wc, err := lookupWekanConfig()
 	if err != nil {
-		log.Printf("loadWekanConfig() -> ERROR : problem loading config: %s", err.Error())
+		log.Printf("loadOldWekanConfig() -> ERROR : problem loading config: %s", err.Error())
 	} else {
 		input.mu.Lock()
 		input.BoardIds = wc.BoardIds
@@ -63,13 +62,15 @@ func loadWekanConfig(input *WekanConfig) {
 	}
 }
 
-func watchWekanConfig(toUpdate *WekanConfig, period time.Duration) {
+func watchOldWekanConfig(toUpdate *WekanConfig, period time.Duration) {
 	for {
-		loadWekanConfig(toUpdate)
+		// TODO libwekan
+		loadOldWekanConfig(toUpdate)
 		time.Sleep(period)
 	}
 }
 
+// TODO libwekan
 func buildWekanConfigPipeline() []bson.M {
 	matchTableaux := bson.M{
 		"$match": bson.M{
@@ -285,16 +286,18 @@ func buildWekanConfigPipeline() []bson.M {
 	}
 }
 
-func wekanConfigHandler(c *gin.Context) {
-	roles := scopeFromContext(c)
-	if utils.Contains(roles, "wekan") {
-		username := c.GetString("username")
-		c.JSON(200, wekanConfig.forUser(username))
-		return
-	}
-	c.AbortWithStatus(403)
-}
+//func wekanConfigHandler(c *gin.Context) {
+//	roles := scopeFromContext(c)
+//	if utils.Contains(roles, "wekan") {
+//		username := c.GetString("username")
+//		// TODO libwekan
+//		c.JSON(http.StatusOK, oldWekanConfig.forUser(username))
+//		return
+//	}
+//	c.AbortWithStatus(http.StatusForbidden)
+//}
 
+// TODO libwekan
 // WekanConfig type pour le fichier de configuration de Wekan
 type WekanConfig struct {
 	Slugs    map[string]*WekanConfigBoard `bson:"slugs" json:"slugs,omitempty"`
@@ -302,7 +305,7 @@ type WekanConfig struct {
 	Users    map[string]string            `bson:"users" json:"users,omitempty"`
 	BoardIds map[string]*WekanConfigBoard `json:"-"`
 	Regions  map[string]string            `json:"regions,omitempty"`
-	mu       *sync.Mutex                  `json:"-"`
+	mu       *sync.Mutex
 }
 
 // BoardForID retourne le nom d'une board en échange de son id
@@ -408,7 +411,7 @@ func (wc WekanConfig) boardIdsForUser(username string) []string {
 
 	if userID, ok := wc.Users[username]; ok {
 		var boards []string
-		for _, board := range wekanConfig.Boards {
+		for _, board := range oldWekanConfig.Boards {
 			if utils.Contains(board.Members, userID) {
 				boards = append(boards, board.BoardID)
 			}

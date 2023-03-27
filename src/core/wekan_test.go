@@ -35,7 +35,7 @@ func loadFollowExportsFromFile(exports *dbExports, path string) error {
 
 func readTestData() (Cards, error) {
 	var wekanCards WekanCards
-	wekanConfig.mu = &sync.Mutex{}
+	oldWekanConfig.mu = &sync.Mutex{}
 	err := loadCardsFromFile(&wekanCards, "../../test/wekan/cards.json")
 	if err != nil {
 		return nil, errors.New("can't read wekan cards")

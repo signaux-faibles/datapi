@@ -1,0 +1,173 @@
+package core
+
+import (
+	"context"
+	"github.com/gin-gonic/gin"
+	"github.com/signaux-faibles/libwekan"
+	"log"
+	"net/http"
+	"strings"
+	"sync"
+	"time"
+)
+
+var wekan libwekan.Wekan
+var wekanConfig libwekan.Config
+var wekanConfigMutex = &sync.Mutex{}
+
+type KanbanLists map[libwekan.ListID]KanbanList
+type KanbanList struct {
+	Title string  `json:"title"`
+	Sort  float64 `json:"sort"`
+}
+
+type KanbanSwimlanes map[libwekan.SwimlaneID]KanbanSwimlane
+type KanbanSwimlane struct {
+	Title string  `json:"title"`
+	Sort  float64 `json:"sort"`
+}
+
+type KanbanBoardLabels map[libwekan.BoardLabelID]KanbanBoardLabel
+type KanbanBoardLabel struct {
+	Color string                  `json:"color"`
+	Name  libwekan.BoardLabelName `json:"name"`
+}
+
+type KanbanBoards map[libwekan.BoardID]KanbanBoard
+type KanbanBoard struct {
+	Title     libwekan.BoardTitle `json:"title"`
+	Lists     KanbanLists         `json:"lists"`
+	Swimlanes KanbanSwimlanes     `json:"swimlanes"`
+	Labels    KanbanBoardLabels   `json:"labels"`
+}
+
+type KanbanBoardSwimlane struct {
+	BoardID    libwekan.BoardID    `json:"boardID"`
+	SwimlaneID libwekan.SwimlaneID `json:"swimlaneID"`
+}
+
+type KanbanConfig struct {
+	Departements map[CodeDepartement][]KanbanBoardSwimlane `json:"departements"`
+	Boards       KanbanBoards                              `json:"boards"`
+	UserID       libwekan.UserID                           `json:"userID"`
+}
+
+func (b *KanbanBoards) fromWekanConfigBoards(boards map[libwekan.BoardID]libwekan.ConfigBoard, wekanUser libwekan.User) {
+	if *b == nil {
+		*b = make(KanbanBoards)
+	}
+	for wekanBoardId, wekanBoard := range boards {
+		if wekanBoard.Board.UserIsActiveMember(wekanUser) {
+			var kanbanBoard KanbanBoard
+			kanbanBoard.Title = wekanBoard.Board.Title
+			kanbanBoard.Lists.fromWekanLists(wekanBoard.Lists)
+			kanbanBoard.Swimlanes.fromWekanSwimlanes(wekanBoard.Swimlanes)
+			kanbanBoard.Labels.fromWekanBoardLabels(wekanBoard.Board.Labels)
+			(*b)[wekanBoardId] = kanbanBoard
+		}
+	}
+}
+
+func (l *KanbanLists) fromWekanLists(lists map[libwekan.ListID]libwekan.List) {
+	if *l == nil {
+		*l = make(KanbanLists)
+	}
+	for listID, wekanList := range lists {
+		var kanbanList KanbanList
+		kanbanList.Title = wekanList.Title
+		kanbanList.Sort = wekanList.Sort
+		(*l)[listID] = kanbanList
+	}
+}
+
+func (s *KanbanSwimlanes) fromWekanSwimlanes(swimlanes map[libwekan.SwimlaneID]libwekan.Swimlane) {
+	if *s == nil {
+		*s = make(KanbanSwimlanes)
+	}
+	for swimlaneID, wekanSwimlane := range swimlanes {
+		var kanbanSwimlane KanbanSwimlane
+		kanbanSwimlane.Title = wekanSwimlane.Title
+		kanbanSwimlane.Sort = wekanSwimlane.Sort
+		(*s)[swimlaneID] = kanbanSwimlane
+	}
+}
+
+func (l *KanbanBoardLabels) fromWekanBoardLabels(labels []libwekan.BoardLabel) {
+	if *l == nil {
+		*l = make(KanbanBoardLabels)
+	}
+	for _, wekanBoardLabel := range labels {
+		var kanbanBoardLabel KanbanBoardLabel
+		kanbanBoardLabel.Color = wekanBoardLabel.Color
+		kanbanBoardLabel.Name = wekanBoardLabel.Name
+		(*l)[wekanBoardLabel.ID] = kanbanBoardLabel
+	}
+}
+
+func (k *KanbanConfig) populateDepartements() {
+	kanbanDepartements := make(map[CodeDepartement][]KanbanBoardSwimlane)
+
+	for boardID, board := range k.Boards {
+		for swimlaneID, swimlane := range board.Swimlanes {
+			zone := CodeDepartement(strings.Split(swimlane.Title, " (")[0])
+			if _, ok := departements[zone]; ok {
+				current := KanbanBoardSwimlane{
+					BoardID:    boardID,
+					SwimlaneID: swimlaneID,
+				}
+				kanbanDepartements[zone] = append(kanbanDepartements[zone], current)
+			}
+			candidateRegion := Region(strings.Split(swimlane.Title, " (")[0])
+			if depts, ok := regions[candidateRegion]; ok {
+				for _, dept := range depts {
+					current := KanbanBoardSwimlane{
+						BoardID:    boardID,
+						SwimlaneID: swimlaneID,
+					}
+					kanbanDepartements[dept] = append(kanbanDepartements[dept], current)
+				}
+			}
+		}
+	}
+	k.Departements = kanbanDepartements
+}
+
+func kanbanConfigForUser(username libwekan.Username) KanbanConfig {
+	wekanConfigMutex.Lock()
+	config := wekanConfig.Copy()
+	wekanConfigMutex.Unlock()
+	var kanbanConfig KanbanConfig
+	for wekanUserID, wekanUser := range config.Users {
+		if wekanUser.Username == username {
+			kanbanConfig.UserID = wekanUserID
+			kanbanConfig.Boards.fromWekanConfigBoards(config.Boards, wekanUser)
+			kanbanConfig.populateDepartements()
+		}
+	}
+	return kanbanConfig
+}
+
+func kanbanConfigHandler(c *gin.Context) {
+	var s session
+	s.bind(c)
+	kanbanConfig := kanbanConfigForUser(libwekan.Username(s.username))
+	c.JSON(http.StatusOK, kanbanConfig)
+}
+
+func loadWekanConfig() {
+	newWekanConfig, err := wekan.SelectConfig(context.Background())
+	if err != nil {
+		log.Printf("loadWekanConfig() -> ERROR : problem loading config: %s", err.Error())
+	} else {
+		wekanConfigMutex.Lock()
+		wekanConfig = newWekanConfig
+		wekanConfigMutex.Unlock()
+	}
+}
+
+func watchWekanConfig(period time.Duration) {
+	for {
+		loadWekanConfig()
+		time.Sleep(period)
+	}
+}

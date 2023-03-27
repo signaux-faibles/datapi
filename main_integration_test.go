@@ -11,6 +11,7 @@ import (
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"math/rand"
 	"os"
 	"strconv"
@@ -26,8 +27,7 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 // - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
-	test.FakeTime(tuTime)
-
+	var err error
 	testConfig := map[string]string{}
 	testConfig["postgres"] = test.GetDatapiDbURL()
 	testConfig["wekanMgoURL"] = test.GetWekanDbURL()
@@ -39,9 +39,17 @@ func TestMain(m *testing.M) {
 	adminWhitelist := "::1"
 	testConfig["adminWhitelist"] = adminWhitelist
 
-	test.Viperize(testConfig)
+	err = test.Viperize(testConfig)
+	if err != nil {
+		log.Printf("Erreur pendant la Viperation de la config : %s", err)
+	}
 
 	test.Wait4DatapiDb(test.GetDatapiDbURL())
+
+	err = test.Authenticate()
+	if err != nil {
+		log.Printf("Erreur pendant l'authentification : %s", err)
+	}
 
 	// run datapi
 	core.StartDatapi()
@@ -49,11 +57,13 @@ func TestMain(m *testing.M) {
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	//Run tests
+	test.FakeTime(tuTime)
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
 	// on peut placer ici du code de nettoyage si nécessaire
 
+	test.UnfakeTime()
 	os.Exit(code)
 }
 
