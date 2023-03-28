@@ -11,35 +11,13 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4"
 	"github.com/signaux-faibles/goSirene"
 	"github.com/spf13/viper"
 )
 
-func sireneImportHandler(c *gin.Context) {
-	if viper.GetString("sireneULPath") == "" || viper.GetString("geoSirenePath") == "" {
-		c.AbortWithStatusJSON(409, "not supported, missing parameters in server configuration")
-		return
-	}
-	log.Println("Truncate etablissement & entreprise table")
-
-	err := truncateSirens()
-	if err != nil {
-		c.AbortWithError(500, err)
-		return
-	}
-	log.Println("Tables truncated")
-
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	go insertSireneUL(ctx, cancelCtx, &wg)
-	go insertGeoSirene(ctx, cancelCtx, &wg)
-	wg.Wait()
-}
-
-func insertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.WaitGroup) {
+// InsertGeoSirene insère les informations géographiques des établissements dans la base
+func InsertGeoSirene(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.WaitGroup) {
 	file, err := os.Open(viper.GetString("geoSirenePath"))
 	if err != nil {
 		cancelCtx()
@@ -177,7 +155,8 @@ func sqlGeoSirene(ctx context.Context, data []goSirene.GeoSirene) error {
 	return err
 }
 
-func insertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.WaitGroup) {
+// InsertSireneUL insère des trucs rapport aux sirene mais je sais pas trop quoi
+func InsertSireneUL(ctx context.Context, cancelCtx context.CancelFunc, wg *sync.WaitGroup) {
 	sireneUL := goSirene.SireneULParser(ctx, viper.GetString("sireneULPath"))
 	count := 0
 	var batch []goSirene.SireneUL
@@ -378,7 +357,8 @@ func null(s string) *string {
 	return &s
 }
 
-func truncateSirens() error {
+// TruncateSirens supprime le contene des tables `etablissement` et `entreprise`
+func TruncateSirens() error {
 	_, err := db.Get().Exec(context.Background(), "truncate table etablissement")
 	if err != nil {
 		return err

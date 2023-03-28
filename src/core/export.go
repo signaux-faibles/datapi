@@ -8,6 +8,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
+	"net/http"
 	"os/exec"
 	"strings"
 	"time"
@@ -213,7 +215,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 				cardsMap[siret].WekanCards = c
 			}
 
-			if contains(append(w.Members, w.Assignees...), userID) {
+			if utils.Contains(append(w.Members, w.Assignees...), userID) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
@@ -303,7 +305,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
 	if err != nil {
-		return nil, errorToJSON(500, err)
+		return nil, utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 
 	row := xlSheet.AddRow()
@@ -570,13 +572,13 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 
 	export, err := getExport(s, params)
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 
 	xlsx, err := export.xlsx(s.hasRole("wekan"))
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
@@ -614,7 +616,7 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 
 	exports, err := getExport(s, params)
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	header := ExportHeader{
@@ -626,7 +628,7 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	for _, export := range exports {
 		docx, err := export.docx(header)
 		if err != nil {
-			c.AbortWithError(500, err)
+			utils.AbortWithError(c, err)
 			return
 		}
 		docxs = append(docxs, docx)
@@ -643,7 +645,7 @@ func getDOCXFromSiret(c *gin.Context) {
 	siret := c.Param("siret")
 	card, err := getExportSiret(s, siret)
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 
@@ -653,7 +655,7 @@ func getDOCXFromSiret(c *gin.Context) {
 	}
 	docx, err := card.docx(header)
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 

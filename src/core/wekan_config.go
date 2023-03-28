@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"log"
 	"sync"
 	"time"
@@ -286,7 +287,7 @@ func buildWekanConfigPipeline() []bson.M {
 
 func wekanConfigHandler(c *gin.Context) {
 	roles := scopeFromContext(c)
-	if contains(roles, "wekan") {
+	if utils.Contains(roles, "wekan") {
 		username := c.GetString("username")
 		c.JSON(200, wekanConfig.forUser(username))
 		return
@@ -336,7 +337,7 @@ func (wc WekanConfig) labelForLabelsIDs(labelIDs []string, boardID string) []str
 	if wc.BoardIds != nil {
 		board := wc.BoardIds[boardID]
 		for _, l := range board.Labels {
-			if contains(labelIDs, l.ID) && l.Name != "" {
+			if utils.Contains(labelIDs, l.ID) && l.Name != "" {
 				labels = append(labels, l.Name)
 			}
 		}
@@ -384,7 +385,7 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 	userWc.Slugs = make(map[string]*WekanConfigBoard)
 
 	for board, configBoard := range wc.Boards {
-		if contains(configBoard.Members, userID) {
+		if utils.Contains(configBoard.Members, userID) {
 			userWc.Boards[board] = configBoard
 			userWc.BoardIds[configBoard.BoardID] = configBoard
 			userWc.Slugs[configBoard.Slug] = configBoard
@@ -408,7 +409,7 @@ func (wc WekanConfig) boardIdsForUser(username string) []string {
 	if userID, ok := wc.Users[username]; ok {
 		var boards []string
 		for _, board := range wekanConfig.Boards {
-			if contains(board.Members, userID) {
+			if utils.Contains(board.Members, userID) {
 				boards = append(boards, board.BoardID)
 			}
 		}
@@ -422,7 +423,7 @@ func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
 	var swimlaneIds []string
 	for _, board := range wc.Boards {
 		for k, s := range board.Swimlanes {
-			if contains(zone, k) {
+			if utils.Contains(zone, k) {
 				swimlaneIds = append(swimlaneIds, s.ID)
 			}
 		}
@@ -496,7 +497,7 @@ func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 	var listIds []string
 	for _, board := range wc.Boards {
 		for _, s := range board.ListDetails {
-			if contains(statuts, s.Title) {
+			if utils.Contains(statuts, s.Title) {
 				listIds = append(listIds, s.ID)
 			}
 		}

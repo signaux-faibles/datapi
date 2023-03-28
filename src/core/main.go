@@ -8,6 +8,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"log"
@@ -15,8 +16,6 @@ import (
 	"time"
 
 	"github.com/spf13/viper"
-
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 var keycloak gocloak.GoCloak
@@ -24,7 +23,7 @@ var mgoDB *mongo.Database
 var wekanConfig WekanConfig
 
 // Endpoint handler pour définir un endpoint sur gin
-type Endpoint func(*gin.Engine)
+type Endpoint func(path string, api *gin.Engine)
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() {
@@ -36,7 +35,7 @@ func StartDatapi() {
 
 // LoadConfig charge la config toml
 func LoadConfig(confDirectory, confFile, migrationDir string) {
-	viper.SetDefault("MigrationsDir", migrationDir)
+	viper.SetDefault("migrationsDir", migrationDir)
 	viper.SetConfigName(confFile)
 	viper.SetConfigType("toml")
 	viper.AddConfigPath(confDirectory)
@@ -47,11 +46,7 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 }
 
 // InitAPI initialise l'api
-func InitAPI() *gin.Engine {
-	if viper.GetBool("prod") {
-		gin.SetMode(gin.ReleaseMode)
-	}
-	router := gin.Default()
+func InitAPI(router *gin.Engine) {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
@@ -102,28 +97,17 @@ func InitAPI() *gin.Engine {
 	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
 	fce.GET("/:siret", validSiret, getFceURL)
 
-	utils := router.Group("/utils", adminAuthMiddleware())
-	utils.GET("/import", importHandler) // 1
-	utils.GET("/keycloak", getKeycloakUsers)
-	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
-	// utils.GET("/wekanImport", wekanImportHandler)
-	utils.GET("/sireneImport", sireneImportHandler)   // 2
-	utils.GET("/listImport/:algo", listImportHandler) // 3
-
 	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
 	wekan.GET("/cards/:siret", validSiret, wekanGetCardsHandler)
 	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 	wekan.GET("/config", wekanConfigHandler)
-	return router
 }
 
-// ConfigureAPI permet de rajouter un endpoint au niveau de l'API
-func ConfigureAPI(router *gin.Engine, endpoints ...Endpoint) {
-	for _, current := range endpoints {
-		current(router)
-	}
+// AddEndpoint permet de rajouter un endpoint au niveau de l'API
+func AddEndpoint(router *gin.Engine, path string, endpoint Endpoint) {
+	endpoint(path, router)
 }
 
 // StartAPI : démarre le serveur
@@ -143,22 +127,6 @@ func AuthMiddleware() gin.HandlerFunc {
 	return fakeCloakMiddleware
 }
 
-func adminAuthMiddleware() gin.HandlerFunc {
-	var whitelist = viper.GetStringSlice("adminWhitelist")
-	var wlmap = make(map[string]bool)
-	for _, ip := range whitelist {
-		wlmap[ip] = true
-	}
-
-	return func(c *gin.Context) {
-		if !wlmap[c.ClientIP()] {
-			log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
-			c.AbortWithStatus(403)
-			return
-		}
-	}
-}
-
 // LogMiddleware définit le middleware qui gère les logs
 func LogMiddleware(c *gin.Context) {
 	if c.Request.Body == nil {
@@ -169,7 +137,7 @@ func LogMiddleware(c *gin.Context) {
 	method := c.Request.Method
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
@@ -178,7 +146,7 @@ func LogMiddleware(c *gin.Context) {
 	if viper.GetBool("enableKeycloak") {
 		token, err = getRawToken(c)
 		if err != nil {
-			c.AbortWithStatus(500)
+			c.AbortWithStatus(http.StatusInternalServerError)
 			return
 		}
 	} else {
@@ -197,8 +165,17 @@ func LogMiddleware(c *gin.Context) {
 		c.AbortWithStatus(500)
 		return
 	}
-
 	c.Next()
+}
+
+// AdminAuthMiddleware stoppe la requˆete si l'ip client n'est pas contenue dans la whitelist
+func AdminAuthMiddleware(c *gin.Context) {
+	var whitelist = viper.GetStringSlice("adminWhitelist")
+	if !utils.Contains(whitelist, c.ClientIP()) {
+		log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
+		c.AbortWithStatus(http.StatusForbidden)
+		return
+	}
 }
 
 // True made global to ease pointers

@@ -13,3 +13,8 @@ func FakeTime(t time.Time) {
 		return t
 	})
 }
+
+// UnfakeTime méthode qui permet d'annuler le faussage de la methode `tine.Now`
+func UnfakeTime() {
+	monkey.Unpatch(time.Now)
+}

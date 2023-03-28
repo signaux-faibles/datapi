@@ -3,6 +3,8 @@ package core
 import (
 	"context"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
+	"net/http"
 	"strconv"
 	"time"
 
@@ -79,7 +81,7 @@ func updateEntrepriseComment(c *gin.Context) {
 
 }
 
-func (c *Comment) save() Jerror {
+func (c *Comment) save() utils.Jerror {
 	sqlSaveComment := `insert into etablissement_comments
 	(id_parent, siret, siren, username, message_history) 
 	select $1, $2, substring($3 from 0 for 9), $5, array[$6]
@@ -110,14 +112,14 @@ func (c *Comment) save() Jerror {
 
 	if err != nil {
 		if err.Error() == "no rows in result set" {
-			return newJSONerror(403, "wrong SIRET")
+			return utils.NewJSONerror(http.StatusForbidden, "wrong SIRET")
 		}
-		return errorToJSON(500, err)
+		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 	return nil
 }
 
-func (c *Comment) load() Jerror {
+func (c *Comment) load() utils.Jerror {
 	sqlListComment := `select 
 	e.id, id_parent, e.username, date_history, message_history, u.firstname, u.lastname
 	from etablissement_comments e
@@ -126,7 +128,7 @@ func (c *Comment) load() Jerror {
 
 	rows, err := db.Get().Query(context.Background(), sqlListComment, c.Siret)
 	if err != nil {
-		return errorToJSON(500, err)
+		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 
 	comments := make(map[int]*Comment)
@@ -138,7 +140,7 @@ func (c *Comment) load() Jerror {
 		c.User = &user{}
 		err := rows.Scan(&c.ID, &c.IDParent, &c.User.Username, &c.DateHistory, &c.MessageHistory, &c.User.FirstName, &c.User.LastName)
 		if err != nil {
-			return errorToJSON(500, err)
+			return utils.ErrorToJSON(http.StatusInternalServerError, err)
 		}
 		comments[*c.ID] = &c
 		order = append(order, *c.ID)
@@ -157,7 +159,7 @@ func (c *Comment) load() Jerror {
 	return nil
 }
 
-func (c *Comment) update() Jerror {
+func (c *Comment) update() utils.Jerror {
 	sqlUpdateComment := `update etablissement_comments set 
 	 message_history = array[$1] || message_history,
 	 date_history = current_timestamp::timestamp || date_history
@@ -187,9 +189,9 @@ func (c *Comment) update() Jerror {
 
 	if err != nil {
 		if err.Error() == "no rows in result set" {
-			return newJSONerror(403, "either duplicate comment, wrong username or wrong ID")
+			return utils.NewJSONerror(http.StatusForbidden, "either duplicate comment, wrong username or wrong ID")
 		}
-		return errorToJSON(500, err)
+		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 	return nil
 }

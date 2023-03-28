@@ -8,6 +8,8 @@ import (
 	"errors"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
+	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
@@ -188,7 +190,7 @@ func getListeScores(c *gin.Context) {
 	c.JSON(200, liste)
 }
 
-func (liste *Liste) getScores(roles scope, page int, limit *int, username string) Jerror {
+func (liste *Liste) getScores(roles Scope, page int, limit *int, username string) utils.Jerror {
 	if liste.Batch == "" {
 		err := liste.load()
 		if err != nil {
@@ -218,7 +220,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	}
 	summaries, err := getSummaries(params)
 	if err != nil {
-		return errorToJSON(500, err)
+		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 
 	scores := summaries.summaries
@@ -239,7 +241,7 @@ func (liste *Liste) getScores(roles scope, page int, limit *int, username string
 	liste.From = *limit*page + 1
 	liste.To = *limit*page + len(scores)
 	if *limit*page > liste.Total || liste.Total == 0 {
-		return newJSONerror(204, "empty page")
+		return utils.NewJSONerror(http.StatusNoContent, "empty page")
 	}
 	return nil
 }
@@ -271,27 +273,27 @@ func findAllListes() ([]Liste, error) {
 	return listes, nil
 }
 
-func (liste *Liste) load() Jerror {
+func (liste *Liste) load() utils.Jerror {
 	sqlListe := `select batch, algo from liste where libelle=$1 and version=0`
 	row := db.Get().QueryRow(context.Background(), sqlListe, liste.ID)
 	batch, algo := "", ""
 	err := row.Scan(&batch, &algo)
 	if err != nil {
 		if err.Error() == "no rows in result set" {
-			return newJSONerror(404, "no such list")
+			return utils.NewJSONerror(404, "no such list")
 		}
-		return errorToJSON(500, err)
+		return utils.ErrorToJSON(500, err)
 	}
 	liste.Batch = batch
 	liste.Algo = algo
 	return nil
 }
 
-func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
+func (liste *Liste) toXLS(params paramsListeScores) ([]byte, utils.Jerror) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
 	if err != nil {
-		return nil, errorToJSON(500, err)
+		return nil, utils.ErrorToJSON(500, err)
 	}
 
 	row := xlSheet.AddRow()
@@ -316,7 +318,7 @@ func (liste *Liste) toXLS(params paramsListeScores) ([]byte, Jerror) {
 	for _, score := range liste.Scores {
 		row := xlSheet.AddRow()
 		if err != nil {
-			return nil, errorToJSON(500, err)
+			return nil, utils.ErrorToJSON(500, err)
 		}
 		row.AddCell().Value = liste.ID
 		row.AddCell().Value = score.Siren

@@ -6,17 +6,25 @@ import (
 	"context"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/spf13/viper"
 	"io"
+	"log"
 	"net/http"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 )
 
+var apiHostAndPort = atomic.Value{}
 var update = flag.Bool("overwriteGoldenFiles", false, "true pour écraser les golden files pas les réponses générées par les tests d'intégration")
+
+// DatapiDatabaseName contient le nom de la base de données de test
+const DatapiDatabaseName = "datapi_test"
 
 func compare(expected []byte, actual []byte) string {
 	diff := difflib.UnifiedDiff{
@@ -58,8 +66,27 @@ func saveGoldenFile(fileName string, goldenData []byte) error {
 	return err
 }
 
-func indent(reader io.Reader) ([]byte, error) {
-	body, err := io.ReadAll(reader)
+// GetBodyQuietly retourne le body de la réponse sous forme de tableau de bytes et ne retourne pas d'erreur
+func GetBodyQuietly(r *http.Response) []byte {
+	body, err := GetBody(r)
+	if err != nil {
+		return []byte(fmt.Sprintf("Erreur pendant la lecture de la réponse : %s", err.Error()))
+	}
+	return body
+}
+
+// GetBody retourne le body de la réponse sous forme de tableau de bytes et retourne une erreur en cas de problème
+func GetBody(r *http.Response) ([]byte, error) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		return nil, err
+	}
+	return body, nil
+}
+
+// GetIndentedBody retourne le body de la réponse sous forme pretty
+func GetIndentedBody(r *http.Response) ([]byte, error) {
+	body, err := GetBody(r)
 	if err != nil {
 		return nil, err
 	}
@@ -104,7 +131,7 @@ func HTTPPost(t *testing.T, path string, params map[string]interface{}) *http.Re
 // HTTPPostAndFormatBody fonction helper pour faire du POST HTTP
 func HTTPPostAndFormatBody(t *testing.T, path string, params map[string]interface{}) (*http.Response, []byte, error) {
 	resp := HTTPPost(t, path, params)
-	indented, err := indent(resp.Body)
+	indented, err := GetIndentedBody(resp)
 	return resp, indented, err
 }
 
@@ -121,7 +148,7 @@ func HTTPGet(t *testing.T, path string) *http.Response {
 // HTTPGetAndFormatBody fonction helper pour faire du GET HTTP
 func HTTPGetAndFormatBody(t *testing.T, path string) (*http.Response, []byte, error) {
 	resp := HTTPGet(t, path)
-	indented, err := indent(resp.Body)
+	indented, err := GetIndentedBody(resp)
 	return resp, indented, err
 }
 
@@ -161,7 +188,14 @@ func JsonToEntreprise(t *testing.T, data []byte) core.Entreprise {
 }
 
 func hostname() string {
-	return os.Getenv("DATAPI_URL")
+	val := apiHostAndPort.Load()
+	return fmt.Sprint(val)
+	//return os.Getenv("DATAPI_URL")
+}
+
+// SetHostAndPort pour renseigner l'url où sera déployée l'API
+func SetHostAndPort(hostAndPort string) {
+	apiHostAndPort.Store(hostAndPort)
 }
 
 // GetSiret fonction qui récupère des Sirets à partir de critères VAF (Visible / Authorized / Followed)
@@ -338,4 +372,17 @@ type EtablissementVAF struct {
 // SearchVAF structure correspondant à la réponse JSON de l'appel à un POST HTTP sur `/etablissement/search`
 type SearchVAF struct {
 	Results []EtablissementVAF `json:"results"`
+}
+
+// Viperize ajoute la map passée en paramètre dans la configuration Viper
+func Viperize(testConfig map[string]string) error {
+	log.Println("loading test config")
+	core.LoadConfig("test", "config", "migrations")
+
+	for k, v := range testConfig {
+		log.Printf("add to Viper %s : %s", k, v)
+		viper.Set(k, v)
+	}
+
+	return viper.ReadInConfig()
 }

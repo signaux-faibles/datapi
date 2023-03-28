@@ -8,13 +8,14 @@ import (
 	"github.com/google/uuid"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/spf13/viper"
 	"net/http"
 )
 
 // ConfigureEndpoint configure le endpoint du package `refresh`
-func ConfigureEndpoint(api *gin.Engine) {
-	refreshRoute := api.Group("/refresh", core.AuthMiddleware(), core.LogMiddleware)
+func ConfigureEndpoint(path string, api *gin.Engine) {
+	refreshRoute := api.Group(path, core.AdminAuthMiddleware)
 	refreshRoute.GET("/start", startHandler)
 	refreshRoute.GET("/status/:uuid", statusHandler)
 	refreshRoute.GET("/last", lastHandler)
@@ -24,8 +25,8 @@ func ConfigureEndpoint(api *gin.Engine) {
 // startHandler : point d'entrée de l'API qui démarre un nouveau `Refresh` et retourne son `UUID`
 func startHandler(c *gin.Context) {
 	refreshScriptPath := viper.GetString("refreshScript")
-	id := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
-	c.JSON(http.StatusOK, gin.H{"refreshUuid": id.String()})
+	refresh := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
+	c.JSON(http.StatusOK, refresh)
 }
 
 // statusHandler : point d'entrée de l'API qui retourne les infos d'un `Refresh` depuis son `UUID`
@@ -37,15 +38,15 @@ func statusHandler(c *gin.Context) {
 	}
 	id, err := uuid.Parse(param)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) // nolint: errcheck
+		utils.AbortWithError(c, err) // nolint: errcheck
 		return
 	}
-	state, err := Fetch(id)
+	refresh, err := Fetch(id)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err) // nolint: errcheck
+		utils.AbortWithError(c, err) // nolint: errcheck
 		return
 	}
-	c.JSON(http.StatusOK, state)
+	c.JSON(http.StatusOK, refresh)
 }
 
 // lastHandler : point d'entrée de l'API qui retourne le dernier `Refresh` démarré

@@ -5,29 +5,20 @@ package main
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"github.com/google/uuid"
-	"github.com/ory/dockertest/v3"
-	"github.com/ory/dockertest/v3/docker"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
-	"github.com/signaux-faibles/datapi/src/refresh"
 	"github.com/signaux-faibles/datapi/src/test"
-	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"io"
-	"log"
 	"math/rand"
-	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 )
+
+var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 
 // TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
@@ -35,56 +26,34 @@ import (
 // - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
+	test.FakeTime(tuTime)
+
 	testConfig := map[string]string{}
+	testConfig["postgres"] = test.GetDatapiDbURL()
+	testConfig["wekanMgoURL"] = test.GetWekanDbURL()
 
-	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	pool, err := dockertest.NewPool("")
-	if err != nil {
-		log.Panicf("Could not connect to docker: %s", err)
-	}
-	// launch database container for datapi
-	datapiDb := startDatapiDBContainer(pool)
-	datapiDbHostAndPort := datapiDb.GetHostPort("5432/tcp")
-	datapiDBUrl := fmt.Sprintf("postgres://postgres:test@%s/datapi_test?sslmode=disable", datapiDbHostAndPort)
+	apiPort := strconv.Itoa(rand.Intn(500) + 30000)
+	testConfig["bind"] = ":" + apiPort
+	test.SetHostAndPort("http://localhost:" + apiPort)
 
-	testConfig["postgres"] = datapiDBUrl
-	datapiPort := strconv.Itoa(rand.Intn(500) + 30000)
-	os.Setenv("DATAPI_URL", "http://localhost:"+datapiPort)
-	testConfig["bind"] = ":" + datapiPort
+	adminWhitelist := "::1"
+	testConfig["adminWhitelist"] = adminWhitelist
 
-	// launch wekan db container for datapi
-	wekanDb := startWekanDBContainer(pool)
-	wekanDbHostAndPort := wekanDb.GetHostPort("27017/tcp")
-	wekanDbURL := fmt.Sprintf("mongodb://mgo:test@%s/", wekanDbHostAndPort)
-	testConfig["wekanMgoURL"] = wekanDbURL
+	test.Viperize(testConfig)
 
-	addTestConfig(testConfig)
+	test.Wait4DatapiDb(test.GetDatapiDbURL())
 
-	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
-	pool.MaxWait = 120 * time.Second
-	if err = pool.Retry(func() error {
-		pg, err := sql.Open("postgres", datapiDBUrl)
-		if err != nil {
-			return err
-		}
-		return pg.Ping()
-	}); err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
-	}
 	// run datapi
 	core.StartDatapi()
-	api := core.InitAPI()
-	core.ConfigureAPI(api, refresh.ConfigureEndpoint)
-	go core.StartAPI(api)
+	go initAndStartAPI()
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	//Run tests
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
-	//if err := pool.Purge(datapiDb); err != nil {
-	//	log.Fatalf("Could not purge resource: %s", err)
-	//}
+	// on peut placer ici du code de nettoyage si nécessaire
+
 	os.Exit(code)
 }
 
@@ -553,102 +522,6 @@ func TestPermissions(t *testing.T) {
 
 }
 
-func startWekanDBContainer(pool *dockertest.Pool) *dockertest.Resource {
-	// pulls an image, creates a container based on it and runs it
-	mongoContainerName := "mongodb-ti-" + strconv.Itoa(time.Now().Nanosecond())
-	log.Println("trying start mongo-db")
-
-	wekanDb, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Name:       mongoContainerName,
-		Repository: "mongo",
-		Tag:        "4.0-xenial",
-		Env: []string{
-			"MONGO_INITDB_ROOT_PASSWORD=test",
-			"MONGO_INITDB_ROOT_USERNAME=mgo",
-			"MONGO_INITDB_DATABASE=test",
-			"listen_addresses = '*'"},
-	}, func(config *docker.HostConfig) {
-		//set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-	if err != nil {
-		killContainer(wekanDb)
-		log.Fatal("Could not start datapi_db", err)
-	}
-	// container stops after 60 seconds
-	if err = wekanDb.Expire(120); err != nil {
-		killContainer(wekanDb)
-		log.Fatal("Could not set expiration on container datapi_db", err)
-	}
-	return wekanDb
-}
-
-func startDatapiDBContainer(pool *dockertest.Pool) *dockertest.Resource {
-	// configuration file for postgres
-	postgresConfig, err := filepath.Abs("test/postgresql.conf")
-	if err != nil {
-		log.Panicf("Could not get absolute path: %s", err)
-	}
-	// sql dump to initialize postgres data
-	sqlDump, err := filepath.Abs("test/data")
-
-	// pulls an image, creates a container based on it and runs it
-	datapiContainerName := "datapidb-ti-" + strconv.Itoa(time.Now().Nanosecond())
-	log.Println("trying start datapi-db")
-
-	datapiDb, err := pool.RunWithOptions(&dockertest.RunOptions{
-		Name:       datapiContainerName,
-		Repository: "postgres",
-		Tag:        "15-alpine",
-		Env: []string{
-			"POSTGRES_PASSWORD=test",
-			"POSTGRES_USER=postgres",
-			"POSTGRES_DB=datapi_test",
-			"listen_addresses = '*'"},
-		Mounts: []string{
-			postgresConfig + ":/etc/postgresql/postgresql.conf",
-			sqlDump + ":/docker-entrypoint-initdb.d",
-		},
-	}, func(config *docker.HostConfig) {
-		//set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-	if err != nil {
-		killContainer(datapiDb)
-		log.Fatal("Could not start datapi_db", err)
-	}
-	// container stops after 20'
-	if err = datapiDb.Expire(600); err != nil {
-		killContainer(datapiDb)
-		log.Fatal("Could not set expiration on container datapi_db", err)
-	}
-	return datapiDb
-}
-
-func addTestConfig(testConfig map[string]string) {
-	log.Println("loading test config")
-	core.LoadConfig("test", "config", "migrations")
-	for k, v := range testConfig {
-		log.Printf("add to Viper %s : %s", k, v)
-		viper.Set(k, v)
-	}
-}
-
-func killContainer(resource *dockertest.Resource) {
-	if resource == nil {
-		return
-	}
-	if err := resource.Close(); err != nil {
-		log.Fatalf("Could not purge resource: %s", err)
-	}
-}
-
 func followEtablissementsThenCleanup(t *testing.T, sirets []string) {
 	for _, siret := range sirets {
 		test.FollowEtablissement(t, siret)
@@ -735,118 +608,4 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 		}
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
 	}
-}
-
-func TestFetchNonExistentRefresh(t *testing.T) {
-	ass := assert.New(t)
-	result, err := refresh.Fetch(uuid.New())
-	ass.Equal(refresh.Empty, result)
-	ass.NotNil(err)
-}
-
-func TestRunRefreshScript(t *testing.T) {
-	ass := assert.New(t)
-	current := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
-	t.Logf("refreshID is running with id : %s", current.UUID)
-	time.Sleep(5 * time.Second)
-	result, err := refresh.Fetch(current.UUID)
-	ass.Nil(err)
-	ass.NotNil(result)
-}
-
-func TestLastRefreshState(t *testing.T) {
-	ass := assert.New(t)
-	lastRefreshState := refresh.FetchLast()
-	if lastRefreshState == refresh.Empty {
-		refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
-	}
-	time.Sleep(100 * time.Millisecond)
-	lastRefreshState = refresh.FetchLast()
-	ass.NotEmpty(lastRefreshState)
-	t.Logf("Description du dernier refresh : %s", lastRefreshState)
-}
-
-func TestFetchRefreshWithState(t *testing.T) {
-	ass := assert.New(t)
-	refresh.StartRefreshScript(context.Background(), db.Get(), "test/script qui n'existe pas")
-	refresh.StartRefreshScript(context.Background(), db.Get(), "test/autre script foireux")
-	refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
-	time.Sleep(100 * time.Millisecond)
-
-	failedRefresh := refresh.FetchRefreshsWithState(refresh.Failed)
-	t.Logf("Description des refresh erronés : %s", failedRefresh)
-	ass.Len(failedRefresh, 2)
-
-	runningRefresh := refresh.FetchRefreshsWithState(refresh.Running)
-	t.Logf("Description du refresh en cours : %s", runningRefresh)
-	ass.Len(runningRefresh, 1)
-}
-
-func TestStartHandler(t *testing.T) {
-	ass := assert.New(t)
-	path := "/refresh/start"
-	response, body, _ := test.HTTPGetAndFormatBody(t, path)
-
-	t.Logf("response: %s", body)
-	ass.Equal(http.StatusOK, response.StatusCode)
-}
-
-func TestStatusHandler(t *testing.T) {
-	ass := assert.New(t)
-	current := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
-	path := "/refresh/status/" + current.UUID.String()
-	response := test.HTTPGet(t, path)
-
-	ass.Equal(http.StatusOK, response.StatusCode)
-	retour := &refresh.Refresh{}
-	body := json.NewDecoder(response.Body)
-	body.Decode(retour)
-	t.Logf("expected : %s", current)
-	t.Logf("actual : %s", retour)
-	ass.Equal(current.UUID, retour.UUID)
-}
-
-func TestListHandler(t *testing.T) {
-	ass := assert.New(t)
-	current := refresh.StartRefreshScript(context.Background(), db.Get(), "erreur !!! pas de script !!!")
-	expectedStatus := refresh.Failed
-	rPath := "/refresh/list/" + string(expectedStatus)
-
-	response := test.HTTPGet(t, rPath)
-
-	ass.Equal(http.StatusOK, response.StatusCode)
-	actual, err := decodeRefreshArray(response)
-	ass.Nil(err)
-	ass.GreaterOrEqual(len(actual), 1)
-	ass.Conditionf(func() bool {
-		// tous les refresh doivent avoir le status `failed`
-		for _, current := range actual {
-			if current.Status != expectedStatus {
-				return false
-			}
-
-		}
-		return true
-	}, "Un des refresh n'a pas le status `failed`")
-	ass.Conditionf(func() bool {
-		for _, current := range actual {
-			if current.UUID == current.UUID {
-				return true
-			}
-		}
-		return false
-	}, "Le refresh avec l'uuid %s n'existe pas", current)
-}
-
-func decodeRefreshArray(response *http.Response) ([]refresh.Refresh, error) {
-	var actual []refresh.Refresh
-	all, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, errors.New("erreur pendant la lecture de la réponse")
-	}
-	err = json.Unmarshal(all, &actual)
-	if err != nil {
-		return nil, errors.New("erreur pendant l'unmarshalling de la réponse")
-	}
-	return actual, nil
 }

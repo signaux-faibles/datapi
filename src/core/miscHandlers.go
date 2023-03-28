@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"net/http"
 	"regexp"
 	"time"
@@ -13,7 +14,7 @@ import (
 func getCodesNaf(c *gin.Context) {
 	rows, err := db.Get().Query(context.Background(), "select code, libelle from naf where niveau=1")
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	var naf = make(map[string]string)
@@ -22,7 +23,7 @@ func getCodesNaf(c *gin.Context) {
 		var libelle string
 		err := rows.Scan(&code, &libelle)
 		if err != nil {
-			c.AbortWithError(500, err)
+			utils.AbortWithError(c, err)
 			return
 		}
 		naf[code] = libelle
@@ -33,7 +34,7 @@ func getCodesNaf(c *gin.Context) {
 func getDepartements(c *gin.Context) {
 	rows, err := db.Get().Query(context.Background(), "select code, libelle from departements")
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 	var departements = make(map[string]string)
@@ -42,7 +43,7 @@ func getDepartements(c *gin.Context) {
 		var libelle string
 		err := rows.Scan(&code, &libelle)
 		if err != nil {
-			c.AbortWithError(500, err)
+			utils.AbortWithError(c, err)
 			return
 		}
 		departements[code] = libelle
@@ -56,7 +57,7 @@ func getRegions(c *gin.Context) {
 	group by r.libelle`)
 
 	if err != nil {
-		c.AbortWithError(500, err)
+		utils.AbortWithError(c, err)
 		return
 	}
 
@@ -66,7 +67,7 @@ func getRegions(c *gin.Context) {
 		var departements []string
 		err := rows.Scan(&region, &departements)
 		if err != nil {
-			c.AbortWithError(500, err)
+			utils.AbortWithError(c, err)
 			return
 		}
 		regions[region] = departements
@@ -113,7 +114,7 @@ func coalescepTime(pointers ...*time.Time) *time.Time {
 type session struct {
 	username string
 	auteur   string
-	roles    scope
+	roles    Scope
 }
 
 func (s *session) bind(c *gin.Context) {
@@ -123,5 +124,5 @@ func (s *session) bind(c *gin.Context) {
 }
 
 func (s session) hasRole(role string) bool {
-	return contains(s.roles, role)
+	return utils.Contains(s.roles, role)
 }

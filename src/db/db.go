@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"path/filepath"
 	"sort"
 	"sync"
 
@@ -24,6 +25,7 @@ var ref reference
 type reference struct {
 	zones map[string][]string
 }
+
 type migrationScript struct {
 	fileName string
 	content  []byte
@@ -105,14 +107,37 @@ func compareMigrations(db []migrationScript, dir []migrationScript) []migrationS
 }
 
 func listDirMigrations() []migrationScript {
-	files, err := os.ReadDir(viper.GetString("migrationsDir"))
+	migrationsDir := viper.GetString("migrationsDir")
+	wd, err := os.Getwd()
 	if err != nil {
-		panic("migrations not found: " + err.Error())
+		log.Panicf(
+			"erreur lors de la récupération du répertoire de travail : %s",
+			err.Error(),
+		)
+	}
+	if !filepath.IsAbs(migrationsDir) {
+		migrationsDir, err = filepath.Abs(filepath.Join(wd, migrationsDir))
+		if err != nil {
+			log.Panicf(
+				"erreur lors de la récupération du chemin absolu du répertoire de migration '%s' : %s",
+				migrationsDir,
+				err.Error(),
+			)
+		}
+	}
+	files, err := os.ReadDir(migrationsDir)
+	if err != nil {
+		log.Panicf(
+			"le répertoire des fichiers de migrations '%s' dans '%s' est introuvable : %s",
+			migrationsDir,
+			wd,
+			err.Error(),
+		)
 	}
 	var dirMigrations []migrationScript
 	hasher := sha1.New()
 	for _, f := range files {
-		content, err := os.ReadFile("./migrations/" + f.Name())
+		content, err := os.ReadFile(filepath.Join(migrationsDir, f.Name()))
 		if err != nil {
 			panic("error reading migration files: " + err.Error())
 		}
@@ -133,28 +158,29 @@ func listDirMigrations() []migrationScript {
 }
 
 func runMigrations(migrationScripts []migrationScript, db *pgxpool.Pool) {
-	tx, err := db.Begin(context.Background())
+	ctx := context.Background()
+	tx, err := db.Begin(ctx)
 
 	if err != nil {
 		panic("something bad is happening with database" + err.Error())
 	}
+	// Defer a rollback in case anything fails.
+	defer tx.Rollback(ctx)
 	for _, m := range migrationScripts {
-		_, err = tx.Exec(context.Background(), string(m.content))
+		_, err = tx.Exec(ctx, string(m.content))
 		if err != nil {
-			tx.Rollback(context.Background())
-			panic("error migrating " + m.fileName + ", no changes commited. see details:\n" + err.Error())
+			panic("error mig	rating " + m.fileName + ", no changes commited. see details:\n" + err.Error())
 		}
 		_, err = tx.Exec(
-			context.Background(),
+			ctx,
 			"insert into migrations (filename, hash) values ($1, $2)", m.fileName, string(m.hash[:]))
 		if err != nil {
-			tx.Rollback(context.Background())
 			panic("error inserting " + m.fileName + " in migration table, no changes commited. see details:\n" + err.Error())
 		}
 		log.Printf("%s rolled, registered with hash %s", m.fileName, m.hash)
 	}
 
-	tx.Commit(context.Background())
+	tx.Commit(ctx)
 }
 
 func runBatch(tx *pgx.Tx, batch *pgx.Batch) {
