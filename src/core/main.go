@@ -8,7 +8,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
-	"github.com/signaux-faibles/datapi/src/refresh"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"log"
@@ -23,6 +22,9 @@ import (
 var keycloak gocloak.GoCloak
 var mgoDB *mongo.Database
 var wekanConfig WekanConfig
+
+// Endpoint handler pour définir un endpoint sur gin
+type Endpoint func(*gin.Engine)
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() {
@@ -44,8 +46,8 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 	}
 }
 
-// StartAPI expose l'api
-func StartAPI() {
+// InitAPI initialise l'api
+func InitAPI() *gin.Engine {
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}
@@ -58,12 +60,12 @@ func StartAPI() {
 	router.Use(cors.New(config))
 	router.SetTrustedProxies(nil)
 
-	entreprise := router.Group("/entreprise", getKeycloakMiddleware(), logMiddleware)
+	entreprise := router.Group("/entreprise", AuthMiddleware(), LogMiddleware)
 	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
 	entreprise.GET("/get/:siren", validSiren, getEntreprise)
 	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
 
-	etablissement := router.Group("/etablissement", getKeycloakMiddleware(), logMiddleware)
+	etablissement := router.Group("/etablissement", AuthMiddleware(), LogMiddleware)
 	etablissement.GET("/viewers/:siret", validSiret, getEtablissementViewers)
 	etablissement.GET("/get/:siret", validSiret, getEtablissement)
 	etablissement.GET("/comments/:siret", validSiret, getEntrepriseComments)
@@ -71,56 +73,61 @@ func StartAPI() {
 	etablissement.PUT("/comments/:id", updateEntrepriseComment)
 	etablissement.POST("/search", searchEtablissementHandler)
 
-	follow := router.Group("/follow", getKeycloakMiddleware(), logMiddleware)
+	follow := router.Group("/follow", AuthMiddleware(), LogMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
 	follow.POST("", getCardsForCurrentUser)
 	follow.POST("/:siret", validSiret, followEtablissement)
 	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
 
-	export := router.Group("/export/", getKeycloakMiddleware(), logMiddleware)
+	export := router.Group("/export/", AuthMiddleware(), LogMiddleware)
 	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", validSiret, getDOCXFromSiret)
 
-	listes := router.Group("/listes", getKeycloakMiddleware(), logMiddleware)
+	listes := router.Group("/listes", AuthMiddleware(), LogMiddleware)
 	listes.GET("", getListes)
 
-	scores := router.Group("/scores", getKeycloakMiddleware(), logMiddleware)
+	scores := router.Group("/scores", AuthMiddleware(), LogMiddleware)
 	scores.POST("/liste", getLastListeScores)
 	scores.POST("/liste/:id", getListeScores)
 	scores.POST("/xls/:id", getXLSListeScores)
 
-	reference := router.Group("/reference", getKeycloakMiddleware(), logMiddleware)
+	reference := router.Group("/reference", AuthMiddleware(), LogMiddleware)
 	reference.GET("/naf", getCodesNaf)
 	reference.GET("/departements", getDepartements)
 	reference.GET("/regions", getRegions)
 
-	fce := router.Group("/fce", getKeycloakMiddleware(), logMiddleware)
+	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
 	fce.GET("/:siret", validSiret, getFceURL)
 
-	utils := router.Group("/utils", getAdminAuthMiddleware())
-	utils.GET("/import", importHandler)
+	utils := router.Group("/utils", adminAuthMiddleware())
+	utils.GET("/import", importHandler) // 1
 	utils.GET("/keycloak", getKeycloakUsers)
 	utils.GET("/metrics", gin.WrapH(promhttp.Handler()))
 	// utils.GET("/wekanImport", wekanImportHandler)
-	utils.GET("/sireneImport", sireneImportHandler)
-	utils.GET("/listImport/:algo", listImportHandler)
+	utils.GET("/sireneImport", sireneImportHandler)   // 2
+	utils.GET("/listImport/:algo", listImportHandler) // 3
 
-	refreshRoute := router.Group("/refresh", getKeycloakMiddleware(), logMiddleware)
-	refreshRoute.GET("/start", refresh.StartHandler)
-	refreshRoute.GET("/status/:uuid", refresh.StatusHandler)
-	refreshRoute.GET("/last", refresh.LastHandler)
-	refreshRoute.GET("/list/:status", refresh.ListHandler)
-
-	wekan := router.Group("/wekan", getKeycloakMiddleware(), logMiddleware)
+	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
 	wekan.GET("/cards/:siret", validSiret, wekanGetCardsHandler)
 	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 	wekan.GET("/config", wekanConfigHandler)
+	return router
+}
 
+// ConfigureAPI permet de rajouter un endpoint au niveau de l'API
+func ConfigureAPI(router *gin.Engine, endpoints ...Endpoint) {
+	for _, current := range endpoints {
+		current(router)
+	}
+}
+
+// StartAPI : démarre le serveur
+func StartAPI(router *gin.Engine) {
 	log.Print("Running API on " + viper.GetString("bind"))
 	err := router.Run(viper.GetString("bind"))
 	if err != nil {
@@ -128,14 +135,15 @@ func StartAPI() {
 	}
 }
 
-func getKeycloakMiddleware() gin.HandlerFunc {
+// AuthMiddleware définit le middleware qui gère l'authentification
+func AuthMiddleware() gin.HandlerFunc {
 	if viper.GetBool("enableKeycloak") {
 		return keycloakMiddleware
 	}
 	return fakeCloakMiddleware
 }
 
-func getAdminAuthMiddleware() gin.HandlerFunc {
+func adminAuthMiddleware() gin.HandlerFunc {
 	var whitelist = viper.GetStringSlice("adminWhitelist")
 	var wlmap = make(map[string]bool)
 	for _, ip := range whitelist {
@@ -151,7 +159,8 @@ func getAdminAuthMiddleware() gin.HandlerFunc {
 	}
 }
 
-func logMiddleware(c *gin.Context) {
+// LogMiddleware définit le middleware qui gère les logs
+func LogMiddleware(c *gin.Context) {
 	if c.Request.Body == nil {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "request has nil body"})
 		return

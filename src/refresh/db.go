@@ -4,7 +4,6 @@ package refresh
 
 import (
 	"context"
-	"github.com/google/uuid"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"os"
@@ -12,19 +11,19 @@ import (
 )
 
 // StartRefreshScript : crée un évènement de refresh, le démarre dans une routine et retourne son UUID
-func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) uuid.UUID {
-	current := New(uuid.New())
+func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, scriptPath string) *Refresh {
+	current := New()
 	sql, err := os.ReadFile(scriptPath)
 	if err != nil {
 		current.fail(err.Error())
-		return current.UUID
+		return current
 	}
 	if len(sql) <= 0 {
 		current.fail("le script sql est vide")
-		return current.UUID
+		return current
 	}
 	go executeRefresh(ctx, db, string(sql), current)
-	return current.UUID
+	return current
 }
 
 func executeRefresh(ctx context.Context, db *pgxpool.Pool, sql string, refresh *Refresh) {

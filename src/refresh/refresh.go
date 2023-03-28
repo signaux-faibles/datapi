@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-var states = sync.Map{}
+var list = sync.Map{}
 var last = atomic.Value{}
 
 // Refresh : représente une exécution du script de `refresh` configuré dans l'application
@@ -41,8 +41,8 @@ const (
 var Empty = Refresh{}
 
 // New : crée un `Refresh`
-func New(uuid uuid.UUID) *Refresh {
-	r := Refresh{UUID: uuid}
+func New() *Refresh {
+	r := Refresh{UUID: uuid.New()}
 	r.save(Prepare, "🙏")
 	last.Store(r)
 	return &r
@@ -50,7 +50,7 @@ func New(uuid uuid.UUID) *Refresh {
 
 // Fetch : récupère un `Refresh`
 func Fetch(id uuid.UUID) (Refresh, error) {
-	value, found := states.Load(id)
+	value, found := list.Load(id)
 	if found {
 		return *value.(*Refresh), nil
 	}
@@ -69,7 +69,7 @@ func FetchLast() Refresh {
 // FetchRefreshsWithState : récupère la liste des `Refresh` selon le `Status` passé en paramètre
 func FetchRefreshsWithState(status Status) []Refresh {
 	var retour []Refresh
-	states.Range(func(k, v any) bool {
+	list.Range(func(k, v any) bool {
 		other := *v.(*Refresh)
 		if status == other.Status {
 			retour = append(retour, other)
@@ -96,7 +96,7 @@ func (r *Refresh) save(status Status, message string) {
 	r.Message = message
 	r.Date = time.Now()
 	log.Infof("refresh script : %s", status)
-	states.Store(r.UUID, r)
+	list.Store(r.UUID, r)
 }
 
 func (r Refresh) String() string {

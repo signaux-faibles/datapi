@@ -1,3 +1,6 @@
+//go:build integration
+// +build integration
+
 package main
 
 import (
@@ -70,8 +73,9 @@ func TestMain(m *testing.M) {
 	}
 	// run datapi
 	core.StartDatapi()
-
-	go core.StartAPI()
+	api := core.InitAPI()
+	core.ConfigureAPI(api, refresh.ConfigureEndpoint)
+	go core.StartAPI(api)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	//Run tests
@@ -742,10 +746,10 @@ func TestFetchNonExistentRefresh(t *testing.T) {
 
 func TestRunRefreshScript(t *testing.T) {
 	ass := assert.New(t)
-	refreshID := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
-	t.Logf("refreshID is running with id : %s", refreshID)
+	current := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	t.Logf("refreshID is running with id : %s", current.UUID)
 	time.Sleep(5 * time.Second)
-	result, err := refresh.Fetch(refreshID)
+	result, err := refresh.Fetch(current.UUID)
 	ass.Nil(err)
 	ass.NotNil(result)
 }
@@ -789,21 +793,22 @@ func TestStartHandler(t *testing.T) {
 
 func TestStatusHandler(t *testing.T) {
 	ass := assert.New(t)
-	refreshID := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
-	path := "/refresh/status/" + refreshID.String()
+	current := refresh.StartRefreshScript(context.Background(), db.Get(), "test/refreshScript.sql")
+	path := "/refresh/status/" + current.UUID.String()
 	response := test.HTTPGet(t, path)
 
-	t.Logf("response: %s", response.Body)
-	ass.Equal(200, response.StatusCode)
+	ass.Equal(http.StatusOK, response.StatusCode)
 	retour := &refresh.Refresh{}
 	body := json.NewDecoder(response.Body)
 	body.Decode(retour)
-	ass.Equal(refreshID, retour.UUID)
+	t.Logf("expected : %s", current)
+	t.Logf("actual : %s", retour)
+	ass.Equal(current.UUID, retour.UUID)
 }
 
 func TestListHandler(t *testing.T) {
 	ass := assert.New(t)
-	expectedUUID := refresh.StartRefreshScript(context.Background(), db.Get(), "erreur !!! pas de script !!!")
+	current := refresh.StartRefreshScript(context.Background(), db.Get(), "erreur !!! pas de script !!!")
 	expectedStatus := refresh.Failed
 	rPath := "/refresh/list/" + string(expectedStatus)
 
@@ -825,12 +830,12 @@ func TestListHandler(t *testing.T) {
 	}, "Un des refresh n'a pas le status `failed`")
 	ass.Conditionf(func() bool {
 		for _, current := range actual {
-			if current.UUID == expectedUUID {
+			if current.UUID == current.UUID {
 				return true
 			}
 		}
 		return false
-	}, "Le refresh avec l'uuid %s n'existe pas", expectedUUID)
+	}, "Le refresh avec l'uuid %s n'existe pas", current)
 }
 
 func decodeRefreshArray(response *http.Response) ([]refresh.Refresh, error) {
