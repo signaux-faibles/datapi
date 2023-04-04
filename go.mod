@@ -11,7 +11,7 @@ require (
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/golang-jwt/jwt/v4 v4.4.1
 	github.com/google/btree v1.1.2
-	github.com/google/go-cmp v0.5.7
+	github.com/google/go-cmp v0.5.9
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.1.2
 	github.com/jackc/pgx/v4 v4.16.1
