@@ -22,7 +22,7 @@ require (
 	github.com/prometheus/client_golang v1.12.2
 	github.com/signaux-faibles/goSirene v0.2.4
 	github.com/spf13/viper v1.11.0
-	github.com/stretchr/testify v1.8.1
+	github.com/stretchr/testify v1.8.2
 	github.com/tealeg/xlsx v1.0.5
 	go.mongodb.org/mongo-driver v1.9.1
 )
