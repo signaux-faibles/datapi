@@ -6,7 +6,7 @@ require (
 	bou.ke/monkey v1.0.2
 	github.com/Nerzal/gocloak/v10 v10.0.1
 	github.com/cnf/structhash v0.0.0-20201127153200-e1b16c1ebc08
-	github.com/gin-contrib/cors v1.3.1
+	github.com/gin-contrib/cors v1.4.0
 	github.com/gin-gonic/gin v1.8.2
 	github.com/globalsign/mgo v0.0.0-20181015135952-eeefdecb41b8
 	github.com/golang-jwt/jwt/v4 v4.4.1
