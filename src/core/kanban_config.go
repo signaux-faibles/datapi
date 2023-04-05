@@ -15,6 +15,8 @@ var wekan libwekan.Wekan
 var wekanConfig libwekan.Config
 var wekanConfigMutex = &sync.Mutex{}
 
+type KanbanUsers map[libwekan.UserID]libwekan.Username
+
 type KanbanLists map[libwekan.ListID]KanbanList
 type KanbanList struct {
 	Title string  `json:"title"`
@@ -27,6 +29,8 @@ type KanbanSwimlane struct {
 	Sort  float64 `json:"sort"`
 }
 
+type KanbanBoardMembers map[libwekan.UserID]libwekan.Username
+
 type KanbanBoardLabels map[libwekan.BoardLabelID]KanbanBoardLabel
 type KanbanBoardLabel struct {
 	Color string                  `json:"color"`
@@ -36,9 +40,11 @@ type KanbanBoardLabel struct {
 type KanbanBoards map[libwekan.BoardID]KanbanBoard
 type KanbanBoard struct {
 	Title     libwekan.BoardTitle `json:"title"`
+	Slug      libwekan.BoardSlug  `json:"slug"`
 	Lists     KanbanLists         `json:"lists"`
 	Swimlanes KanbanSwimlanes     `json:"swimlanes"`
 	Labels    KanbanBoardLabels   `json:"labels"`
+	Members   KanbanBoardMembers  `json:"members"`
 }
 
 type KanbanBoardSwimlane struct {
@@ -49,10 +55,29 @@ type KanbanBoardSwimlane struct {
 type KanbanConfig struct {
 	Departements map[CodeDepartement][]KanbanBoardSwimlane `json:"departements"`
 	Boards       KanbanBoards                              `json:"boards"`
+	Users        KanbanUsers                               `json:"users"`
 	UserID       libwekan.UserID                           `json:"userID"`
 }
 
-func (b *KanbanBoards) fromWekanConfigBoards(boards map[libwekan.BoardID]libwekan.ConfigBoard, wekanUser libwekan.User) {
+func (m *KanbanBoardMembers) fromWekanBoardMembers(
+	wekanBoardMembers []libwekan.BoardMember,
+	wekanConfigUsers map[libwekan.UserID]libwekan.User) {
+	if *m == nil {
+		*m = make(KanbanBoardMembers)
+	}
+	for _, member := range wekanBoardMembers {
+		if member.IsActive {
+			username := wekanConfigUsers[member.UserID].Username
+			(*m)[member.UserID] = username
+		}
+	}
+}
+
+func (b *KanbanBoards) fromWekanConfigBoards(
+	boards map[libwekan.BoardID]libwekan.ConfigBoard,
+	wekanUsers map[libwekan.UserID]libwekan.User,
+	wekanUser libwekan.User,
+) {
 	if *b == nil {
 		*b = make(KanbanBoards)
 	}
@@ -60,9 +85,11 @@ func (b *KanbanBoards) fromWekanConfigBoards(boards map[libwekan.BoardID]libweka
 		if wekanBoard.Board.UserIsActiveMember(wekanUser) {
 			var kanbanBoard KanbanBoard
 			kanbanBoard.Title = wekanBoard.Board.Title
+			kanbanBoard.Slug = wekanBoard.Board.Slug
 			kanbanBoard.Lists.fromWekanLists(wekanBoard.Lists)
 			kanbanBoard.Swimlanes.fromWekanSwimlanes(wekanBoard.Swimlanes)
 			kanbanBoard.Labels.fromWekanBoardLabels(wekanBoard.Board.Labels)
+			kanbanBoard.Members.fromWekanBoardMembers(wekanBoard.Board.Members, wekanUsers)
 			(*b)[wekanBoardId] = kanbanBoard
 		}
 	}
@@ -106,7 +133,6 @@ func (l *KanbanBoardLabels) fromWekanBoardLabels(labels []libwekan.BoardLabel) {
 
 func (k *KanbanConfig) populateDepartements() {
 	kanbanDepartements := make(map[CodeDepartement][]KanbanBoardSwimlane)
-
 	for boardID, board := range k.Boards {
 		for swimlaneID, swimlane := range board.Swimlanes {
 			zone := CodeDepartement(strings.Split(swimlane.Title, " (")[0])
@@ -140,7 +166,7 @@ func kanbanConfigForUser(username libwekan.Username) KanbanConfig {
 	for wekanUserID, wekanUser := range config.Users {
 		if wekanUser.Username == username {
 			kanbanConfig.UserID = wekanUserID
-			kanbanConfig.Boards.fromWekanConfigBoards(config.Boards, wekanUser)
+			kanbanConfig.Boards.fromWekanConfigBoards(config.Boards, config.Users, wekanUser)
 			kanbanConfig.populateDepartements()
 		}
 	}
