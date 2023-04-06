@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sync"
@@ -16,7 +15,7 @@ import (
 )
 
 func loadCardsFromFile(cards *WekanCards, path string) error {
-	fileContent, err := ioutil.ReadFile(path)
+	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -25,7 +24,7 @@ func loadCardsFromFile(cards *WekanCards, path string) error {
 }
 
 func loadFollowExportsFromFile(exports *dbExports, path string) error {
-	fileContent, err := ioutil.ReadFile(path)
+	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		return err
 	}
@@ -105,7 +104,7 @@ func Test_WekanExportsDOCX(t *testing.T) {
 		t.Error("empty docx file returned")
 	}
 	if os.Getenv("WRITE_DOCX") == "true" {
-		err := ioutil.WriteFile("test_output.docx", data, 0755)
+		err := os.WriteFile("test_output.docx", data, 0755)
 		if err != nil {
 			t.Errorf("could create result file: %s", err.Error())
 		}
