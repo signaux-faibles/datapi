@@ -15,7 +15,7 @@ require (
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.3.0
 	github.com/jackc/pgx/v4 v4.18.1
-	github.com/lib/pq v1.10.6
+	github.com/lib/pq v1.10.7
 	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
