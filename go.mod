@@ -2,7 +2,6 @@ module github.com/signaux-faibles/datapi
 
 go 1.20
 
-
 require (
 	bou.ke/monkey v1.0.2
 	github.com/Nerzal/gocloak/v10 v10.0.1
@@ -15,7 +14,9 @@ require (
 	github.com/google/go-cmp v0.5.9
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.3.0
+	github.com/gosimple/slug v1.13.1
 	github.com/jackc/pgx/v4 v4.16.1
+	github.com/jaswdr/faker v1.16.0
 	github.com/lib/pq v1.10.6
 	github.com/ory/dockertest/v3 v3.9.1
 	github.com/pkg/errors v0.9.1
@@ -53,6 +54,7 @@ require (
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/golang/snappy v0.0.1 // indirect
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510 // indirect
+	github.com/gosimple/unidecode v1.0.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/jackc/chunkreader/v2 v2.0.1 // indirect

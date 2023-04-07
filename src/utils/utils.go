@@ -48,3 +48,20 @@ func ContainsOnConditions[T interface{}](values []T, searched T, conditions ...f
 	}
 	return false
 }
+
+func GetKeys[T comparable](input map[T]interface{}) []T {
+	keys := make([]T, 0, len(input))
+	for key := range input {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func ToMap[K comparable, V interface{}](values []V, transformer func(V) K) map[K]V {
+	r := make(map[K]V)
+	for _, current := range values {
+		key := transformer(current)
+		r[key] = current
+	}
+	return r
+}
