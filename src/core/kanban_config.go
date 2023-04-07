@@ -73,14 +73,21 @@ func (m *KanbanBoardMembers) fromWekanBoardMembers(
 	}
 }
 
-func (b *KanbanBoards) fromWekanConfigBoards(
+//func (b *KanbanBoards) fromWekanConfigBoards(
+//	boards map[libwekan.BoardID]libwekan.ConfigBoard,
+//	wekanUsers map[libwekan.UserID]libwekan.User,
+//	wekanUser libwekan.User,
+//) {
+//	var configBoards = populateWekanConfigBoards(boards, wekanUsers, wekanUser)
+//	b = &configBoards
+//}
+
+func populateWekanConfigBoards(
 	boards map[libwekan.BoardID]libwekan.ConfigBoard,
 	wekanUsers map[libwekan.UserID]libwekan.User,
 	wekanUser libwekan.User,
-) {
-	if *b == nil {
-		*b = make(KanbanBoards)
-	}
+) KanbanBoards {
+	b := make(KanbanBoards)
 	for wekanBoardId, wekanBoard := range boards {
 		if wekanBoard.Board.UserIsActiveMember(wekanUser) {
 			var kanbanBoard KanbanBoard
@@ -90,9 +97,10 @@ func (b *KanbanBoards) fromWekanConfigBoards(
 			kanbanBoard.Swimlanes.fromWekanSwimlanes(wekanBoard.Swimlanes)
 			kanbanBoard.Labels.fromWekanBoardLabels(wekanBoard.Board.Labels)
 			kanbanBoard.Members.fromWekanBoardMembers(wekanBoard.Board.Members, wekanUsers)
-			(*b)[wekanBoardId] = kanbanBoard
+			b[wekanBoardId] = kanbanBoard
 		}
 	}
+	return b
 }
 
 func (l *KanbanLists) fromWekanLists(lists map[libwekan.ListID]libwekan.List) {
@@ -166,7 +174,7 @@ func kanbanConfigForUser(username libwekan.Username) KanbanConfig {
 	for wekanUserID, wekanUser := range config.Users {
 		if wekanUser.Username == username {
 			kanbanConfig.UserID = wekanUserID
-			kanbanConfig.Boards.fromWekanConfigBoards(config.Boards, config.Users, wekanUser)
+			kanbanConfig.Boards = populateWekanConfigBoards(config.Boards, config.Users, wekanUser)
 			kanbanConfig.populateDepartements()
 		}
 	}
