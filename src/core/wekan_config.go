@@ -76,7 +76,7 @@ func buildWekanConfigPipeline() []bson.M {
 		"$match": bson.M{
 			"slug": bson.M{
 				"$regex": primitive.Regex{
-					Pattern: "^tableau-(crp|darp|codefi).*",
+					Pattern: "^tableau-(crp|eti|darp|codefi).*",
 					Options: "i",
 				}}}}
 
