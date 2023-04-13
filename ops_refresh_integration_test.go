@@ -84,7 +84,7 @@ func TestApi_OpsRefresh_StatusHandler(t *testing.T) {
 	retour := &refresh.Refresh{}
 	err := json.Unmarshal(body, &retour)
 	if err != nil {
-		t.Errorf("erreur survenur pendant l'unmarshalling de la réponse '%s' (cause : %s)", body, err.Error())
+		t.Errorf("erreur survenue pendant l'unmarshalling de la réponse '%s' (cause : %s)", body, err.Error())
 	}
 	ass.Equal(current.UUID, retour.UUID)
 }
