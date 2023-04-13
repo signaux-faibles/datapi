@@ -109,7 +109,6 @@ func TestApi_OpsRefresh_ListHandler(t *testing.T) {
 			if current.Status != expectedStatus {
 				return false
 			}
-
 		}
 		return true
 	}, "Un des refresh n'a pas le status `failed`")

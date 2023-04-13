@@ -5,6 +5,7 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/core"
@@ -12,9 +13,8 @@ import (
 	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/stretchr/testify/assert"
 	"log"
-	"math/rand"
+	"math/big"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -32,11 +32,11 @@ func TestMain(m *testing.M) {
 	testConfig["postgres"] = test.GetDatapiDbURL()
 	testConfig["wekanMgoURL"] = test.GetWekanDbURL()
 
-	apiPort := strconv.Itoa(rand.Intn(500) + 30000)
+	apiPort := generateRandomPort()
 	testConfig["bind"] = ":" + apiPort
 	test.SetHostAndPort("http://localhost:" + apiPort)
 
-	adminWhitelist := "::1"
+	adminWhitelist := "::1, 127.0.0.1"
 	testConfig["adminWhitelist"] = adminWhitelist
 
 	err = test.Viperize(testConfig)
@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 	go initAndStartAPI()
 	// time to API be ready
 	time.Sleep(1 * time.Second)
-	//Run tests
+	// run tests
 	test.FakeTime(tuTime)
 	code := m.Run()
 
@@ -65,6 +65,16 @@ func TestMain(m *testing.M) {
 
 	test.UnfakeTime()
 	os.Exit(code)
+}
+
+func generateRandomPort() string {
+	n, err := rand.Int(rand.Reader, big.NewInt(500))
+	n.Add(n, big.NewInt(30000))
+	if err != nil {
+		fmt.Println("erreur pendant la génération d'un nombre aléatoire : ", err)
+		return ""
+	}
+	return n.String()
 }
 
 func TestListes(t *testing.T) {
