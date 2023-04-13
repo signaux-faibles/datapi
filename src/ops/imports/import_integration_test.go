@@ -1,5 +1,4 @@
 //go:build integration
-// +build integration
 
 package imports
 
@@ -27,7 +26,7 @@ func TestMain(m *testing.M) {
 		log.Fatalf("erreur pendant le chargement de la configuration ")
 	}
 	test.Wait4DatapiDb(url)
-	//Run tests
+	// Run tests
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
