@@ -139,8 +139,9 @@ func AddEndpoint(router *gin.Engine, path string, endpoint Endpoint) {
 
 // StartAPI : démarre le serveur
 func StartAPI(router *gin.Engine) {
-	log.Print("Running API on " + viper.GetString("bind"))
-	err := router.Run(viper.GetString("bind"))
+	addr := viper.GetString("bind")
+	log.Print("Running API on " + addr)
+	err := router.Run(addr)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -149,7 +150,6 @@ func StartAPI(router *gin.Engine) {
 // AuthMiddleware définit le middleware qui gère l'authentification
 func AuthMiddleware() gin.HandlerFunc {
 	if viper.GetBool("enableKeycloak") {
-
 		return keycloakMiddleware
 	}
 	return fakeCloakMiddleware
@@ -200,9 +200,8 @@ func LogMiddleware(c *gin.Context) {
 func AdminAuthMiddleware(c *gin.Context) {
 	var whitelist = viper.GetStringSlice("adminWhitelist")
 	if !utils.Contains(whitelist, c.ClientIP()) {
-		log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
+		log.Printf("Une tentative de connexion depuis %s, ce qui n'est pas autorisé dans `adminWhitelist`, voir config.toml\n", c.ClientIP())
 		c.AbortWithStatus(http.StatusForbidden)
-		return
 	}
 }
 

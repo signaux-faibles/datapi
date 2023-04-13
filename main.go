@@ -7,6 +7,7 @@ import (
 	"github.com/signaux-faibles/datapi/src/ops/misc"
 	"github.com/signaux-faibles/datapi/src/ops/refresh"
 	"github.com/spf13/viper"
+	"log"
 )
 
 func main() {
@@ -14,7 +15,10 @@ func main() {
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}
-	core.StartDatapi()
+	err := core.StartDatapi()
+	if err != nil {
+		log.Println("erreur pendant le démarrage de Datapi : ", err)
+	}
 	initAndStartAPI()
 }
 

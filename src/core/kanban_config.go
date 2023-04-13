@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"log"
@@ -170,7 +169,6 @@ func (k *KanbanConfig) populateDepartements() {
 func kanbanConfigForUser(username libwekan.Username) KanbanConfig {
 	wekanConfigMutex.Lock()
 	config := wekanConfig.Copy()
-	fmt.Println("config ", config)
 	wekanConfigMutex.Unlock()
 	var kanbanConfig KanbanConfig
 	for wekanUserID, wekanUser := range config.Users {
@@ -180,7 +178,6 @@ func kanbanConfigForUser(username libwekan.Username) KanbanConfig {
 			kanbanConfig.populateDepartements()
 		}
 	}
-	fmt.Println("kanbanConfig ", config)
 	return kanbanConfig
 }
 
