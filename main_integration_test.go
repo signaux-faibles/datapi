@@ -35,8 +35,8 @@ func TestMain(m *testing.M) {
 	testConfig["bind"] = ":" + apiPort
 	test.SetHostAndPort("http://localhost:" + apiPort)
 
-	adminWhitelist := "::1, 127.0.0.1"
-	testConfig["adminWhitelist"] = adminWhitelist
+	//adminWhitelist := "127.0.0.1, ::1"
+	//testConfig["adminWhitelist"] = adminWhitelist
 
 	err = test.Viperize(testConfig)
 	if err != nil {

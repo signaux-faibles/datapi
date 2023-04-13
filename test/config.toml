@@ -2,6 +2,8 @@ bind = "overrided in integration test"
 postgres = "overrided in integration test"
 prod = false
 corsAllowOrigins = ["http://localhost:8082"]
+adminWhitelist = "overrided in integration test"
+
 
 enableKeycloak = false
 #keycloakHostname = "http://localhost:8081/"
