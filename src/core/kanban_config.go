@@ -143,7 +143,7 @@ func (k *KanbanConfig) populateDepartements() {
 	kanbanDepartements := make(map[CodeDepartement][]KanbanBoardSwimlane)
 	for boardID, board := range k.Boards {
 		for swimlaneID, swimlane := range board.Swimlanes {
-			zone := CodeDepartement(strings.Split(swimlane.Title, " (")[0])
+			zone := CodeDepartement(parseSwimlaneTitle(swimlane))
 			if _, ok := departements[zone]; ok {
 				current := KanbanBoardSwimlane{
 					BoardID:    boardID,
@@ -151,7 +151,7 @@ func (k *KanbanConfig) populateDepartements() {
 				}
 				kanbanDepartements[zone] = append(kanbanDepartements[zone], current)
 			}
-			candidateRegion := Region(strings.Split(swimlane.Title, " (")[0])
+			candidateRegion := Region(parseSwimlaneTitle(swimlane))
 			if depts, ok := regions[candidateRegion]; ok {
 				for _, dept := range depts {
 					current := KanbanBoardSwimlane{
@@ -186,6 +186,14 @@ func kanbanConfigHandler(c *gin.Context) {
 	s.bind(c)
 	kanbanConfig := kanbanConfigForUser(libwekan.Username(s.username))
 	c.JSON(http.StatusOK, kanbanConfig)
+}
+
+func parseSwimlaneTitle(swimlane KanbanSwimlane) string {
+	titleSplitted := strings.Split(swimlane.Title, " (")
+	if len(titleSplitted) != 1 {
+		log.Println("Erreur : le titre de la swimlane est mal configuré : ", swimlane.Title)
+	}
+	return titleSplitted[0]
 }
 
 func loadWekanConfig() {
