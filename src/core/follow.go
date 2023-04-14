@@ -119,8 +119,8 @@ func unfollowEtablissement(c *gin.Context) {
 
 func (f *Follow) load() error {
 	sqlFollow := `select
-        active, since, comment, category        
-        from etablissement_follow 
+        active, since, comment, category
+        from etablissement_follow
         where
         username = $1 and
         siret = $2 and
@@ -196,9 +196,9 @@ func (f *Follow) list(roles Scope) (Follows, utils.Jerror) {
 
 	for _, s := range sms.summaries {
 		var f Follow
-		f.Comment = *coalescepString(s.Comment, &EmptyString)
-		f.Category = *coalescepString(s.Category, &EmptyString)
-		f.Since = *coalescepTime(s.Since, &time.Time{})
+		f.Comment = *utils.Coalesce(s.Comment, &EmptyString)
+		f.Category = *utils.Coalesce(s.Category, &EmptyString)
+		f.Since = *utils.Coalesce(s.Since, &time.Time{})
 		f.EtablissementSummary = s
 		f.Active = true
 		follows = append(follows, f)
@@ -238,9 +238,9 @@ func getCardsForCurrentUser(c *gin.Context) {
 		var f Follow
 		if s.Summary != nil {
 			if s.Summary.Since == nil {
-				f.Comment = *coalescepString(s.Summary.Comment, &EmptyString)
-				f.Category = *coalescepString(s.Summary.Category, &EmptyString)
-				f.Since = *coalescepTime(s.Summary.Since, &time.Time{})
+				f.Comment = *utils.Coalesce(s.Summary.Comment, &EmptyString)
+				f.Category = *utils.Coalesce(s.Summary.Category, &EmptyString)
+				f.Since = *utils.Coalesce(s.Summary.Since, &time.Time{})
 				f.Active = true
 			}
 			f.EtablissementSummary = s.Summary
@@ -392,21 +392,21 @@ const sqlCreateTmpFollowWekan = `create temporary table tmp_follow_wekan on comm
 	select case when f.siret is null then 'follow' else 'unfollow' end as todo,
 	coalesce(f.siret, s.siret) as siret
 	from follow f
-	full join sirets s on s.siret = f.siret 
+	full join sirets s on s.siret = f.siret
 	where f.siret is null or s.siret is null;
 `
 
 // sqlFollowFromTmp $1 = username
 const sqlFollowFromTmp = `insert into etablissement_follow
 	(siret, siren, username, active, since, comment, category)
-	select t.siret, substring(t.siret from 1 for 9), $1, 
+	select t.siret, substring(t.siret from 1 for 9), $1,
 	true, current_timestamp, 'participe à la carte wekan', 'wekan'
 	from tmp_follow_wekan t
 	inner join etablissement0 e on e.siret = t.siret
 	where todo = 'follow'`
 
 // sqlGetCards: $1 = roles.ZoneGeo, $2 = username, $3 = sirets
-const sqlGetCards = `select 
+const sqlGetCards = `select
 s.siret, s.siren, s.raison_sociale, s.commune,
 s.libelle_departement, s.code_departement,
 case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.valeur_score end as valeur_score,
@@ -423,8 +423,8 @@ case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement,
 count(*) over () as nb_total,
 count(case when s.alert='Alerte seuil F1' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f1,
 count(case when s.alert='Alerte seuil F2' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f2,
-(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible, 
-(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone, 
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone,
 f.id is not null as followed_etablissement,
 fe.siren is not null as followed_entreprise,
 s.siege, s.raison_sociale_groupe, territoire_industrie,
@@ -439,7 +439,7 @@ left join etablissement_follow f on f.active and f.siret = s.siret and f.usernam
 left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
 where s.siret = any($3)`
 
-const sqlGetFollow = `select 
+const sqlGetFollow = `select
 s.siret, s.siren, s.raison_sociale, s.commune,
 s.libelle_departement, s.code_departement,
 case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.valeur_score end as valeur_score,
@@ -456,8 +456,8 @@ case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement,
 count(*) over () as nb_total,
 count(case when s.alert='Alerte seuil F1' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f1,
 count(case when s.alert='Alerte seuil F2' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f2,
-(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible, 
-(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone, 
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible,
+(permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone,
 f.id is not null as followed_etablissement,
 fe.siren is not null as followed_entreprise,
 s.siege, s.raison_sociale_groupe, territoire_industrie,

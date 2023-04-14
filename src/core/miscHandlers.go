@@ -2,13 +2,11 @@ package core
 
 import (
 	"context"
+	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"net/http"
 	"regexp"
-	"time"
-
-	"github.com/gin-gonic/gin"
 )
 
 func getCodesNaf(c *gin.Context) {
@@ -55,24 +53,6 @@ func validSiret(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, "SIRET valide obligatoire")
 	}
 	c.Next()
-}
-
-func coalescepString(pointers ...*string) *string {
-	for _, i := range pointers {
-		if i != nil {
-			return i
-		}
-	}
-	return nil
-}
-
-func coalescepTime(pointers ...*time.Time) *time.Time {
-	for _, i := range pointers {
-		if i != nil {
-			return i
-		}
-	}
-	return nil
 }
 
 type session struct {
