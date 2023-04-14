@@ -66,3 +66,12 @@ func ToMap[K comparable, V interface{}](values []V, transformer func(V) K) map[K
 	}
 	return r
 }
+
+func Coalesce[T any](pointers ...*T) *T {
+	for _, i := range pointers {
+		if i != nil {
+			return i
+		}
+	}
+	return nil
+}
