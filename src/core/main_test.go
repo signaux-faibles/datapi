@@ -65,9 +65,9 @@ func TestAdminAuthMiddleware_withWhitelist_acceptOnlyWhitelistedIPs(t *testing.T
 func buildGinContextWithIP(ip string) *gin.Context {
 	ginContext, _ := gin.CreateTestContext(httptest.NewRecorder())
 	addr := net.ParseIP(ip)
-	url, _ := url.Parse(fake.Internet().URL())
+	uerel, _ := url.Parse(fake.Internet().URL())
 	req := &http.Request{
-		URL:    url,
+		URL:    uerel,
 		Header: make(http.Header),
 	}
 	if ip4 := addr.To4(); ip4 != nil {
