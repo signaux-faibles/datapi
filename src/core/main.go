@@ -24,20 +24,24 @@ var mgoDB *mongo.Database
 
 var oldWekanConfig WekanConfig
 
+var regions map[Region][]CodeDepartement
+var departements map[CodeDepartement]string
+
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(path string, api *gin.Engine)
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() error {
+	var err error
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
-	err := loadDepartementReferentiel()
+	departements, err = loadDepartementReferentiel()
 	if err != nil {
-		return err
+		return fmt.Errorf("erreur pendant le chargement du référentiel des départements : %s", err)
 	}
-	err = loadRegionsReferentiel()
+	regions, err = loadRegionsReferentiel()
 	if err != nil {
 		fmt.Println(err)
-		return err
+		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %s", err)
 	}
 	wekan, err = libwekan.Init(
 		context.Background(),
