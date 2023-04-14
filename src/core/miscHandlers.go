@@ -37,16 +37,16 @@ func regionsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, regions)
 }
 
-func validSiren(c *gin.Context) {
+func checkSirenFormat(c *gin.Context) {
 	siren := c.Param("siren")
 	match, err := regexp.MatchString("^[0-9]{9}$", siren)
 	if err != nil || !match {
-		c.AbortWithStatusJSON(400, "SIREN valide obligatoire")
+		c.AbortWithStatusJSON(http.StatusBadRequest, "SIREN valide obligatoire")
 	}
 	c.Next()
 }
 
-func validSiret(c *gin.Context) {
+func checkSiretFormat(c *gin.Context) {
 	siren := c.Param("siret")
 	match, err := regexp.MatchString("^[0-9]{14}$", siren)
 	if err != nil || !match {
