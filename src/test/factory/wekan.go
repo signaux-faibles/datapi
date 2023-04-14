@@ -9,7 +9,8 @@ import (
 // OneWekanUser methode factory
 func OneWekanUser() libwekan.User {
 	person := fake.Person()
-	return libwekan.BuildUser(person.Contact().Email, person.Title(), person.Name())
+	user := libwekan.BuildUser(person.Contact().Email, person.Title(), person.Name())
+	return user.Admin(fake.Bool())
 }
 
 // OneConfigBoardWithMembers methode factory
