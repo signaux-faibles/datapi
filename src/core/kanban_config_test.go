@@ -5,8 +5,29 @@ import (
 	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/signaux-faibles/libwekan"
 	"github.com/stretchr/testify/assert"
+	"log"
 	"testing"
 )
+
+func initReferentiel() {
+	// set up referentiel
+	departements = map[CodeDepartement]string{
+		"75": "Paris",
+		"77": "Seine et Marne",
+		"59": "Nord",
+		"62": "Somme",
+	}
+	regions = map[Region][]CodeDepartement{
+		"Ile de France":   {"75", "77"},
+		"Hauts de France": {"59", "62"},
+		"France entière":  {"59", "62", "75", "77"},
+	}
+	log.Printf(
+		"référentiel initialisé (Régions : %s), (Départements : %s)\n",
+		utils.GetKeys(regions),
+		utils.GetKeys(departements),
+	)
+}
 
 func Test_kanbanConfigForUser_withActiveMembers(t *testing.T) { // GIVEN
 	ass := assert.New(t)
@@ -57,6 +78,39 @@ func Test_kanbanConfigForUser_withInactiveMembers(t *testing.T) { // GIVEN
 	// THEN
 	ass.Equal(userOne.ID, configForUserOne.UserID)
 	ass.Empty(configForUserOne.Boards)
+}
+
+func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
+	ass := assert.New(t)
+
+	initReferentiel()
+	user := factory.OneWekanUser()
+
+	// cf la methode initReferentiel() pour mieux comprendre
+	expectedDepartements := []string{"75", "62"}
+	configGenerale := factory.OneConfigBoardWithMembers(user)
+	factory.AddSwimlanesWithDepartments(&configGenerale, expectedDepartements...)
+
+	// set up wekanConfig for test
+	wekanConfig = factory.LibwekanConfigWith(
+		[]libwekan.ConfigBoard{configGenerale},
+		[]libwekan.User{user},
+	)
+
+	// WHEN
+	configForUserOne := kanbanConfigForUser(user.Username)
+
+	actual := utils.GetKeys(configForUserOne.Departements)
+	// TODO lire et comprendre les articles sur la conversion de type en Golang
+	// j'ai pas réussi à transformer un `[]string` en `[]CodeDepartement`
+	// ni l'inverse
+	expected := make([]CodeDepartement, len(expectedDepartements))
+	for i, dpt := range expectedDepartements {
+		expected[i] = CodeDepartement(dpt)
+	}
+
+	// THEN
+	ass.ElementsMatch(expected, actual)
 }
 
 func configShouldExactlyContains(ass *assert.Assertions, config KanbanConfig, boards ...libwekan.Board) {

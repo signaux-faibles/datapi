@@ -73,15 +73,6 @@ func (m *KanbanBoardMembers) fromWekanBoardMembers(
 	}
 }
 
-//func (b *KanbanBoards) fromWekanConfigBoards(
-//	boards map[libwekan.BoardID]libwekan.ConfigBoard,
-//	wekanUsers map[libwekan.UserID]libwekan.User,
-//	wekanUser libwekan.User,
-//) {
-//	var configBoards = populateWekanConfigBoards(boards, wekanUsers, wekanUser)
-//	b = &configBoards
-//}
-
 func populateWekanConfigBoards(
 	boards map[libwekan.BoardID]libwekan.ConfigBoard,
 	wekanUsers map[libwekan.UserID]libwekan.User,
@@ -190,7 +181,7 @@ func kanbanConfigHandler(c *gin.Context) {
 
 func parseSwimlaneTitle(swimlane KanbanSwimlane) string {
 	titleSplitted := strings.Split(swimlane.Title, " (")
-	if len(titleSplitted) != 1 {
+	if len(titleSplitted) > 2 {
 		log.Println("Erreur : le titre de la swimlane est mal configuré : ", swimlane.Title)
 	}
 	return titleSplitted[0]
