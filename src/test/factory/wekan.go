@@ -63,3 +63,15 @@ func LibwekanConfigWith(configBoards []libwekan.ConfigBoard, users []libwekan.Us
 	}
 	return r
 }
+
+func AddSwimlanesWithDepartments(config *libwekan.ConfigBoard, codes ...string) map[libwekan.SwimlaneID]libwekan.Swimlane {
+	r := make(map[libwekan.SwimlaneID]libwekan.Swimlane)
+	for _, code := range codes {
+		title := code + " (" + fake.Color().SafeColorName() + ")"
+		order := fake.Float64(1000, 0, 999)
+		swimlane := libwekan.BuildSwimlane(config.Board.ID, fake.App().Name(), title, order)
+		r[swimlane.ID] = swimlane
+	}
+	config.Swimlanes = r
+	return r
+}
