@@ -127,7 +127,6 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 			// THEN
 			ass.ElementsMatch(expected, actual)
 		})
-
 	}
 }
 
