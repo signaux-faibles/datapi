@@ -59,20 +59,6 @@ type KanbanConfig struct {
 	UserID       libwekan.UserID                           `json:"userID"`
 }
 
-func (m *KanbanBoardMembers) fromWekanBoardMembers(
-	wekanBoardMembers []libwekan.BoardMember,
-	wekanConfigUsers map[libwekan.UserID]libwekan.User) {
-	if *m == nil {
-		*m = make(KanbanBoardMembers)
-	}
-	for _, member := range wekanBoardMembers {
-		if member.IsActive {
-			username := wekanConfigUsers[member.UserID].Username
-			(*m)[member.UserID] = username
-		}
-	}
-}
-
 func populateWekanConfigBoards(
 	boards map[libwekan.BoardID]libwekan.ConfigBoard,
 	wekanUsers map[libwekan.UserID]libwekan.User,
@@ -84,50 +70,60 @@ func populateWekanConfigBoards(
 			var kanbanBoard KanbanBoard
 			kanbanBoard.Title = wekanBoard.Board.Title
 			kanbanBoard.Slug = wekanBoard.Board.Slug
-			kanbanBoard.Lists.fromWekanLists(wekanBoard.Lists)
-			kanbanBoard.Swimlanes.fromWekanSwimlanes(wekanBoard.Swimlanes)
-			kanbanBoard.Labels.fromWekanBoardLabels(wekanBoard.Board.Labels)
-			kanbanBoard.Members.fromWekanBoardMembers(wekanBoard.Board.Members, wekanUsers)
+			kanbanBoard.Lists = fromWekanLists(wekanBoard.Lists)
+			kanbanBoard.Swimlanes = fromWekanSwimlanes(wekanBoard.Swimlanes)
+			kanbanBoard.Labels = fromWekanBoardLabels(wekanBoard.Board.Labels)
+			kanbanBoard.Members = fromWekanBoardMembers(wekanBoard.Board.Members, wekanUsers)
 			b[wekanBoardId] = kanbanBoard
 		}
 	}
 	return b
 }
 
-func (l *KanbanLists) fromWekanLists(lists map[libwekan.ListID]libwekan.List) {
-	if *l == nil {
-		*l = make(KanbanLists)
+func fromWekanBoardMembers(
+	wekanBoardMembers []libwekan.BoardMember,
+	wekanConfigUsers map[libwekan.UserID]libwekan.User) KanbanBoardMembers {
+	r := make(KanbanBoardMembers)
+	for _, member := range wekanBoardMembers {
+		if member.IsActive {
+			username := wekanConfigUsers[member.UserID].Username
+			r[member.UserID] = username
+		}
 	}
+	return r
+}
+
+func fromWekanLists(lists map[libwekan.ListID]libwekan.List) KanbanLists {
+	r := make(KanbanLists)
 	for listID, wekanList := range lists {
 		var kanbanList KanbanList
 		kanbanList.Title = wekanList.Title
 		kanbanList.Sort = wekanList.Sort
-		(*l)[listID] = kanbanList
+		r[listID] = kanbanList
 	}
+	return r
 }
 
-func (s *KanbanSwimlanes) fromWekanSwimlanes(swimlanes map[libwekan.SwimlaneID]libwekan.Swimlane) {
-	if *s == nil {
-		*s = make(KanbanSwimlanes)
-	}
+func fromWekanSwimlanes(swimlanes map[libwekan.SwimlaneID]libwekan.Swimlane) KanbanSwimlanes {
+	r := make(KanbanSwimlanes)
 	for swimlaneID, wekanSwimlane := range swimlanes {
 		var kanbanSwimlane KanbanSwimlane
 		kanbanSwimlane.Title = wekanSwimlane.Title
 		kanbanSwimlane.Sort = wekanSwimlane.Sort
-		(*s)[swimlaneID] = kanbanSwimlane
+		r[swimlaneID] = kanbanSwimlane
 	}
+	return r
 }
 
-func (l *KanbanBoardLabels) fromWekanBoardLabels(labels []libwekan.BoardLabel) {
-	if *l == nil {
-		*l = make(KanbanBoardLabels)
-	}
+func fromWekanBoardLabels(labels []libwekan.BoardLabel) KanbanBoardLabels {
+	r := make(KanbanBoardLabels)
 	for _, wekanBoardLabel := range labels {
 		var kanbanBoardLabel KanbanBoardLabel
 		kanbanBoardLabel.Color = wekanBoardLabel.Color
 		kanbanBoardLabel.Name = wekanBoardLabel.Name
-		(*l)[wekanBoardLabel.ID] = kanbanBoardLabel
+		r[wekanBoardLabel.ID] = kanbanBoardLabel
 	}
+	return r
 }
 
 func (k *KanbanConfig) populateDepartements() {
