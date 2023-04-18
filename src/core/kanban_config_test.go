@@ -91,9 +91,21 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 		args []string
 		want []CodeDepartement
 	}{
-		{"test departements", []string{"59 (Nord)", "75 (Paris)"}, []CodeDepartement{CodeDepartement("59"), CodeDepartement("75")}},
-		{"test région", []string{"Ile de France"}, []CodeDepartement{CodeDepartement("75"), CodeDepartement("77")}},
-		{"test France entière", []string{"France entière"}, []CodeDepartement{CodeDepartement("75"), CodeDepartement("77"), CodeDepartement("62"), CodeDepartement("59")}},
+		{
+			"test departements",
+			[]string{"59 (Nord)", "75 (Paris)"},
+			[]CodeDepartement{CodeDepartement("59"), CodeDepartement("75")},
+		},
+		{
+			"test région",
+			[]string{"Ile de France"},
+			[]CodeDepartement{CodeDepartement("75"), CodeDepartement("77")},
+		},
+		{
+			"test France entière",
+			[]string{"France entière"},
+			[]CodeDepartement{CodeDepartement("75"), CodeDepartement("77"), CodeDepartement("62"), CodeDepartement("59")},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -105,16 +117,13 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 				[]libwekan.ConfigBoard{configGenerale},
 				[]libwekan.User{user},
 			)
-
 			// WHEN
 			configForUserOne := kanbanConfigForUser(user.Username)
-
 			actual := utils.GetKeys(configForUserOne.Departements)
 			expected := make([]CodeDepartement, len(tt.want))
 			for i, dpt := range tt.want {
 				expected[i] = dpt
 			}
-
 			// THEN
 			ass.ElementsMatch(expected, actual)
 		})
