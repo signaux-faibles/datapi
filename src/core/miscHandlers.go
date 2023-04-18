@@ -30,11 +30,11 @@ func getCodesNaf(c *gin.Context) {
 }
 
 func departementsHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, departements)
+	c.JSON(http.StatusOK, Departements)
 }
 
 func regionsHandler(c *gin.Context) {
-	c.JSON(http.StatusOK, regions)
+	c.JSON(http.StatusOK, Regions)
 }
 
 func checkSirenFormat(c *gin.Context) {
@@ -55,18 +55,12 @@ func checkSiretFormat(c *gin.Context) {
 	c.Next()
 }
 
-type session struct {
-	username string
-	auteur   string
-	roles    Scope
-}
-
-func (s *session) bind(c *gin.Context) {
-	s.username = c.GetString("username")
+func (s *Session) Bind(c *gin.Context) {
+	s.Username = c.GetString("username")
 	s.auteur = c.GetString("given_name") + " " + c.GetString("family_name")
 	s.roles = scopeFromContext(c)
 }
 
-func (s session) hasRole(role string) bool {
+func (s Session) hasRole(role string) bool {
 	return utils.Contains(s.roles, role)
 }

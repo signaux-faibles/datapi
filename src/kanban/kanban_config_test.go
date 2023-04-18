@@ -1,6 +1,7 @@
-package core
+package kanban
 
 import (
+	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/test/factory"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/signaux-faibles/libwekan"
@@ -11,21 +12,21 @@ import (
 
 func initReferentiel() {
 	// set up referentiel
-	departements = map[CodeDepartement]string{
+	core.Departements = map[core.CodeDepartement]string{
 		"75": "Paris",
 		"77": "Seine et Marne",
 		"59": "Nord",
 		"62": "Somme",
 	}
-	regions = map[Region][]CodeDepartement{
+	core.Regions = map[core.Region][]core.CodeDepartement{
 		"Ile de France":   {"75", "77"},
 		"Hauts-de-France": {"59", "62"},
 		"France entière":  {"59", "62", "75", "77"},
 	}
 	log.Printf(
 		"référentiel initialisé (Régions : %s), (Départements : %s)\n",
-		utils.GetKeys(regions),
-		utils.GetKeys(departements),
+		utils.GetKeys(core.Regions),
+		utils.GetKeys(core.Departements),
 	)
 }
 
@@ -38,7 +39,7 @@ func Test_kanbanConfigForUser_withActiveMembers(t *testing.T) { // GIVEN
 	configBoardB := factory.OneConfigBoardWithMembers(userOne, userThree)
 
 	// set up wekanConfig for test
-	wekanConfig = factory.LibwekanConfigWith(
+	core.WekanConfig = factory.LibwekanConfigWith(
 		[]libwekan.ConfigBoard{configBoardA, configBoardB},
 		[]libwekan.User{userOne, userTwo, userThree},
 	)
@@ -67,7 +68,7 @@ func Test_kanbanConfigForUser_withInactiveMembers(t *testing.T) { // GIVEN
 	factory.DeactiveMembers(configBoardA, userOne)
 
 	// set up wekanConfig for test
-	wekanConfig = factory.LibwekanConfigWith(
+	core.WekanConfig = factory.LibwekanConfigWith(
 		[]libwekan.ConfigBoard{configBoardA},
 		[]libwekan.User{userOne},
 	)
@@ -89,22 +90,22 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 	tests := []struct {
 		name string
 		args []string
-		want []CodeDepartement
+		want []core.CodeDepartement
 	}{
 		{
 			"test departements",
 			[]string{"59 (Nord)", "75 (Paris)"},
-			[]CodeDepartement{CodeDepartement("59"), CodeDepartement("75")},
+			[]core.CodeDepartement{core.CodeDepartement("59"), core.CodeDepartement("75")},
 		},
 		{
 			"test région",
 			[]string{"Ile de France"},
-			[]CodeDepartement{CodeDepartement("75"), CodeDepartement("77")},
+			[]core.CodeDepartement{core.CodeDepartement("75"), core.CodeDepartement("77")},
 		},
 		{
 			"test France entière",
 			[]string{"France entière"},
-			[]CodeDepartement{CodeDepartement("75"), CodeDepartement("77"), CodeDepartement("62"), CodeDepartement("59")},
+			[]core.CodeDepartement{core.CodeDepartement("75"), core.CodeDepartement("77"), core.CodeDepartement("62"), core.CodeDepartement("59")},
 		},
 	}
 	for _, tt := range tests {
@@ -113,14 +114,14 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 			factory.AddSwimlanesWithDepartments(&configGenerale, tt.args...)
 
 			// set up wekanConfig for t
-			wekanConfig = factory.LibwekanConfigWith(
+			core.WekanConfig = factory.LibwekanConfigWith(
 				[]libwekan.ConfigBoard{configGenerale},
 				[]libwekan.User{user},
 			)
 			// WHEN
 			configForUserOne := kanbanConfigForUser(user.Username)
 			actual := utils.GetKeys(configForUserOne.Departements)
-			expected := make([]CodeDepartement, len(tt.want))
+			expected := make([]core.CodeDepartement, len(tt.want))
 			for i, dpt := range tt.want {
 				expected[i] = dpt
 			}
@@ -132,18 +133,18 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 
 func Test_parseSwimlaneTitle(t *testing.T) {
 	type args struct {
-		swimlane KanbanSwimlane
+		swimlane core.KanbanSwimlane
 	}
 	tests := []struct {
 		name string
 		args args
 		want string
 	}{
-		{"test departement avec les parenthèses", args{KanbanSwimlane{Title: "93 (Seine saint-Denis)"}}, "93"},
-		{"test departement sans les parenthèses", args{KanbanSwimlane{Title: "93"}}, "93"},
-		{"test departement avec un espace final", args{KanbanSwimlane{Title: "93 "}}, "93"},
-		{"test région avec des espaces", args{KanbanSwimlane{Title: "Île de France"}}, "Île de France"},
-		{"test région - trim", args{KanbanSwimlane{Title: " Île de France "}}, "Île de France"},
+		{"test departement avec les parenthèses", args{core.KanbanSwimlane{Title: "93 (Seine saint-Denis)"}}, "93"},
+		{"test departement sans les parenthèses", args{core.KanbanSwimlane{Title: "93"}}, "93"},
+		{"test departement avec un espace final", args{core.KanbanSwimlane{Title: "93 "}}, "93"},
+		{"test région avec des espaces", args{core.KanbanSwimlane{Title: "Île de France"}}, "Île de France"},
+		{"test région - trim", args{core.KanbanSwimlane{Title: " Île de France "}}, "Île de France"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -152,7 +153,7 @@ func Test_parseSwimlaneTitle(t *testing.T) {
 	}
 }
 
-func configShouldExactlyContains(ass *assert.Assertions, config KanbanConfig, boards ...libwekan.Board) {
+func configShouldExactlyContains(ass *assert.Assertions, config core.KanbanConfig, boards ...libwekan.Board) {
 	boardIDsFromConfig := utils.GetKeys(config.Boards)
 
 	expectedBoardIDs := utils.Convert(boards, func(board libwekan.Board) libwekan.BoardID {

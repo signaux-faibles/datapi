@@ -22,10 +22,10 @@ import (
 var keycloak gocloak.GoCloak
 var mgoDB *mongo.Database
 
-var oldWekanConfig WekanConfig
+var oldWekanConfig OldWekanConfig
 
-var regions map[Region][]CodeDepartement
-var departements map[CodeDepartement]string
+var Regions map[Region][]CodeDepartement
+var Departements map[CodeDepartement]string
 
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(path string, api *gin.Engine)
@@ -34,11 +34,11 @@ type Endpoint func(path string, api *gin.Engine)
 func StartDatapi() error {
 	var err error
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
-	departements, err = loadDepartementReferentiel()
+	Departements, err = loadDepartementReferentiel()
 	if err != nil {
 		return fmt.Errorf("erreur pendant le chargement du référentiel des départements : %s", err)
 	}
-	regions, err = loadRegionsReferentiel()
+	Regions, err = loadRegionsReferentiel()
 	if err != nil {
 		fmt.Println(err)
 		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %s", err)
@@ -131,9 +131,6 @@ func InitAPI(router *gin.Engine) {
 	wekan.POST("/cards/:siret", checkSiretFormat, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
-
-	kanban := router.Group("/kanban", AuthMiddleware(), LogMiddleware)
-	kanban.GET("/config", kanbanConfigHandler)
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API
