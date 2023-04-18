@@ -184,7 +184,7 @@ func parseSwimlaneTitle(swimlane KanbanSwimlane) string {
 	if len(titleSplitted) > 2 {
 		log.Println("Erreur : le titre de la swimlane est mal configuré : ", swimlane.Title)
 	}
-	return titleSplitted[0]
+	return strings.TrimSpace(titleSplitted[0])
 }
 
 func loadWekanConfig() {

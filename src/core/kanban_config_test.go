@@ -121,3 +121,25 @@ func configShouldExactlyContains(ass *assert.Assertions, config KanbanConfig, bo
 	})
 	ass.ElementsMatch(boardIDsFromConfig, expectedBoardIDs)
 }
+
+func Test_parseSwimlaneTitle(t *testing.T) {
+	type args struct {
+		swimlane KanbanSwimlane
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{"test departement avec les parenthèses", args{KanbanSwimlane{Title: "93 (Seine saint-Denis)"}}, "93"},
+		{"test departement sans les parenthèses", args{KanbanSwimlane{Title: "93"}}, "93"},
+		{"test departement avec un espace final", args{KanbanSwimlane{Title: "93 "}}, "93"},
+		{"test région avec des espaces", args{KanbanSwimlane{Title: "Île de France"}}, "Île de France"},
+		{"test région - trim", args{KanbanSwimlane{Title: " Île de France "}}, "Île de France"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Equalf(t, tt.want, parseSwimlaneTitle(tt.args.swimlane), "parseSwimlaneTitle(%v)", tt.args.swimlane)
+		})
+	}
+}
