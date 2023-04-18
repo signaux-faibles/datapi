@@ -76,8 +76,8 @@ func followEtablissement(c *gin.Context) {
 }
 
 func unfollowEtablissement(c *gin.Context) {
-	var s session
-	s.bind(c)
+	var s Session
+	s.Bind(c)
 	siret := c.Param("siret")
 
 	var param struct {
@@ -96,13 +96,13 @@ func unfollowEtablissement(c *gin.Context) {
 
 	follow := Follow{
 		Siret:            &siret,
-		Username:         &s.username,
+		Username:         &s.Username,
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
 	}
-	userID := oldWekanConfig.userID(s.username)
+	userID := oldWekanConfig.userID(s.Username)
 	if userID != "" && s.hasRole("wekan") {
-		boardIds := oldWekanConfig.boardIdsForUser(s.username)
+		boardIds := oldWekanConfig.boardIdsForUser(s.Username)
 		err := wekanPartCard(userID, siret, boardIds)
 		if err != nil {
 			fmt.Println(err)
@@ -215,8 +215,8 @@ func (f *Follow) list(roles Scope) (Follows, utils.Jerror) {
 type Follows []Follow
 
 func getCardsForCurrentUser(c *gin.Context) {
-	var s session
-	s.bind(c)
+	var s Session
+	s.Bind(c)
 	var params paramsGetCards
 	err := c.Bind(&params)
 	if err != nil {
@@ -278,19 +278,19 @@ func (cards Cards) dbExportsOnly() Cards {
 	return filtered
 }
 
-func getCards(s session, params paramsGetCards) ([]*Card, error) {
+func getCards(s Session, params paramsGetCards) ([]*Card, error) {
 	var cards []*Card
 	var cardsMap = make(map[string]*Card)
 	var sirets []string
 	var followedSirets []string
-	wcu := oldWekanConfig.forUser(s.username)
-	userID := oldWekanConfig.userID(s.username)
+	wcu := oldWekanConfig.forUser(s.Username)
+	userID := oldWekanConfig.userID(s.Username)
 	labelIds := wcu.labelIdsForLabels(params.Labels)
 	labelMode := params.LabelMode
 	if userID != "" && s.hasRole("wekan") && params.Type != "no-card" {
 		var username *string
 		if params.Type == "my-cards" {
-			username = &s.username
+			username = &s.Username
 		}
 
 		if len(params.Boards) == 0 {
@@ -316,12 +316,12 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 				followedSirets = append(followedSirets, siret)
 			}
 		}
-		err = followSiretsFromWekan(s.username, followedSirets)
+		err = followSiretsFromWekan(s.Username, followedSirets)
 		if err != nil {
 			return nil, err
 		}
 		var ss summaries
-		cursor, err := db.Get().Query(context.Background(), sqlGetCards, s.roles, s.username, sirets)
+		cursor, err := db.Get().Query(context.Background(), sqlGetCards, s.roles, s.Username, sirets)
 		if err != nil {
 			return nil, err
 		}
@@ -337,7 +337,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 		}
 	} else {
 		boardIds := wcu.boardIds()
-		wekanCards, err := selectWekanCards(&s.username, boardIds, nil, nil, nil, labelMode, nil)
+		wekanCards, err := selectWekanCards(&s.Username, boardIds, nil, nil, nil, labelMode, nil)
 		if err != nil {
 			return nil, err
 		}
@@ -350,7 +350,7 @@ func getCards(s session, params paramsGetCards) ([]*Card, error) {
 			excludeSirets[siret] = struct{}{}
 		}
 		var ss summaries
-		cursor, err := db.Get().Query(context.Background(), sqlGetFollow, s.roles, s.username, params.Zone)
+		cursor, err := db.Get().Query(context.Background(), sqlGetFollow, s.roles, s.Username, params.Zone)
 		if err != nil {
 			return nil, err
 		}

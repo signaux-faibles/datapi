@@ -123,3 +123,9 @@ type CodeDepartement string
 
 // Region correspond à une région française
 type Region string
+
+type Session struct {
+	Username string
+	auteur   string
+	roles    Scope
+}

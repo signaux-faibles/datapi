@@ -57,16 +57,16 @@ type EtablissementData struct {
 
 // TODO libwekan
 func wekanUnarchiveCardHandler(c *gin.Context) {
-	var s session
-	s.bind(c)
-	userID := oldWekanConfig.userID(s.username)
+	var s Session
+	s.Bind(c)
+	userID := oldWekanConfig.userID(s.Username)
 	if userID == "" || !s.hasRole("wekan") {
 		c.JSON(http.StatusForbidden, "not a wekan user")
 		return
 	}
 
 	cardID := c.Param("cardID")
-	boardIDs := oldWekanConfig.boardIdsForUser(s.username)
+	boardIDs := oldWekanConfig.boardIdsForUser(s.Username)
 	result, err := mgoDB.Collection("cards").UpdateOne(context.Background(),
 		bson.M{
 			"boardId": bson.M{
@@ -121,9 +121,9 @@ func wekanGetCardsHandler(c *gin.Context) {
 		Cards    []*CardData `json:"cards"`
 	}
 
-	var s session
-	s.bind(c)
-	_, ok := wekanConfig.GetUserByUsername(libwekan.Username(s.username))
+	var s Session
+	s.Bind(c)
+	_, ok := WekanConfig.GetUserByUsername(libwekan.Username(s.Username))
 
 	if !ok || !s.hasRole("wekan") {
 		c.JSON(http.StatusForbidden, "not a wekan user")
@@ -138,14 +138,14 @@ func wekanGetCardsHandler(c *gin.Context) {
 	}
 	wc := oldWekanConfig.copy()
 
-	cards, err := selectWekanCardsFromSiret(s.username, siret)
+	cards, err := selectWekanCardsFromSiret(s.Username, siret)
 	if err != nil {
 		c.JSON(500, "wekanGetCardsHandler/lookupCard: "+err.Error())
 		return
 	}
 
 	wc = oldWekanConfig.copy()
-	wcu := wc.forUser(s.username)
+	wcu := wc.forUser(s.Username)
 
 	boardsMap := make(map[*WekanConfigBoard][]*WekanCard)
 	for _, board := range wcu.Boards {
@@ -176,7 +176,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 						Board:           wc.BoardIds[card.BoardId].Title,
 						CardURL:         wekanURL + "b/" + card.BoardId + "/" + wc.BoardIds[card.BoardId].Slug + "/" + card.ID,
 						CardDescription: card.Description,
-						IsMember:        utils.Contains(card.Members, wc.userID(s.username)),
+						IsMember:        utils.Contains(card.Members, wc.userID(s.Username)),
 						Creator:         wc.userForUserID(card.UserID),
 						LabelIDs:        card.LabelIds,
 						StartAt:         card.StartAt,
@@ -235,16 +235,16 @@ func wekanPartCard(userID string, siret string, boardIds []string) error {
 
 // TODO libwekan
 func wekanJoinCardHandler(c *gin.Context) {
-	var s session
-	s.bind(c)
+	var s Session
+	s.Bind(c)
 	cardId := c.Params.ByName("cardId")
-	userID := oldWekanConfig.userID(s.username)
+	userID := oldWekanConfig.userID(s.Username)
 
 	if userID == "" || !s.hasRole("wekan") {
 		c.AbortWithStatusJSON(403, "not a wekan user")
 		return
 	}
-	boardIds := oldWekanConfig.boardIdsForUser(s.username)
+	boardIds := oldWekanConfig.boardIdsForUser(s.Username)
 	query := bson.M{
 		"_id":      cardId,
 		"boardId":  bson.M{"$in": boardIds},
@@ -342,25 +342,25 @@ func wekanNewCardHandler(c *gin.Context) {
 		ModifiedAt   time.Time `bson:"modifiedAt"`
 	}
 
-	var s session
+	var s Session
 	var param struct {
 		BoardID     string `json:"boardId"`
 		Description string `json:"description"`
 	}
 
-	s.bind(c)
+	s.Bind(c)
 	siret := c.Param("siret")
 	err := c.Bind(&param)
 	if err != nil {
 		c.JSON(400, "wekanNewCardHandler: "+err.Error())
 	}
 
-	wcu := oldWekanConfig.forUser(s.username)
-	if !utils.Contains(oldWekanConfig.boardIdsForUser(s.username), param.BoardID) {
+	wcu := oldWekanConfig.forUser(s.Username)
+	if !utils.Contains(oldWekanConfig.boardIdsForUser(s.Username), param.BoardID) {
 		c.JSON(403, "wekanNewCardHandler: accès refusé")
 		return
 	}
-	userID := oldWekanConfig.userID(s.username)
+	userID := oldWekanConfig.userID(s.Username)
 	etsData, err := getEtablissementDataFromDb(siret)
 	if err != nil {
 		c.JSON(500, "wekanNewCardHandler/getEtablissementData: "+err.Error())
@@ -527,12 +527,12 @@ func getNewActivityID(try int) (string, error) {
 
 func getEtablissementDataFromDb(siret string) (EtablissementData, error) {
 	sql := `select s.siret,
-	coalesce(s.raison_sociale, ''), 
-	coalesce(s.code_departement, ''), 
+	coalesce(s.raison_sociale, ''),
+	coalesce(s.code_departement, ''),
 	coalesce(r.libelle, ''),
 	coalesce(s.effectif, 0),
-	coalesce(s.code_activite, ''), 
-	coalesce(s.libelle_n5, '') 
+	coalesce(s.code_activite, ''),
+	coalesce(s.libelle_n5, '')
 	from v_summaries s
 	inner join departements d on d.code = s.code_departement
 	inner join regions r on r.id = d.id_region
@@ -715,7 +715,7 @@ func selectWekanCardsFromSiret(username string, siret string) ([]*WekanCard, err
 }
 
 // TODO libwekan
-func cardFromSiretPipeline(wcu WekanConfig, siret string) bson.A {
+func cardFromSiretPipeline(wcu OldWekanConfig, siret string) bson.A {
 	var queryOr []bson.M
 	for _, boardConfig := range wcu.Boards {
 		queryOr = append(queryOr,

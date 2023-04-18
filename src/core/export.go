@@ -154,10 +154,10 @@ func (exports dbExports) newDbExport() (dbExports, []interface{}) {
 	return exports, t
 }
 
-func getExportSiret(s session, siret string) (Card, error) {
+func getExportSiret(s Session, siret string) (Card, error) {
 	var exports dbExports
 	exports, exportsFields := exports.newDbExport()
-	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.username, siret).Scan(exportsFields...)
+	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.Username, siret).Scan(exportsFields...)
 	if err != nil {
 		return Card{}, err
 	}
@@ -166,7 +166,7 @@ func getExportSiret(s session, siret string) (Card, error) {
 		dbExport: exports[0],
 	}
 	if s.hasRole("wekan") {
-		wekanCards, err := selectWekanCardsFromSiret(s.username, siret)
+		wekanCards, err := selectWekanCardsFromSiret(s.Username, siret)
 		if err != nil {
 			return Card{}, err
 		}
@@ -177,19 +177,19 @@ func getExportSiret(s session, siret string) (Card, error) {
 }
 
 // TODO: factoriser avec getCards
-func getExport(s session, params paramsGetCards) (Cards, error) {
+func getExport(s Session, params paramsGetCards) (Cards, error) {
 	var cards Cards
 	var cardsMap = make(map[string]*Card)
 	var sirets []string
 	var followedSirets []string
-	wcu := oldWekanConfig.forUser(s.username)
-	userID := oldWekanConfig.userID(s.username)
+	wcu := oldWekanConfig.forUser(s.Username)
+	userID := oldWekanConfig.userID(s.Username)
 
-	if _, ok := oldWekanConfig.Users[s.username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
+	if _, ok := oldWekanConfig.Users[s.Username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
 		// Export wekan + DB
 		var username *string
 		if params.Type == "my-cards" {
-			username = &s.username
+			username = &s.Username
 		}
 		boardIds := wcu.boardIds()
 		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
@@ -226,7 +226,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 			sirets = followedSirets
 		}
 		var cursor pgx.Rows
-		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles, s.username, sirets)
+		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles, s.Username, sirets)
 
 		if err != nil {
 			return nil, err
@@ -255,7 +255,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 		var err error
 
 		if s.hasRole("wekan") {
-			wekanCards, err = selectWekanCards(&s.username, boardIds, nil, nil, nil, false, nil)
+			wekanCards, err = selectWekanCards(&s.Username, boardIds, nil, nil, nil, false, nil)
 			if err != nil {
 				return nil, err
 			}
@@ -277,7 +277,7 @@ func getExport(s session, params paramsGetCards) (Cards, error) {
 			context.Background(),
 			sqlDbExportFollow,
 			s.roles,
-			s.username,
+			s.Username,
 			params.Zone,
 		)
 
@@ -567,8 +567,8 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 }
 
 func getXLSXFollowedByCurrentUser(c *gin.Context) {
-	var s session
-	s.bind(c)
+	var s Session
+	s.Bind(c)
 	var params paramsGetCards
 	c.Bind(&params)
 
@@ -611,8 +611,8 @@ func (docxs Docxs) zip() []byte {
 }
 
 func getDOCXFollowedByCurrentUser(c *gin.Context) {
-	var s session
-	s.bind(c)
+	var s Session
+	s.Bind(c)
 	var params paramsGetCards
 	c.Bind(&params)
 
@@ -641,8 +641,8 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 }
 
 func getDOCXFromSiret(c *gin.Context) {
-	var s session
-	s.bind(c)
+	var s Session
+	s.Bind(c)
 
 	siret := c.Param("siret")
 	card, err := getExportSiret(s, siret)
@@ -667,14 +667,14 @@ func getDOCXFromSiret(c *gin.Context) {
 
 var sqlDbExport = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
-v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
+v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'),
+v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'),
 coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
-coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
-coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
+coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0),
+coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0),
 coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
-coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
-coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
+coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''),
+coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false),
 coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
@@ -684,14 +684,14 @@ order by f.id, v.siret`
 
 var sqlDbExportFollow = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
-v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
+v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'),
+v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'),
 coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
-coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
-coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
+coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0),
+coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0),
 coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
-coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
-coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
+coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''),
+coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false),
 coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
@@ -701,14 +701,14 @@ order by f.id, v.siret`
 
 var sqlDbExportSingle = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'), 
-v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'), 
+v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'),
+v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'),
 coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
-coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0), 
-coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0), 
+coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0),
+coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0),
 coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
-coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''), 
-coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false), 
+coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''),
+coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false),
 coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v

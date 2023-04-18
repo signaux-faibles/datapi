@@ -12,18 +12,18 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-func lookupWekanConfig() (WekanConfig, error) {
+func lookupWekanConfig() (OldWekanConfig, error) {
 	cur, err := mgoDB.Collection("boards").Aggregate(context.Background(), buildWekanConfigPipeline())
 	if err != nil {
-		return WekanConfig{}, err
+		return OldWekanConfig{}, err
 	}
-	var wekanConfigs []WekanConfig
+	var wekanConfigs []OldWekanConfig
 	err = cur.All(context.Background(), &wekanConfigs)
 	if err != nil {
-		return WekanConfig{}, err
+		return OldWekanConfig{}, err
 	}
 	if len(wekanConfigs) != 1 {
-		return WekanConfig{}, nil
+		return OldWekanConfig{}, nil
 	}
 	config := wekanConfigs[0]
 	config.Boards = make(map[string]*WekanConfigBoard)
@@ -41,7 +41,7 @@ func lookupWekanConfig() (WekanConfig, error) {
 	return config, nil
 }
 
-func loadOldWekanConfig(input *WekanConfig) {
+func loadOldWekanConfig(input *OldWekanConfig) {
 	if input == nil {
 		log.Printf("loadOldWekanConfig() -> ERROR : provided config is nil, can't build it")
 	}
@@ -62,7 +62,7 @@ func loadOldWekanConfig(input *WekanConfig) {
 	}
 }
 
-func watchOldWekanConfig(toUpdate *WekanConfig, period time.Duration) {
+func watchOldWekanConfig(toUpdate *OldWekanConfig, period time.Duration) {
 	for {
 		// TODO libwekan
 		loadOldWekanConfig(toUpdate)
@@ -298,8 +298,8 @@ func buildWekanConfigPipeline() []bson.M {
 //}
 
 // TODO libwekan
-// WekanConfig type pour le fichier de configuration de Wekan
-type WekanConfig struct {
+// OldWekanConfig type pour le fichier de configuration de Wekan
+type OldWekanConfig struct {
 	Slugs    map[string]*WekanConfigBoard `bson:"slugs" json:"slugs,omitempty"`
 	Boards   map[string]*WekanConfigBoard `bson:"boards" json:"boards"`
 	Users    map[string]string            `bson:"users" json:"users,omitempty"`
@@ -309,7 +309,7 @@ type WekanConfig struct {
 }
 
 // BoardForID retourne le nom d'une board en échange de son id
-func (wc WekanConfig) BoardForID(boardID string) string {
+func (wc OldWekanConfig) BoardForID(boardID string) string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 	if board, ok := wc.BoardIds[boardID]; ok {
@@ -318,8 +318,8 @@ func (wc WekanConfig) BoardForID(boardID string) string {
 	return ""
 }
 
-func (wc WekanConfig) copy() WekanConfig {
-	var newc WekanConfig
+func (wc OldWekanConfig) copy() OldWekanConfig {
+	var newc OldWekanConfig
 	newc.BoardIds = make(map[string]*WekanConfigBoard)
 	newc.Slugs = make(map[string]*WekanConfigBoard)
 	newc.Boards = make(map[string]*WekanConfigBoard)
@@ -335,7 +335,7 @@ func (wc WekanConfig) copy() WekanConfig {
 	return newc
 }
 
-func (wc WekanConfig) labelForLabelsIDs(labelIDs []string, boardID string) []string {
+func (wc OldWekanConfig) labelForLabelsIDs(labelIDs []string, boardID string) []string {
 	var labels []string
 	if wc.BoardIds != nil {
 		board := wc.BoardIds[boardID]
@@ -349,7 +349,7 @@ func (wc WekanConfig) labelForLabelsIDs(labelIDs []string, boardID string) []str
 	return nil
 }
 
-func (wc WekanConfig) listForListID(listID string, boardID string) string {
+func (wc OldWekanConfig) listForListID(listID string, boardID string) string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 	for _, listDetails := range wc.BoardIds[boardID].ListDetails {
@@ -360,7 +360,7 @@ func (wc WekanConfig) listForListID(listID string, boardID string) string {
 	return ""
 }
 
-func (wc WekanConfig) userForUserID(userID string) string {
+func (wc OldWekanConfig) userForUserID(userID string) string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 	for name, id := range wc.Users {
@@ -371,18 +371,18 @@ func (wc WekanConfig) userForUserID(userID string) string {
 	return ""
 }
 
-func (wc WekanConfig) forUser(username string) WekanConfig {
+func (wc OldWekanConfig) forUser(username string) OldWekanConfig {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
 	userID, ok := wc.Users[username]
 	if !ok {
-		wcu := WekanConfig{}
+		wcu := OldWekanConfig{}
 		wcu.mu = &sync.Mutex{}
 		return wcu
 	}
 
-	var userWc WekanConfig
+	var userWc OldWekanConfig
 	userWc.Boards = make(map[string]*WekanConfigBoard)
 	userWc.BoardIds = make(map[string]*WekanConfigBoard)
 	userWc.Slugs = make(map[string]*WekanConfigBoard)
@@ -398,14 +398,14 @@ func (wc WekanConfig) forUser(username string) WekanConfig {
 	return userWc
 }
 
-func (wc WekanConfig) userID(username string) string {
+func (wc OldWekanConfig) userID(username string) string {
 	wc.mu.Lock()
 	userID := wc.Users[username]
 	wc.mu.Unlock()
 	return userID
 }
 
-func (wc WekanConfig) boardIdsForUser(username string) []string {
+func (wc OldWekanConfig) boardIdsForUser(username string) []string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
@@ -421,7 +421,7 @@ func (wc WekanConfig) boardIdsForUser(username string) []string {
 	return nil
 }
 
-func (wc WekanConfig) swimlaneIdsForZone(zone []string) []string {
+func (wc OldWekanConfig) swimlaneIdsForZone(zone []string) []string {
 	wc.mu.Lock()
 	var swimlaneIds []string
 	for _, board := range wc.Boards {
@@ -475,7 +475,7 @@ type WekanConfigBoard struct {
 	} `bson:"customFields" json:"customFields"`
 }
 
-func (wc WekanConfig) labelIdsForLabels(labels []string) [][]labelID {
+func (wc OldWekanConfig) labelIdsForLabels(labels []string) [][]labelID {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 	var labelIDs [][]labelID
@@ -493,7 +493,7 @@ func (wc WekanConfig) labelIdsForLabels(labels []string) [][]labelID {
 	return labelIDs
 }
 
-func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
+func (wc OldWekanConfig) listIdsForStatuts(statuts []string) []string {
 	wc.mu.Lock()
 	defer wc.mu.Unlock()
 
@@ -508,7 +508,7 @@ func (wc WekanConfig) listIdsForStatuts(statuts []string) []string {
 	return listIds
 }
 
-func (wc WekanConfig) boardIds() []string {
+func (wc OldWekanConfig) boardIds() []string {
 	wc.mu.Lock()
 	var ids []string
 	for _, board := range wc.Boards {
