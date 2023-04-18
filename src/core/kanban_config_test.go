@@ -19,7 +19,7 @@ func initReferentiel() {
 	}
 	regions = map[Region][]CodeDepartement{
 		"Ile de France":   {"75", "77"},
-		"Hauts de France": {"59", "62"},
+		"Hauts-de-France": {"59", "62"},
 		"France entière":  {"59", "62", "75", "77"},
 	}
 	log.Printf(
@@ -86,40 +86,40 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 	initReferentiel()
 	user := factory.OneWekanUser()
 
-	// cf la methode initReferentiel() pour mieux comprendre
-	expectedDepartements := []string{"75", "62"}
-	configGenerale := factory.OneConfigBoardWithMembers(user)
-	factory.AddSwimlanesWithDepartments(&configGenerale, expectedDepartements...)
-
-	// set up wekanConfig for test
-	wekanConfig = factory.LibwekanConfigWith(
-		[]libwekan.ConfigBoard{configGenerale},
-		[]libwekan.User{user},
-	)
-
-	// WHEN
-	configForUserOne := kanbanConfigForUser(user.Username)
-
-	actual := utils.GetKeys(configForUserOne.Departements)
-	// TODO lire et comprendre les articles sur la conversion de type en Golang
-	// j'ai pas réussi à transformer un `[]string` en `[]CodeDepartement`
-	// ni l'inverse
-	expected := make([]CodeDepartement, len(expectedDepartements))
-	for i, dpt := range expectedDepartements {
-		expected[i] = CodeDepartement(dpt)
+	tests := []struct {
+		name string
+		args []string
+		want []CodeDepartement
+	}{
+		{"test departements", []string{"59 (Nord)", "75 (Paris)"}, []CodeDepartement{CodeDepartement("59"), CodeDepartement("75")}},
+		{"test région", []string{"Ile de France"}, []CodeDepartement{CodeDepartement("75"), CodeDepartement("77")}},
+		{"test France entière", []string{"France entière"}, []CodeDepartement{CodeDepartement("75"), CodeDepartement("77"), CodeDepartement("62"), CodeDepartement("59")}},
 	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			configGenerale := factory.OneConfigBoardWithMembers(user)
+			factory.AddSwimlanesWithDepartments(&configGenerale, tt.args...)
 
-	// THEN
-	ass.ElementsMatch(expected, actual)
-}
+			// set up wekanConfig for t
+			wekanConfig = factory.LibwekanConfigWith(
+				[]libwekan.ConfigBoard{configGenerale},
+				[]libwekan.User{user},
+			)
 
-func configShouldExactlyContains(ass *assert.Assertions, config KanbanConfig, boards ...libwekan.Board) {
-	boardIDsFromConfig := utils.GetKeys(config.Boards)
+			// WHEN
+			configForUserOne := kanbanConfigForUser(user.Username)
 
-	expectedBoardIDs := utils.Convert(boards, func(board libwekan.Board) libwekan.BoardID {
-		return board.ID
-	})
-	ass.ElementsMatch(boardIDsFromConfig, expectedBoardIDs)
+			actual := utils.GetKeys(configForUserOne.Departements)
+			expected := make([]CodeDepartement, len(tt.want))
+			for i, dpt := range tt.want {
+				expected[i] = dpt
+			}
+
+			// THEN
+			ass.ElementsMatch(expected, actual)
+		})
+
+	}
 }
 
 func Test_parseSwimlaneTitle(t *testing.T) {
@@ -142,4 +142,13 @@ func Test_parseSwimlaneTitle(t *testing.T) {
 			assert.Equalf(t, tt.want, parseSwimlaneTitle(tt.args.swimlane), "parseSwimlaneTitle(%v)", tt.args.swimlane)
 		})
 	}
+}
+
+func configShouldExactlyContains(ass *assert.Assertions, config KanbanConfig, boards ...libwekan.Board) {
+	boardIDsFromConfig := utils.GetKeys(config.Boards)
+
+	expectedBoardIDs := utils.Convert(boards, func(board libwekan.Board) libwekan.BoardID {
+		return board.ID
+	})
+	ass.ElementsMatch(boardIDsFromConfig, expectedBoardIDs)
 }
