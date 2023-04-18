@@ -57,6 +57,14 @@ func GetKeys[K comparable, V any](input map[K]V) []K {
 	return keys
 }
 
+func GetValues[K comparable, V any](input map[K]V) []V {
+	keys := make([]V, 0, len(input))
+	for _, value := range input {
+		keys = append(keys, value)
+	}
+	return keys
+}
+
 // ToMap crée une map d'après une liste de valeur
 func ToMap[K comparable, V interface{}](values []V, transformer func(V) K) map[K]V {
 	r := make(map[K]V)
