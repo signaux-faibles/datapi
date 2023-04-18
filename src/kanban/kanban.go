@@ -17,9 +17,31 @@ func kanbanConfigForUser(username libwekan.Username) core.KanbanConfig {
 			kanbanConfig.UserID = wekanUserID
 			kanbanConfig.Boards = populateWekanConfigBoards(config.Boards, config.Users, wekanUser)
 			kanbanConfig.Departements = populateDepartements(kanbanConfig)
+			kanbanConfig.Users = populateUsers(wekanUserID, config.Boards, config.Users)
 		}
 	}
 	return kanbanConfig
+}
+
+func populateUsers(
+	currentUserID libwekan.UserID,
+	boards map[libwekan.BoardID]libwekan.ConfigBoard,
+	users map[libwekan.UserID]libwekan.User,
+) core.KanbanUsers {
+	r := make(core.KanbanUsers)
+	for _, value := range boards {
+		for _, member := range value.Board.Members {
+			// on ne rajoute pas le user courant dans les users de la board
+			if member.UserID == currentUserID {
+				continue
+			}
+			user, found := users[member.UserID]
+			if found {
+				r[member.UserID] = user.Username
+			}
+		}
+	}
+	return r
 }
 
 func populateWekanConfigBoards(
