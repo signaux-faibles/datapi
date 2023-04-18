@@ -61,6 +61,39 @@ func Test_kanbanConfigForUser_withActiveMembers(t *testing.T) { // GIVEN
 
 }
 
+func Test_kanbanConfigForUser_assertThatAllUsersArePresents(t *testing.T) { // GIVEN
+	ass := assert.New(t)
+	userOne := factory.OneWekanUser()
+	userLambda1 := factory.OneWekanUser()
+	userLambda2 := factory.OneWekanUser()
+	userLambda3 := factory.OneWekanUser()
+
+	configBoardA := factory.OneConfigBoardWithMembers(userOne, userLambda1)
+	configBoardB := factory.OneConfigBoardWithMembers(userOne, userLambda2, userLambda3)
+	factory.DeactiveMembers(configBoardB, userLambda3)
+
+	// set up wekanConfig for test
+	core.WekanConfig = factory.LibwekanConfigWith(
+		[]libwekan.ConfigBoard{configBoardA, configBoardB},
+		[]libwekan.User{userOne, userLambda1, userLambda2, userLambda3},
+	)
+
+	// WHEN
+	configForUserOne := kanbanConfigForUser(userOne.Username)
+
+	// THEN
+	ass.Equal(userOne.ID, configForUserOne.UserID)
+	ass.ElementsMatch(
+		utils.GetKeys(configForUserOne.Users),
+		[]libwekan.UserID{userLambda1.ID, userLambda2.ID, userLambda3.ID},
+	)
+	ass.ElementsMatch(
+		utils.GetValues(configForUserOne.Users),
+		[]libwekan.Username{userLambda1.Username, userLambda2.Username, userLambda3.Username},
+	)
+
+}
+
 func Test_kanbanConfigForUser_withInactiveMembers(t *testing.T) { // GIVEN
 	ass := assert.New(t)
 	userOne := factory.OneWekanUser()
