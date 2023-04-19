@@ -11,7 +11,12 @@ type KanbanService interface {
 	GetUser(username libwekan.Username) (libwekan.User, bool)
 }
 
-type KanbanUsers map[libwekan.UserID]libwekan.Username
+type KanbanUsers map[libwekan.UserID]KanbanUser
+
+type KanbanUser struct {
+	Username libwekan.Username `json:"username"`
+	Active   bool              `json:"active"`
+}
 
 type KanbanLists map[libwekan.ListID]KanbanList
 type KanbanList struct {
