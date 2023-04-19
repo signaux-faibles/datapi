@@ -154,7 +154,7 @@ func (exports dbExports) newDbExport() (dbExports, []interface{}) {
 	return exports, t
 }
 
-func getExportSiret(s Session, siret string) (Card, error) {
+func getExportSiret(s session, siret string) (Card, error) {
 	var exports dbExports
 	exports, exportsFields := exports.newDbExport()
 	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.Username, siret).Scan(exportsFields...)
@@ -177,7 +177,7 @@ func getExportSiret(s Session, siret string) (Card, error) {
 }
 
 // TODO: factoriser avec getCards
-func getExport(s Session, params paramsGetCards) (Cards, error) {
+func getExport(s session, params paramsGetCards) (Cards, error) {
 	var cards Cards
 	var cardsMap = make(map[string]*Card)
 	var sirets []string
@@ -567,7 +567,7 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 }
 
 func getXLSXFollowedByCurrentUser(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 	var params paramsGetCards
 	c.Bind(&params)
@@ -611,7 +611,7 @@ func (docxs Docxs) zip() []byte {
 }
 
 func getDOCXFollowedByCurrentUser(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 	var params paramsGetCards
 	c.Bind(&params)
@@ -641,7 +641,7 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 }
 
 func getDOCXFromSiret(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 
 	siret := c.Param("siret")

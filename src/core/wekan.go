@@ -57,7 +57,7 @@ type EtablissementData struct {
 
 // TODO libwekan
 func wekanUnarchiveCardHandler(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 	userID := oldWekanConfig.userID(s.Username)
 	if userID == "" || !s.hasRole("wekan") {
@@ -121,7 +121,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 		Cards    []*CardData `json:"cards"`
 	}
 
-	var s Session
+	var s session
 	s.Bind(c)
 	_, ok := kanban.GetUser(libwekan.Username(s.Username))
 
@@ -235,7 +235,7 @@ func wekanPartCard(userID string, siret string, boardIds []string) error {
 
 // TODO libwekan
 func wekanJoinCardHandler(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 	cardId := c.Params.ByName("cardId")
 	userID := oldWekanConfig.userID(s.Username)
@@ -342,7 +342,7 @@ func wekanNewCardHandler(c *gin.Context) {
 		ModifiedAt   time.Time `bson:"modifiedAt"`
 	}
 
-	var s Session
+	var s session
 	var param struct {
 		BoardID     string `json:"boardId"`
 		Description string `json:"description"`
