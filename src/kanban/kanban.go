@@ -65,6 +65,33 @@ func populateWekanConfigBoards(
 	return b
 }
 
+func populateDepartements(k core.KanbanConfig) map[core.CodeDepartement][]core.KanbanBoardSwimlane {
+	kanbanDepartements := make(map[core.CodeDepartement][]core.KanbanBoardSwimlane)
+	for boardID, board := range k.Boards {
+		for swimlaneID, swimlane := range board.Swimlanes {
+			zone := core.CodeDepartement(parseSwimlaneTitle(swimlane))
+			if _, ok := core.Departements[zone]; ok {
+				current := core.KanbanBoardSwimlane{
+					BoardID:    boardID,
+					SwimlaneID: swimlaneID,
+				}
+				kanbanDepartements[zone] = append(kanbanDepartements[zone], current)
+			}
+			candidateRegion := core.Region(parseSwimlaneTitle(swimlane))
+			if depts, ok := core.Regions[candidateRegion]; ok {
+				for _, dept := range depts {
+					current := core.KanbanBoardSwimlane{
+						BoardID:    boardID,
+						SwimlaneID: swimlaneID,
+					}
+					kanbanDepartements[dept] = append(kanbanDepartements[dept], current)
+				}
+			}
+		}
+	}
+	return kanbanDepartements
+}
+
 func fromWekanBoardMembers(
 	wekanBoardMembers []libwekan.BoardMember,
 	wekanConfigUsers map[libwekan.UserID]libwekan.User) core.KanbanBoardMembers {
@@ -109,33 +136,6 @@ func fromWekanBoardLabels(labels []libwekan.BoardLabel) core.KanbanBoardLabels {
 		r[wekanBoardLabel.ID] = kanbanBoardLabel
 	}
 	return r
-}
-
-func populateDepartements(k core.KanbanConfig) map[core.CodeDepartement][]core.KanbanBoardSwimlane {
-	kanbanDepartements := make(map[core.CodeDepartement][]core.KanbanBoardSwimlane)
-	for boardID, board := range k.Boards {
-		for swimlaneID, swimlane := range board.Swimlanes {
-			zone := core.CodeDepartement(parseSwimlaneTitle(swimlane))
-			if _, ok := core.Departements[zone]; ok {
-				current := core.KanbanBoardSwimlane{
-					BoardID:    boardID,
-					SwimlaneID: swimlaneID,
-				}
-				kanbanDepartements[zone] = append(kanbanDepartements[zone], current)
-			}
-			candidateRegion := core.Region(parseSwimlaneTitle(swimlane))
-			if depts, ok := core.Regions[candidateRegion]; ok {
-				for _, dept := range depts {
-					current := core.KanbanBoardSwimlane{
-						BoardID:    boardID,
-						SwimlaneID: swimlaneID,
-					}
-					kanbanDepartements[dept] = append(kanbanDepartements[dept], current)
-				}
-			}
-		}
-	}
-	return kanbanDepartements
 }
 
 func parseSwimlaneTitle(swimlane core.KanbanSwimlane) string {
