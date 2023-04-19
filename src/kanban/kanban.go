@@ -1,16 +1,51 @@
 package kanban
 
 import (
+	"context"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/libwekan"
+	"github.com/spf13/viper"
 	"log"
 	"strings"
+	"sync"
+	"time"
 )
 
+var wekan libwekan.Wekan
+var wekanConfig libwekan.Config
+var wekanConfigMutex = &sync.Mutex{}
+
+type service struct{}
+
+func (s service) LoadConfigForUser(username libwekan.Username) core.KanbanConfig {
+	return kanbanConfigForUser(username)
+}
+
+func (s service) GetUser(username libwekan.Username) (libwekan.User, bool) {
+	return wekanConfig.GetUserByUsername(username)
+}
+
+func init() {
+	var err error
+	wekan, err = libwekan.Init(
+		context.Background(),
+		viper.GetString("wekanMgoURL"),
+		viper.GetString("wekanMgoDB"),
+		libwekan.Username(viper.GetString("wekanAdminUsername")),
+		viper.GetString("wekanSlugDomainRegexp"),
+	)
+	if err != nil {
+		log.Printf("Erreur lors de l'initialisation de wekan : %s", err)
+	}
+	go watchWekanConfig(time.Minute)
+	kanban := service{}
+	core.AddKanbanService(kanban)
+}
+
 func kanbanConfigForUser(username libwekan.Username) core.KanbanConfig {
-	core.WekanConfigMutex.Lock()
-	config := core.WekanConfig.Copy()
-	core.WekanConfigMutex.Unlock()
+	wekanConfigMutex.Lock()
+	config := wekanConfig.Copy()
+	wekanConfigMutex.Unlock()
 	var kanbanConfig core.KanbanConfig
 	for wekanUserID, wekanUser := range config.Users {
 		if wekanUser.Username == username {

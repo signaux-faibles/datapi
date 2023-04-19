@@ -1,17 +1,13 @@
 package core
 
 import (
-	"context"
-	"sync"
-
 	"github.com/signaux-faibles/libwekan"
-	"log"
-	"time"
 )
 
-var wekan libwekan.Wekan
-var WekanConfig libwekan.Config
-var WekanConfigMutex = &sync.Mutex{}
+type KanbanService interface {
+	LoadConfigForUser(username libwekan.Username) KanbanConfig
+	GetUser(username libwekan.Username) (libwekan.User, bool)
+}
 
 type KanbanUsers map[libwekan.UserID]libwekan.Username
 
@@ -55,22 +51,4 @@ type KanbanConfig struct {
 	Boards       KanbanBoards                              `json:"boards"`
 	Users        KanbanUsers                               `json:"users"`
 	UserID       libwekan.UserID                           `json:"userID"`
-}
-
-func loadWekanConfig() {
-	newWekanConfig, err := wekan.SelectConfig(context.Background())
-	if err != nil {
-		log.Printf("loadWekanConfig() -> ERROR : problem loading config: %s", err.Error())
-	} else {
-		WekanConfigMutex.Lock()
-		WekanConfig = newWekanConfig
-		WekanConfigMutex.Unlock()
-	}
-}
-
-func watchWekanConfig(period time.Duration) {
-	for {
-		loadWekanConfig()
-		time.Sleep(period)
-	}
 }
