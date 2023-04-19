@@ -123,7 +123,7 @@ func wekanGetCardsHandler(c *gin.Context) {
 
 	var s Session
 	s.Bind(c)
-	_, ok := WekanConfig.GetUserByUsername(libwekan.Username(s.Username))
+	_, ok := kanban.GetUser(libwekan.Username(s.Username))
 
 	if !ok || !s.hasRole("wekan") {
 		c.JSON(http.StatusForbidden, "not a wekan user")

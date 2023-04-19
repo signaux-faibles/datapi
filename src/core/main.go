@@ -9,7 +9,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
-	"github.com/signaux-faibles/libwekan"
 	"go.mongodb.org/mongo-driver/mongo"
 	"io"
 	"log"
@@ -27,8 +26,12 @@ var oldWekanConfig OldWekanConfig
 var Regions map[Region][]CodeDepartement
 var Departements map[CodeDepartement]string
 
+//var services []Initializer
+
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(path string, api *gin.Engine)
+
+var kanban KanbanService
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi() error {
@@ -43,21 +46,20 @@ func StartDatapi() error {
 		fmt.Println(err)
 		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %s", err)
 	}
-	wekan, err = libwekan.Init(
-		context.Background(),
-		viper.GetString("wekanMgoURL"),
-		viper.GetString("wekanMgoDB"),
-		libwekan.Username(viper.GetString("wekanAdminUsername")),
-		viper.GetString("wekanSlugDomainRegexp"),
-	)
-	if err != nil {
-		return err
-	}
 
 	// TODO supprimer
 	mgoDB = connectWekanDB()
 	go watchOldWekanConfig(&oldWekanConfig, time.Minute)
-	go watchWekanConfig(time.Minute)
+	//for _, current := range services {
+	//	service := current
+	//	go func() {
+	//		for {
+	//			service()
+	//			time.Sleep(time.Minute)
+	//		}
+	//	}()
+	//}
+	//go watchWekanConfig(time.Minute)
 	keycloak = connectKC()
 	return nil
 }
@@ -131,6 +133,8 @@ func InitAPI(router *gin.Engine) {
 	wekan.POST("/cards/:siret", checkSiretFormat, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
+
+	configureWekanEndpoint("/wekan", router)
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API
@@ -206,6 +210,14 @@ func AdminAuthMiddleware(c *gin.Context) {
 		log.Printf(forbiddenIPMessage, c.ClientIP())
 		c.AbortWithStatus(http.StatusForbidden)
 	}
+}
+func AddKanbanService(current KanbanService) {
+	kanban = current
+}
+
+func configureWekanEndpoint(path string, api *gin.Engine) {
+	kanban := api.Group(path, AuthMiddleware(), LogMiddleware)
+	kanban.GET("/config", kanbanConfigHandler)
 }
 
 // True made global to ease pointers

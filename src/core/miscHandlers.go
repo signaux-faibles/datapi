@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
+	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"regexp"
 )
@@ -53,6 +54,13 @@ func checkSiretFormat(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, "SIRET valide obligatoire")
 	}
 	c.Next()
+}
+
+func kanbanConfigHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+	kanbanConfig := kanban.LoadConfigForUser(libwekan.Username(s.Username))
+	c.JSON(http.StatusOK, kanbanConfig)
 }
 
 func (s *Session) Bind(c *gin.Context) {
