@@ -72,7 +72,11 @@ func populateUsers(
 			}
 			user, found := users[member.UserID]
 			if found {
-				r[member.UserID] = user.Username
+				user := core.KanbanUser{
+					Username: user.Username,
+					Active:   member.IsActive,
+				}
+				r[member.UserID] = user
 			}
 		}
 	}
