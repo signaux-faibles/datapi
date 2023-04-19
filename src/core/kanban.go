@@ -4,6 +4,8 @@ import (
 	"github.com/signaux-faibles/libwekan"
 )
 
+// KanbanService service définissant les méthodes de Kanban nécessaires dans Datapi
+// TODO il  faudrait changer les types `libwekan` en des types `datapi`
 type KanbanService interface {
 	LoadConfigForUser(username libwekan.Username) KanbanConfig
 	GetUser(username libwekan.Username) (libwekan.User, bool)

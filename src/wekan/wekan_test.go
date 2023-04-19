@@ -1,4 +1,4 @@
-package kanban
+package wekan
 
 import (
 	"github.com/signaux-faibles/datapi/src/core"

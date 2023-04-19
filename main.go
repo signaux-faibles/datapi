@@ -28,6 +28,5 @@ func initAndStartAPI() {
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint)
-	//core.AddEndpoint(router, "/kanban", kanban.ConfigureEndpoint)
 	core.StartAPI(router)
 }
