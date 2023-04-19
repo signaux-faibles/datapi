@@ -76,7 +76,7 @@ func followEtablissement(c *gin.Context) {
 }
 
 func unfollowEtablissement(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 	siret := c.Param("siret")
 
@@ -215,7 +215,7 @@ func (f *Follow) list(roles Scope) (Follows, utils.Jerror) {
 type Follows []Follow
 
 func getCardsForCurrentUser(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 	var params paramsGetCards
 	err := c.Bind(&params)
@@ -278,7 +278,7 @@ func (cards Cards) dbExportsOnly() Cards {
 	return filtered
 }
 
-func getCards(s Session, params paramsGetCards) ([]*Card, error) {
+func getCards(s session, params paramsGetCards) ([]*Card, error) {
 	var cards []*Card
 	var cardsMap = make(map[string]*Card)
 	var sirets []string

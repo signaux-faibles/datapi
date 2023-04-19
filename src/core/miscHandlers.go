@@ -57,18 +57,25 @@ func checkSiretFormat(c *gin.Context) {
 }
 
 func kanbanConfigHandler(c *gin.Context) {
-	var s Session
+	var s session
 	s.Bind(c)
 	kanbanConfig := kanban.LoadConfigForUser(libwekan.Username(s.Username))
 	c.JSON(http.StatusOK, kanbanConfig)
 }
 
-func (s *Session) Bind(c *gin.Context) {
+// session correspond aux informations du user de la session
+type session struct {
+	Username string
+	auteur   string
+	roles    Scope
+}
+
+func (s *session) Bind(c *gin.Context) {
 	s.Username = c.GetString("username")
 	s.auteur = c.GetString("given_name") + " " + c.GetString("family_name")
 	s.roles = scopeFromContext(c)
 }
 
-func (s Session) hasRole(role string) bool {
+func (s session) hasRole(role string) bool {
 	return utils.Contains(s.roles, role)
 }
