@@ -90,9 +90,9 @@ func Test_kanbanConfigForUser_assertThatAllUsersArePresents(t *testing.T) { // G
 	ass.ElementsMatch(
 		utils.GetValues(configForUserOne.Users),
 		[]core.KanbanUser{
-			{userLambda1.Username, true},
-			{userLambda2.Username, true},
-			{userLambda3.Username, false}},
+			{Username: userLambda1.Username, Active: true},
+			{Username: userLambda2.Username, Active: true},
+			{Username: userLambda3.Username}},
 	)
 
 }
