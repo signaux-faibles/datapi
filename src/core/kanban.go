@@ -30,7 +30,11 @@ type KanbanSwimlane struct {
 	Sort  float64 `json:"sort"`
 }
 
-type KanbanBoardMembers map[libwekan.UserID]libwekan.Username
+type KanbanBoardMembers map[libwekan.UserID]KanbanBoardMember
+type KanbanBoardMember struct {
+	Username libwekan.Username `json:"username"`
+	Active   bool              `json:"active"`
+}
 
 type KanbanBoardLabels map[libwekan.BoardLabelID]KanbanBoardLabel
 type KanbanBoardLabel struct {
