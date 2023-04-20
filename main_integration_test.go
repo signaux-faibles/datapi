@@ -10,6 +10,7 @@ import (
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/test"
+	"github.com/signaux-faibles/datapi/src/wekan"
 	"github.com/stretchr/testify/assert"
 	"log"
 	"math/big"
@@ -27,16 +28,15 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 // - la configuration du container
 func TestMain(m *testing.M) {
 	var err error
+	ctx := context.Background()
 	testConfig := map[string]string{}
 	testConfig["postgres"] = test.GetDatapiDbURL()
-	testConfig["wekanMgoURL"] = test.GetWekanDbURL()
+	wekanDbURL := test.GetWekanDbURL()
+	testConfig["wekanMgoURL"] = wekanDbURL
 
 	apiPort := generateRandomPort()
 	testConfig["bind"] = ":" + apiPort
 	test.SetHostAndPort("http://localhost:" + apiPort)
-
-	//adminWhitelist := "127.0.0.1, ::1"
-	//testConfig["adminWhitelist"] = adminWhitelist
 
 	err = test.Viperize(testConfig)
 	if err != nil {
@@ -51,7 +51,8 @@ func TestMain(m *testing.M) {
 	}
 
 	// run datapi
-	err = core.StartDatapi(nil)
+	kanbanService := wekan.InitService(ctx, wekanDbURL, "test", "mgo", "*")
+	err = core.StartDatapi(kanbanService)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
