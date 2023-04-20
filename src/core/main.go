@@ -26,40 +26,32 @@ var oldWekanConfig OldWekanConfig
 var Regions map[Region][]CodeDepartement
 var Departements map[CodeDepartement]string
 
-//var services []Initializer
-
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(path string, api *gin.Engine)
 
 var kanban KanbanService
 
 // StartDatapi se connecte aux bases de données et keycloak
-func StartDatapi() error {
+func StartDatapi(kanbanService KanbanService) error {
 	var err error
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	Departements, err = loadDepartementReferentiel()
 	if err != nil {
-		return fmt.Errorf("erreur pendant le chargement du référentiel des départements : %s", err)
+		return fmt.Errorf("erreur pendant le chargement du référentiel des départements : %w", err)
 	}
 	Regions, err = loadRegionsReferentiel()
 	if err != nil {
 		fmt.Println(err)
-		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %s", err)
+		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %w", err)
 	}
 
 	// TODO supprimer
 	mgoDB = connectWekanDB()
 	go watchOldWekanConfig(&oldWekanConfig, time.Minute)
-	//for _, current := range services {
-	//	service := current
-	//	go func() {
-	//		for {
-	//			service()
-	//			time.Sleep(time.Minute)
-	//		}
-	//	}()
-	//}
-	//go watchWekanConfig(time.Minute)
+	if kanbanService == nil {
+		return fmt.Errorf("le service Kanban n'est pas paramétré")
+	}
+	kanban = kanbanService
 	keycloak = connectKC()
 	return nil
 }
@@ -134,7 +126,7 @@ func InitAPI(router *gin.Engine) {
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 
-	configureWekanEndpoint("/wekan", router)
+	configureKanbanEndpoint("/wekan", router)
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API
@@ -211,11 +203,8 @@ func AdminAuthMiddleware(c *gin.Context) {
 		c.AbortWithStatus(http.StatusForbidden)
 	}
 }
-func AddKanbanService(current KanbanService) {
-	kanban = current
-}
 
-func configureWekanEndpoint(path string, api *gin.Engine) {
+func configureKanbanEndpoint(path string, api *gin.Engine) {
 	kanban := api.Group(path, AuthMiddleware(), LogMiddleware)
 	kanban.GET("/config", kanbanConfigHandler)
 }

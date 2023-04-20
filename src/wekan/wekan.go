@@ -4,7 +4,6 @@ import (
 	"context"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/libwekan"
-	"github.com/spf13/viper"
 	"log"
 	"strings"
 	"sync"
@@ -15,31 +14,24 @@ var wekan libwekan.Wekan
 var wekanConfig libwekan.Config
 var wekanConfigMutex = &sync.Mutex{}
 
-type service struct{}
+type wekanService struct{}
 
-func (s service) LoadConfigForUser(username libwekan.Username) core.KanbanConfig {
+func (s wekanService) LoadConfigForUser(username libwekan.Username) core.KanbanConfig {
 	return kanbanConfigForUser(username)
 }
 
-func (s service) GetUser(username libwekan.Username) (libwekan.User, bool) {
+func (s wekanService) GetUser(username libwekan.Username) (libwekan.User, bool) {
 	return wekanConfig.GetUserByUsername(username)
 }
 
-func init() {
+func InitService(ctx context.Context, dBURL, dBName, admin, slugDomainRegexp string) core.KanbanService {
 	var err error
-	wekan, err = libwekan.Init(
-		context.Background(),
-		viper.GetString("wekanMgoURL"),
-		viper.GetString("wekanMgoDB"),
-		libwekan.Username(viper.GetString("wekanAdminUsername")),
-		viper.GetString("wekanSlugDomainRegexp"),
-	)
+	wekan, err = libwekan.Init(ctx, dBURL, dBName, libwekan.Username(admin), slugDomainRegexp)
 	if err != nil {
 		log.Printf("Erreur lors de l'initialisation de wekan : %s", err)
 	}
 	go watchWekanConfig(time.Minute)
-	kanban := service{}
-	core.AddKanbanService(kanban)
+	return wekanService{}
 }
 
 func kanbanConfigForUser(username libwekan.Username) core.KanbanConfig {
