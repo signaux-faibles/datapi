@@ -51,7 +51,11 @@ func TestMain(m *testing.M) {
 	}
 
 	// run datapi
-	core.StartDatapi()
+	err = core.StartDatapi(nil)
+	if err != nil {
+		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
+	}
+
 	go initAndStartAPI()
 	// time to API be ready
 	time.Sleep(1 * time.Second)
@@ -167,8 +171,8 @@ func TestSearch(t *testing.T) {
 	var siret string
 	err = db.Get().QueryRow(
 		context.Background(),
-		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) 
-			from etablissement 
+		`select array_agg(distinct departement), substring(first(siret) from 1 for 3)
+			from etablissement
 			where departement < '10' and departement != '00'`,
 	).Scan(&departements, &siret)
 	if err != nil {
