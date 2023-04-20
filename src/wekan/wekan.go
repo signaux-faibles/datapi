@@ -128,9 +128,9 @@ func fromWekanBoardMembers(
 	wekanConfigUsers map[libwekan.UserID]libwekan.User) core.KanbanBoardMembers {
 	r := make(core.KanbanBoardMembers)
 	for _, member := range wekanBoardMembers {
-		if member.IsActive {
-			username := wekanConfigUsers[member.UserID].Username
-			r[member.UserID] = username
+		r[member.UserID] = core.KanbanBoardMember{
+			Username: wekanConfigUsers[member.UserID].Username,
+			Active:   member.IsActive,
 		}
 	}
 	return r

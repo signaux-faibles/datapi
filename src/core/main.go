@@ -121,8 +121,8 @@ func InitAPI(router *gin.Engine) {
 	fce.GET("/:siret", checkSiretFormat, getFceURL)
 
 	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
-	wekan.GET("/cards/:siret", checkSiretFormat, wekanGetCardsHandler)
-	wekan.POST("/cards/:siret", checkSiretFormat, wekanNewCardHandler)
+	//wekan.GET("/cards/:siret", checkSiretFormat, wekanGetCardsHandler)
+	//wekan.POST("/cards/:siret", checkSiretFormat, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 
