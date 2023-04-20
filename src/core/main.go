@@ -126,7 +126,7 @@ func InitAPI(router *gin.Engine) {
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
 
-	configureKanbanEndpoint("/wekan", router)
+	configureKanbanEndpoint("/kanban", router)
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API

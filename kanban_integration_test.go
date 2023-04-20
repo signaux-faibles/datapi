@@ -11,7 +11,7 @@ import (
 
 func TestApi_Wekan_endpoint_is_configured(t *testing.T) {
 	ass := assert.New(t)
-	path := "/wekan/config"
+	path := "/kanban/config"
 	response := test.HTTPGet(t, path)
 
 	ass.Equal(http.StatusOK, response.StatusCode)
