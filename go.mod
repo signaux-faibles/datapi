@@ -2,8 +2,6 @@ module github.com/signaux-faibles/datapi
 
 go 1.20
 
-//replace github.com/signaux-faibles/libwekan v0.1.4-0.20230414165220-9985b8427f73 => ../libwekan
-
 require (
 	bou.ke/monkey v1.0.2
 	github.com/Nerzal/gocloak/v10 v10.0.1
@@ -111,3 +109,5 @@ require (
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/signaux-faibles/libwekan => ../libwekan

@@ -800,164 +800,28 @@ func cardFromSiretPipeline(wcu OldWekanConfig, siret string) bson.A {
 	return pipeline
 }
 
-// TODO libwekan
-func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID, labelMode bool, since *time.Time) ([]*WekanCard, error) {
-	if username != nil {
-		userID := oldWekanConfig.userID(*username)
-		if userID == "" {
-			return nil, fmt.Errorf("selectWekanCards() -> utilisateur wekan inconnu: %s", *username)
-		}
-	}
-
-	pipeline := cardsPipeline(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, since)
-
-	cardsCursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
-	if err != nil {
-		return nil, err
-	}
-	var wekanCards []*WekanCard
-	err = cardsCursor.All(context.Background(), &wekanCards)
-	if err != nil {
-		return nil, err
-	}
-	return wekanCards, nil
-}
-
-func cardsPipeline(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID, labelMode bool, since *time.Time) bson.A {
-	query := bson.M{
-		"type": "cardType-card",
-	}
-
-	if username != nil {
-		userID := oldWekanConfig.userID(*username)
-		query["$expr"] = bson.M{
-			"$or": bson.A{
-				bson.M{"$in": bson.A{userID, "$members"}},
-				bson.M{"$in": bson.A{userID, "$assignees"}},
-			},
-		}
-	}
-
-	if len(boardIds) > 0 { // rejet des ids non connus dans la configuration
-		var ids []string
-		for _, id := range boardIds {
-			oldWekanConfig.mu.Lock()
-			if _, ok := oldWekanConfig.BoardIds[id]; ok {
-				ids = append(ids, id)
-			}
-			oldWekanConfig.mu.Unlock()
-		}
-		query["boardId"] = bson.M{"$in": ids}
-	} else { // limiter au périmètre des boards de la configuration
-		query["boardId"] = bson.M{"$in": oldWekanConfig.boardIds()}
-	}
-
-	if len(swimlaneIds) > 0 {
-		query["swimlaneId"] = bson.M{"$in": swimlaneIds}
-	}
-
-	if len(listIds) > 0 {
-		query["listId"] = bson.M{"$in": listIds}
-	}
-
-	if len(labelIds) > 0 {
-		labelQueryAnd := bson.A{}
-		for _, l := range labelIds {
-			labelQueryOr := bson.A{}
-			for _, i := range l {
-				labelQueryOr = append(labelQueryOr, bson.M{
-					"labelIds": i.labelID,
-					"boardId":  i.boardID,
-				})
-			}
-			labelQueryAnd = append(labelQueryAnd, bson.M{
-				"$or": labelQueryOr,
-			})
-		}
-		if labelMode {
-			query["$and"] = labelQueryAnd
-		} else {
-			query["$or"] = labelQueryAnd
-		}
-	}
-
-	pipeline := bson.A{
-		bson.M{
-			"$match": query,
-		},
-		bson.M{
-			"$lookup": bson.M{
-				"from": "card_comments",
-				"let":  bson.M{"card": "$_id"},
-				"pipeline": bson.A{
-					bson.M{
-						"$match": bson.M{
-							"$expr": bson.M{"$eq": bson.A{"$cardId", "$$card"}},
-							"text":  bson.M{"$regex": "#export"},
-						},
-					}, bson.M{
-						"$sort": bson.M{
-							"createdAt": -1,
-						},
-					}, bson.M{
-						"$project": bson.M{
-							"text": 1,
-							"_id":  0,
-						},
-					},
-				},
-				"as": "comments",
-			},
-		},
-		bson.M{
-			"$lookup": bson.M{
-				"from":         "card_comments",
-				"localField":   "_id",
-				"foreignField": "cardId",
-				"as":           "lastActivity",
-			},
-		},
-		bson.M{
-			"$sort": bson.D{
-				bson.E{Key: "archived", Value: 1},
-				bson.E{Key: "startAt", Value: 1},
-			},
-		},
-		bson.M{
-			"$project": bson.M{
-				"archived":     1,
-				"title":        1,
-				"listId":       1,
-				"boardId":      1,
-				"members":      1,
-				"swimlaneId":   1,
-				"customFields": 1,
-				"sort":         1,
-				"labelIds":     1,
-				"startAt":      1,
-				"endAt":        1,
-				"description":  1,
-				"assignees":    1,
-				"comments":     "$comments.text",
-				"lastActivity": bson.M{
-					"$max": bson.A{
-						bson.M{"$max": "$lastActivity.modifiedAt"},
-						"$dateLastActivity",
-					},
-				},
-			},
-		},
-	}
-
-	if since != nil {
-		pipeline = append(pipeline, bson.M{
-			"$match": bson.M{
-				"lastActivity": bson.M{"$gte": since},
-			},
-		})
-	}
-	return pipeline
-}
+//// TODO libwekan
+//func selectWekanCards(username *string, boardIds []string, swimlaneIds []string, listIds []string, labelIds [][]labelID, labelMode bool, since *time.Time) ([]*WekanCard, error) {
+//	if username != nil {
+//		userID := oldWekanConfig.userID(*username)
+//		if userID == "" {
+//			return nil, fmt.Errorf("selectWekanCards() -> utilisateur wekan inconnu: %s", *username)
+//		}
+//	}
+//
+//	pipeline := cardsPipeline(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, since)
+//
+//	cardsCursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
+//	if err != nil {
+//		return nil, err
+//	}
+//	var wekanCards []*WekanCard
+//	err = cardsCursor.All(context.Background(), &wekanCards)
+//	if err != nil {
+//		return nil, err
+//	}
+//	return wekanCards, nil
+//}
 
 var letters = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
 

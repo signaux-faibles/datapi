@@ -93,15 +93,14 @@ func InitAPI(router *gin.Engine) {
 
 	follow := router.Group("/follow", AuthMiddleware(), LogMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
-	follow.POST("", getCardsForCurrentUser)
 	follow.POST("/:siret", checkSiretFormat, followEtablissement)
 	follow.DELETE("/:siret", checkSiretFormat, unfollowEtablissement)
 
 	export := router.Group("/export/", AuthMiddleware(), LogMiddleware)
-	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
-	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
-	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
-	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
+	//export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
+	//export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
+	//export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
+	//export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", checkSiretFormat, getDOCXFromSiret)
 
 	listes := router.Group("/listes", AuthMiddleware(), LogMiddleware)
@@ -207,6 +206,8 @@ func AdminAuthMiddleware(c *gin.Context) {
 func configureKanbanEndpoint(path string, api *gin.Engine) {
 	kanban := api.Group(path, AuthMiddleware(), CheckAnyRolesMiddleware("kanban"), LogMiddleware)
 	kanban.GET("/config", kanbanConfigHandler)
+	kanban.GET("/cards/:siret", kanbanGetCardsHandler)
+	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)
 }
 
 // True made global to ease pointers

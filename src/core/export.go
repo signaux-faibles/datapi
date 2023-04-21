@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
-	pgx "github.com/jackc/pgx/v4"
 	"github.com/spf13/viper"
 	"github.com/tealeg/xlsx"
 )
@@ -176,132 +175,132 @@ func getExportSiret(s session, siret string) (Card, error) {
 	return c, nil
 }
 
-// TODO: factoriser avec getCards
-func getExport(s session, params paramsGetCards) (Cards, error) {
-	var cards Cards
-	var cardsMap = make(map[string]*Card)
-	var sirets []string
-	var followedSirets []string
-	wcu := oldWekanConfig.forUser(s.Username)
-	userID := oldWekanConfig.userID(s.Username)
-
-	if _, ok := oldWekanConfig.Users[s.Username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
-		// Export wekan + DB
-		var username *string
-		if params.Type == "my-cards" {
-			username = &s.Username
-		}
-		boardIds := wcu.boardIds()
-		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
-		listIds := wcu.listIdsForStatuts(params.Statut)
-		labelIds := wcu.labelIdsForLabels(params.Labels)
-		labelMode := params.LabelMode
-
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
-		if err != nil {
-			return nil, err
-		}
-		for _, w := range wekanCards {
-			siret, err := w.Siret()
-			if err != nil {
-				continue
-			}
-			card := Card{nil, []*WekanCard{w}, nil}
-			cards = append(cards, &card)
-			if _, ok := cardsMap[siret]; !ok {
-				cardsMap[siret] = &card
-				sirets = append(sirets, siret)
-			} else {
-				c := cardsMap[siret].WekanCards
-				c = append(c, card.WekanCards...)
-				cardsMap[siret].WekanCards = c
-			}
-
-			if utils.Contains(append(w.Members, w.Assignees...), userID) {
-				followedSirets = append(followedSirets, siret)
-			}
-		}
-		var exports dbExports
-		if params.Type == "my-cards" {
-			sirets = followedSirets
-		}
-		var cursor pgx.Rows
-		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles, s.Username, sirets)
-
-		if err != nil {
-			return nil, err
-		}
-		for cursor.Next() {
-			var s []interface{}
-			exports, s = exports.newDbExport()
-			err := cursor.Scan(s...)
-			if err != nil {
-				return nil, err
-			}
-		}
-		cursor.Close()
-		for _, s := range exports {
-			card := cardsMap[s.Siret]
-			if card == nil {
-				card = &Card{}
-			}
-			card.dbExport = s
-			cardsMap[s.Siret] = card
-		}
-	} else {
-		// export DB uniquement
-		boardIds := wcu.boardIds()
-		var wekanCards []*WekanCard
-		var err error
-
-		if s.hasRole("wekan") {
-			wekanCards, err = selectWekanCards(&s.Username, boardIds, nil, nil, nil, false, nil)
-			if err != nil {
-				return nil, err
-			}
-		}
-
-		var excludeSirets = make(map[string]struct{})
-		for _, w := range wekanCards {
-			if s.hasRole("wekan") {
-				siret, err := w.Siret()
-				if err != nil {
-					continue
-				}
-				excludeSirets[siret] = struct{}{}
-			}
-		}
-		var exports dbExports
-		var cursor pgx.Rows
-		cursor, err = db.Get().Query(
-			context.Background(),
-			sqlDbExportFollow,
-			s.roles,
-			s.Username,
-			params.Zone,
-		)
-
-		if err != nil {
-			return nil, err
-		}
-		for cursor.Next() {
-			var s []interface{}
-			exports, s = exports.newDbExport()
-			err := cursor.Scan(s...)
-			if err != nil {
-				return nil, err
-			}
-		}
-		cursor.Close()
-		for _, s := range exports {
-			if _, ok := excludeSirets[s.Siret]; !ok {
-				card := Card{nil, nil, s}
-				cards = append(cards, &card)
-			}
-		}
-	}
-	return cards.dbExportsOnly(), nil
-}
+//// TODO: factoriser avec getCards
+//func getExport(s session, params paramsGetCards) (Cards, error) {
+//	var cards Cards
+//	var cardsMap = make(map[string]*Card)
+//	var sirets []string
+//	var followedSirets []string
+//	wcu := oldWekanConfig.forUser(s.Username)
+//	userID := oldWekanConfig.userID(s.Username)
+//
+//	if _, ok := oldWekanConfig.Users[s.Username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
+//		// Export wekan + DB
+//		var username *string
+//		if params.Type == "my-cards" {
+//			username = &s.Username
+//		}
+//		boardIds := wcu.boardIds()
+//		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
+//		listIds := wcu.listIdsForStatuts(params.Statut)
+//		labelIds := wcu.labelIdsForLabels(params.Labels)
+//		labelMode := params.LabelMode
+//
+//		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
+//		if err != nil {
+//			return nil, err
+//		}
+//		for _, w := range wekanCards {
+//			siret, err := w.Siret()
+//			if err != nil {
+//				continue
+//			}
+//			card := Card{nil, []*WekanCard{w}, nil}
+//			cards = append(cards, &card)
+//			if _, ok := cardsMap[siret]; !ok {
+//				cardsMap[siret] = &card
+//				sirets = append(sirets, siret)
+//			} else {
+//				c := cardsMap[siret].WekanCards
+//				c = append(c, card.WekanCards...)
+//				cardsMap[siret].WekanCards = c
+//			}
+//
+//			if utils.Contains(append(w.Members, w.Assignees...), userID) {
+//				followedSirets = append(followedSirets, siret)
+//			}
+//		}
+//		var exports dbExports
+//		if params.Type == "my-cards" {
+//			sirets = followedSirets
+//		}
+//		var cursor pgx.Rows
+//		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles, s.Username, sirets)
+//
+//		if err != nil {
+//			return nil, err
+//		}
+//		for cursor.Next() {
+//			var s []interface{}
+//			exports, s = exports.newDbExport()
+//			err := cursor.Scan(s...)
+//			if err != nil {
+//				return nil, err
+//			}
+//		}
+//		cursor.Close()
+//		for _, s := range exports {
+//			card := cardsMap[s.Siret]
+//			if card == nil {
+//				card = &Card{}
+//			}
+//			card.dbExport = s
+//			cardsMap[s.Siret] = card
+//		}
+//	} else {
+//		// export DB uniquement
+//		boardIds := wcu.boardIds()
+//		var wekanCards []*WekanCard
+//		var err error
+//
+//		if s.hasRole("wekan") {
+//			wekanCards, err = selectWekanCards(&s.Username, boardIds, nil, nil, nil, false, nil)
+//			if err != nil {
+//				return nil, err
+//			}
+//		}
+//
+//		var excludeSirets = make(map[string]struct{})
+//		for _, w := range wekanCards {
+//			if s.hasRole("wekan") {
+//				siret, err := w.Siret()
+//				if err != nil {
+//					continue
+//				}
+//				excludeSirets[siret] = struct{}{}
+//			}
+//		}
+//		var exports dbExports
+//		var cursor pgx.Rows
+//		cursor, err = db.Get().Query(
+//			context.Background(),
+//			sqlDbExportFollow,
+//			s.roles,
+//			s.Username,
+//			params.Zone,
+//		)
+//
+//		if err != nil {
+//			return nil, err
+//		}
+//		for cursor.Next() {
+//			var s []interface{}
+//			exports, s = exports.newDbExport()
+//			err := cursor.Scan(s...)
+//			if err != nil {
+//				return nil, err
+//			}
+//		}
+//		cursor.Close()
+//		for _, s := range exports {
+//			if _, ok := excludeSirets[s.Siret]; !ok {
+//				card := Card{nil, nil, s}
+//				cards = append(cards, &card)
+//			}
+//		}
+//	}
+//	return cards.dbExportsOnly(), nil
+//}
 
 func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	xlFile := xlsx.NewFile()
@@ -566,27 +565,27 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 	c.JSON(200, follows)
 }
 
-func getXLSXFollowedByCurrentUser(c *gin.Context) {
-	var s session
-	s.Bind(c)
-	var params paramsGetCards
-	c.Bind(&params)
-
-	export, err := getExport(s, params)
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-
-	xlsx, err := export.xlsx(s.hasRole("wekan"))
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
-}
+//func getXLSXFollowedByCurrentUser(c *gin.Context) {
+//	var s session
+//	s.Bind(c)
+//	var params paramsGetCards
+//	c.Bind(&params)
+//
+//	export, err := getExport(s, params)
+//	if err != nil {
+//		utils.AbortWithError(c, err)
+//		return
+//	}
+//
+//	xlsx, err := export.xlsx(s.hasRole("wekan"))
+//	if err != nil {
+//		utils.AbortWithError(c, err)
+//		return
+//	}
+//	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
+//	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+//	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
+//}
 
 type Docx struct {
 	filename string
@@ -610,35 +609,35 @@ func (docxs Docxs) zip() []byte {
 	return zipData.Bytes()
 }
 
-func getDOCXFollowedByCurrentUser(c *gin.Context) {
-	var s session
-	s.Bind(c)
-	var params paramsGetCards
-	c.Bind(&params)
-
-	exports, err := getExport(s, params)
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-	header := ExportHeader{
-		Auteur: s.auteur,
-		Date:   time.Now(),
-	}
-
-	var docxs Docxs
-	for _, export := range exports {
-		docx, err := export.docx(header)
-		if err != nil {
-			utils.AbortWithError(c, err)
-			return
-		}
-		docxs = append(docxs, docx)
-	}
-	filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/zip", docxs.zip())
-}
+//func getDOCXFollowedByCurrentUser(c *gin.Context) {
+//	var s session
+//	s.Bind(c)
+//	var params paramsGetCards
+//	c.Bind(&params)
+//
+//	exports, err := getExport(s, params)
+//	if err != nil {
+//		utils.AbortWithError(c, err)
+//		return
+//	}
+//	header := ExportHeader{
+//		Auteur: s.auteur,
+//		Date:   time.Now(),
+//	}
+//
+//	var docxs Docxs
+//	for _, export := range exports {
+//		docx, err := export.docx(header)
+//		if err != nil {
+//			utils.AbortWithError(c, err)
+//			return
+//		}
+//		docxs = append(docxs, docx)
+//	}
+//	filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
+//	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+//	c.Data(200, "application/zip", docxs.zip())
+//}
 
 func getDOCXFromSiret(c *gin.Context) {
 	var s session
