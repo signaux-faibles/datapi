@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	ctx := context.Background()
 	testConfig := map[string]string{}
 	testConfig["postgres"] = test.GetDatapiDbURL()
-	wekanDbURL := test.GetWekanDbURL()
+	var wekanDbURL = test.GetWekanDbURL()
 	testConfig["wekanMgoURL"] = wekanDbURL
 
 	apiPort := generateRandomPort()
