@@ -14,5 +14,5 @@ func TestApi_Wekan_endpoint_is_configured(t *testing.T) {
 	path := "/kanban/config"
 	response := test.HTTPGet(t, path)
 
-	ass.Equal(http.StatusOK, response.StatusCode)
+	ass.Equal(http.StatusForbidden, response.StatusCode)
 }

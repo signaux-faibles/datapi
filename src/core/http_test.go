@@ -2,6 +2,7 @@ package core
 
 import (
 	"github.com/gin-gonic/gin"
+	"github.com/jaswdr/faker"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"net/http"
@@ -11,12 +12,11 @@ import (
 
 func init() {
 	viper.Set("keycloakClient", "signauxfaibles")
+	viper.Set("fakeUsernameKeycloak", faker.New().Internet().User())
 }
 
 func TestCheckAllRolesMiddleware(t *testing.T) {
 	ass := assert.New(t)
-
-	username := fake.Person().Name()
 
 	someRoles := generateSomeRoles()
 	otherRoles := generateSomeRoles()
@@ -34,6 +34,7 @@ func TestCheckAllRolesMiddleware(t *testing.T) {
 		{"tous les rôles nécessaires sont présents", args{neededRoles: someRoles, providedRoles: sameRolesAndMore}, http.StatusOK},
 		{"il manque au moins 1 rôle", args{neededRoles: sameRolesAndMore, providedRoles: someRoles}, http.StatusForbidden},
 		{"aucun rôle n'est nécessaire", args{neededRoles: nil, providedRoles: someRoles}, http.StatusOK},
+		{"l'utilisateur n'a aucun rôle", args{neededRoles: nil, providedRoles: nil}, http.StatusOK},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -42,7 +43,7 @@ func TestCheckAllRolesMiddleware(t *testing.T) {
 			routeur.Handle(
 				"GET",
 				"/test/any_roles",
-				addFakeRolesMiddleware(username, tt.args.providedRoles...),
+				addFakeRolesMiddleware(tt.args.providedRoles...),
 				CheckAllRolesMiddleware(tt.args.neededRoles...),
 				ok,
 			)
@@ -59,8 +60,6 @@ func TestCheckAllRolesMiddleware(t *testing.T) {
 
 func TestCheckAnyRolesMiddleware(t *testing.T) {
 	ass := assert.New(t)
-
-	username := fake.Person().Name()
 
 	aPreciseRole := fake.Color().ColorName()
 
@@ -89,7 +88,7 @@ func TestCheckAnyRolesMiddleware(t *testing.T) {
 			routeur.Handle(
 				"GET",
 				"/test/any_roles",
-				addFakeRolesMiddleware(username, tt.args.providedRoles...),
+				addFakeRolesMiddleware(tt.args.providedRoles...),
 				CheckAnyRolesMiddleware(tt.args.neededRoles...),
 				ok,
 			)

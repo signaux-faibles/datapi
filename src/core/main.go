@@ -205,7 +205,7 @@ func AdminAuthMiddleware(c *gin.Context) {
 }
 
 func configureKanbanEndpoint(path string, api *gin.Engine) {
-	kanban := api.Group(path, AuthMiddleware(), LogMiddleware)
+	kanban := api.Group(path, AuthMiddleware(), CheckAnyRolesMiddleware("kanban"), LogMiddleware)
 	kanban.GET("/config", kanbanConfigHandler)
 }
 

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"log"
 	"net/http"
 	"strings"
@@ -82,24 +83,29 @@ func keycloakMiddleware(c *gin.Context) {
 }
 
 func fakeCloakMiddleware(c *gin.Context) {
-	var fakeRoles []interface{}
-	for _, r := range viper.GetStringSlice("fakeKeycloakRoles") {
-		fakeRoles = append(fakeRoles, r)
-	}
+	var fakeRoles []string
+	fakeRoles = append(fakeRoles, viper.GetStringSlice("fakeKeycloakRoles")...)
+	middleware := addFakeRolesMiddleware(fakeRoles...)
+	middleware(c)
+}
 
-	var claims = jwt.MapClaims{
-		"resource_access": map[string]interface{}{
-			viper.GetString("keycloakClient"): map[string]interface{}{
-				"roles": fakeRoles,
+// addFakeRolesMiddleware ajoute les roles passés en paramètre dans le contexte `gin`
+// comme s'il s'agissait de roles venant de keycloak
+func addFakeRolesMiddleware(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var claims = jwt.MapClaims{
+			"resource_access": map[string]interface{}{
+				viper.GetString("keycloakClient"): map[string]interface{}{
+					"roles": toInterfaces(roles),
+				},
 			},
-		},
-	}
+		}
 
-	c.Set("username", viper.GetString("fakeUsernameKeycloak"))
-	c.Set("given_name", "John")
-	c.Set("family_name", "Doe")
-	c.Set("claims", &claims)
-	c.Next()
+		c.Set("username", viper.GetString("fakeUsernameKeycloak"))
+		c.Set("given_name", "John")
+		c.Set("family_name", "Doe")
+		c.Set("claims", &claims)
+	}
 }
 
 func scopeFromClaims(claims *jwt.MapClaims) Scope {
@@ -139,59 +145,6 @@ func scopeFromContext(c *gin.Context) Scope {
 	return roles
 }
 
-//// supprimer la duplication reference / departements + region
-//func (sc Scope) zoneGeo() []string {
-//	var zone []string
-//	for _, role := range sc {
-//		departements := db.GetDepartementForRole(role)
-//		zone = append(zone, departements...)
-//	}
-//	for _, s := range sc {
-//		zone = append(zone, s)
-//	}
-//
-//	compareRoles(sc, zone)
-//
-//	return zone
-//}
-//
-//func compareRoles(first, second []string) {
-//	left := unique(first)
-//	right := unique(second)
-//	//sort.Strings(left)
-//	//sort.Strings(right)
-//	var onlyLeft []string
-//	for _, item := range left {
-//		if !utils.Contains(right, item) {
-//			onlyLeft = append(onlyLeft, item)
-//		}
-//	}
-//	var onlyRight []string
-//	for _, item := range right {
-//		if !utils.Contains(left, item) {
-//			onlyRight = append(onlyRight, item)
-//		}
-//	}
-//	if len(onlyLeft) > 0 {
-//		log.Printf("only left : %s", onlyLeft)
-//	}
-//	if len(onlyRight) > 0 {
-//		log.Printf("only right : %s", onlyRight)
-//	}
-//}
-//
-//func unique(s []string) []string {
-//	inResult := make(map[string]bool)
-//	var result []string
-//	for _, str := range s {
-//		if _, ok := inResult[str]; !ok {
-//			inResult[str] = true
-//			result = append(result, str)
-//		}
-//	}
-//	return result
-//}
-
 type keycloakUser struct {
 	Username  *string `json:"username"`
 	FirstName *string `json:"firstName"`
@@ -208,4 +161,8 @@ func getUser(username string) (keycloakUser, error) {
 		&u.LastName,
 	)
 	return u, err
+}
+
+func toInterfaces[I any](items []I) []interface{} {
+	return utils.Convert(items, func(i I) interface{} { return interface{}(i) })
 }
