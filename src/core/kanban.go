@@ -1,13 +1,18 @@
 package core
 
 import (
+	"context"
+	"github.com/signaux-faibles/datapi/src/wekan"
 	"github.com/signaux-faibles/libwekan"
+	"time"
 )
 
 // KanbanService service définissant les méthodes de Kanban nécessaires dans Datapi
 // TODO il  faudrait changer les types `libwekan` en des types `datapi`
 type KanbanService interface {
 	LoadConfigForUser(username libwekan.Username) KanbanConfig
+	SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
+	SelectCardsForCurrentUser(ctx context.Context, params wekan.GetCardForUserParams) ([]libwekan.Card, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
 }
 
@@ -62,4 +67,24 @@ type KanbanConfig struct {
 	Boards       KanbanBoards                              `json:"boards"`
 	Users        KanbanUsers                               `json:"users"`
 	UserID       libwekan.UserID                           `json:"userID"`
+}
+
+type KanbanCard struct {
+	ID                libwekan.CardID         `json:"id,omitempty"`
+	ListID            libwekan.ListID         `json:"listID,omitempty"`
+	ListTitle         string                  `json:"listTitle,omitempty"`
+	Archived          bool                    `json:"archived"`
+	BoardID           libwekan.BoardID        `json:"boardID,omitempty"`
+	BoardTitle        libwekan.BoardTitle     `json:"boardTitle, omitempty"`
+	URL               string                  `json:"url,omitempty"`
+	Description       string                  `json:"description,omitempty"`
+	AssigneeIDs       []libwekan.UserID       `json:"assigneesID,omitempty"`
+	MemberIDs         []libwekan.UserID       `json:"memberIDs,omitempty"`
+	CreatorID         libwekan.UserID         `json:"creatorID,omitempty"`
+	Creator           libwekan.Username       `json:"creator,omitempty"`
+	LastActivity      time.Time               `json:"lastActivity,omitempty"`
+	StartAt           time.Time               `json:"startAt,omitempty"`
+	EndAt             *time.Time              `json:"endAt,omitempty"`
+	LabelIDs          []libwekan.BoardLabelID `json:"labelIds,omitempty"`
+	UserIsBoardMember bool                    `json:"userIsBoardMember"`
 }

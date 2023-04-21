@@ -24,6 +24,10 @@ func (s wekanService) GetUser(username libwekan.Username) (libwekan.User, bool) 
 	return wekanConfig.GetUserByUsername(username)
 }
 
+func (s wekanService) SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]core.KanbanCard, error) {
+	return selectCardsFromSiret(ctx, siret, username)
+}
+
 func InitService(ctx context.Context, dBURL, dBName, admin, slugDomainRegexp string) core.KanbanService {
 	var err error
 	wekan, err = libwekan.Init(ctx, dBURL, dBName, libwekan.Username(admin), slugDomainRegexp)

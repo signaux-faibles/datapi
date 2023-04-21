@@ -214,41 +214,41 @@ func (f *Follow) list(roles Scope) (Follows, utils.Jerror) {
 // Follows is a slice of Follows
 type Follows []Follow
 
-func getCardsForCurrentUser(c *gin.Context) {
-	var s session
-	s.Bind(c)
-	var params paramsGetCards
-	err := c.Bind(&params)
-	if err != nil {
-		c.JSON(400, fmt.Sprintf("parametre incorrect: %s", err.Error()))
-		return
-	}
-	types := []string{"no-card", "my-cards", "all-cards"}
-	if !utils.Contains(types, params.Type) {
-		c.AbortWithStatusJSON(400, fmt.Sprintf("`%s` n'est pas un type supporté", params.Type))
-		return
-	}
-	cards, err := getCards(s, params)
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
-	}
-	var follows = make(Follows, 0)
-	for _, s := range cards {
-		var f Follow
-		if s.Summary != nil {
-			if s.Summary.Since == nil {
-				f.Comment = *utils.Coalesce(s.Summary.Comment, &EmptyString)
-				f.Category = *utils.Coalesce(s.Summary.Category, &EmptyString)
-				f.Since = *utils.Coalesce(s.Summary.Since, &time.Time{})
-				f.Active = true
-			}
-			f.EtablissementSummary = s.Summary
-			follows = append(follows, f)
-		}
-	}
-	c.JSON(200, follows)
-}
+//func getCardsForCurrentUser(c *gin.Context) {
+//	var s session
+//	s.Bind(c)
+//	var params paramsGetCards
+//	err := c.Bind(&params)
+//	if err != nil {
+//		c.JSON(400, fmt.Sprintf("parametre incorrect: %s", err.Error()))
+//		return
+//	}
+//	types := []string{"no-card", "my-cards", "all-cards"}
+//	if !utils.Contains(types, params.Type) {
+//		c.AbortWithStatusJSON(400, fmt.Sprintf("`%s` n'est pas un type supporté", params.Type))
+//		return
+//	}
+//	cards, err := getCards(s, params)
+//	if err != nil {
+//		c.JSON(500, err.Error())
+//		return
+//	}
+//	var follows = make(Follows, 0)
+//	for _, s := range cards {
+//		var f Follow
+//		if s.Summary != nil {
+//			if s.Summary.Since == nil {
+//				f.Comment = *utils.Coalesce(s.Summary.Comment, &EmptyString)
+//				f.Category = *utils.Coalesce(s.Summary.Category, &EmptyString)
+//				f.Since = *utils.Coalesce(s.Summary.Since, &time.Time{})
+//				f.Active = true
+//			}
+//			f.EtablissementSummary = s.Summary
+//			follows = append(follows, f)
+//		}
+//	}
+//	c.JSON(200, follows)
+//}
 
 type paramsGetCards struct {
 	Type      string     `json:"type"`
@@ -278,98 +278,98 @@ func (cards Cards) dbExportsOnly() Cards {
 	return filtered
 }
 
-func getCards(s session, params paramsGetCards) ([]*Card, error) {
-	var cards []*Card
-	var cardsMap = make(map[string]*Card)
-	var sirets []string
-	var followedSirets []string
-	wcu := oldWekanConfig.forUser(s.Username)
-	userID := oldWekanConfig.userID(s.Username)
-	labelIds := wcu.labelIdsForLabels(params.Labels)
-	labelMode := params.LabelMode
-	if userID != "" && s.hasRole("wekan") && params.Type != "no-card" {
-		var username *string
-		if params.Type == "my-cards" {
-			username = &s.Username
-		}
-
-		if len(params.Boards) == 0 {
-			params.Boards = wcu.boardIds()
-		}
-		boardIds := params.Boards
-		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
-		listIds := wcu.listIdsForStatuts(params.Statut)
-		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
-		if err != nil {
-			return nil, err
-		}
-		for _, w := range wekanCards {
-			siret, err := w.Siret()
-			if err != nil {
-				continue
-			}
-			card := Card{nil, []*WekanCard{w}, nil}
-			cards = append(cards, &card)
-			cardsMap[siret] = &card
-			sirets = append(sirets, siret)
-			if utils.Contains(append(w.Members, w.Assignees...), userID) {
-				followedSirets = append(followedSirets, siret)
-			}
-		}
-		err = followSiretsFromWekan(s.Username, followedSirets)
-		if err != nil {
-			return nil, err
-		}
-		var ss summaries
-		cursor, err := db.Get().Query(context.Background(), sqlGetCards, s.roles, s.Username, sirets)
-		if err != nil {
-			return nil, err
-		}
-		for cursor.Next() {
-			s := ss.newSummary()
-			err := cursor.Scan(s...)
-			if err != nil {
-				return nil, err
-			}
-		}
-		for _, s := range ss.summaries {
-			cardsMap[s.Siret].Summary = s
-		}
-	} else {
-		boardIds := wcu.boardIds()
-		wekanCards, err := selectWekanCards(&s.Username, boardIds, nil, nil, nil, labelMode, nil)
-		if err != nil {
-			return nil, err
-		}
-		var excludeSirets = make(map[string]struct{})
-		for _, w := range wekanCards {
-			siret, err := w.Siret()
-			if err != nil {
-				continue
-			}
-			excludeSirets[siret] = struct{}{}
-		}
-		var ss summaries
-		cursor, err := db.Get().Query(context.Background(), sqlGetFollow, s.roles, s.Username, params.Zone)
-		if err != nil {
-			return nil, err
-		}
-		for cursor.Next() {
-			s := ss.newSummary()
-			err := cursor.Scan(s...)
-			if err != nil {
-				return nil, err
-			}
-		}
-		for _, s := range ss.summaries {
-			if _, ok := excludeSirets[s.Siret]; !ok {
-				card := Card{s, nil, nil}
-				cards = append(cards, &card)
-			}
-		}
-	}
-	return cards, nil
-}
+//func getCards(s session, params paramsGetCards) ([]*Card, error) {
+//	var cards []*Card
+//	var cardsMap = make(map[string]*Card)
+//	var sirets []string
+//	var followedSirets []string
+//	wcu := oldWekanConfig.forUser(s.Username)
+//	userID := oldWekanConfig.userID(s.Username)
+//	labelIds := wcu.labelIdsForLabels(params.Labels)
+//	labelMode := params.LabelMode
+//	if userID != "" && s.hasRole("wekan") && params.Type != "no-card" {
+//		var username *string
+//		if params.Type == "my-cards" {
+//			username = &s.Username
+//		}
+//
+//		if len(params.Boards) == 0 {
+//			params.Boards = wcu.boardIds()
+//		}
+//		boardIds := params.Boards
+//		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
+//		listIds := wcu.listIdsForStatuts(params.Statut)
+//		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
+//		if err != nil {
+//			return nil, err
+//		}
+//		for _, w := range wekanCards {
+//			siret, err := w.Siret()
+//			if err != nil {
+//				continue
+//			}
+//			card := Card{nil, []*WekanCard{w}, nil}
+//			cards = append(cards, &card)
+//			cardsMap[siret] = &card
+//			sirets = append(sirets, siret)
+//			if utils.Contains(append(w.Members, w.Assignees...), userID) {
+//				followedSirets = append(followedSirets, siret)
+//			}
+//		}
+//		err = followSiretsFromWekan(s.Username, followedSirets)
+//		if err != nil {
+//			return nil, err
+//		}
+//		var ss summaries
+//		cursor, err := db.Get().Query(context.Background(), sqlGetCards, s.roles, s.Username, sirets)
+//		if err != nil {
+//			return nil, err
+//		}
+//		for cursor.Next() {
+//			s := ss.newSummary()
+//			err := cursor.Scan(s...)
+//			if err != nil {
+//				return nil, err
+//			}
+//		}
+//		for _, s := range ss.summaries {
+//			cardsMap[s.Siret].Summary = s
+//		}
+//	} else {
+//		boardIds := wcu.boardIds()
+//		wekanCards, err := selectWekanCards(&s.Username, boardIds, nil, nil, nil, labelMode, nil)
+//		if err != nil {
+//			return nil, err
+//		}
+//		var excludeSirets = make(map[string]struct{})
+//		for _, w := range wekanCards {
+//			siret, err := w.Siret()
+//			if err != nil {
+//				continue
+//			}
+//			excludeSirets[siret] = struct{}{}
+//		}
+//		var ss summaries
+//		cursor, err := db.Get().Query(context.Background(), sqlGetFollow, s.roles, s.Username, params.Zone)
+//		if err != nil {
+//			return nil, err
+//		}
+//		for cursor.Next() {
+//			s := ss.newSummary()
+//			err := cursor.Scan(s...)
+//			if err != nil {
+//				return nil, err
+//			}
+//		}
+//		for _, s := range ss.summaries {
+//			if _, ok := excludeSirets[s.Siret]; !ok {
+//				card := Card{s, nil, nil}
+//				cards = append(cards, &card)
+//			}
+//		}
+//	}
+//	return cards, nil
+//}
 
 func followSiretsFromWekan(username string, sirets []string) error {
 	tx, err := db.Get().Begin(context.Background())

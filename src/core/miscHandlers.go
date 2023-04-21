@@ -5,6 +5,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
+	"github.com/signaux-faibles/datapi/src/wekan"
 	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"regexp"
@@ -61,6 +62,46 @@ func kanbanConfigHandler(c *gin.Context) {
 	s.Bind(c)
 	kanbanConfig := kanban.LoadConfigForUser(libwekan.Username(s.Username))
 	c.JSON(http.StatusOK, kanbanConfig)
+}
+
+func kanbanGetCardsHandler(c *gin.Context) {
+	var s session
+	s.Bind(c)
+	siret := c.Param("siret")
+
+	cards, err := kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	if len(cards) > 0 {
+		c.JSON(200, cards)
+	} else {
+		c.JSON(204, cards)
+	}
+}
+
+func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
+
+	var params = wekan.GetCardForUserParams{}
+	c.Bind(&params)
+
+	var s session
+	s.Bind(c)
+
+	params.Username = libwekan.Username(s.Username)
+
+	cards, err := kanban.SelectCardsForCurrentUser(c, params)
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+	if len(cards) > 0 {
+		c.JSON(200, cards)
+	} else {
+		c.JSON(204, cards)
+	}
 }
 
 // session correspond aux informations du user de la session
