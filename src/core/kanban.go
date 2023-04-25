@@ -2,7 +2,7 @@ package core
 
 import (
 	"context"
-	"github.com/signaux-faibles/datapi/src/wekan"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/libwekan"
 	"time"
 )
@@ -12,7 +12,7 @@ import (
 type KanbanService interface {
 	LoadConfigForUser(username libwekan.Username) KanbanConfig
 	SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
-	SelectCardsForCurrentUser(ctx context.Context, params wekan.GetCardForUserParams) ([]libwekan.Card, error)
+	SelectCardsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) ([]*Summary, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
 }
 
@@ -75,7 +75,7 @@ type KanbanCard struct {
 	ListTitle         string                  `json:"listTitle,omitempty"`
 	Archived          bool                    `json:"archived"`
 	BoardID           libwekan.BoardID        `json:"boardID,omitempty"`
-	BoardTitle        libwekan.BoardTitle     `json:"boardTitle, omitempty"`
+	BoardTitle        libwekan.BoardTitle     `json:"boardTitle,omitempty"`
 	URL               string                  `json:"url,omitempty"`
 	Description       string                  `json:"description,omitempty"`
 	AssigneeIDs       []libwekan.UserID       `json:"assigneesID,omitempty"`
@@ -87,4 +87,20 @@ type KanbanCard struct {
 	EndAt             *time.Time              `json:"endAt,omitempty"`
 	LabelIDs          []libwekan.BoardLabelID `json:"labelIds,omitempty"`
 	UserIsBoardMember bool                    `json:"userIsBoardMember"`
+}
+
+type KanbanSelectCardsForUserParams struct {
+	User      libwekan.User             `json:"-"`
+	Type      string                    `json:"type"`
+	Zone      []string                  `json:"zone"`
+	BoardIDs  []libwekan.BoardID        `json:"boardIDs"`
+	Labels    []libwekan.BoardLabelName `json:"labels"`
+	Since     *time.Time                `json:"since"`
+	Lists     []string                  `json:"lists"`
+	LabelMode string                    `json:"labelMode"`
+}
+
+type KanbanFollows struct {
+	Count   int       `json:"count"`
+	Follows []Summary `json:"summaries"`
 }

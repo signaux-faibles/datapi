@@ -97,7 +97,7 @@ func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 
 	var search searchResult
 
-	search.Results = summaries.summaries
+	search.Results = summaries.Summaries
 	if summaries.global.count != nil {
 		search.Total = *summaries.global.count
 		search.NBF1 = *summaries.global.countF1
