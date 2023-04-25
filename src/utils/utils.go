@@ -26,7 +26,7 @@ func Convert[I interface{}, O interface{}](values []I, transformer func(I) O) []
 	return output
 }
 
-// Contains retourne `vrai` si array contient `test`
+// Contains retourne `vrai` si le slice `values` contient l'élément `searched`
 func Contains[T interface{}](values []T, searched T) bool {
 	return ContainsOnConditions(
 		values,

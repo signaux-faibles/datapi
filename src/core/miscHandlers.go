@@ -2,10 +2,10 @@ package core
 
 import (
 	"context"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
-	"github.com/signaux-faibles/datapi/src/wekan"
 	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"regexp"
@@ -82,16 +82,30 @@ func kanbanGetCardsHandler(c *gin.Context) {
 }
 
 func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
-
-	var params = wekan.GetCardForUserParams{}
-	c.Bind(&params)
-
 	var s session
 	s.Bind(c)
 
-	params.Username = libwekan.Username(s.Username)
+	var params = KanbanSelectCardsForUserParams{}
+	err := c.Bind(&params)
+	if err != nil {
+		c.JSON(400, err.Error())
+		return
+	}
 
-	cards, err := kanban.SelectCardsForCurrentUser(c, params)
+	types := []string{"no-card", "my-cards", "all-cards"}
+	if !utils.Contains(types, params.Type) {
+		c.AbortWithStatusJSON(400, fmt.Sprintf("`%s` n'est pas un type supporté", params.Type))
+		return
+	}
+
+	var ok bool
+	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+	if !ok {
+		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
+		return
+	}
+
+	cards, err := kanban.SelectCardsForUser(c, params, db.Get(), s.roles)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -100,7 +114,7 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	if len(cards) > 0 {
 		c.JSON(200, cards)
 	} else {
-		c.JSON(204, cards)
+		c.JSON(204, []string{})
 	}
 }
 

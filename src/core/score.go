@@ -223,7 +223,7 @@ func (liste *Liste) getScores(roles Scope, page int, limit *int, username string
 		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 
-	scores := summaries.summaries
+	scores := summaries.Summaries
 	// TODO: harmoniser les types de sorties pour éviter les remaniements
 	if summaries.global.count != nil {
 		liste.Total = *summaries.global.count
@@ -251,7 +251,7 @@ func findAllListes() ([]Liste, error) {
 	rows, err := db.Get().Query(context.Background(), `
 		select algo, batch, libelle, description from liste l
 		left join liste_description d on d.libelle_liste = l.libelle
-		where version=0 order by batch desc, algo asc
+		where version=0 order by batch desc, algo
 	`)
 	if err != nil {
 		return nil, err
