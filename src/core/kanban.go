@@ -108,8 +108,8 @@ type KanbanFollows struct {
 }
 
 type KanbanNewCardParams struct {
-	SwimlaneID  libwekan.SwimlaneID     `json:"swimlaneID"`
-	Description string                  `json:"description"`
-	LabelIDs    []libwekan.BoardLabelID `json:"labelIDs"`
-	Siret       Siret                   `json:"siret"`
+	SwimlaneID  libwekan.SwimlaneID       `json:"swimlaneID"`
+	Description string                    `json:"description"`
+	Labels      []libwekan.BoardLabelName `json:"labels"`
+	Siret       Siret                     `json:"siret"`
 }
