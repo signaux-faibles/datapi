@@ -52,7 +52,12 @@ func selectCardsFromSiret(ctx context.Context, siret string, username libwekan.U
 }
 
 func wekanCardURL(wekanCard libwekan.Card) string {
-	return viper.GetString("wekanURL") + "b/" + string(wekanCard.BoardID) + "/" + string(wekanConfig.Boards[wekanCard.BoardID].Board.Slug)
+	return fmt.Sprintf("%sb/%s/%s/%s",
+		viper.GetString("wekanURL"),
+		string(wekanCard.BoardID),
+		string(wekanConfig.Boards[wekanCard.BoardID].Board.Slug),
+		wekanCard.ID,
+	)
 }
 
 func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.KanbanCard {
@@ -76,6 +81,7 @@ func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.
 			card.BoardID = wekanCard.BoardID
 			card.CreatorID = wekanCard.UserID
 			card.AssigneeIDs = wekanCard.Assignees
+			card.SwimlaneID = wekanCard.SwimlaneID
 			card.LabelIDs = wekanCard.LabelIDs
 			card.MemberIDs = wekanCard.Members
 			card.Description = wekanCard.Description
