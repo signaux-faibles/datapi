@@ -3,10 +3,12 @@ package wekan
 import (
 	"context"
 	"github.com/signaux-faibles/datapi/src/core"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/signaux-faibles/libwekan"
 	"github.com/spf13/viper"
 )
 
+// CreateCard permet la création d'une carte dans la base de données wekan
 func (s wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username) error {
 	user, ok := GetUser(username)
 	if !ok {
@@ -24,7 +26,7 @@ func (s wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardP
 	if err != nil {
 		return err
 	}
-	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, etablissement)
+	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, etablissement, params.Labels)
 	if err != nil {
 		return err
 	}
@@ -39,18 +41,35 @@ func buildCard(
 	siret core.Siret,
 	user libwekan.User,
 	etablissement core.EtablissementData,
+	labels []libwekan.BoardLabelName,
 ) (libwekan.Card, error) {
+	card := libwekan.BuildCard(configBoard.Board.ID, listID, swimlaneID, etablissement.RaisonSociale, description, user.ID)
+
+	// le créateur de la carte est assigné automatiquement
+	card.Assignees = []libwekan.UserID{user.ID}
+
 	activiteField := buildActiviteField(configBoard, etablissement.CodeActivite, etablissement.LibelleActivite)
 	effectifField := buildEffectifField(configBoard, etablissement.Effectif)
 	contactField := buildContactField(configBoard)
 	siretField := buildSiretField(configBoard, siret)
 	ficheField := buildFicheField(configBoard, siret)
-
-	card := libwekan.BuildCard(configBoard.Board.ID, listID, swimlaneID, etablissement.RaisonSociale, description, user.ID)
 	card.CustomFields = []libwekan.CardCustomField{activiteField, effectifField, contactField, siretField, ficheField}
-	card.Members = []libwekan.UserID{user.ID}
+
+	labelIDs := utils.Convert(labels, labelNameToIDConvertor(configBoard))
+	card.LabelIDs = labelIDs
 
 	return card, nil
+}
+
+func labelNameToIDConvertor(board libwekan.ConfigBoard) func(libwekan.BoardLabelName) libwekan.BoardLabelID {
+	return func(name libwekan.BoardLabelName) libwekan.BoardLabelID {
+		for _, label := range board.Board.Labels {
+			if label.Name == name {
+				return label.ID
+			}
+		}
+		return ""
+	}
 }
 
 func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, error) {
@@ -114,11 +133,23 @@ func buildEffectifField(configBoard libwekan.ConfigBoard, effectif int) libwekan
 		}
 	}
 
-	id := configBoard.CustomFields.CustomFieldID("Effectif")
+	customFieldID := configBoard.CustomFields.CustomFieldID("Effectif")
 	if effectifIndex >= 0 {
-		return libwekan.CardCustomField{id, effectifItems[effectifIndex]}
+		item := effectifItems[effectifIndex]
+		customFieldValueID := customFieldDropdownValueToID(configBoard, item)
+		return libwekan.CardCustomField{customFieldID, customFieldValueID}
 	}
-	return libwekan.CardCustomField{id, ""}
+	return libwekan.CardCustomField{customFieldID, ""}
+}
+
+func customFieldDropdownValueToID(configBoard libwekan.ConfigBoard, value string) string {
+	id := configBoard.CustomFields.CustomFieldID("Effectif")
+	for _, field := range configBoard.CustomFields[id].Settings.DropdownItems {
+		if field.Name == value {
+			return field.ID
+		}
+	}
+	return ""
 }
 
 func buildContactField(configBoard libwekan.ConfigBoard) libwekan.CardCustomField {
