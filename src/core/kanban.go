@@ -14,6 +14,7 @@ type KanbanService interface {
 	SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	SelectCardsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) ([]*Summary, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
+	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
@@ -76,6 +77,7 @@ type KanbanCard struct {
 	Archived          bool                    `json:"archived"`
 	BoardID           libwekan.BoardID        `json:"boardID,omitempty"`
 	BoardTitle        libwekan.BoardTitle     `json:"boardTitle,omitempty"`
+	SwimlaneID        libwekan.SwimlaneID     `json:"swimlaneID,omitempty"`
 	URL               string                  `json:"url,omitempty"`
 	Description       string                  `json:"description,omitempty"`
 	AssigneeIDs       []libwekan.UserID       `json:"assigneesID,omitempty"`
@@ -103,4 +105,11 @@ type KanbanSelectCardsForUserParams struct {
 type KanbanFollows struct {
 	Count   int       `json:"count"`
 	Follows []Summary `json:"summaries"`
+}
+
+type KanbanNewCardParams struct {
+	SwimlaneID  libwekan.SwimlaneID     `json:"swimlaneID"`
+	Description string                  `json:"description"`
+	LabelIDs    []libwekan.BoardLabelID `json:"labelIDs"`
+	Siret       Siret                   `json:"siret"`
 }

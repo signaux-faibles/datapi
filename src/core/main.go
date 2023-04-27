@@ -76,7 +76,10 @@ func InitAPI(router *gin.Engine) {
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
-	router.SetTrustedProxies(nil)
+	err := router.SetTrustedProxies(nil)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	entreprise := router.Group("/entreprise", AuthMiddleware(), LogMiddleware)
 	entreprise.GET("/viewers/:siren", checkSirenFormat, getEntrepriseViewers)
@@ -120,7 +123,6 @@ func InitAPI(router *gin.Engine) {
 	fce.GET("/:siret", checkSiretFormat, getFceURL)
 
 	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
-	//wekan.GET("/cards/:siret", checkSiretFormat, wekanGetCardsHandler)
 	//wekan.POST("/cards/:siret", checkSiretFormat, wekanNewCardHandler)
 	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
 	wekan.GET("/join/:cardId", wekanJoinCardHandler)
@@ -208,6 +210,7 @@ func configureKanbanEndpoint(path string, api *gin.Engine) {
 	kanban.GET("/config", kanbanConfigHandler)
 	kanban.GET("/cards/:siret", kanbanGetCardsHandler)
 	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)
+	kanban.POST("/card", kanbanNewCardHandler)
 }
 
 // True made global to ease pointers
