@@ -59,15 +59,15 @@ type Summary struct {
 
 type Summaries struct {
 	//summaryParams summaryParams
-	global struct {
-		count    *int
-		countF1  *int
-		countF2  *int
+	Global struct {
+		Count    *int `json:"count"`
+		CountF1  *int `json:"countF1"`
+		CountF2  *int `json:"countF2"`
 		comment  *string
 		category *string
 		since    *string
-	}
-	Summaries []*Summary
+	} `json:"stats"`
+	Summaries []*Summary `json:"summaries"`
 }
 
 func (summaries *Summaries) NewSummary() []interface{} {
@@ -100,9 +100,9 @@ func (summaries *Summaries) NewSummary() []interface{} {
 		&s.HausseUrssaf,
 		&s.DetteUrssaf,
 		&s.Alert,
-		&summaries.global.count,
-		&summaries.global.countF1,
-		&summaries.global.countF2,
+		&summaries.Global.Count,
+		&summaries.Global.CountF1,
+		&summaries.Global.CountF2,
 		&s.Visible,
 		&s.InZone,
 		&s.Followed,

@@ -253,7 +253,7 @@ type Follows []Follow
 type Card struct {
 	Summary    *Summary     `json:"summary"`
 	WekanCards []*WekanCard `json:"wekanCard"`
-	dbExport   *dbExport
+	dbExport   *KanbanDBExport
 }
 
 type Cards []*Card

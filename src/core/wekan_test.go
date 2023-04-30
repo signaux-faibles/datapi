@@ -23,7 +23,7 @@ func loadCardsFromFile(cards *WekanCards, path string) error {
 	return err
 }
 
-func loadFollowExportsFromFile(exports *dbExports, path string) error {
+func loadFollowExportsFromFile(exports *KanbanDBExports, path string) error {
 	fileContent, err := os.ReadFile(path)
 	if err != nil {
 		return err
@@ -43,7 +43,7 @@ func readTestData() (Cards, error) {
 	var cardIndex = make(map[string]*Card)
 	var cards Cards
 
-	var exports dbExports
+	var exports KanbanDBExports
 	err = loadFollowExportsFromFile(&exports, "../../test/wekan/followExports.json")
 	if err != nil {
 		return nil, errors.New("can't read follow exports: " + err.Error())
@@ -68,7 +68,7 @@ func readTestData() (Cards, error) {
 }
 
 func Test_WekanExportsDOCX(t *testing.T) {
-	t.Log("WekanExports can generate a non-zero length docx file")
+	t.Log("KanbanExports can generate a non-zero length docx file")
 	cards, err := readTestData()
 
 	if err != nil {
@@ -112,7 +112,7 @@ func Test_WekanExportsDOCX(t *testing.T) {
 }
 
 func Test_WekanExportsXLSX(t *testing.T) {
-	t.Log("WekanExports can generate a non-zero length xlsx file")
+	t.Log("KanbanExports can generate a non-zero length xlsx file")
 	wekanExports, err := readTestData()
 	if err != nil {
 		t.Error(err.Error())

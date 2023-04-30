@@ -92,3 +92,43 @@ func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.
 		return card
 	}
 }
+
+func (s wekanService) ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]core.KanbanCard, error) {
+	pipeline := wekan.BuildCardFromCustomTextFieldPipeline("SIRET", siret)
+
+	lookupCommentsStage := bson.M{
+		"$lookup": bson.M{
+			"from":         "card_comments",
+			"localField":   "_id",
+			"foreignField": "cardId",
+			"as":           "lastActivity",
+		},
+	}
+
+	replaceDateLastActivityStage := bson.M{
+		"$addFields": bson.M{
+			"dateLastActivity": bson.M{
+				"$max": bson.A{
+					bson.M{"$max": "$lastActivity.modifiedAt"},
+					"$dateLastActivity",
+				},
+			},
+		},
+	}
+
+	removeLastActivityStage := bson.M{
+		"$project": bson.M{
+			"lastActivity": false,
+		},
+	}
+
+	pipeline = append(pipeline, lookupCommentsStage, replaceDateLastActivityStage, removeLastActivityStage)
+
+	cards, err := wekan.SelectCardsFromPipeline(ctx, "customFields", pipeline)
+	if err != nil {
+		return nil, err
+	}
+	a, _ := json.MarshalIndent(pipeline, "", "  ")
+	fmt.Println(string(a))
+	return utils.Convert(cards, wekanCardToKanbanCard(username)), nil
+}

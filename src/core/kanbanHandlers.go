@@ -58,13 +58,13 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 		return
 	}
 
-	cards, err := kanban.SelectCardsForUser(c, params, db.Get(), s.roles)
+	cards, err := kanban.SelectFollowsForUser(c, params, db.Get(), s.roles)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
-	if len(cards) > 0 {
+	if len(cards.Summaries) > 0 {
 		c.JSON(200, cards)
 	} else {
 		c.JSON(204, []string{})
