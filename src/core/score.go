@@ -225,10 +225,10 @@ func (liste *Liste) getScores(roles Scope, page int, limit *int, username string
 
 	scores := summaries.Summaries
 	// TODO: harmoniser les types de sorties pour éviter les remaniements
-	if summaries.global.count != nil {
-		liste.Total = *summaries.global.count
-		liste.NbF1 = *summaries.global.countF1
-		liste.NbF2 = *summaries.global.countF2
+	if summaries.Global.Count != nil {
+		liste.Total = *summaries.Global.Count
+		liste.NbF1 = *summaries.Global.CountF1
+		liste.NbF2 = *summaries.Global.CountF2
 	}
 
 	if limit == nil {

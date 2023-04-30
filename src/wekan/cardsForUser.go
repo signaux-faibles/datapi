@@ -11,21 +11,36 @@ import (
 	"time"
 )
 
-func (w wekanService) SelectCardsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) ([]*core.Summary, error) {
+type Etablissements struct {
+	summaries  core.Summaries
+	wekanCards []libwekan.Card
+}
+
+func selectWekanSummariesForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
 	wc := wekanConfig.Copy()
 	pipeline := buildCardsForUserPipeline(wc, params)
+	pipeline.AppendStage(bson.M{
+		"$project": bson.M{
+			"boardId":      true,
+			"customFields": true,
+		},
+	})
+
 	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
+
 	if err != nil {
-		return nil, err
+		return core.Summaries{}, err
 	}
 	sirets := utils.Convert(cards, cardToSiret(wc))
-
 	if params.Type == "my-cards" {
-		followSiretsFromWekan(ctx, params.User.Username, sirets)
+		err := followSiretsFromWekan(ctx, params.User.Username, sirets)
+		if err != nil {
+			return core.Summaries{}, err
+		}
 	}
 	// my-cards et all-cards utilisent la même méthode
 	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
-		summaries, err := selectSummariesWithSirets(ctx, sirets, db, params.User, roles, params.Zone)
+		summaries, err := selectSummariesWithSirets(ctx, sirets, db, params.User, roles, params.Zone, 100)
 		return summaries, err
 	}
 	// no-cards retourne les suivis datapi sans carte kanban
@@ -47,11 +62,11 @@ func selectSummariesWithoutCard(
 	user libwekan.User,
 	roles []string,
 	zone []string,
-) ([]*core.Summary, error) {
+) (core.Summaries, error) {
 	rows, err := db.Query(ctx, SqlGetFollow, roles, user.Username, zone, sirets)
 	defer rows.Close()
 	if err != nil {
-		return nil, err
+		return core.Summaries{}, err
 	}
 
 	var summaries core.Summaries
@@ -59,11 +74,11 @@ func selectSummariesWithoutCard(
 		s := summaries.NewSummary()
 		err := rows.Scan(s...)
 		if err != nil {
-			return nil, err
+			return core.Summaries{}, err
 		}
 	}
 
-	return summaries.Summaries, nil
+	return summaries, nil
 }
 
 func selectSummariesWithSirets(
@@ -73,11 +88,12 @@ func selectSummariesWithSirets(
 	user libwekan.User,
 	roles []string,
 	zone []string,
-) ([]*core.Summary, error) {
-	rows, err := db.Query(ctx, SqlGetCards, roles, user.Username, sirets, zone)
+	limit int,
+) (core.Summaries, error) {
+	rows, err := db.Query(ctx, SqlGetCards, roles, user.Username, sirets, zone, limit)
 	defer rows.Close()
 	if err != nil {
-		return nil, err
+		return core.Summaries{}, err
 	}
 
 	var summaries core.Summaries
@@ -85,11 +101,11 @@ func selectSummariesWithSirets(
 		s := summaries.NewSummary()
 		err := rows.Scan(s...)
 		if err != nil {
-			return nil, err
+			return core.Summaries{}, err
 		}
 	}
 
-	return summaries.Summaries, nil
+	return summaries, nil
 }
 
 func buildCardsForUserPipeline(wc libwekan.Config, params core.KanbanSelectCardsForUserParams) libwekan.Pipeline {
@@ -271,4 +287,14 @@ func buildMatchBoardIDsStage(boardIDs []libwekan.BoardID) bson.M {
 			},
 		},
 	}
+}
+
+func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
+	etablissements, err := selectWekanSummariesForUser(ctx, params, db, roles)
+	return etablissements.summaries, err
+}
+
+func (w wekanService) SelectFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
+	etablissements, err := selectWekanSummariesForUser(ctx, params, db, roles)
+	return etablissements.summaries, err
 }

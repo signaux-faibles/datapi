@@ -2,6 +2,7 @@ package wekan
 
 import (
 	"context"
+	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/libwekan"
 )
@@ -12,10 +13,10 @@ func followSiretsFromWekan(ctx context.Context, username libwekan.Username, sire
 		return err
 	}
 	if _, err := tx.Exec(ctx, sqlCreateTmpFollowWekan, sirets, username); err != nil {
-		return err
+		return core.DatabaseExecutionError{"sqlCreateTmpFollowWekan"}
 	}
 	if _, err := tx.Exec(ctx, sqlFollowFromTmp, username); err != nil {
-		return err
+		return core.DatabaseExecutionError{"sqlFollowFromTmp"}
 	}
 	return tx.Commit(ctx)
 }

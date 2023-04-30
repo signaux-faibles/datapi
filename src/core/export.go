@@ -4,10 +4,8 @@ import (
 	"archive/zip"
 	"bufio"
 	"bytes"
-	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"net/http"
 	"os/exec"
@@ -19,164 +17,30 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
-// ExportHeader contient l'entête d'un document d'export
-type ExportHeader struct {
-	Auteur string
-	Date   time.Time
-}
-
-// WekanExports array of WekanExport
-type WekanExports []WekanExport
-
-// WekanExport fournit les champs nécessaires pour l'export Wekan
-type WekanExport struct {
-	RaisonSociale              string    `json:"raison_sociale"`
-	Siret                      string    `json:"siret"`
-	TypeEtablissement          string    `json:"type_etablissement"`
-	TeteDeGroupe               string    `json:"tete_de_groupe"`
-	Departement                string    `json:"departement"`
-	Commune                    string    `json:"commune"`
-	TerritoireIndustrie        string    `json:"territoire_industrie"`
-	SecteurActivite            string    `json:"secteur_activite"`
-	Activite                   string    `json:"activite"`
-	SecteursCovid              string    `json:"secteurs_covid"`
-	StatutJuridique            string    `json:"statut_juridique"`
-	DateOuvertureEtablissement string    `json:"date_ouverture_etablissement"`
-	DateCreationEntreprise     string    `json:"date_creation_entreprise"`
-	Effectif                   string    `json:"effectif"`
-	ActivitePartielle          string    `json:"activite_partielle"`
-	DetteSociale               string    `json:"dette_sociale"`
-	PartSalariale              string    `json:"part_salariale"`
-	AnneeExercice              string    `json:"annee_exercice"`
-	ChiffreAffaire             string    `json:"ca"`
-	ExcedentBrutExploitation   string    `json:"ebe"`
-	ResultatExploitation       string    `json:"rex"`
-	ProcedureCollective        string    `json:"procol"`
-	DetectionSF                string    `json:"detection_sf"`
-	DateDebutSuivi             string    `json:"date_debut_suivi"`
-	DateFinSuivi               string    `json:"date_fin_suivi"`
-	DescriptionWekan           string    `json:"description_wekan"`
-	Labels                     []string  `json:"labels"`
-	Board                      string    `json:"-"`
-	LastActivity               time.Time `json:"lastActivity"`
-}
-
-type dbExport struct {
-	Siret                             string    `json:"siret"`
-	RaisonSociale                     string    `json:"raisonSociale"`
-	CodeDepartement                   string    `json:"codeDepartement"`
-	LibelleDepartement                string    `json:"libelleDepartement"`
-	Commune                           string    `json:"commune"`
-	CodeTerritoireIndustrie           string    `json:"codeTerritoireIndustrie"`
-	LibelleTerritoireIndustrie        string    `json:"libelleTerritoireIndustrie"`
-	Siege                             bool      `json:"siege"`
-	TeteDeGroupe                      string    `json:"teteDeGroupe"`
-	CodeActivite                      string    `json:"codeActivite"`
-	LibelleActivite                   string    `json:"libelleActivite"`
-	SecteurActivite                   string    `json:"secteurActivite"`
-	StatutJuridiqueN1                 string    `json:"statutJuridiqueN1"`
-	StatutJuridiqueN2                 string    `json:"statutJuridiqueN2"`
-	StatutJuridiqueN3                 string    `json:"statutJuridiqueN3"`
-	DateOuvertureEtablissement        time.Time `json:"dateOuvertureEtablissement"`
-	DateCreationEntreprise            time.Time `json:"dateCreationEntreprise"`
-	DernierEffectif                   int       `json:"dernierEffecti"`
-	DateDernierEffectif               time.Time `json:"dateDernierEffectif"`
-	DateArreteBilan                   time.Time `json:"dateArreteBilan"`
-	ExerciceDiane                     int       `json:"exerciceDiane"`
-	ChiffreAffaire                    float64   `json:"chiffreAffaire"`
-	ChiffreAffairePrecedent           float64   `json:"chiffreAffairePrecedent"`
-	VariationCA                       float64   `json:"variationCA"`
-	ResultatExploitation              float64   `json:"resultatExploitation"`
-	ResultatExploitationPrecedent     float64   `json:"resultatExploitationPrecedent"`
-	ExcedentBrutExploitation          float64   `json:"excedentBrutExploitation"`
-	ExcedentBrutExploitationPrecedent float64   `json:"excedentBrutExploitationPrecedent"`
-	DerniereListe                     string    `json:"derniereListe"`
-	DerniereAlerte                    string    `json:"derniereAlerte"`
-	ActivitePartielle                 bool      `json:"activitePartielle"`
-	DetteSociale                      bool      `json:"detteSociale"`
-	PartSalariale                     bool      `json:"partSalariale"`
-	DateUrssaf                        time.Time `json:"dateUrssaf"`
-	ProcedureCollective               string    `json:"procedureCollective"`
-	DateProcedureCollective           time.Time `json:"dateProcedureCollective"`
-	DateDebutSuivi                    time.Time `json:"dateDebutSuivi"`
-	CommentSuivi                      string    `json:"commentSuivi"`
-	InZone                            bool      `json:"inZone"`
-}
-
-type dbExports []*dbExport
-
-func (exports dbExports) newDbExport() (dbExports, []interface{}) {
-	var e dbExport
-
-	exports = append(exports, &e)
-	t := []interface{}{
-		&e.Siret,
-		&e.RaisonSociale,
-		&e.CodeDepartement,
-		&e.LibelleDepartement,
-		&e.Commune,
-		&e.CodeTerritoireIndustrie,
-		&e.LibelleTerritoireIndustrie,
-		&e.Siege,
-		&e.TeteDeGroupe,
-		&e.CodeActivite,
-		&e.LibelleActivite,
-		&e.SecteurActivite,
-		&e.StatutJuridiqueN1,
-		&e.StatutJuridiqueN2,
-		&e.StatutJuridiqueN3,
-		&e.DateOuvertureEtablissement,
-		&e.DateCreationEntreprise,
-		&e.DernierEffectif,
-		&e.DateDernierEffectif,
-		&e.DateArreteBilan,
-		&e.ExerciceDiane,
-		&e.ChiffreAffaire,
-		&e.ChiffreAffairePrecedent,
-		&e.VariationCA,
-		&e.ResultatExploitation,
-		&e.ResultatExploitationPrecedent,
-		&e.ExcedentBrutExploitation,
-		&e.ExcedentBrutExploitationPrecedent,
-		&e.DerniereListe,
-		&e.DerniereAlerte,
-		&e.ActivitePartielle,
-		&e.DetteSociale,
-		&e.PartSalariale,
-		&e.DateUrssaf,
-		&e.ProcedureCollective,
-		&e.DateProcedureCollective,
-		&e.DateDebutSuivi,
-		&e.CommentSuivi,
-		&e.InZone,
-	}
-	return exports, t
-}
-
-func getExportSiret(s session, siret string) (Card, error) {
-	var exports dbExports
-	exports, exportsFields := exports.newDbExport()
-	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.Username, siret).Scan(exportsFields...)
-	if err != nil {
-		return Card{}, err
-	}
-
-	var c = Card{
-		dbExport: exports[0],
-	}
-	if s.hasRole("wekan") {
-		wekanCards, err := selectWekanCardsFromSiret(s.Username, siret)
-		if err != nil {
-			return Card{}, err
-		}
-		c.WekanCards = wekanCards
-	}
-
-	return c, nil
-}
+//func getExportSiret(s session, siret string) (Card, error) {
+//	var exports KanbanDBExports
+//	exports, exportsFields := exports.newDbExport()
+//	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.Username, siret).Scan(exportsFields...)
+//	if err != nil {
+//		return Card{}, err
+//	}
+//
+//	var c = Card{
+//		dbExport: exports[0],
+//	}
+//	if s.hasRole("wekan") {
+//		wekanCards, err := selectWekanCardsFromSiret(s.Username, siret)
+//		if err != nil {
+//			return Card{}, err
+//		}
+//		c.WekanCards = wekanCards
+//	}
+//
+//	return c, nil
+//}
 
 //// TODO: factoriser avec getCards
-//func getExport(s session, params paramsGetCards) (Cards, error) {
+//func getExport(ctx context.Context, s session, params KanbanSelectCardsForUserParams) (Cards, error) {
 //	var cards Cards
 //	var cardsMap = make(map[string]*Card)
 //	var sirets []string
@@ -186,17 +50,18 @@ func getExportSiret(s session, siret string) (Card, error) {
 //
 //	if _, ok := oldWekanConfig.Users[s.Username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
 //		// Export wekan + DB
-//		var username *string
-//		if params.Type == "my-cards" {
-//			username = &s.Username
-//		}
-//		boardIds := wcu.boardIds()
-//		swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
-//		listIds := wcu.listIdsForStatuts(params.Statut)
-//		labelIds := wcu.labelIdsForLabels(params.Labels)
-//		labelMode := params.LabelMode
+//		//var username *string
+//		//if params.Type == "my-cards" {
+//		//	username = &s.Username
+//		//}
+//		//boardIds := wcu.boardIds()
+//		//swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
+//		//listIds := wcu.listIdsForStatuts(params.Statut)
+//		//labelIds := wcu.labelIdsForLabels(params.Labels)
+//		//labelMode := params.LabelMode
 //
-//		wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
+//		wekanCards, err := kanban.SelectFollowsForUser()
+//		//wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
 //		if err != nil {
 //			return nil, err
 //		}
@@ -220,7 +85,7 @@ func getExportSiret(s session, siret string) (Card, error) {
 //				followedSirets = append(followedSirets, siret)
 //			}
 //		}
-//		var exports dbExports
+//		var exports KanbanDBExports
 //		if params.Type == "my-cards" {
 //			sirets = followedSirets
 //		}
@@ -244,7 +109,7 @@ func getExportSiret(s session, siret string) (Card, error) {
 //			if card == nil {
 //				card = &Card{}
 //			}
-//			card.dbExport = s
+//			card.KanbanDBExport = s
 //			cardsMap[s.Siret] = card
 //		}
 //	} else {
@@ -270,7 +135,7 @@ func getExportSiret(s session, siret string) (Card, error) {
 //				excludeSirets[siret] = struct{}{}
 //			}
 //		}
-//		var exports dbExports
+//		var exports KanbanDBExports
 //		var cursor pgx.Rows
 //		cursor, err = db.Get().Query(
 //			context.Background(),
@@ -389,7 +254,7 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 }
 
 func (c Card) docx(head ExportHeader) (Docx, error) {
-	var we WekanExports
+	var we KanbanExports
 
 	we = append(we, c.join()...)
 
@@ -424,7 +289,7 @@ func (c Card) docx(head ExportHeader) (Docx, error) {
 	}, nil
 }
 
-func (c Card) join() []WekanExport {
+func (c Card) join() []KanbanExport {
 	wc := oldWekanConfig.copy()
 	apartSwitch := map[bool]string{
 		true:  "Demande sur les 12 derniers mois",
@@ -451,12 +316,12 @@ func (c Card) join() []WekanExport {
 		"plan_sauvegarde":   "Plan de Sauvegarde",
 	}
 
-	output := []WekanExport{}
+	output := []KanbanExport{}
 	if len(c.WekanCards) == 0 {
 		c.WekanCards = append(c.WekanCards, nil)
 	}
 	for _, card := range c.WekanCards {
-		we := WekanExport{
+		we := KanbanExport{
 			RaisonSociale:              c.dbExport.RaisonSociale,
 			Siret:                      c.dbExport.Siret,
 			TypeEtablissement:          siegeSwitch[c.dbExport.Siege],
@@ -565,27 +430,27 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 	c.JSON(200, follows)
 }
 
-//func getXLSXFollowedByCurrentUser(c *gin.Context) {
-//	var s session
-//	s.Bind(c)
-//	var params paramsGetCards
-//	c.Bind(&params)
-//
-//	export, err := getExport(s, params)
-//	if err != nil {
-//		utils.AbortWithError(c, err)
-//		return
-//	}
-//
-//	xlsx, err := export.xlsx(s.hasRole("wekan"))
-//	if err != nil {
-//		utils.AbortWithError(c, err)
-//		return
-//	}
-//	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
-//	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-//	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
-//}
+func getXLSXFollowedByCurrentUser(c *gin.Context) {
+	var s session
+	s.Bind(c)
+	var params KanbanSelectCardsForUserParams
+	c.Bind(&params)
+
+	//export, err := KanbanService.ExportFollowsForUser()
+	//if err != nil {
+	//	utils.AbortWithError(c, err)
+	//	return
+	//}
+	//
+	//xlsx, err := export.xlsx(s.hasRole("wekan"))
+	//if err != nil {
+	//	utils.AbortWithError(c, err)
+	//	return
+	//}
+	//filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
+	//c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	//c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
+}
 
 type Docx struct {
 	filename string
@@ -609,108 +474,57 @@ func (docxs Docxs) zip() []byte {
 	return zipData.Bytes()
 }
 
-//func getDOCXFollowedByCurrentUser(c *gin.Context) {
-//	var s session
-//	s.Bind(c)
-//	var params paramsGetCards
-//	c.Bind(&params)
-//
-//	exports, err := getExport(s, params)
-//	if err != nil {
-//		utils.AbortWithError(c, err)
-//		return
-//	}
-//	header := ExportHeader{
-//		Auteur: s.auteur,
-//		Date:   time.Now(),
-//	}
-//
-//	var docxs Docxs
-//	for _, export := range exports {
-//		docx, err := export.docx(header)
-//		if err != nil {
-//			utils.AbortWithError(c, err)
-//			return
-//		}
-//		docxs = append(docxs, docx)
-//	}
-//	filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
-//	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-//	c.Data(200, "application/zip", docxs.zip())
-//}
+func getDOCXFollowedByCurrentUser(c *gin.Context) {
+	var s session
+	s.Bind(c)
+	var params KanbanSelectCardsForUserParams
+	c.Bind(&params)
+
+	//exports, err := getExport(s, params)
+	//if err != nil {
+	//  utils.AbortWithError(c, err)
+	//  return
+	//}
+	//header := ExportHeader{
+	//  Auteur: s.auteur,
+	//  Date:   time.Now(),
+	//}
+	//
+	//var docxs Docxs
+	//for _, export := range exports {
+	//  docx, err := export.docx(header)
+	//  if err != nil {
+	//    utils.AbortWithError(c, err)
+	//    return
+	//  }
+	//  docxs = append(docxs, docx)
+	//}
+	//filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
+	//c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	//c.Data(200, "application/zip", docxs.zip())
+}
 
 func getDOCXFromSiret(c *gin.Context) {
 	var s session
 	s.Bind(c)
-
-	siret := c.Param("siret")
-	card, err := getExportSiret(s, siret)
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-
-	header := ExportHeader{
-		Auteur: s.auteur,
-		Date:   time.Now(),
-	}
-	docx, err := card.docx(header)
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-
-	c.Writer.Header().Set("Content-disposition", "attachment;filename="+docx.filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx.data)
+	//
+	//siret := c.Param("siret")
+	//card, err := getExportSiret(s, siret)
+	//if err != nil {
+	//	utils.AbortWithError(c, err)
+	//	return
+	//}
+	//
+	//header := ExportHeader{
+	//	Auteur: s.auteur,
+	//	Date:   time.Now(),
+	//}
+	//docx, err := card.docx(header)
+	//if err != nil {
+	//	utils.AbortWithError(c, err)
+	//	return
+	//}
+	//
+	//c.Writer.Header().Set("Content-disposition", "attachment;filename="+docx.filename)
+	//c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx.data)
 }
-
-var sqlDbExport = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
-coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'),
-v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'),
-coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
-coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0),
-coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0),
-coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
-coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''),
-coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false),
-coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
-coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
-from v_summaries v
-left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where v.siret = any($3)
-order by f.id, v.siret`
-
-var sqlDbExportFollow = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
-coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'),
-v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'),
-coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
-coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0),
-coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0),
-coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
-coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''),
-coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false),
-coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
-coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
-from v_summaries v
-inner join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where v.code_departement = any($3) or $3 is null
-order by f.id, v.siret`
-
-var sqlDbExportSingle = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
-coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
-v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'),
-v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'),
-coalesce(v.date_creation_entreprise, '1900-01-01'), coalesce(v.effectif_entreprise, 0), coalesce(v.date_effectif, '1900-01-01'),
-coalesce(v.arrete_bilan, '0001-01-01'), coalesce(v.exercice_diane,0), coalesce(v.chiffre_affaire,0),
-coalesce(v.prev_chiffre_affaire,0), coalesce(v.variation_ca, 1), coalesce(v.resultat_expl,0),
-coalesce(v.prev_resultat_expl,0), coalesce(v.excedent_brut_d_exploitation,0),
-coalesce(v.prev_excedent_brut_d_exploitation,0), coalesce(v.last_list,''), coalesce(v.last_alert,''),
-coalesce(v.activite_partielle, false), coalesce(v.hausse_urssaf, false), coalesce(v.presence_part_salariale, false),
-coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_procol, '0001-01-01'), coalesce(f.since, '0001-01-01'),
-coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
-from v_summaries v
-left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where v.siret = $3
-order by f.id, v.siret`

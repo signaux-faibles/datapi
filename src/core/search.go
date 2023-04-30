@@ -98,10 +98,10 @@ func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 	var search searchResult
 
 	search.Results = summaries.Summaries
-	if summaries.global.count != nil {
-		search.Total = *summaries.global.count
-		search.NBF1 = *summaries.global.countF1
-		search.NBF2 = *summaries.global.countF2
+	if summaries.Global.Count != nil {
+		search.Total = *summaries.Global.Count
+		search.NBF1 = *summaries.Global.CountF1
+		search.NBF2 = *summaries.Global.CountF2
 	}
 	search.From = limit*params.Page + 1
 	search.To = limit*params.Page + len(search.Results)

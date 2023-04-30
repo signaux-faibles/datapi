@@ -100,10 +100,10 @@ func InitAPI(router *gin.Engine) {
 	follow.DELETE("/:siret", checkSiretFormat, unfollowEtablissement)
 
 	export := router.Group("/export/", AuthMiddleware(), LogMiddleware)
-	//export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
-	//export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
-	//export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
-	//export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
+	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
+	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
+	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
+	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", checkSiretFormat, getDOCXFromSiret)
 
 	listes := router.Group("/listes", AuthMiddleware(), LogMiddleware)

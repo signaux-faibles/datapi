@@ -27,3 +27,11 @@ type UnknownListError struct {
 func (e UnknownListError) Error() string {
 	return fmt.Sprintf("aucune liste trouvée avec l'identifiant `%s`", e.ListIdentifier)
 }
+
+type DatabaseExecutionError struct {
+	QueryIdentifier string
+}
+
+func (e DatabaseExecutionError) Error() string {
+	return fmt.Sprintf("la requête `%s` a rencontré une erreur", e.QueryIdentifier)
+}
