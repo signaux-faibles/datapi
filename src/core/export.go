@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"net/http"
 	"os/exec"
@@ -19,7 +20,7 @@ import (
 
 //func getExportSiret(s session, siret string) (Card, error) {
 //	var exports KanbanDBExports
-//	exports, exportsFields := exports.newDbExport()
+//	exports, exportsFields := exports.NewDbExport()
 //	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.Username, siret).Scan(exportsFields...)
 //	if err != nil {
 //		return Card{}, err
@@ -97,7 +98,7 @@ import (
 //		}
 //		for cursor.Next() {
 //			var s []interface{}
-//			exports, s = exports.newDbExport()
+//			exports, s = exports.NewDbExport()
 //			err := cursor.Scan(s...)
 //			if err != nil {
 //				return nil, err
@@ -150,7 +151,7 @@ import (
 //		}
 //		for cursor.Next() {
 //			var s []interface{}
-//			exports, s = exports.newDbExport()
+//			exports, s = exports.NewDbExport()
 //			err := cursor.Scan(s...)
 //			if err != nil {
 //				return nil, err
@@ -167,7 +168,7 @@ import (
 //	return cards.dbExportsOnly(), nil
 //}
 
-func (cards Cards) xlsx(wekan bool) ([]byte, error) {
+func (cards KanbanExports) xlsx(wekan bool) ([]byte, error) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
 	if err != nil {
@@ -207,43 +208,38 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 		row.AddCell().Value = "Dernière modification Wekan"
 	}
 
-	for _, c := range cards {
-		if c.dbExport != nil {
-			es := c.join()
-			for _, e := range es {
-				row := xlSheet.AddRow()
-				row.AddCell().Value = e.RaisonSociale
-				row.AddCell().Value = e.Siret
-				row.AddCell().Value = e.TypeEtablissement
-				row.AddCell().Value = e.TeteDeGroupe
-				row.AddCell().Value = e.Departement
-				row.AddCell().Value = e.Commune
-				row.AddCell().Value = e.TerritoireIndustrie
-				row.AddCell().Value = e.SecteurActivite
-				row.AddCell().Value = e.Activite
-				row.AddCell().Value = e.SecteursCovid
-				row.AddCell().Value = e.StatutJuridique
-				row.AddCell().Value = e.DateOuvertureEtablissement
-				row.AddCell().Value = e.DateCreationEntreprise
-				row.AddCell().Value = e.Effectif
-				row.AddCell().Value = e.ActivitePartielle
-				row.AddCell().Value = e.DetteSociale
-				row.AddCell().Value = e.PartSalariale
-				row.AddCell().Value = e.AnneeExercice
-				row.AddCell().Value = e.ChiffreAffaire
-				row.AddCell().Value = e.ExcedentBrutExploitation
-				row.AddCell().Value = e.ResultatExploitation
-				row.AddCell().Value = e.ProcedureCollective
-				row.AddCell().Value = e.DetectionSF
-				row.AddCell().Value = e.DateDebutSuivi
-				if wekan {
-					row.AddCell().Value = strings.Join(e.Labels, ", ")
-					row.AddCell().Value = e.DescriptionWekan
-					row.AddCell().Value = e.DateFinSuivi
-					row.AddCell().Value = e.Board
-					row.AddCell().Value = e.LastActivity.Format("02/01/2006")
-				}
-			}
+	for _, e := range cards {
+		row := xlSheet.AddRow()
+		row.AddCell().Value = e.RaisonSociale
+		row.AddCell().Value = e.Siret
+		row.AddCell().Value = e.TypeEtablissement
+		row.AddCell().Value = e.TeteDeGroupe
+		row.AddCell().Value = e.Departement
+		row.AddCell().Value = e.Commune
+		row.AddCell().Value = e.TerritoireIndustrie
+		row.AddCell().Value = e.SecteurActivite
+		row.AddCell().Value = e.Activite
+		row.AddCell().Value = e.SecteursCovid
+		row.AddCell().Value = e.StatutJuridique
+		row.AddCell().Value = e.DateOuvertureEtablissement
+		row.AddCell().Value = e.DateCreationEntreprise
+		row.AddCell().Value = e.Effectif
+		row.AddCell().Value = e.ActivitePartielle
+		row.AddCell().Value = e.DetteSociale
+		row.AddCell().Value = e.PartSalariale
+		row.AddCell().Value = e.AnneeExercice
+		row.AddCell().Value = e.ChiffreAffaire
+		row.AddCell().Value = e.ExcedentBrutExploitation
+		row.AddCell().Value = e.ResultatExploitation
+		row.AddCell().Value = e.ProcedureCollective
+		row.AddCell().Value = e.DetectionSF
+		row.AddCell().Value = e.DateDebutSuivi
+		if wekan {
+			row.AddCell().Value = strings.Join(e.Labels, ", ")
+			row.AddCell().Value = e.DescriptionWekan
+			row.AddCell().Value = e.DateFinSuivi
+			row.AddCell().Value = e.Board
+			row.AddCell().Value = e.LastActivity.Format("02/01/2006")
 		}
 	}
 	data := bytes.NewBuffer(nil)
@@ -253,12 +249,8 @@ func (cards Cards) xlsx(wekan bool) ([]byte, error) {
 	return data.Bytes(), nil
 }
 
-func (c Card) docx(head ExportHeader) (Docx, error) {
-	var we KanbanExports
-
-	we = append(we, c.join()...)
-
-	data, err := json.MarshalIndent(we, " ", " ")
+func (c KanbanExport) docx(head ExportHeader) (Docx, error) {
+	data, err := json.MarshalIndent(c, " ", " ")
 	script := viper.GetString("docxifyPath")
 	dir := viper.GetString("docxifyWorkingDir")
 	python := viper.GetString("docxifyPython")
@@ -284,138 +276,9 @@ func (c Card) docx(head ExportHeader) (Docx, error) {
 		fmt.Println(outErr.String())
 	}
 	return Docx{
-		filename: fmt.Sprintf("export-%s-%s.docx", strings.Replace(c.dbExport.RaisonSociale, " ", "-", -1), c.dbExport.Siret),
+		filename: fmt.Sprintf("export-%s-%s.docx", strings.Replace(c.RaisonSociale, " ", "-", -1), c.Siret),
 		data:     file,
 	}, nil
-}
-
-func (c Card) join() []KanbanExport {
-	wc := oldWekanConfig.copy()
-	apartSwitch := map[bool]string{
-		true:  "Demande sur les 12 derniers mois",
-		false: "Pas de demande récente",
-	}
-	urssafSwitch := map[bool]string{
-		true:  "Hausse sur les 3 derniers mois (%s)",
-		false: "Pas de hausse sur les 3 derniers mois (%s)",
-	}
-	salarialSwitch := map[bool]string{
-		true:  "Dette salariale existante (%s)",
-		false: "Aucune dette salariale existante (%s)",
-	}
-	siegeSwitch := map[bool]string{
-		true:  "Siège social",
-		false: "Établissement secondaire",
-	}
-	procolSwitch := map[string]string{
-		"in_bonis":          "In bonis",
-		"liquidation":       "Liquidation judiciaire",
-		"redressement":      "Redressement judiciaire",
-		"plan_continuation": "Plan de continuation",
-		"sauvegarde":        "Sauvegarde",
-		"plan_sauvegarde":   "Plan de Sauvegarde",
-	}
-
-	output := []KanbanExport{}
-	if len(c.WekanCards) == 0 {
-		c.WekanCards = append(c.WekanCards, nil)
-	}
-	for _, card := range c.WekanCards {
-		we := KanbanExport{
-			RaisonSociale:              c.dbExport.RaisonSociale,
-			Siret:                      c.dbExport.Siret,
-			TypeEtablissement:          siegeSwitch[c.dbExport.Siege],
-			TeteDeGroupe:               c.dbExport.TeteDeGroupe,
-			Departement:                fmt.Sprintf("%s (%s)", c.dbExport.LibelleDepartement, c.dbExport.CodeDepartement),
-			Commune:                    c.dbExport.Commune,
-			TerritoireIndustrie:        c.dbExport.LibelleTerritoireIndustrie,
-			SecteurActivite:            c.dbExport.SecteurActivite,
-			Activite:                   fmt.Sprintf("%s (%s)", c.dbExport.LibelleActivite, c.dbExport.CodeActivite),
-			SecteursCovid:              secteurCovid.get(c.dbExport.CodeActivite),
-			StatutJuridique:            c.dbExport.StatutJuridiqueN2,
-			DateOuvertureEtablissement: dateCreation(c.dbExport.DateOuvertureEtablissement),
-			DateCreationEntreprise:     dateCreation(c.dbExport.DateCreationEntreprise),
-			Effectif:                   fmt.Sprintf("%d (%s)", c.dbExport.DernierEffectif, c.dbExport.DateDernierEffectif.Format("01/2006")),
-			ActivitePartielle:          apartSwitch[c.dbExport.ActivitePartielle],
-			DetteSociale:               fmt.Sprintf(urssafSwitch[c.dbExport.DetteSociale], dateUrssaf(c.dbExport.DateUrssaf)),
-			PartSalariale:              fmt.Sprintf(salarialSwitch[c.dbExport.PartSalariale], dateUrssaf(c.dbExport.DateUrssaf)),
-			AnneeExercice:              anneeExercice(c.dbExport.ExerciceDiane),
-			ChiffreAffaire:             libelleCA(c.dbExport.ChiffreAffaire, c.dbExport.ChiffreAffairePrecedent, c.dbExport.VariationCA),
-			ExcedentBrutExploitation:   libelleFin(c.dbExport.ExcedentBrutExploitation),
-			ResultatExploitation:       libelleFin(c.dbExport.ResultatExploitation),
-			ProcedureCollective:        procolSwitch[c.dbExport.ProcedureCollective],
-			DetectionSF:                libelleAlerte(c.dbExport.DerniereListe, c.dbExport.DerniereAlerte),
-		}
-
-		if card != nil {
-			we.DateDebutSuivi = dateUrssaf(card.StartAt)
-			we.DescriptionWekan = strings.TrimSuffix(card.Description+"\n\n"+strings.ReplaceAll(strings.Join(card.Comments, "\n\n"), "#export", ""), "\n")
-			we.Labels = wc.labelForLabelsIDs(card.LabelIds, card.BoardId)
-			if card.EndAt != nil {
-				we.DateFinSuivi = dateUrssaf(*card.EndAt)
-			}
-			we.Board = card.Board()
-			we.LastActivity = card.LastActivity
-		} else {
-			we.DateDebutSuivi = dateUrssaf(c.dbExport.DateDebutSuivi)
-		}
-		output = append(output, we)
-	}
-	return output
-}
-
-func anneeExercice(exercice int) string {
-	if exercice == 0 {
-		return ""
-	}
-	return fmt.Sprintf("%d", exercice)
-}
-func dateUrssaf(dt time.Time) string {
-	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" || dt.Format("02/01/2006") == "01/01/0001" {
-		return "n/c"
-	}
-	return dt.Format("01/2006")
-}
-func dateCreation(dt time.Time) string {
-	if dt.IsZero() || dt.Format("02/01/2006") == "01/01/1900" || dt.Format("02/01/2006") == "01/01/0001" {
-		return "n/c"
-	}
-	return dt.Format("02/01/2006")
-}
-
-func libelleAlerte(liste string, alerte string) string {
-	if alerte == "Alerte seuil F1" {
-		return fmt.Sprintf("Risque élevé (%s)", liste)
-	}
-	if alerte == "Alerte seuil F2" {
-		return fmt.Sprintf("Risque modéré (%s)", liste)
-	}
-	if alerte == "Pas d'alerte" {
-		return fmt.Sprintf("Pas de risque (%s)", liste)
-	}
-	return "Hors périmètre"
-}
-
-func libelleFin(val float64) string {
-	if val == 0 {
-		return "n/c"
-	}
-	return fmt.Sprintf("%.0f k€", val)
-}
-
-func libelleCA(val float64, valPrec float64, variationCA float64) string {
-	if val == 0 {
-		return "n/c"
-	}
-	if valPrec == 0 {
-		return fmt.Sprintf("%.0f k€", val)
-	}
-	if variationCA > 1.05 {
-		return fmt.Sprintf("%.0f k€ (en hausse)", val)
-	} else if variationCA < 0.95 {
-		return fmt.Sprintf("%.0f k€ (en baisse)", val)
-	}
-	return fmt.Sprintf("%.0f k€", val)
 }
 
 func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
@@ -436,20 +299,20 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	var params KanbanSelectCardsForUserParams
 	c.Bind(&params)
 
-	//export, err := KanbanService.ExportFollowsForUser()
-	//if err != nil {
-	//	utils.AbortWithError(c, err)
-	//	return
-	//}
-	//
-	//xlsx, err := export.xlsx(s.hasRole("wekan"))
-	//if err != nil {
-	//	utils.AbortWithError(c, err)
-	//	return
-	//}
-	//filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
-	//c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	//c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
+	export, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
+
+	xlsx, err := export.xlsx(s.hasRole("wekan"))
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
+	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
 }
 
 type Docx struct {

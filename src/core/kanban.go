@@ -14,7 +14,7 @@ type KanbanService interface {
 	SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	SelectFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (Summaries, error)
-	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (Summaries, error)
+	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (KanbanExports, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
 	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username) error
 }
@@ -158,6 +158,10 @@ type KanbanExport struct {
 	LastActivity               time.Time `json:"lastActivity"`
 }
 
+func (k KanbanDBExport) GetSiret() string {
+	return k.Siret
+}
+
 type KanbanDBExport struct {
 	Siret                             string    `json:"siret"`
 	RaisonSociale                     string    `json:"raisonSociale"`
@@ -202,7 +206,7 @@ type KanbanDBExport struct {
 
 type KanbanDBExports []*KanbanDBExport
 
-func (exports KanbanDBExports) newDbExport() (KanbanDBExports, []interface{}) {
+func (exports KanbanDBExports) NewDbExport() (KanbanDBExports, []interface{}) {
 	var e KanbanDBExport
 
 	exports = append(exports, &e)
@@ -248,4 +252,9 @@ func (exports KanbanDBExports) newDbExport() (KanbanDBExports, []interface{}) {
 		&e.InZone,
 	}
 	return exports, t
+}
+
+type KanbanCardAndComments struct {
+	Card     libwekan.Card      `json:"card"`
+	Comments []libwekan.Comment `json:"comments"`
 }

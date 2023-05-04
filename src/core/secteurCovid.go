@@ -5,7 +5,7 @@ type activiteCovid struct {
 	libelleActivite string
 }
 
-type secteursCovid struct {
+type SecteursCovid struct {
 	s1            []activiteCovid
 	s1Possible    []activiteCovid
 	s1bis         []activiteCovid
@@ -13,7 +13,7 @@ type secteursCovid struct {
 	s2            []activiteCovid
 }
 
-func (s secteursCovid) get(activite string) string {
+func (s SecteursCovid) Get(activite string) string {
 	for _, i := range s.s1 {
 		if i.codeActivite == activite {
 			return "S1 : très probable"
@@ -42,7 +42,7 @@ func (s secteursCovid) get(activite string) string {
 	return ""
 }
 
-var secteurCovid = secteursCovid{
+var SecteurCovid = SecteursCovid{
 	s1: []activiteCovid{
 		{
 			"4939C",
