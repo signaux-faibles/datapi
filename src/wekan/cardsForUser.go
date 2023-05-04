@@ -16,41 +16,16 @@ type Etablissements struct {
 	wekanCards []libwekan.Card
 }
 
-func selectWekanSummariesForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
-	wc := wekanConfig.Copy()
-	pipeline := buildCardsForUserPipeline(wc, params)
-	pipeline.AppendStage(bson.M{
-		"$project": bson.M{
-			"boardId":      true,
-			"customFields": true,
-		},
-	})
-
-	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
-
-	if err != nil {
-		return core.Summaries{}, err
-	}
-	sirets := utils.Convert(cards, cardToSiret(wc))
-	if params.Type == "my-cards" {
-		err := followSiretsFromWekan(ctx, params.User.Username, sirets)
-		if err != nil {
-			return core.Summaries{}, err
-		}
-	}
-	// my-cards et all-cards utilisent la même méthode
-	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
-		summaries, err := selectSummariesWithSirets(ctx, sirets, db, params.User, roles, params.Zone, 100)
-		return summaries, err
-	}
-	// no-cards retourne les suivis datapi sans carte kanban
-	summaries, err := selectSummariesWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
-	return summaries, err
-}
-
 func cardToSiret(wc libwekan.Config) func(libwekan.Card) string {
 	return func(card libwekan.Card) string {
 		siret, _ := wc.GetCardCustomFieldByName(card, "SIRET")
+		return siret
+	}
+}
+
+func cardWithCommentsToSiret(wc libwekan.Config) func(comments libwekan.CardWithComments) string {
+	return func(card libwekan.CardWithComments) string {
+		siret, _ := wc.GetCardCustomFieldByName(card.Card, "SIRET")
 		return siret
 	}
 }
@@ -289,12 +264,52 @@ func buildMatchBoardIDsStage(boardIDs []libwekan.BoardID) bson.M {
 	}
 }
 
-func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
-	etablissements, err := selectWekanSummariesForUser(ctx, params, db, roles)
-	return etablissements.summaries, err
+func kanbanDBExportHasSiret(siret string) func(export *core.KanbanDBExport) bool {
+	return func(summary *core.KanbanDBExport) bool {
+		return summary.Siret == siret
+	}
+}
+
+func joinKanbanDBExportsWithCards(kanbanDBExports core.KanbanDBExports, cards []libwekan.CardWithComments) core.KanbanExports {
+	var kanbanExports core.KanbanExports
+	for _, card := range cards {
+		siret := cardToSiret(wekanConfig)(card.Card)
+		kanbanDBExport, ok := utils.First(kanbanDBExports, kanbanDBExportHasSiret(siret))
+		if ok {
+			kanbanExports = append(kanbanExports, join(card, *kanbanDBExport))
+		}
+	}
+	return kanbanExports
 }
 
 func (w wekanService) SelectFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
-	etablissements, err := selectWekanSummariesForUser(ctx, params, db, roles)
-	return etablissements.summaries, err
+	wc := wekanConfig.Copy()
+	pipeline := buildCardsForUserPipeline(wc, params)
+	pipeline.AppendStage(bson.M{
+		"$project": bson.M{
+			"boardId":      true,
+			"customFields": true,
+		},
+	})
+
+	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
+
+	if err != nil {
+		return core.Summaries{}, err
+	}
+	sirets := utils.Convert(cards, cardToSiret(wc))
+	if params.Type == "my-cards" {
+		err := followSiretsFromWekan(ctx, params.User.Username, sirets)
+		if err != nil {
+			return core.Summaries{}, err
+		}
+	}
+	// my-cards et all-cards utilisent la même méthode
+	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
+		summaries, err := selectSummariesWithSirets(ctx, sirets, db, params.User, roles, params.Zone, 100)
+		return summaries, err
+	}
+	// no-cards retourne les suivis datapi sans carte kanban
+	summaries, err := selectSummariesWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
+	return summaries, err
 }

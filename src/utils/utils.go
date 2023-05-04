@@ -83,3 +83,12 @@ func Coalesce[T any](pointers ...*T) *T {
 	}
 	return nil
 }
+
+func First[T any](ss []T, test func(T) bool) (ret T, ok bool) {
+	for _, s := range ss {
+		if test(s) {
+			return s, true
+		}
+	}
+	return ret, false
+}

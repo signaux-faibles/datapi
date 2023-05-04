@@ -250,23 +250,23 @@ type Follows []Follow
 //	c.JSON(200, follows)
 //}
 
-type Card struct {
-	Summary    *Summary     `json:"summary"`
-	WekanCards []*WekanCard `json:"wekanCard"`
-	dbExport   *KanbanDBExport
-}
-
-type Cards []*Card
-
-func (cards Cards) dbExportsOnly() Cards {
-	var filtered Cards
-	for _, c := range cards {
-		if c.dbExport != nil {
-			filtered = append(filtered, c)
-		}
-	}
-	return filtered
-}
+//type Card struct {
+//	Summary    *Summary     `json:"summary"`
+//	WekanCards []*WekanCard `json:"wekanCard"`
+//	dbExport   *KanbanDBExport
+//}
+//
+//type Cards []*Card
+//
+//func (cards Cards) dbExportsOnly() Cards {
+//	var filtered Cards
+//	for _, c := range cards {
+//		if c.dbExport != nil {
+//			filtered = append(filtered, c)
+//		}
+//	}
+//	return filtered
+//}
 
 //	func getCards(s session, params paramsGetCards) ([]*Card, error) {
 //		var cards []*Card
