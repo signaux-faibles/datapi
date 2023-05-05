@@ -82,7 +82,7 @@ coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_pr
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
 left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where v.siret = any($3)
+where v.siret = any($3) and (v.code_departement = any($4) or $4 is null)
 order by f.id, v.siret`
 
 var sqlDbExportFollow = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,

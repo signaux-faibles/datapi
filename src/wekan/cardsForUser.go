@@ -2,7 +2,6 @@ package wekan
 
 import (
 	"context"
-	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/utils"
@@ -92,7 +91,6 @@ func buildCardsForUserPipeline(wc libwekan.Config, params core.KanbanSelectCards
 
 	pipeline.AppendPipeline(wekan.BuildDomainCardsPipeline())
 
-	fmt.Println(params.Lists)
 	if len(params.Lists) > 0 {
 		pipeline.AppendPipeline(buildMatchListsPipeline(params.Lists))
 	}

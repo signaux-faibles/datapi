@@ -2,6 +2,7 @@ package wekan
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/datapi/src/core"
@@ -230,8 +231,9 @@ func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.Kanb
 		},
 	})
 
+	fmt.Println(json.MarshalIndent(pipeline, " ", " "))
 	cards, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
-
+	fmt.Println(len(cards))
 	if err != nil {
 		return core.KanbanExports{}, err
 	}
