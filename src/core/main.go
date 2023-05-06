@@ -122,10 +122,10 @@ func InitAPI(router *gin.Engine) {
 	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
 	fce.GET("/:siret", checkSiretFormat, getFceURL)
 
-	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
+	//wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
 	//wekan.POST("/cards/:siret", checkSiretFormat, wekanNewCardHandler)
-	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
-	wekan.GET("/join/:cardId", wekanJoinCardHandler)
+	//wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
+	//wekan.GET("/join/:cardId", wekanJoinCardHandler)
 
 	configureKanbanEndpoint("/kanban", router)
 }

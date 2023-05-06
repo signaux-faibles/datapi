@@ -82,10 +82,10 @@ coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_pr
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
 left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where v.siret = any($3) and (v.code_departement = any($4) or $4 is null)
+where v.siret = any($3) and (v.code_departement = any($4) or coalesce($4, '{}') = '{}')
 order by f.id, v.siret`
 
-var sqlDbExportFollow = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
+var sqlDbExportWithoutCards = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
 v.code_activite, coalesce(v.libelle_n5, 'norme NAF non prise en charge'), coalesce(v.libelle_n1, 'norme NAF non prise en charge'),
 v.statut_juridique_n1, v.statut_juridique_n2, v.statut_juridique_n3, coalesce(v.date_ouverture_etablissement, '1900-01-01'),
@@ -99,7 +99,7 @@ coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_pr
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
 inner join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where v.code_departement = any($3) or $3 is null
+where (v.code_departement = any($4) or coalesce($4, '{}') = '{}' is null) and v.siret != any($3)
 order by f.id, v.siret`
 
 var sqlDbExportSingle = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,

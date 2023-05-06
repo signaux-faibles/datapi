@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
+	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"os/exec"
 	"strings"
@@ -206,6 +207,7 @@ func (cards KanbanExports) xlsx(wekan bool) ([]byte, error) {
 		row.AddCell().Value = "Fin du suivi Wekan"
 		row.AddCell().Value = "Tableau"
 		row.AddCell().Value = "Dernière modification Wekan"
+		row.AddCell().Value = "Archive"
 	}
 
 	for _, e := range cards {
@@ -240,6 +242,7 @@ func (cards KanbanExports) xlsx(wekan bool) ([]byte, error) {
 			row.AddCell().Value = e.DateFinSuivi
 			row.AddCell().Value = e.Board
 			row.AddCell().Value = e.LastActivity.Format("02/01/2006")
+			row.AddCell().Value = boolToString(e.Archived, "oui", "non")
 		}
 	}
 	data := bytes.NewBuffer(nil)
@@ -247,6 +250,13 @@ func (cards KanbanExports) xlsx(wekan bool) ([]byte, error) {
 	xlFile.Write(file)
 	file.Flush()
 	return data.Bytes(), nil
+}
+
+func boolToString(boolean bool, true string, false string) string {
+	if boolean {
+		return true
+	}
+	return false
 }
 
 func (c KanbanExport) docx(head ExportHeader) (Docx, error) {
@@ -299,13 +309,19 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	var params KanbanSelectCardsForUserParams
 	c.Bind(&params)
 
-	export, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
+	var ok bool
+	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+	if !ok {
+		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
+		return
+	}
+
+	exports, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
-
-	xlsx, err := export.xlsx(s.hasRole("wekan"))
+	xlsx, err := exports.xlsx(s.hasRole("wekan"))
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
