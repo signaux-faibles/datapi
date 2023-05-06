@@ -156,6 +156,7 @@ type KanbanExport struct {
 	Labels                     []string  `json:"labels"`
 	Board                      string    `json:"-"`
 	LastActivity               time.Time `json:"lastActivity"`
+	Archived                   bool      `json:"archived"`
 }
 
 func (k KanbanDBExport) GetSiret() string {

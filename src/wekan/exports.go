@@ -2,7 +2,6 @@ package wekan
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/datapi/src/core"
@@ -90,6 +89,7 @@ func join(cardAndComments libwekan.CardWithComments, kanbanDBExport core.KanbanD
 		ResultatExploitation:       libelleFin(kanbanDBExport.ResultatExploitation),
 		ProcedureCollective:        procolSwitch[kanbanDBExport.ProcedureCollective],
 		DetectionSF:                libelleAlerte(kanbanDBExport.DerniereListe, kanbanDBExport.DerniereAlerte),
+		Archived:                   card.Archived,
 	}
 
 	we.DateDebutSuivi = dateUrssaf(card.StartAt)
@@ -198,19 +198,33 @@ func selectKanbanDBExportsWithSirets(ctx context.Context,
 			return core.KanbanDBExports{}, err
 		}
 	}
-
-	return core.KanbanDBExports{}, nil
+	return kanbanDBExports, nil
 }
 
-func selectKanbanExportsWithoutCard(
+func selectKanbanDBExportsWithoutCard(
 	ctx context.Context,
 	sirets []string,
 	db *pgxpool.Pool,
 	user libwekan.User,
 	roles []string,
 	zone []string,
-) (core.KanbanExports, error) {
-	return core.KanbanExports{}, nil
+) (core.KanbanDBExports, error) {
+	rows, err := db.Query(ctx, sqlDbExportWithoutCards, roles, user.Username, sirets, zone)
+	defer rows.Close()
+	if err != nil {
+		return core.KanbanDBExports{}, err
+	}
+
+	var kanbanDBExports core.KanbanDBExports
+	for rows.Next() {
+		var s []interface{}
+		kanbanDBExports, s = kanbanDBExports.NewDbExport()
+		err := rows.Scan(s...)
+		if err != nil {
+			return core.KanbanDBExports{}, err
+		}
+	}
+	return kanbanDBExports, nil
 }
 
 func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
@@ -231,20 +245,17 @@ func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.Kanb
 		},
 	})
 
-	fmt.Println(json.MarshalIndent(pipeline, " ", " "))
 	cards, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
-	fmt.Println(len(cards))
 	if err != nil {
 		return core.KanbanExports{}, err
 	}
 	sirets := utils.Convert(cards, cardWithCommentsToSiret(wc))
-
 	// my-cards et all-cards utilisent la même méthode
 	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
 		kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, sirets, db, params.User, roles, params.Zone)
 		return joinKanbanDBExportsWithCards(kanbanDBExports, cards), err
 	}
 	// no-cards retourne les suivis datapi sans carte kanban
-	kanbanExports, err := selectKanbanExportsWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
-	return kanbanExports, err
+	kanbanDBExports, err := selectKanbanDBExportsWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
+	return joinKanbanDBExportsWithCards(kanbanDBExports, nil), err
 }
