@@ -267,6 +267,7 @@ func (c KanbanExport) docx(head ExportHeader) (Docx, error) {
 	if err != nil {
 		return Docx{}, err
 	}
+	fmt.Println(string(data))
 	cmd := exec.Command(python, script, head.Auteur, head.Date.Format("02/01/2006"), "Haute")
 	cmd.Dir = dir
 	cmd.Stdin = bytes.NewReader(data)
@@ -276,6 +277,8 @@ func (c KanbanExport) docx(head ExportHeader) (Docx, error) {
 	cmd.Stderr = &outErr
 	err = cmd.Run()
 	if err != nil {
+
+		fmt.Println(string(outErr.Bytes()))
 		return Docx{}, err
 	}
 	file := out.Bytes()
@@ -359,28 +362,36 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	var params KanbanSelectCardsForUserParams
 	c.Bind(&params)
 
-	//exports, err := getExport(s, params)
-	//if err != nil {
-	//  utils.AbortWithError(c, err)
-	//  return
-	//}
-	//header := ExportHeader{
-	//  Auteur: s.auteur,
-	//  Date:   time.Now(),
-	//}
-	//
-	//var docxs Docxs
-	//for _, export := range exports {
-	//  docx, err := export.docx(header)
-	//  if err != nil {
-	//    utils.AbortWithError(c, err)
-	//    return
-	//  }
-	//  docxs = append(docxs, docx)
-	//}
-	//filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
-	//c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	//c.Data(200, "application/zip", docxs.zip())
+	var ok bool
+	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+	if !ok {
+		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
+		return
+	}
+
+	exports, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
+
+	header := ExportHeader{
+		Auteur: s.auteur,
+		Date:   time.Now(),
+	}
+
+	var docxs Docxs
+	for _, export := range exports {
+		docx, err := export.docx(header)
+		if err != nil {
+			utils.AbortWithError(c, err)
+			return
+		}
+		docxs = append(docxs, docx)
+	}
+	filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
+	c.Data(200, "application/zip", docxs.zip())
 }
 
 func getDOCXFromSiret(c *gin.Context) {

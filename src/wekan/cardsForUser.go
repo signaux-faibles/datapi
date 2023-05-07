@@ -268,14 +268,22 @@ func kanbanDBExportHasSiret(siret string) func(export *core.KanbanDBExport) bool
 	}
 }
 
-func joinKanbanDBExportsWithCards(kanbanDBExports core.KanbanDBExports, cards []libwekan.CardWithComments) core.KanbanExports {
+func joinCardsWithKanbanDBExports(kanbanDBExports core.KanbanDBExports, cards []libwekan.CardWithComments) core.KanbanExports {
 	var kanbanExports core.KanbanExports
 	for _, card := range cards {
 		siret := cardToSiret(wekanConfig)(card.Card)
 		kanbanDBExport, ok := utils.First(kanbanDBExports, kanbanDBExportHasSiret(siret))
 		if ok {
-			kanbanExports = append(kanbanExports, join(card, *kanbanDBExport))
+			kanbanExports = append(kanbanExports, joinCardAndKanbanDBExport(card, *kanbanDBExport))
 		}
+	}
+	return kanbanExports
+}
+
+func kanbanDBExportToKanbanExports(kanbanDBExports core.KanbanDBExports) core.KanbanExports {
+	var kanbanExports core.KanbanExports
+	for _, kanbanDBExport := range kanbanDBExports {
+		kanbanExports = append(kanbanExports, joinCardAndKanbanDBExport(libwekan.CardWithComments{}, *kanbanDBExport))
 	}
 	return kanbanExports
 }
