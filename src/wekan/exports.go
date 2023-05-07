@@ -20,7 +20,7 @@ func GetKanbanDBExportSiret(k core.KanbanDBExport) string {
 	return k.Siret
 }
 
-func joinCardsAndExports(cardAndComments []libwekan.CardWithComments, dbExports core.KanbanDBExports) core.KanbanExports {
+func joinCardsAndKanbanDBExports(cardAndComments []libwekan.CardWithComments, dbExports core.KanbanDBExports) core.KanbanExports {
 	e := utils.ToMap(dbExports, func(k *core.KanbanDBExport) string {
 		return k.Siret
 	})
@@ -30,13 +30,13 @@ func joinCardsAndExports(cardAndComments []libwekan.CardWithComments, dbExports 
 	for _, cardAndComment := range cardAndComments {
 		siret := cardToSiret(wekanConfig)(cardAndComment.Card)
 		if e[siret] != nil {
-			exports = append(exports, join(cardAndComment, *e[siret]))
+			exports = append(exports, joinCardAndKanbanDBExport(cardAndComment, *e[siret]))
 		}
 	}
 	return exports
 }
 
-func join(cardAndComments libwekan.CardWithComments, kanbanDBExport core.KanbanDBExport) core.KanbanExport {
+func joinCardAndKanbanDBExport(cardAndComments libwekan.CardWithComments, kanbanDBExport core.KanbanDBExport) core.KanbanExport {
 	card := cardAndComments.Card
 	comments := cardAndComments.Comments
 
@@ -224,38 +224,50 @@ func selectKanbanDBExportsWithoutCard(
 			return core.KanbanDBExports{}, err
 		}
 	}
+	fmt.Println(kanbanDBExports)
 	return kanbanDBExports, nil
 }
 
-func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
-	wc := wekanConfig.Copy()
-	pipeline := buildCardsForUserPipeline(wc, params)
-	pipeline.AppendStage(bson.M{
+func buildCardToCardAndCommantsPipeline() libwekan.Pipeline {
+	return libwekan.Pipeline{bson.M{
 		"$project": bson.M{
 			"card": "$$ROOT",
 		},
-	})
-
-	pipeline.AppendStage(bson.M{
+	}, bson.M{
 		"$lookup": bson.M{
 			"from":         "cards_comments",
 			"as":           "comments",
 			"localField":   "card._id",
 			"foreignField": "cardId",
 		},
-	})
+	}}
+}
+
+func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
+	wc := wekanConfig.Copy()
+	pipeline := buildCardsForUserPipeline(wc, params)
+	pipeline.AppendPipeline(buildCardToCardAndCommantsPipeline())
+
+	if params.Type == "no-card" {
+		params.Lists = nil
+		params.Labels = nil
+		params.BoardIDs = nil
+		params.Since = nil
+	}
 
 	cards, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
 	if err != nil {
 		return core.KanbanExports{}, err
 	}
 	sirets := utils.Convert(cards, cardWithCommentsToSiret(wc))
+
 	// my-cards et all-cards utilisent la même méthode
 	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
 		kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, sirets, db, params.User, roles, params.Zone)
-		return joinKanbanDBExportsWithCards(kanbanDBExports, cards), err
+		return joinCardsWithKanbanDBExports(kanbanDBExports, cards), err
 	}
-	// no-cards retourne les suivis datapi sans carte kanban
+
+	// alors que no-card retourne les suivis datapi sans carte kanban
 	kanbanDBExports, err := selectKanbanDBExportsWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
-	return joinKanbanDBExportsWithCards(kanbanDBExports, nil), err
+	return kanbanDBExportToKanbanExports(kanbanDBExports), err
 }
