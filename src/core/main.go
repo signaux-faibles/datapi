@@ -73,6 +73,8 @@ func InitAPI(router *gin.Engine) {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
+	config.AddExposeHeaders("Content-Disposition")
+
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
@@ -206,6 +208,7 @@ func configureKanbanEndpoint(path string, api *gin.Engine) {
 	kanban.GET("/cards/:siret", kanbanGetCardsHandler)
 	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)
 	kanban.POST("/card", kanbanNewCardHandler)
+	kanban.GET("/unarchive/:cardID", kanbanUnarchiveCardHandler)
 }
 
 // True made global to ease pointers

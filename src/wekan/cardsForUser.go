@@ -298,7 +298,7 @@ func (w wekanService) SelectFollowsForUser(ctx context.Context, params core.Kanb
 		},
 	})
 
-	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
+	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", pipeline)
 
 	if err != nil {
 		return core.Summaries{}, err

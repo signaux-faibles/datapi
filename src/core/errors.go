@@ -28,6 +28,14 @@ func (e UnknownListError) Error() string {
 	return fmt.Sprintf("aucune liste trouvée avec l'identifiant `%s`", e.ListIdentifier)
 }
 
+type UnknownCardError struct {
+	CardIdentifier string
+}
+
+func (e UnknownCardError) Error() string {
+	return fmt.Sprintf("aucune carte trouvée avec l'identifiant `%s`", e.CardIdentifier)
+}
+
 type DatabaseExecutionError struct {
 	QueryIdentifier string
 }
