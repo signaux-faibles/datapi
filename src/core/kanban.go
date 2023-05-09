@@ -2,8 +2,11 @@ package core
 
 import (
 	"context"
+	"errors"
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/libwekan"
+	"net/http"
 	"time"
 )
 
@@ -15,8 +18,10 @@ type KanbanService interface {
 	ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	SelectFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (Summaries, error)
 	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (KanbanExports, error)
+	SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (KanbanExports, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
 	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username) error
+	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
@@ -258,4 +263,29 @@ func (exports KanbanDBExports) NewDbExport() (KanbanDBExports, []interface{}) {
 type KanbanCardAndComments struct {
 	Card     libwekan.Card      `json:"card"`
 	Comments []libwekan.Comment `json:"comments"`
+}
+
+func kanbanUnarchiveCardHandler(c *gin.Context) {
+	var s session
+	s.Bind(c)
+
+	cardID := libwekan.CardID(c.Param("cardID"))
+
+	err := kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
+	if errors.Is(err, UnknownCardError{}) {
+		c.JSON(http.StatusNotFound, err.Error())
+	}
+	if errors.Is(err, ForbiddenError{}) {
+		c.JSON(http.StatusForbidden, err.Error())
+	}
+	if errors.Is(err, UnknownBoardError{}) {
+		c.JSON(http.StatusNotFound, err.Error())
+	}
+	if errors.Is(err, libwekan.NothingDoneError{}) {
+		c.JSON(http.StatusNoContent, err.Error())
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(200, "traitement effectué")
 }

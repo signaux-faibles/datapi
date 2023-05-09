@@ -2,6 +2,7 @@ package wekan
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/datapi/src/core"
@@ -16,25 +17,25 @@ func textFromComment(comment libwekan.Comment) string {
 	return comment.Text
 }
 
-func GetKanbanDBExportSiret(k core.KanbanDBExport) string {
-	return k.Siret
-}
-
-func joinCardsAndKanbanDBExports(cardAndComments []libwekan.CardWithComments, dbExports core.KanbanDBExports) core.KanbanExports {
-	e := utils.ToMap(dbExports, func(k *core.KanbanDBExport) string {
-		return k.Siret
-	})
-
-	var exports core.KanbanExports
-
-	for _, cardAndComment := range cardAndComments {
-		siret := cardToSiret(wekanConfig)(cardAndComment.Card)
-		if e[siret] != nil {
-			exports = append(exports, joinCardAndKanbanDBExport(cardAndComment, *e[siret]))
-		}
-	}
-	return exports
-}
+//func GetKanbanDBExportSiret(k core.KanbanDBExport) string {
+//	return k.Siret
+//}
+//
+//func joinCardsAndKanbanDBExports(cardAndComments []libwekan.CardWithComments, dbExports core.KanbanDBExports) core.KanbanExports {
+//	e := utils.ToMap(dbExports, func(k *core.KanbanDBExport) string {
+//		return k.Siret
+//	})
+//
+//	var exports core.KanbanExports
+//
+//	for _, cardAndComment := range cardAndComments {
+//		siret := cardToSiret(wekanConfig)(cardAndComment.Card)
+//		if e[siret] != nil {
+//			exports = append(exports, joinCardAndKanbanDBExport(cardAndComment, *e[siret]))
+//		}
+//	}
+//	return exports
+//}
 
 func joinCardAndKanbanDBExport(cardAndComments libwekan.CardWithComments, kanbanDBExport core.KanbanDBExport) core.KanbanExport {
 	card := cardAndComments.Card
@@ -224,11 +225,10 @@ func selectKanbanDBExportsWithoutCard(
 			return core.KanbanDBExports{}, err
 		}
 	}
-	fmt.Println(kanbanDBExports)
 	return kanbanDBExports, nil
 }
 
-func buildCardToCardAndCommantsPipeline() libwekan.Pipeline {
+func buildCardToCardAndCommentsPipeline() libwekan.Pipeline {
 	return libwekan.Pipeline{bson.M{
 		"$project": bson.M{
 			"card": "$$ROOT",
@@ -246,7 +246,7 @@ func buildCardToCardAndCommantsPipeline() libwekan.Pipeline {
 func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
 	wc := wekanConfig.Copy()
 	pipeline := buildCardsForUserPipeline(wc, params)
-	pipeline.AppendPipeline(buildCardToCardAndCommantsPipeline())
+	pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
 
 	if params.Type == "no-card" {
 		params.Lists = nil
@@ -255,7 +255,8 @@ func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.Kanb
 		params.Since = nil
 	}
 
-	cards, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", append(bson.A{}, pipeline...))
+	cards, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", pipeline)
+
 	if err != nil {
 		return core.KanbanExports{}, err
 	}
@@ -270,4 +271,24 @@ func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.Kanb
 	// alors que no-card retourne les suivis datapi sans carte kanban
 	kanbanDBExports, err := selectKanbanDBExportsWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
 	return kanbanDBExportToKanbanExports(kanbanDBExports), err
+}
+
+func (s wekanService) SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
+	user, ok := wekanConfig.GetUserByUsername(libwekan.Username(username))
+	if !ok {
+		return nil, errors.New("utilisateur non trouvé")
+	}
+	pipeline := buildSelectCardsFromSiretPipeline(siret)
+	pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
+	cardsWithComments, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "customFields", pipeline)
+	if err != nil {
+		return nil, err
+	}
+	kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, []string{siret}, db, user, roles, nil)
+	kanbanExports := joinCardsWithKanbanDBExports(kanbanDBExports, cardsWithComments)
+
+	if len(kanbanExports) > 0 {
+		return kanbanExports, err
+	}
+	return kanbanDBExportToKanbanExports(kanbanDBExports), nil
 }

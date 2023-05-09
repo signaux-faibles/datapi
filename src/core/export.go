@@ -247,8 +247,14 @@ func (cards KanbanExports) xlsx(wekan bool) ([]byte, error) {
 	}
 	data := bytes.NewBuffer(nil)
 	file := bufio.NewWriter(data)
-	xlFile.Write(file)
-	file.Flush()
+	err = xlFile.Write(file)
+	if err != nil {
+		return nil, err
+	}
+	err = file.Flush()
+	if err != nil {
+		return nil, err
+	}
 	return data.Bytes(), nil
 }
 
@@ -259,15 +265,16 @@ func boolToString(boolean bool, true string, false string) string {
 	return false
 }
 
-func (c KanbanExport) docx(head ExportHeader) (Docx, error) {
-	data, err := json.MarshalIndent(c, " ", " ")
+func (kanbanExport KanbanExport) docx(head ExportHeader) (Docx, error) {
+	// docxify prend un tableau en entrée pour un rendu multipage
+	input := []interface{}{kanbanExport}
+	data, err := json.MarshalIndent(input, " ", " ")
 	script := viper.GetString("docxifyPath")
 	dir := viper.GetString("docxifyWorkingDir")
 	python := viper.GetString("docxifyPython")
 	if err != nil {
 		return Docx{}, err
 	}
-	fmt.Println(string(data))
 	cmd := exec.Command(python, script, head.Auteur, head.Date.Format("02/01/2006"), "Haute")
 	cmd.Dir = dir
 	cmd.Stdin = bytes.NewReader(data)
@@ -277,7 +284,6 @@ func (c KanbanExport) docx(head ExportHeader) (Docx, error) {
 	cmd.Stderr = &outErr
 	err = cmd.Run()
 	if err != nil {
-
 		fmt.Println(string(outErr.Bytes()))
 		return Docx{}, err
 	}
@@ -289,8 +295,12 @@ func (c KanbanExport) docx(head ExportHeader) (Docx, error) {
 		fmt.Println(outErr.String())
 	}
 	return Docx{
-		filename: fmt.Sprintf("export-%s-%s.docx", strings.Replace(c.RaisonSociale, " ", "-", -1), c.Siret),
-		data:     file,
+		filename: fmt.Sprintf("%s-%s-%s.docx",
+			strings.Replace(kanbanExport.Board, " ", "-", -1),
+			strings.Replace(kanbanExport.RaisonSociale, " ", "-", -1),
+			kanbanExport.Siret,
+		),
+		data: file,
 	}, nil
 }
 
@@ -310,8 +320,10 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	var s session
 	s.Bind(c)
 	var params KanbanSelectCardsForUserParams
-	c.Bind(&params)
-
+	err := c.Bind(&params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+	}
 	var ok bool
 	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
 	if !ok {
@@ -324,14 +336,14 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
-	xlsx, err := exports.xlsx(s.hasRole("wekan"))
+	xlsxFile, err := exports.xlsx(s.hasRole("wekan"))
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
 	filename := fmt.Sprintf("export-suivi-%s.xlsx", time.Now().Format("060102"))
 	c.Writer.Header().Set("Content-disposition", "attachment;filename="+filename)
-	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsx)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", xlsxFile)
 }
 
 type Docx struct {
@@ -345,14 +357,23 @@ func (docxs Docxs) zip() []byte {
 	var zipData bytes.Buffer
 	zipFile := zip.NewWriter(&zipData)
 	for _, docx := range docxs {
-		w, _ := zipFile.CreateHeader(&zip.FileHeader{
+		w, err := zipFile.CreateHeader(&zip.FileHeader{
 			Name:     docx.filename,
 			Modified: time.Now(),
 			Method:   0,
 		})
-		w.Write(docx.data)
+		if err != nil {
+			return nil
+		}
+		_, err = w.Write(docx.data)
+		if err != nil {
+			return nil
+		}
 	}
-	zipFile.Close()
+	err := zipFile.Close()
+	if err != nil {
+		return nil
+	}
 	return zipData.Bytes()
 }
 
@@ -360,8 +381,10 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	var s session
 	s.Bind(c)
 	var params KanbanSelectCardsForUserParams
-	c.Bind(&params)
-
+	err := c.Bind(&params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+	}
 	var ok bool
 	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
 	if !ok {
@@ -397,24 +420,41 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 func getDOCXFromSiret(c *gin.Context) {
 	var s session
 	s.Bind(c)
-	//
-	//siret := c.Param("siret")
-	//card, err := getExportSiret(s, siret)
-	//if err != nil {
-	//	utils.AbortWithError(c, err)
-	//	return
-	//}
-	//
-	//header := ExportHeader{
-	//	Auteur: s.auteur,
-	//	Date:   time.Now(),
-	//}
-	//docx, err := card.docx(header)
-	//if err != nil {
-	//	utils.AbortWithError(c, err)
-	//	return
-	//}
-	//
-	//c.Writer.Header().Set("Content-disposition", "attachment;filename="+docx.filename)
-	//c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx.data)
+
+	siret := c.Param("siret")
+	kanbanExports, err := kanban.SelectKanbanExportsWithSiret(c, siret, s.Username, db.Get(), s.roles)
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
+
+	header := ExportHeader{
+		Auteur: s.auteur,
+		Date:   time.Now(),
+	}
+
+	if len(kanbanExports) > 1 {
+		var docxs Docxs
+		for _, export := range kanbanExports {
+			docx, err := export.docx(header)
+			if err != nil {
+				utils.AbortWithError(c, err)
+				return
+			}
+			docxs = append(docxs, docx)
+		}
+		filename := fmt.Sprintf("export-suivi-%s.zip", time.Now().Format("060102"))
+		c.Writer.Header().Set("Content-Disposition", "attachment;filename="+filename)
+		c.Data(200, "application/zip", docxs.zip())
+		return
+	}
+
+	docx, err := kanbanExports[0].docx(header)
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
+
+	c.Writer.Header().Set("Content-disposition", "attachment;filename="+docx.filename)
+	c.Data(200, "application/vnd.openxmlformats-officedocument.wordprocessingml.document", docx.data)
 }
