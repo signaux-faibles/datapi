@@ -18,9 +18,8 @@ func init() {
 }
 
 func TestApi_Wekan_endpoint(t *testing.T) {
-
 	someRoles := []string{fake.App().Name(), fake.App().Name(), fake.App().Name()}
-	someRolesWithKanban := append(someRoles, "kanban")
+	someRolesWithWekan := append(someRoles, "wekan")
 
 	type args struct {
 		roles []string
@@ -30,8 +29,8 @@ func TestApi_Wekan_endpoint(t *testing.T) {
 		args args
 		want int
 	}{
-		{"l'utilisateur n'a pas le rôle kanban", args{someRoles}, http.StatusForbidden},
-		{"l'utilisateur a le rôle kanban", args{someRolesWithKanban}, http.StatusOK},
+		{"l'utilisateur n'a pas le rôle `wekan`", args{someRoles}, http.StatusForbidden},
+		{"l'utilisateur a le rôle `wekan`", args{someRolesWithWekan}, http.StatusOK},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
