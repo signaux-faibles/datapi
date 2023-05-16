@@ -4,6 +4,7 @@ import (
 	"context"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
+	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"time"
 
@@ -99,14 +100,24 @@ func unfollowEtablissement(c *gin.Context) {
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
 	}
-	//userID := oldWekanConfig.userID(s.Username)
-	//if userID != "" && s.hasRole("wekan") {
-	//	boardIds := oldWekanConfig.boardIdsForUser(s.Username)
-	//	err := wekanPartCard(userID, siret, boardIds)
-	//	if err != nil {
-	//		fmt.Println(err)
-	//	}
-	//}
+
+	if s.hasRole("wekan") {
+		user, ok := kanban.GetUser(libwekan.Username(s.Username))
+		if !ok {
+			c.JSON(500, "l'utilisateur a le rôle wekan mais n'est pas présent dans l'application")
+		}
+		cards, err := kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
+		if err != nil {
+			c.JSON(500, err.Error())
+		}
+		for _, card := range cards {
+			err := kanban.PartCard(c, card.ID, user.ID)
+			if err != nil {
+				c.JSON(500, err.Error())
+				return
+			}
+		}
+	}
 
 	err := follow.deactivate()
 	if err != nil {

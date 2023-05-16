@@ -319,3 +319,8 @@ func (service wekanService) SelectFollowsForUser(ctx context.Context, params cor
 	summaries, err := selectSummariesWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
 	return summaries, err
 }
+
+func (service wekanService) PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error {
+	_, err := wekan.EnsureMemberOutOfCard(ctx, cardID, userID)
+	return err
+}
