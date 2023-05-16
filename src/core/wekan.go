@@ -6,10 +6,8 @@ import (
 	"github.com/signaux-faibles/datapi/src/db"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -51,43 +49,6 @@ type EtablissementData struct {
 }
 
 // TODO libwekan
-func wekanUnarchiveCardHandler(c *gin.Context) {
-	var s session
-	s.Bind(c)
-	userID := oldWekanConfig.userID(s.Username)
-	if userID == "" || !s.hasRole("wekan") {
-		c.JSON(http.StatusForbidden, "not a wekan user")
-		return
-	}
-
-	cardID := c.Param("cardID")
-	boardIDs := oldWekanConfig.boardIdsForUser(s.Username)
-	result, err := mgoDB.Collection("cards").UpdateOne(context.Background(),
-		bson.M{
-			"boardId": bson.M{
-				"$in": boardIDs,
-			},
-			"_id": cardID,
-		},
-		bson.M{
-			"$set": bson.M{
-				"archived": false,
-			},
-		},
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, "wekanUnarchiveCardHandler: "+err.Error())
-		return
-	}
-	if result.MatchedCount == 0 {
-		c.JSON(http.StatusBadRequest, "wekanUnarchiveCardHandler: carte non existante ou non accessible")
-		return
-	}
-	if result.ModifiedCount == 0 {
-		c.JSON(http.StatusNoContent, "wekanUnarchiveCardHandler: la carte n'est pas archivée")
-		return
-	}
-}
 
 func wekanPartCard(userID string, siret string, boardIds []string) error {
 	query := bson.M{
@@ -110,40 +71,6 @@ func wekanPartCard(userID string, siret string, boardIds []string) error {
 }
 
 // TODO libwekan
-func wekanJoinCardHandler(c *gin.Context) {
-	var s session
-	s.Bind(c)
-	cardId := c.Params.ByName("cardId")
-	userID := oldWekanConfig.userID(s.Username)
-
-	if userID == "" || !s.hasRole("wekan") {
-		c.AbortWithStatusJSON(403, "not a wekan user")
-		return
-	}
-	boardIds := oldWekanConfig.boardIdsForUser(s.Username)
-	query := bson.M{
-		"_id":      cardId,
-		"boardId":  bson.M{"$in": boardIds},
-		"archived": false,
-		"$expr":    bson.M{"$not": bson.M{"$in": bson.A{userID, "$members"}}},
-	}
-	update := bson.M{
-		"$push": bson.M{
-			"members": userID,
-		},
-	}
-	_, err := mgoDB.Collection("cards").UpdateOne(
-		context.Background(),
-		query,
-		update,
-	)
-
-	if err != nil {
-		c.AbortWithStatusJSON(500, err.Error())
-		return
-	}
-	c.JSON(201, "suivi effectué")
-}
 
 func GetEtablissementDataFromDb(siret Siret) (EtablissementData, error) {
 	sql := `select s.siret,
@@ -197,8 +124,8 @@ func (wcb *WekanConfigBoard) effectifField(effectif int) CustomField {
 	return CustomField{wcb.CustomFields.EffectifField.EffectifFieldID, ""}
 }
 
-// TODO libwekan
 // WekanCards est une liste de WekanCard
+// TODO: remove type
 type WekanCards []WekanCard
 
 // TODO libwekan
@@ -311,28 +238,6 @@ func (c WekanCard) FicheSF() (string, error) {
 }
 
 // TODO libwekan
-func selectWekanCardsFromSiret(username string, siret string) ([]*WekanCard, error) {
-	wcu := oldWekanConfig.forUser(username)
-	userID := oldWekanConfig.userID(username)
-	if userID == "" {
-		return nil, fmt.Errorf("selectWekanCardFromSiret() -> utilisateur wekan inconnu: %s", username)
-	}
-
-	var wekanCards []*WekanCard
-
-	pipeline := cardFromSiretPipeline(wcu, siret)
-	cursor, err := mgoDB.Collection("cards").Aggregate(context.Background(), pipeline)
-	if err != nil {
-		return nil, err
-	}
-
-	err = cursor.All(context.Background(), &wekanCards)
-	if err != nil {
-		return nil, err
-	}
-
-	return wekanCards, nil
-}
 
 // TODO libwekan
 func cardFromSiretPipeline(wcu OldWekanConfig, siret string) bson.A {

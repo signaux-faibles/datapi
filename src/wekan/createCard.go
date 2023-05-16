@@ -9,10 +9,10 @@ import (
 )
 
 // CreateCard permet la création d'une carte dans la base de données wekan
-func (s wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username) error {
+func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username) error {
 	user, ok := GetUser(username)
 	if !ok {
-		return core.ForbiddenError{"l'utilisateur n'est pas enregistré dans wekan"}
+		return core.ForbiddenError{Reason: "l'utilisateur n'est pas enregistré dans wekan"}
 	}
 	board, swimlane, err := getBoardWithSwimlaneID(params.SwimlaneID)
 	if err != nil {
@@ -79,14 +79,14 @@ func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, 
 
 	configBoard, ok := wc.Boards[boardID]
 	if !ok {
-		return libwekan.List{}, core.UnknownBoardError{"id=" + string(boardID)}
+		return libwekan.List{}, core.UnknownBoardError{BoardIdentifier: "id=" + string(boardID)}
 	}
 	for _, list := range configBoard.Lists {
 		if list.Title == title {
 			return list, nil
 		}
 	}
-	return libwekan.List{}, core.UnknownListError{"titre=" + title}
+	return libwekan.List{}, core.UnknownListError{ListIdentifier: "titre=" + title}
 }
 
 func getBoardWithSwimlaneID(swimlaneID libwekan.SwimlaneID) (libwekan.ConfigBoard, libwekan.Swimlane, error) {
@@ -104,7 +104,7 @@ func getBoardWithSwimlaneID(swimlaneID libwekan.SwimlaneID) (libwekan.ConfigBoar
 		}
 	}
 	if !ok {
-		return libwekan.ConfigBoard{}, libwekan.Swimlane{}, core.ForbiddenError{"l'utilisateur n'est pas habilité sur ce tableau"}
+		return libwekan.ConfigBoard{}, libwekan.Swimlane{}, core.ForbiddenError{Reason: "l'utilisateur n'est pas habilité sur ce tableau"}
 	}
 
 	return configBoard, swimlane, nil
@@ -137,9 +137,9 @@ func buildEffectifField(configBoard libwekan.ConfigBoard, effectif int) libwekan
 	if effectifIndex >= 0 {
 		item := effectifItems[effectifIndex]
 		customFieldValueID := customFieldDropdownValueToID(configBoard, item)
-		return libwekan.CardCustomField{customFieldID, customFieldValueID}
+		return libwekan.CardCustomField{ID: customFieldID, Value: customFieldValueID}
 	}
-	return libwekan.CardCustomField{customFieldID, ""}
+	return libwekan.CardCustomField{ID: customFieldID}
 }
 
 func customFieldDropdownValueToID(configBoard libwekan.ConfigBoard, value string) string {
@@ -154,15 +154,15 @@ func customFieldDropdownValueToID(configBoard libwekan.ConfigBoard, value string
 
 func buildContactField(configBoard libwekan.ConfigBoard) libwekan.CardCustomField {
 	id := configBoard.CustomFields.CustomFieldID("Contact")
-	return libwekan.CardCustomField{id, ""}
+	return libwekan.CardCustomField{ID: id}
 }
 
 func buildSiretField(configBoard libwekan.ConfigBoard, siret core.Siret) libwekan.CardCustomField {
 	id := configBoard.CustomFields.CustomFieldID("SIRET")
-	return libwekan.CardCustomField{id, string(siret)}
+	return libwekan.CardCustomField{ID: id, Value: string(siret)}
 }
 
 func buildFicheField(configBoard libwekan.ConfigBoard, siret core.Siret) libwekan.CardCustomField {
 	id := configBoard.CustomFields.CustomFieldID("Fiche Signaux Faibles")
-	return libwekan.CardCustomField{id, viper.GetString("webBaseURL") + "ets/" + string(siret)}
+	return libwekan.CardCustomField{ID: id, Value: viper.GetString("webBaseURL") + "ets/" + string(siret)}
 }

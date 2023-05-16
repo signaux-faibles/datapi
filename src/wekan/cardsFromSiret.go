@@ -94,7 +94,7 @@ func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.
 	}
 }
 
-func (s wekanService) ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]core.KanbanCard, error) {
+func (service wekanService) ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]core.KanbanCard, error) {
 	pipeline := wekan.BuildCardFromCustomTextFieldPipeline("SIRET", siret)
 
 	//lookupCommentsStage := bson.M{

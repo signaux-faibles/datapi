@@ -243,7 +243,7 @@ func buildCardToCardAndCommentsPipeline() libwekan.Pipeline {
 	}}
 }
 
-func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
+func (service wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
 	wc := wekanConfig.Copy()
 	pipeline := buildCardsForUserPipeline(wc, params)
 	pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
@@ -273,7 +273,7 @@ func (s wekanService) ExportFollowsForUser(ctx context.Context, params core.Kanb
 	return kanbanDBExportToKanbanExports(kanbanDBExports), err
 }
 
-func (s wekanService) SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
+func (service wekanService) SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
 	user, ok := wekanConfig.GetUserByUsername(libwekan.Username(username))
 	if !ok {
 		return nil, errors.New("utilisateur non trouvé")
