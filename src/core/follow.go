@@ -2,7 +2,6 @@ package core
 
 import (
 	"context"
-	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"net/http"
@@ -100,14 +99,14 @@ func unfollowEtablissement(c *gin.Context) {
 		UnfollowComment:  param.UnfollowComment,
 		UnfollowCategory: param.UnfollowCategory,
 	}
-	userID := oldWekanConfig.userID(s.Username)
-	if userID != "" && s.hasRole("wekan") {
-		boardIds := oldWekanConfig.boardIdsForUser(s.Username)
-		err := wekanPartCard(userID, siret, boardIds)
-		if err != nil {
-			fmt.Println(err)
-		}
-	}
+	//userID := oldWekanConfig.userID(s.Username)
+	//if userID != "" && s.hasRole("wekan") {
+	//	boardIds := oldWekanConfig.boardIdsForUser(s.Username)
+	//	err := wekanPartCard(userID, siret, boardIds)
+	//	if err != nil {
+	//		fmt.Println(err)
+	//	}
+	//}
 
 	err := follow.deactivate()
 	if err != nil {

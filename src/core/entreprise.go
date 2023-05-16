@@ -840,6 +840,17 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 	return nil
 }
 
+// EtablissementData type pour les données de l'établissement à faire figurer sur la carte Wekan
+type EtablissementData struct {
+	Siret           string
+	RaisonSociale   string
+	Departement     string
+	Region          string
+	Effectif        int
+	CodeActivite    string
+	LibelleActivite string
+}
+
 func (e *Etablissements) load(roles Scope, username string) error {
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {

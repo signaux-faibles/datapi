@@ -20,7 +20,7 @@ type KanbanService interface {
 	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (KanbanExports, error)
 	SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (KanbanExports, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
-	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username) error
+	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
 }
 

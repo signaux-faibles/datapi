@@ -2,6 +2,7 @@ package wekan
 
 import (
 	"context"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/signaux-faibles/libwekan"
@@ -9,7 +10,7 @@ import (
 )
 
 // CreateCard permet la création d'une carte dans la base de données wekan
-func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username) error {
+func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error {
 	user, ok := GetUser(username)
 	if !ok {
 		return core.ForbiddenError{Reason: "l'utilisateur n'est pas enregistré dans wekan"}
@@ -22,7 +23,7 @@ func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNe
 	if err != nil {
 		return err
 	}
-	etablissement, err := core.GetEtablissementDataFromDb(params.Siret)
+	etablissement, err := getEtablissementDataFromDb(ctx, db, params.Siret)
 	if err != nil {
 		return err
 	}

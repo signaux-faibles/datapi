@@ -10,19 +10,13 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net/http"
-	"time"
-
-	"github.com/spf13/viper"
 )
 
 var keycloak gocloak.GoCloak
-var mgoDB *mongo.Database
-
-var oldWekanConfig OldWekanConfig
 
 var Regions map[Region][]CodeDepartement
 var Departements map[CodeDepartement]string
@@ -46,9 +40,6 @@ func StartDatapi(kanbanService KanbanService) error {
 		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %w", err)
 	}
 
-	// TODO supprimer
-	mgoDB = connectWekanDB()
-	go watchOldWekanConfig(&oldWekanConfig, time.Minute)
 	if kanbanService == nil {
 		return fmt.Errorf("le service Kanban n'est pas paramétré")
 	}
