@@ -9,7 +9,7 @@ type ForbiddenError struct {
 }
 
 func (e ForbiddenError) Error() string {
-	return fmt.Sprintf("accès interdit: ", e.Reason)
+	return fmt.Sprintf("accès interdit: %s", e.Reason)
 }
 
 type UnknownBoardError struct {
