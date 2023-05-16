@@ -1,10 +1,11 @@
+// Package core embarque des types et fonctions communes de datapi
 package core
 
 import (
 	"bytes"
 	"context"
 	"fmt"
-	gocloak "github.com/Nerzal/gocloak/v10"
+	"github.com/Nerzal/gocloak/v10"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"

@@ -13,10 +13,10 @@ func followSiretsFromWekan(ctx context.Context, username libwekan.Username, sire
 		return err
 	}
 	if _, err := tx.Exec(ctx, sqlCreateTmpFollowWekan, sirets, username); err != nil {
-		return core.DatabaseExecutionError{"sqlCreateTmpFollowWekan"}
+		return core.DatabaseExecutionError{QueryIdentifier: "sqlCreateTmpFollowWekan"}
 	}
 	if _, err := tx.Exec(ctx, sqlFollowFromTmp, username); err != nil {
-		return core.DatabaseExecutionError{"sqlFollowFromTmp"}
+		return core.DatabaseExecutionError{QueryIdentifier: "sqlFollowFromTmp"}
 	}
 	return tx.Commit(ctx)
 }

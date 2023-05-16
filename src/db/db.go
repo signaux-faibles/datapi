@@ -166,7 +166,7 @@ func runMigrations(migrationScripts []migrationScript, db *pgxpool.Pool) {
 		}
 		_, err = tx.Exec(
 			ctx,
-			"insert into migrations (filename, hash) values ($1, $2)", m.fileName, string(m.hash[:]))
+			"insert into migrations (filename, hash) values ($1, $2)", m.fileName, m.hash[:])
 		if err != nil {
 			panic("error inserting " + m.fileName + " in migration table, no changes commited. see details:\n" + err.Error())
 		}

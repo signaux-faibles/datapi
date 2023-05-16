@@ -194,7 +194,7 @@ func buildMatchListsPipeline(lists []string) libwekan.Pipeline {
 func buildMatchLabelsPipeline(labels []libwekan.BoardLabelName, labelMode string, wc libwekan.Config) libwekan.Pipeline {
 	var pipeline libwekan.Pipeline
 
-	boardIDs := []libwekan.BoardID{}
+	var boardIDs []libwekan.BoardID
 	for boardID, boardConfig := range wc.Boards {
 		if boardConfig.Board.HasAllLabelNames(labels) && labelMode == "and" {
 			boardIDs = append(boardIDs, boardID)
@@ -288,7 +288,7 @@ func kanbanDBExportToKanbanExports(kanbanDBExports core.KanbanDBExports) core.Ka
 	return kanbanExports
 }
 
-func (w wekanService) SelectFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
+func (service wekanService) SelectFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
 	wc := wekanConfig.Copy()
 	pipeline := buildCardsForUserPipeline(wc, params)
 	pipeline.AppendStage(bson.M{

@@ -1,6 +1,6 @@
 package wekan
 
-// SqlGetCards: $1 = roles.ZoneGeo, $2 = username, $3 = sirets
+// SqlGetCards $1 = roles.ZoneGeo, $2 = username, $3 = sirets
 const SqlGetCards = `
 select s.siret, s.siren, s.raison_sociale, s.commune,
   s.libelle_departement, s.code_departement,

@@ -16,15 +16,15 @@ var wekanConfigMutex = &sync.Mutex{}
 
 type wekanService struct{}
 
-func (s wekanService) LoadConfigForUser(username libwekan.Username) core.KanbanConfig {
+func (service wekanService) LoadConfigForUser(username libwekan.Username) core.KanbanConfig {
 	return kanbanConfigForUser(username)
 }
 
-func (s wekanService) GetUser(username libwekan.Username) (libwekan.User, bool) {
+func (service wekanService) GetUser(username libwekan.Username) (libwekan.User, bool) {
 	return GetUser(username)
 }
 
-func (s wekanService) SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]core.KanbanCard, error) {
+func (service wekanService) SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]core.KanbanCard, error) {
 	return selectCardsFromSiret(ctx, siret, username)
 }
 

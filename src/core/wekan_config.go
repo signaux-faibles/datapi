@@ -297,8 +297,8 @@ func buildWekanConfigPipeline() []bson.M {
 //	c.AbortWithStatus(http.StatusForbidden)
 //}
 
-// TODO libwekan
 // OldWekanConfig type pour le fichier de configuration de Wekan
+// TODO remove type
 type OldWekanConfig struct {
 	Slugs    map[string]*WekanConfigBoard `bson:"slugs" json:"slugs,omitempty"`
 	Boards   map[string]*WekanConfigBoard `bson:"boards" json:"boards"`

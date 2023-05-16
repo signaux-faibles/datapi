@@ -130,7 +130,7 @@ type ExportHeader struct {
 // KanbanExports array of WekanExport
 type KanbanExports []KanbanExport
 
-// WekanExport fournit les champs nécessaires pour l'export Wekan
+// KanbanExport fournit les champs nécessaires pour l'export Wekan
 type KanbanExport struct {
 	RaisonSociale              string    `json:"raison_sociale"`
 	Siret                      string    `json:"siret"`
