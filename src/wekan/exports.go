@@ -17,26 +17,6 @@ func textFromComment(comment libwekan.Comment) string {
 	return comment.Text
 }
 
-//func GetKanbanDBExportSiret(k core.KanbanDBExport) string {
-//	return k.Siret
-//}
-//
-//func joinCardsAndKanbanDBExports(cardAndComments []libwekan.CardWithComments, dbExports core.KanbanDBExports) core.KanbanExports {
-//	e := utils.ToMap(dbExports, func(k *core.KanbanDBExport) string {
-//		return k.Siret
-//	})
-//
-//	var exports core.KanbanExports
-//
-//	for _, cardAndComment := range cardAndComments {
-//		siret := cardToSiret(wekanConfig)(cardAndComment.Card)
-//		if e[siret] != nil {
-//			exports = append(exports, joinCardAndKanbanDBExport(cardAndComment, *e[siret]))
-//		}
-//	}
-//	return exports
-//}
-
 func joinCardAndKanbanDBExport(cardAndComments libwekan.CardWithComments, kanbanDBExport core.KanbanDBExport) core.KanbanExport {
 	card := cardAndComments.Card
 	comments := cardAndComments.Comments

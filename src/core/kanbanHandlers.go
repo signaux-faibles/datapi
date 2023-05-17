@@ -38,6 +38,11 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	var s session
 	s.Bind(c)
 
+	if !utils.Contains(s.roles, "wekan") {
+		getEtablissementsFollowedByCurrentUser(c)
+		return
+	}
+
 	var params = KanbanSelectCardsForUserParams{}
 	err := c.Bind(&params)
 	if err != nil {

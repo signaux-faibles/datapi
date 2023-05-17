@@ -19,156 +19,6 @@ import (
 	"github.com/tealeg/xlsx"
 )
 
-//func getExportSiret(s session, siret string) (Card, error) {
-//	var exports KanbanDBExports
-//	exports, exportsFields := exports.NewDbExport()
-//	err := db.Get().QueryRow(context.Background(), sqlDbExportSingle, s.roles, s.Username, siret).Scan(exportsFields...)
-//	if err != nil {
-//		return Card{}, err
-//	}
-//
-//	var c = Card{
-//		dbExport: exports[0],
-//	}
-//	if s.hasRole("wekan") {
-//		wekanCards, err := selectWekanCardsFromSiret(s.Username, siret)
-//		if err != nil {
-//			return Card{}, err
-//		}
-//		c.WekanCards = wekanCards
-//	}
-//
-//	return c, nil
-//}
-
-//// TODO: factoriser avec getCards
-//func getExport(ctx context.Context, s session, params KanbanSelectCardsForUserParams) (Cards, error) {
-//	var cards Cards
-//	var cardsMap = make(map[string]*Card)
-//	var sirets []string
-//	var followedSirets []string
-//	wcu := oldWekanConfig.forUser(s.Username)
-//	userID := oldWekanConfig.userID(s.Username)
-//
-//	if _, ok := oldWekanConfig.Users[s.Username]; s.hasRole("wekan") && params.Type != "no-card" && ok {
-//		// Export wekan + DB
-//		//var username *string
-//		//if params.Type == "my-cards" {
-//		//	username = &s.Username
-//		//}
-//		//boardIds := wcu.boardIds()
-//		//swimlaneIds := wcu.swimlaneIdsForZone(params.Zone)
-//		//listIds := wcu.listIdsForStatuts(params.Statut)
-//		//labelIds := wcu.labelIdsForLabels(params.Labels)
-//		//labelMode := params.LabelMode
-//
-//		wekanCards, err := kanban.SelectFollowsForUser()
-//		//wekanCards, err := selectWekanCards(username, boardIds, swimlaneIds, listIds, labelIds, labelMode, params.Since)
-//		if err != nil {
-//			return nil, err
-//		}
-//		for _, w := range wekanCards {
-//			siret, err := w.Siret()
-//			if err != nil {
-//				continue
-//			}
-//			card := Card{nil, []*WekanCard{w}, nil}
-//			cards = append(cards, &card)
-//			if _, ok := cardsMap[siret]; !ok {
-//				cardsMap[siret] = &card
-//				sirets = append(sirets, siret)
-//			} else {
-//				c := cardsMap[siret].WekanCards
-//				c = append(c, card.WekanCards...)
-//				cardsMap[siret].WekanCards = c
-//			}
-//
-//			if utils.Contains(append(w.Members, w.Assignees...), userID) {
-//				followedSirets = append(followedSirets, siret)
-//			}
-//		}
-//		var exports KanbanDBExports
-//		if params.Type == "my-cards" {
-//			sirets = followedSirets
-//		}
-//		var cursor pgx.Rows
-//		cursor, err = db.Get().Query(context.Background(), sqlDbExport, s.roles, s.Username, sirets)
-//
-//		if err != nil {
-//			return nil, err
-//		}
-//		for cursor.Next() {
-//			var s []interface{}
-//			exports, s = exports.NewDbExport()
-//			err := cursor.Scan(s...)
-//			if err != nil {
-//				return nil, err
-//			}
-//		}
-//		cursor.Close()
-//		for _, s := range exports {
-//			card := cardsMap[s.Siret]
-//			if card == nil {
-//				card = &Card{}
-//			}
-//			card.KanbanDBExport = s
-//			cardsMap[s.Siret] = card
-//		}
-//	} else {
-//		// export DB uniquement
-//		boardIds := wcu.boardIds()
-//		var wekanCards []*WekanCard
-//		var err error
-//
-//		if s.hasRole("wekan") {
-//			wekanCards, err = selectWekanCards(&s.Username, boardIds, nil, nil, nil, false, nil)
-//			if err != nil {
-//				return nil, err
-//			}
-//		}
-//
-//		var excludeSirets = make(map[string]struct{})
-//		for _, w := range wekanCards {
-//			if s.hasRole("wekan") {
-//				siret, err := w.Siret()
-//				if err != nil {
-//					continue
-//				}
-//				excludeSirets[siret] = struct{}{}
-//			}
-//		}
-//		var exports KanbanDBExports
-//		var cursor pgx.Rows
-//		cursor, err = db.Get().Query(
-//			context.Background(),
-//			sqlDbExportFollow,
-//			s.roles,
-//			s.Username,
-//			params.Zone,
-//		)
-//
-//		if err != nil {
-//			return nil, err
-//		}
-//		for cursor.Next() {
-//			var s []interface{}
-//			exports, s = exports.NewDbExport()
-//			err := cursor.Scan(s...)
-//			if err != nil {
-//				return nil, err
-//			}
-//		}
-//		cursor.Close()
-//		for _, s := range exports {
-//			if _, ok := excludeSirets[s.Siret]; !ok {
-//				card := Card{nil, nil, s}
-//				cards = append(cards, &card)
-//			}
-//		}
-//	}
-//	return cards.dbExportsOnly(), nil
-//}
-
 func (cards KanbanExports) xlsx(wekan bool) ([]byte, error) {
 	xlFile := xlsx.NewFile()
 	xlSheet, err := xlFile.AddSheet("extract")
@@ -313,7 +163,16 @@ func getEtablissementsFollowedByCurrentUser(c *gin.Context) {
 		c.JSON(err.Code(), err.Error())
 		return
 	}
-	c.JSON(200, follows)
+	var cards Summaries
+	summaries := utils.Convert(follows, followToSummary)
+	count := len(summaries)
+	cards.Global.Count = &count
+	cards.Summaries = summaries
+	c.JSON(200, cards)
+}
+
+func followToSummary(f Follow) *Summary {
+	return f.EtablissementSummary
 }
 
 func getXLSXFollowedByCurrentUser(c *gin.Context) {

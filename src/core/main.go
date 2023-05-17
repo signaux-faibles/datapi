@@ -94,9 +94,7 @@ func InitAPI(router *gin.Engine) {
 	follow.DELETE("/:siret", checkSiretFormat, unfollowEtablissement)
 
 	export := router.Group("/export/", AuthMiddleware(), LogMiddleware)
-	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
-	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", checkSiretFormat, getDOCXFromSiret)
 
@@ -195,12 +193,12 @@ func AdminAuthMiddleware(c *gin.Context) {
 }
 
 func configureKanbanEndpoint(path string, api *gin.Engine) {
-	kanban := api.Group(path, AuthMiddleware(), CheckAnyRolesMiddleware("wekan"), LogMiddleware)
-	kanban.GET("/config", kanbanConfigHandler)
-	kanban.GET("/cards/:siret", kanbanGetCardsHandler)
+	kanban := api.Group(path, AuthMiddleware(), LogMiddleware)
+	kanban.GET("/config", CheckAnyRolesMiddleware("wekan"), kanbanConfigHandler)
+	kanban.GET("/cards/:siret", CheckAnyRolesMiddleware("wekan"), kanbanGetCardsHandler)
 	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)
-	kanban.POST("/card", kanbanNewCardHandler)
-	kanban.GET("/unarchive/:cardID", kanbanUnarchiveCardHandler)
+	kanban.POST("/card", CheckAnyRolesMiddleware("wekan"), kanbanNewCardHandler)
+	kanban.GET("/unarchive/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanUnarchiveCardHandler)
 }
 
 // True made global to ease pointers
