@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"regexp"
 	"strings"
 	"time"
@@ -219,6 +220,22 @@ type EtablissementScore struct {
 	MicroExpl             map[string]float64               `json:"-"`
 	AlertPreRedressements string                           `json:"alertPreRedressements"`
 	Redressements         []string                         `json:"redressements"`
+}
+
+func fixConfidentialiteRedressements(redressements []string, confidentiels []string) []string {
+	newRedressements := []string{}
+	confidentiel := false
+	for _, redressement := range redressements {
+		if utils.Contains(confidentiels, redressement) {
+			confidentiel = true
+		} else {
+			newRedressements = append(newRedressements, redressement)
+		}
+	}
+	if confidentiel {
+		newRedressements = append(newRedressements, "confidentiel")
+	}
+	return newRedressements
 }
 
 func getEntreprise(c *gin.Context) {
@@ -553,6 +570,15 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 	return nil
 }
 
+func (e Entreprise) hasDiane() bool {
+	for _, exercice := range e.Diane {
+		if exercice.Exercice > 2020 {
+			return true
+		}
+	}
+	return false
+}
+
 func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 	var scores = make(map[string][]EtablissementScore)
 	for (*rows).Next() {
@@ -567,6 +593,10 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 		}
 		if len(explSelection.SelectConcerning) > 0 {
 			sc.ExplSelection = &explSelection
+		}
+		if !(e.Entreprises[siret[0:9]]).hasDiane() {
+			fmt.Println("namého")
+			sc.Redressements = fixConfidentialiteRedressements(sc.Redressements, []string{"solvabilité_faible", "k_propres_négatifs", "rentabilité_faible"})
 		}
 		scores[siret] = append(scores[siret], sc)
 	}
