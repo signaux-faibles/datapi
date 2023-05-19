@@ -595,7 +595,6 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 			sc.ExplSelection = &explSelection
 		}
 		if !(e.Entreprises[siret[0:9]]).hasDiane() {
-			fmt.Println("namého")
 			sc.Redressements = fixConfidentialiteRedressements(sc.Redressements, []string{"solvabilité_faible", "k_propres_négatifs", "rentabilité_faible"})
 		}
 		scores[siret] = append(scores[siret], sc)
