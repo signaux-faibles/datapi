@@ -16,6 +16,7 @@ func ConfigureEndpoint(path string, api *gin.Engine) {
 	endpoint.GET("/listes/:algo", importListesHandler)           // 3
 	endpoint.GET("/full", importEntrepriseAndEtablissementHandler, importSireneHandler)
 	endpoint.GET("/full/:algo", importEntrepriseAndEtablissementHandler, importSireneHandler, importListesHandler)
+	endpoint.GET("/bce", importBCEHandler)
 }
 
 func importSireneHandler(c *gin.Context) {

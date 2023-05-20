@@ -199,10 +199,10 @@ type sirene struct {
 func (e entreprise) intoBatch(batch *pgx.Batch) {
 	// TODO a remplacer par l'imports du fichier de Yan
 	sqlEntrepriseDiane := `insert into entreprise_diane
-		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
+		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere,
 		autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
 		capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
-	 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation, 
+	 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation,
 		couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
 		dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
 	 	endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
@@ -251,7 +251,7 @@ func (e entreprise) intoBatch(batch *pgx.Batch) {
 		sqlEllisphere := `insert into entreprise_ellisphere
 		(siren, code, refid, raison_sociale,	adresse, personne_pou_m,
 		niveau_detention, part_financiere, code_filiere, refid_filiere,
-		personne_pou_m_filiere) 
+		personne_pou_m_filiere)
 		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
 		el := *e.Value.Ellisphere
 		el.Siren = e.Value.SireneUL.Siren
@@ -263,7 +263,7 @@ func (e entreprise) intoBatch(batch *pgx.Batch) {
 	if e.Value.Paydex != nil {
 		for _, p := range *e.Value.Paydex {
 			sqlPaydex := `insert into entreprise_paydex
-				(siren, date_valeur, nb_jours) 
+				(siren, date_valeur, nb_jours)
 				values ($1, $2, $3)`
 			el := p
 			el.Siren = e.Value.SireneUL.Siren
@@ -638,7 +638,7 @@ func importListes(algo string) error {
 		alert text,
 		batch text,
 		algo text,
-		expl_selection_concerning jsonb default '{}', 
+		expl_selection_concerning jsonb default '{}',
 		expl_selection_reassuring jsonb default '{}',
 		macro_radar jsonb default '{}',
 		alert_pre_redressements text,

@@ -1,0 +1,25 @@
+create table entreprise_bce
+(
+  siren                                text,
+  date_cloture_exercice                date,
+  chiffre_d_affaires                   bigint,
+  marge_brute                          bigint,
+  ebe                                  bigint,
+  ebit                                 bigint,
+  resultat_net                         bigint,
+  taux_d_endettement                   numeric,
+  ratio_de_liquidite                   numeric,
+  ratio_de_vetuste                     numeric,
+  autonomie_financiere                 numeric,
+  poids_bfr_exploitation_sur_ca        numeric,
+  couverture_des_interets              numeric,
+  caf_sur_ca                           numeric,
+  capacite_de_remboursement            numeric,
+  marge_ebe                            numeric,
+  resultat_courant_avant_impots_sur_ca numeric,
+  poids_bfr_exploitation_sur_ca_jours  numeric,
+  rotation_des_stocks_jours            numeric,
+  credit_clients_jours                 numeric,
+  credit_fournisseurs_jours            numeric,
+  type_bilan                           text
+);
