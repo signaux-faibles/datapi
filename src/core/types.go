@@ -61,7 +61,7 @@ type Diane struct {
 	ParticipationSalaries           *float64  `json:"participation_salaries,omitempty"`
 	Performance                     *float64  `json:"performance,omitempty"`
 	PoidsBFRExploitation            *float64  `json:"poids_bfr_exploitation,omitempty"`
-	ProcedureCollective             bool      `json:"procedure_collective,omitempty"`
+	ProcedureCollective             *bool     `json:"procedure_collective,omitempty"`
 	Production                      *float64  `json:"production,omitempty"`
 	ProductiviteCapitalFinancier    *float64  `json:"productivite_capital_financier,omitempty"`
 	ProductiviteCapitalInvesti      *float64  `json:"productivite_capital_investi,omitempty"`
@@ -76,7 +76,7 @@ type Diane struct {
 	ResultatAvantImpot              *float64  `json:"resultat_avant_impot,omitempty"`
 	ResultatExploitation            *float64  `json:"resultat_expl"`
 	RotationStocks                  *float64  `json:"rotation_stocks,omitempty"`
-	StatutJuridique                 string    `json:"statut_juridique,omitempty"`
+	StatutJuridique                 *string   `json:"statut_juridique,omitempty"`
 	SubventionsDExploitation        *float64  `json:"subventions_d_exploitation,omitempty"`
 	TailleCompoGroupe               *int      `json:"taille_compo_groupe,omitempty"`
 	TauxDInvestissementProductif    *float64  `json:"taux_d_investissement_productif,omitempty"`
@@ -86,7 +86,7 @@ type Diane struct {
 	TauxMargeCommerciale            *float64  `json:"taux_marge_commerciale,omitempty"`
 	TauxValeurAjoutee               *float64  `json:"taux_valeur_ajoutee,omitempty"`
 	ValeurAjoutee                   *float64  `json:"valeur_ajoutee,omitempty"`
-	NomEntreprise                   string    `json:"nom_entreprise,omitempty"`
+	NomEntreprise                   *string   `json:"nom_entreprise,omitempty"`
 }
 
 //// Bdf représente les infos Bdf sur une entreprise

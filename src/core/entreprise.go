@@ -906,7 +906,6 @@ func (e *Etablissements) load(roles Scope, username string) error {
 		return err
 	}
 
-	// diane
 	rows, err = b.Query()
 	if err != nil {
 		return err
