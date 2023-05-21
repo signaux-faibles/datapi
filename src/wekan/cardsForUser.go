@@ -36,8 +36,9 @@ func selectSummariesWithoutCard(
 	user libwekan.User,
 	roles []string,
 	zone []string,
+	raisonSociale *string,
 ) (core.Summaries, error) {
-	rows, err := db.Query(ctx, SqlGetFollow, roles, user.Username, zone, sirets)
+	rows, err := db.Query(ctx, SqlGetFollow, roles, user.Username, zone, sirets, raisonSocialeLike(raisonSociale))
 	defer rows.Close()
 	if err != nil {
 		return core.Summaries{}, err
@@ -63,8 +64,9 @@ func selectSummariesWithSirets(
 	roles []string,
 	zone []string,
 	limit int,
+	raisonSociale *string,
 ) (core.Summaries, error) {
-	rows, err := db.Query(ctx, SqlGetCards, roles, user.Username, sirets, zone, limit)
+	rows, err := db.Query(ctx, SqlGetCards, roles, user.Username, sirets, zone, limit, raisonSocialeLike(raisonSociale))
 	defer rows.Close()
 	if err != nil {
 		return core.Summaries{}, err
@@ -312,11 +314,11 @@ func (service wekanService) SelectFollowsForUser(ctx context.Context, params cor
 	}
 	// my-cards et all-cards utilisent la même méthode
 	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
-		summaries, err := selectSummariesWithSirets(ctx, sirets, db, params.User, roles, params.Zone, 100)
+		summaries, err := selectSummariesWithSirets(ctx, sirets, db, params.User, roles, params.Zone, 100, params.RaisonSociale)
 		return summaries, err
 	}
 	// no-cards retourne les suivis datapi sans carte kanban
-	summaries, err := selectSummariesWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
+	summaries, err := selectSummariesWithoutCard(ctx, sirets, db, params.User, roles, params.Zone, params.RaisonSociale)
 	return summaries, err
 }
 

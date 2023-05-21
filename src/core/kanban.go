@@ -100,14 +100,15 @@ type KanbanCard struct {
 }
 
 type KanbanSelectCardsForUserParams struct {
-	User      libwekan.User             `json:"-"`
-	Type      string                    `json:"type"`
-	Zone      []string                  `json:"zone"`
-	BoardIDs  []libwekan.BoardID        `json:"boardIDs"`
-	Labels    []libwekan.BoardLabelName `json:"labels"`
-	Since     *time.Time                `json:"since"`
-	Lists     []string                  `json:"lists"`
-	LabelMode string                    `json:"labelMode"`
+	User          libwekan.User             `json:"-"`
+	Type          string                    `json:"type"`
+	Zone          []string                  `json:"zone"`
+	BoardIDs      []libwekan.BoardID        `json:"boardIDs"`
+	Labels        []libwekan.BoardLabelName `json:"labels"`
+	Since         *time.Time                `json:"since"`
+	Lists         []string                  `json:"lists"`
+	LabelMode     string                    `json:"labelMode"`
+	RaisonSociale *string                   `json:"raisonSociale"`
 }
 
 type KanbanFollows struct {

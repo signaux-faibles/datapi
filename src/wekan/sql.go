@@ -32,7 +32,7 @@ select s.siret, s.siren, s.raison_sociale, s.commune,
 from v_summaries s
 left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $2
 left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
-where s.siret = any($3) and (s.code_departement = any($4) or coalesce($4, '{}') = '{}')
+where s.siret = any($3) and (s.code_departement = any($4) or coalesce($4, '{}') = '{}')  and (s.raison_sociale ilike $6 or $6 is null)
 limit $5`
 
 const SqlGetFollow = `
@@ -66,7 +66,7 @@ select s.siret, s.siren, s.raison_sociale, s.commune,
 from v_summaries s
 inner join etablissement_follow f on f.active and f.siret = s.siret and f.username = $2
 inner join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
-where (s.code_departement = any($3) or coalesce($3, '{}') = '{}') and (s.siret != any($4) or $4 is null)`
+where (s.code_departement = any($3) or coalesce($3, '{}') = '{}') and (s.siret != any($4) or $4 is null) and (s.raison_sociale ilike $5 or $5 is null)`
 
 var sqlDbExport = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
@@ -82,7 +82,7 @@ coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_pr
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
 left join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where v.siret = any($3) and (v.code_departement = any($4) or coalesce($4, '{}') = '{}')
+where v.siret = any($3) and (v.code_departement = any($4) or coalesce($4, '{}') = '{}') and (v.raison_sociale ilike $5 or $5 is null)
 order by f.id, v.siret`
 
 var sqlDbExportWithoutCards = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
@@ -99,5 +99,5 @@ coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_pr
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
 inner join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where (v.code_departement = any($4) or coalesce($4, '{}') = '{}') and v.siret != any($3)
+where (v.code_departement = any($4) or coalesce($4, '{}') = '{}') and v.siret != any($3) and (v.raison_sociale ilike $5 or $5 is null)
 order by f.id, v.siret`

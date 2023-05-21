@@ -163,8 +163,9 @@ func selectKanbanDBExportsWithSirets(ctx context.Context,
 	db *pgxpool.Pool,
 	user libwekan.User,
 	roles []string,
-	zone []string) (core.KanbanDBExports, error) {
-	rows, err := db.Query(ctx, sqlDbExport, roles, user.Username, sirets, zone)
+	zone []string,
+	raisonSociale *string) (core.KanbanDBExports, error) {
+	rows, err := db.Query(ctx, sqlDbExport, roles, user.Username, sirets, zone, raisonSocialeLike(raisonSociale))
 	defer rows.Close()
 	if err != nil {
 		return core.KanbanDBExports{}, err
@@ -182,6 +183,13 @@ func selectKanbanDBExportsWithSirets(ctx context.Context,
 	return kanbanDBExports, nil
 }
 
+func raisonSocialeLike(raisonSociale *string) *string {
+	if raisonSociale == nil {
+		return nil
+	}
+	like := "%" + *raisonSociale + "%"
+	return &like
+}
 func selectKanbanDBExportsWithoutCard(
 	ctx context.Context,
 	sirets []string,
@@ -189,8 +197,9 @@ func selectKanbanDBExportsWithoutCard(
 	user libwekan.User,
 	roles []string,
 	zone []string,
+	raisonSociale *string,
 ) (core.KanbanDBExports, error) {
-	rows, err := db.Query(ctx, sqlDbExportWithoutCards, roles, user.Username, sirets, zone)
+	rows, err := db.Query(ctx, sqlDbExportWithoutCards, roles, user.Username, sirets, zone, raisonSocialeLike(raisonSociale))
 	defer rows.Close()
 	if err != nil {
 		return core.KanbanDBExports{}, err
@@ -235,8 +244,11 @@ func (service wekanService) ExportFollowsForUser(ctx context.Context, params cor
 		params.Since = nil
 	}
 
-	cards, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", pipeline)
-
+	var err error
+	var cards []libwekan.CardWithComments
+	if utils.Contains(roles, "wekan") {
+		cards, err = wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", pipeline)
+	}
 	if err != nil {
 		return core.KanbanExports{}, err
 	}
@@ -244,12 +256,12 @@ func (service wekanService) ExportFollowsForUser(ctx context.Context, params cor
 
 	// my-cards et all-cards utilisent la même méthode
 	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
-		kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, sirets, db, params.User, roles, params.Zone)
+		kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, sirets, db, params.User, roles, params.Zone, params.RaisonSociale)
 		return joinCardsWithKanbanDBExports(kanbanDBExports, cards), err
 	}
 
 	// alors que no-card retourne les suivis datapi sans carte kanban
-	kanbanDBExports, err := selectKanbanDBExportsWithoutCard(ctx, sirets, db, params.User, roles, params.Zone)
+	kanbanDBExports, err := selectKanbanDBExportsWithoutCard(ctx, sirets, db, params.User, roles, params.Zone, params.RaisonSociale)
 	return kanbanDBExportToKanbanExports(kanbanDBExports), err
 }
 
@@ -264,7 +276,7 @@ func (service wekanService) SelectKanbanExportsWithSiret(ctx context.Context, si
 	if err != nil {
 		return nil, err
 	}
-	kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, []string{siret}, db, user, roles, nil)
+	kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, []string{siret}, db, user, roles, nil, nil)
 	kanbanExports := joinCardsWithKanbanDBExports(kanbanDBExports, cardsWithComments)
 
 	if len(kanbanExports) > 0 {
