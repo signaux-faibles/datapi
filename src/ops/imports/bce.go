@@ -183,32 +183,25 @@ func parseInt(s string) (*int64, error) {
 	return &i, err
 }
 
-//func (bce BCE) addToBatch(batch *pgx.Batch, db *pgxpool.Pool) error {
-//	sql := "insert into entreprise_bce (" +
-//		"siren, date_cloture_exercice, chiffre_d_affaires, marge_brute, ebe, " +
-//		"ebit, resultat_net, taux_d_endettement, ratio_de_liquidite, ratio_de_vetuste, " +
-//		"autonomie_financiere, poids_bfr_exploitation_sur_ca, couverture_des_interets, caf_sur_ca, capacite_de_remboursement, " +
-//		"marge_ebe, resultat_courant_avant_impots_sur_ca, poids_bfr_exploitation_sur_ca_jours, rotation_des_stocks_jours, credit_clients_jours," +
-//		"credit_fournisseurs_jours, type_bilan) values (" +
-//		"$1, $2, $3, $4, $5, " +
-//		"$6, $7, $8 , $9, $10" +
-//		"$11, $12, $13, $14, $15, " +
-//		"$16, $17, $18 , $19, $20" +
-//		"$21, $22)"
-//	batch.Queue(sql, bce.Siren, bce.DateClotureExercice, bce.ChiffreDAffaires, bce.MargeBrute, bce.EBE,
-//		bce.EBIT, bce.ResultatNet, bce.TauxDEndettement, bce.RatioDeLiquidite, bce.RatioDeVetuste,
-//		bce.AutonomieFinanciere, bce.PoidsBFRExploitationSurCA, bce.CouvertureDesInterets, bce.CAFsurCA, bce.CapaciteDeRemboursement,
-//		bce.MargeEBE, bce.ResultatCourantAvantImpotsSurCA, bce.PoidsBFRExploitationSurCAJours, bce.RotationDesStocksJours, bce.CreditClientsJours,
-//		bce.CreditFournisseursJours, bce.TypeBilan)
-//	if batch.Len() > 100000 {
-//		fmt.Println(batch.Len())
-//		result := db.SendBatch(context.Background(), batch)
-//		err := result.Close()
-//		batch = &pgx.Batch{}
-//		return err
-//	}
-//	return nil
-//}
+func populateDiane(ctx context.Context, db *pgxpool.Pool) error {
+	_, err := db.Exec(ctx, "truncate table entreprise_diane;")
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(ctx, "insert into entreprise_diane (siren, arrete_bilan_diane, exercice_diane, chiffre_affaire, resultat_expl, excedent_brut_d_exploitation, benefice_ou_perte)"+
+		"select siren,"+
+		"  date_cloture_exercice,"+
+		"  extract(year from date_cloture_exercice - '6 month'::interval),"+
+		"  round(first(chiffre_d_affaires order by type_bilan != 'K')/1000),"+
+		"  round(first(ebit order by type_bilan != 'K')/1000),"+
+		"  round(first(ebe order by type_bilan != 'K')/1000),"+
+		"  round(first(resultat_net order by type_bilan != 'K')/1000)"+
+		"  from entreprise_bce"+
+		"  group by siren, date_cloture_exercice"+
+		"  order by siren, date_cloture_exercice desc")
+	return err
+}
 
 func truncateBCE(ctx context.Context, db *pgxpool.Pool) error {
 	_, err := db.Exec(ctx, "truncate table entreprise_bce;")
@@ -228,8 +221,16 @@ func importBCE(ctx context.Context, path string, db *pgxpool.Pool) error {
 
 	bces := utils.Convert(data, parseBCE)
 	rows := utils.Convert(bces, BCE.fields)
+	err = truncateBCE(ctx, db)
+	if err != nil {
+		return err
+	}
 
 	_, err = db.CopyFrom(ctx, pgx.Identifier{"entreprise_bce"}, bceColums, pgx.CopyFromRows(rows))
+	if err != nil {
+		return err
+	}
+	err = populateDiane(ctx, db)
 	return err
 }
 
