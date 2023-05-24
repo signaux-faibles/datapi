@@ -596,6 +596,8 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 		}
 		if !(e.Entreprises[siret[0:9]]).hasDiane() {
 			sc.Redressements = fixConfidentialiteRedressements(sc.Redressements, []string{"solvabilité_faible", "k_propres_négatifs", "rentabilité_faible"})
+		} else {
+			sc.Redressements = fixConfidentialiteRedressements(sc.Redressements, []string{"rentabilité_faible"})
 		}
 		scores[siret] = append(scores[siret], sc)
 	}
@@ -699,28 +701,6 @@ func (e *Etablissements) loadProcol(rows *pgx.Rows) error {
 	}
 	return nil
 }
-
-// À réactiver lorsque nous aurons plus de données BDF
-// func (e *Etablissements) loadBDF(rows *pgx.Rows) error {
-// 	var bdfs = make(map[string][]bdf)
-// 	for (*rows).Next() {
-// 		var bd bdf
-// 		var siren string
-// 		err := (*rows).Scan(&siren, &bd.Annee, &bd.ArreteBilan, &bd.DelaiFournisseur, &bd.FinancierCourtTerme,
-// 			&bd.PoidsFrng, &bd.DetteFiscale, &bd.FraisFinancier, &bd.TauxMarge,
-// 		)
-// 		if err != nil {
-// 			return err
-// 		}
-// 		bdfs[siren] = append(bdfs[siren], bd)
-// 	}
-// 	for k, v := range bdfs {
-// 		entreprise := e.Entreprises[k]
-// 		entreprise.Bdf = v
-// 		e.Entreprises[k] = entreprise
-// 	}
-// 	return nil
-// }
 
 func (e *Etablissements) loadAPDemande(rows *pgx.Rows) error {
 	var apdemandes = make(map[string][]EtablissementAPDemande)
@@ -914,16 +894,6 @@ func (e *Etablissements) load(roles Scope, username string) error {
 	if err != nil {
 		return err
 	}
-
-	// // bdf
-	// rows, err = b.Query()
-	// if err != nil {
-	// 	return err
-	// }
-	// err = e.loadBDF(&rows)
-	// if err != nil {
-	// 	return err
-	// }
 
 	// scores
 	rows, err = b.Query()
