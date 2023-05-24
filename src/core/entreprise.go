@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"regexp"
 	"strings"
 	"time"
@@ -221,6 +222,22 @@ type EtablissementScore struct {
 	Redressements         []string                         `json:"redressements"`
 }
 
+func fixConfidentialiteRedressements(redressements []string, confidentiels []string) []string {
+	newRedressements := []string{}
+	confidentiel := false
+	for _, redressement := range redressements {
+		if utils.Contains(confidentiels, redressement) {
+			confidentiel = true
+		} else {
+			newRedressements = append(newRedressements, redressement)
+		}
+	}
+	if confidentiel {
+		newRedressements = append(newRedressements, "confidentiel")
+	}
+	return newRedressements
+}
+
 func getEntreprise(c *gin.Context) {
 	roles := scopeFromContext(c)
 	siren := c.Param("siren")
@@ -320,26 +337,26 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 	lastListe := listes[0].ID
 
 	batch.Queue(
-		`select 
+		`select
 		et.siret, et.siren, et.siren,	en.raison_sociale, j.libelle, j2.libelle, j1.libelle,
-		et.complement_adresse, et.numero_voie, et.indice_repetition, et.type_voie, et.voie,  
+		et.complement_adresse, et.numero_voie, et.indice_repetition, et.type_voie, et.voie,
 		et.commune, et.commune_etranger, et.distribution_speciale, et.code_commune,
 		et.code_cedex, et.cedex, et.code_pays_etranger, et.pays_etranger,
-		et.code_postal, et.departement, d.libelle, r.libelle, 
-		coalesce(et.nomen_activite, 'NAFRev2'), et.creation,	et.latitude, et.longitude, 
+		et.code_postal, et.departement, d.libelle, r.libelle,
+		coalesce(et.nomen_activite, 'NAFRev2'), et.creation,	et.latitude, et.longitude,
 		et.visite_fce, n.libelle_n1, n.code_n1, n.libelle_n5, et.code_activite, n.libelle_n2,
-		n.libelle_n3, n.libelle_n4,	
+		n.libelle_n3, n.libelle_n4,
 		f.id is not null as followed,
 		followed as followed_entreprise, visible,
-		s.siren is not null as alert,	en.prenom1, en.prenom2, en.prenom3, en.prenom4, 
+		s.siren is not null as alert,	en.prenom1, en.prenom2, en.prenom3, en.prenom4,
 		en.nom, en.nom_usage, en.creation, et.siege,
-		coalesce(g.code, ''), 
-		coalesce(g.refid, ''), 
-		coalesce(g.raison_sociale, ''), 
-		coalesce(g.adresse, ''), 
-		coalesce(g.personne_pou_m, ''), 
-		coalesce(g.niveau_detention, 0), 
-		coalesce(g.part_financiere, 0), 
+		coalesce(g.code, ''),
+		coalesce(g.refid, ''),
+		coalesce(g.raison_sociale, ''),
+		coalesce(g.adresse, ''),
+		coalesce(g.personne_pou_m, ''),
+		coalesce(g.niveau_detention, 0),
+		coalesce(g.part_financiere, 0),
 		coalesce(g.code_filiere, ''),
 		coalesce(g.refid_filiere, ''),
 		coalesce(g.personne_pou_m_filiere, ''),
@@ -351,11 +368,11 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		p.pge as permPGE,
 		p.in_zone as in_zone,
 		ne.libelle_n1 as libelle_n1_entreprise,
-        ne.code_n1 as code_n1_entreprise, 
+        ne.code_n1 as code_n1_entreprise,
         ne.libelle_n5 as libelle_n5_entreprise,
-        ne.code_n5 as code_n5_entreprise, 
+        ne.code_n5 as code_n5_entreprise,
         ne.libelle_n2 as libelle_n2_entreprise,
-		ne.libelle_n3 as libelle_n3_entreprise, 
+		ne.libelle_n3 as libelle_n3_entreprise,
 		ne.libelle_n4 as libelle_n4_entreprise,
 		en.nomen_activite as nomen_activite_entreprise
 		from etablissement0 et
@@ -374,12 +391,12 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		left join entreprise_ellisphere0 g on g.siren = et.siren
 		left join terrind ti on ti.code_commune = et.code_commune
 		where (et.siret=any($3) or et.siren=any($4));
-	`, roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+	`, roles, username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere, 
+	batch.Queue(`select siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere,
 				autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
 				capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
-				charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation, 
+				charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation,
 				couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
 				dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
 				endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
@@ -397,46 +414,46 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 			order by en.arrete_bilan_diane;`,
 		e.sirensFromQuery())
 
-	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert, 
-		case when s.libelle_liste = $5 then s.expl_selection_concerning else '[]' end,			
-		case when s.libelle_liste = $5 then s.expl_selection_reassuring else '[]' end, 
-		case when s.libelle_liste = $5 then s.macro_expl else '{}' end, 
+	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert,
+		case when s.libelle_liste = $5 then s.expl_selection_concerning else '[]' end,
+		case when s.libelle_liste = $5 then s.expl_selection_reassuring else '[]' end,
+		case when s.libelle_liste = $5 then s.macro_expl else '{}' end,
 		case when s.libelle_liste = $5 then s.micro_expl else '{}' end,
 		case when s.libelle_liste = $5 then s.macro_radar else '{}' end,
 		s.alert_pre_redressements,
 		s.redressements
 		from score0 s
-		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score 
+		inner join f_etablissement_permissions($1, $2) p on p.siret = s.siret and p.score
 		where (p.siret=any($3) or p.siren=any($4))
 		order by s.siret, s.batch desc, s.score desc;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens, lastListe)
+		roles, username, e.Query.Sirets, e.Query.Sirens, lastListe)
 
 	batch.Queue(`select e.siret, id_conso, heure_consomme, montant, effectif, periode
 		from etablissement_apconso0 e
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and dgefp
 		where (e.siret=any($3) or e.siren=any($4))
 		order by siret, periode;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select e.siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start, 
+	batch.Queue(`select e.siret, id_demande, effectif_entreprise, effectif, date_statut, periode_start,
 		periode_end, hta, mta, effectif_autorise, motif_recours_se, heure_consomme, montant_consomme, effectif_consomme
 		from etablissement_apdemande0 e
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and dgefp
 		where e.siret=any($3) or e.siren=any($4)
 		order by siret, periode_start;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select e.siret, e.periode, 
-		case when urssaf and cotisation != 0 then cotisation end, 
-		case when urssaf then part_patronale end, 
-		case when urssaf then part_salariale end, 
-		case when urssaf then montant_majorations end, 
+	batch.Queue(`select e.siret, e.periode,
+		case when urssaf and cotisation != 0 then cotisation end,
+		case when urssaf then part_patronale end,
+		case when urssaf then part_salariale end,
+		case when urssaf then montant_majorations end,
 		effectif
 		from etablissement_periode_urssaf0 e
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret
 		where e.siret=any($3) or e.siren=any($4)
 		order by siret, periode;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`select e.siret, action, annee_creation, date_creation, date_echeance, denomination,
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
@@ -444,7 +461,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and urssaf
 		where e.siret=any($3) or e.siren=any($4)
 		order by e.siret, date_creation;`,
-		roles.zoneGeo(), username, e.Query.Sirets, e.Query.Sirens)
+		roles, username, e.Query.Sirets, e.Query.Sirens)
 
 	batch.Queue(`
 	SELECT p.siren,
@@ -477,7 +494,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		e.sirensFromQuery(), now)
 
 	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
-		roles.zoneGeo(), listes[0].ID, username, e.sirensFromQuery(),
+		roles, listes[0].ID, username, e.sirensFromQuery(),
 	)
 
 	e.addPGEsSelection(&batch, roles, username)
@@ -553,6 +570,15 @@ func (e *Etablissements) loadEtablissements(rows *pgx.Rows) error {
 	return nil
 }
 
+func (e Entreprise) hasDiane() bool {
+	for _, exercice := range e.Diane {
+		if exercice.Exercice > 2020 {
+			return true
+		}
+	}
+	return false
+}
+
 func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 	var scores = make(map[string][]EtablissementScore)
 	for (*rows).Next() {
@@ -567,6 +593,9 @@ func (e *Etablissements) loadScore(rows *pgx.Rows) error {
 		}
 		if len(explSelection.SelectConcerning) > 0 {
 			sc.ExplSelection = &explSelection
+		}
+		if !(e.Entreprises[siret[0:9]]).hasDiane() {
+			sc.Redressements = fixConfidentialiteRedressements(sc.Redressements, []string{"solvabilité_faible", "k_propres_négatifs", "rentabilité_faible"})
 		}
 		scores[siret] = append(scores[siret], sc)
 	}
@@ -840,6 +869,17 @@ func (e *Etablissements) loadSirene(rows *pgx.Rows) error {
 	return nil
 }
 
+// EtablissementData type pour les données de l'établissement à faire figurer sur la carte Wekan
+type EtablissementData struct {
+	Siret           string
+	RaisonSociale   string
+	Departement     string
+	Region          string
+	Effectif        int
+	CodeActivite    string
+	LibelleActivite string
+}
+
 func (e *Etablissements) load(roles Scope, username string) error {
 	tx, err := db.Get().Begin(context.Background())
 	if err != nil {
@@ -866,7 +906,6 @@ func (e *Etablissements) load(roles Scope, username string) error {
 		return err
 	}
 
-	// diane
 	rows, err = b.Query()
 	if err != nil {
 		return err
@@ -981,7 +1020,7 @@ func (e *Etablissements) load(roles Scope, username string) error {
 
 func (e *Etablissement) setAdresse() {
 	space := regexp.MustCompile(`\s+`)
-	adresse := []string{}
+	var adresse []string
 	if e.Sirene.ComplementAdresse != nil {
 		adresse = append(adresse, str(e.Sirene.ComplementAdresse))
 	}
@@ -1026,9 +1065,9 @@ func getEntrepriseViewers(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	var users []user
+	var users []keycloakUser
 	for rows.Next() {
-		var u user
+		var u keycloakUser
 		err := rows.Scan(&u.Username, &u.FirstName, &u.LastName)
 		if err != nil {
 			c.JSON(500, err.Error())
@@ -1054,9 +1093,9 @@ func getEtablissementViewers(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	var users []user
+	var users []keycloakUser
 	for rows.Next() {
-		var u user
+		var u keycloakUser
 		err := rows.Scan(&u.Username, &u.FirstName, &u.LastName)
 		if err != nil {
 			c.JSON(500, err.Error())
@@ -1090,12 +1129,4 @@ func str(o ...*string) string {
 		}
 	}
 	return ""
-}
-
-func getDeptFromSiret(siret string) (string, error) {
-	sql := "select departement from etablissement0 where siret = $1"
-	row := db.Get().QueryRow(context.Background(), sql, siret)
-	var dept string
-	err := row.Scan(&dept)
-	return dept, err
 }

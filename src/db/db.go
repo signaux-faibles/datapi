@@ -20,11 +20,6 @@ import (
 )
 
 var db *pgxpool.Pool
-var ref reference
-
-type reference struct {
-	zones map[string][]string
-}
 
 type migrationScript struct {
 	fileName string
@@ -58,8 +53,6 @@ func Init() {
 		runMigrations(updateMigrations, pool)
 	}
 
-	ref = loadReferences(pool)
-
 	db = pool
 }
 
@@ -68,7 +61,7 @@ func listDatabaseMigrations(db *pgxpool.Pool) []migrationScript {
 	db.QueryRow(context.Background(),
 		`select exists
 		(select 1
-		 from information_schema.tables 
+		 from information_schema.tables
 		 where table_schema = 'public'
 	   and table_name = 'migrations');`,
 	).Scan(&exists)
@@ -76,7 +69,7 @@ func listDatabaseMigrations(db *pgxpool.Pool) []migrationScript {
 		return nil
 	}
 	dbMigrationsCursor, err := db.Query(context.Background(),
-		`select filename, hash 
+		`select filename, hash
 		from migrations
 		order by filename`)
 	if err != nil {
@@ -173,7 +166,7 @@ func runMigrations(migrationScripts []migrationScript, db *pgxpool.Pool) {
 		}
 		_, err = tx.Exec(
 			ctx,
-			"insert into migrations (filename, hash) values ($1, $2)", m.fileName, string(m.hash[:]))
+			"insert into migrations (filename, hash) values ($1, $2)", m.fileName, m.hash[:])
 		if err != nil {
 			panic("error inserting " + m.fileName + " in migration table, no changes commited. see details:\n" + err.Error())
 		}
@@ -207,43 +200,4 @@ func NewBatchRunner(tx *pgx.Tx) (chan pgx.Batch, *sync.WaitGroup) {
 	}()
 
 	return batches, &wg
-}
-
-// GetDepartementForRole : retourne une liste de départements liés à un `role`
-func GetDepartementForRole(role string) []string {
-	return ref.zones[role]
-}
-
-func loadReferences(db *pgxpool.Pool) reference {
-	sqlZones := `select r.libelle as region, d.code as departement 
-	from regions r 
-	inner join departements d on d.id_region = r.id 
-	union select 'France entière', code from departements
-	order by region, departement`
-	rows, err := db.Query(context.Background(), sqlZones)
-	if err != nil {
-		panic("can't load references: " + err.Error())
-	}
-
-	var ref = make(map[string][]string)
-
-	for rows.Next() {
-		region, departement := "", ""
-		err := rows.Scan(&region, &departement)
-		if err != nil {
-			panic("can't load references: " + err.Error())
-		}
-
-		ref[departement] = []string{departement}
-		if _, ok := ref[region]; !ok {
-			ref[region] = nil
-		}
-		ref[region] = append(ref[region], departement)
-	}
-
-	result := reference{
-		zones: ref,
-	}
-
-	return result
 }

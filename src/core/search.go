@@ -79,7 +79,7 @@ func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 	if err != nil {
 		return searchResult{}, utils.ErrorToJSON(500, err)
 	}
-	zoneGeo := params.roles.zoneGeo()
+	zoneGeo := params.roles
 	limit := viper.GetInt("searchPageLength")
 
 	offset := params.Page * limit
@@ -97,11 +97,11 @@ func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 
 	var search searchResult
 
-	search.Results = summaries.summaries
-	if summaries.global.count != nil {
-		search.Total = *summaries.global.count
-		search.NBF1 = *summaries.global.countF1
-		search.NBF2 = *summaries.global.countF2
+	search.Results = summaries.Summaries
+	if summaries.Global.Count != nil {
+		search.Total = *summaries.Global.Count
+		search.NBF1 = *summaries.Global.CountF1
+		search.NBF2 = *summaries.Global.CountF2
 	}
 	search.From = limit*params.Page + 1
 	search.To = limit*params.Page + len(search.Results)

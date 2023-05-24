@@ -57,22 +57,22 @@ type Summary struct {
 	EtatAdministratifEntreprise *string            `json:"etatAdministratifEntreprise,omitempty"`
 }
 
-type summaries struct {
+type Summaries struct {
 	//summaryParams summaryParams
-	global struct {
-		count    *int
-		countF1  *int
-		countF2  *int
+	Global struct {
+		Count    *int `json:"count"`
+		CountF1  *int `json:"countF1"`
+		CountF2  *int `json:"countF2"`
 		comment  *string
 		category *string
 		since    *string
-	}
-	summaries []*Summary
+	} `json:"stats"`
+	Summaries []*Summary `json:"summaries"`
 }
 
-func (summaries *summaries) newSummary() []interface{} {
+func (summaries *Summaries) NewSummary() []interface{} {
 	var s Summary
-	summaries.summaries = append(summaries.summaries, &s)
+	summaries.Summaries = append(summaries.Summaries, &s)
 	t := []interface{}{
 		&s.Siret,
 		&s.Siren,
@@ -100,9 +100,9 @@ func (summaries *summaries) newSummary() []interface{} {
 		&s.HausseUrssaf,
 		&s.DetteUrssaf,
 		&s.Alert,
-		&summaries.global.count,
-		&summaries.global.countF1,
-		&summaries.global.countF2,
+		&summaries.Global.Count,
+		&summaries.Global.CountF1,
+		&summaries.Global.CountF2,
 		&s.Visible,
 		&s.InZone,
 		&s.Followed,
@@ -193,7 +193,7 @@ func (p summaryParams) toSQLParams() []interface{} {
 	}
 }
 
-func getSummaries(params summaryParams) (summaries, error) {
+func getSummaries(params summaryParams) (Summaries, error) {
 	var sql string
 	var sqlParams []interface{}
 
@@ -218,22 +218,22 @@ func getSummaries(params summaryParams) (summaries, error) {
 		// p := params.toSQLParams()
 		// sqlParams = p[0:17]
 		// sql = fmt.Sprintf("select * from get_summary($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22) as %s;", params.orderBy)
-		return summaries{}, fmt.Errorf("not implemented: orderBy=%s", params.orderBy)
+		return Summaries{}, fmt.Errorf("not implemented: orderBy=%s", params.orderBy)
 	}
 
 	rows, err := db.Get().Query(context.Background(), sql, sqlParams...)
 	if err != nil {
 		fmt.Println(err)
-		return summaries{}, err
+		return Summaries{}, err
 	}
 
 	defer rows.Close()
-	sms := summaries{}
+	sms := Summaries{}
 	for rows.Next() {
-		s := sms.newSummary()
+		s := sms.NewSummary()
 		err := rows.Scan(s...)
 		if err != nil {
-			return summaries{}, err
+			return Summaries{}, err
 		}
 	}
 	return sms, err

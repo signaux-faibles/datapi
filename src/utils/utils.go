@@ -26,7 +26,7 @@ func Convert[I interface{}, O interface{}](values []I, transformer func(I) O) []
 	return output
 }
 
-// Contains retourne `vrai` si array contient `test`
+// Contains retourne `vrai` si le slice `values` contient l'élément `searched`
 func Contains[T interface{}](values []T, searched T) bool {
 	return ContainsOnConditions(
 		values,
@@ -47,4 +47,48 @@ func ContainsOnConditions[T interface{}](values []T, searched T, conditions ...f
 		}
 	}
 	return false
+}
+
+func GetKeys[K comparable, V any](input map[K]V) []K {
+	keys := make([]K, 0, len(input))
+	for key := range input {
+		keys = append(keys, key)
+	}
+	return keys
+}
+
+func GetValues[K comparable, V any](input map[K]V) []V {
+	keys := make([]V, 0, len(input))
+	for _, value := range input {
+		keys = append(keys, value)
+	}
+	return keys
+}
+
+// ToMap crée une map d'après une liste de valeur
+func ToMap[K comparable, V interface{}](values []V, transformer func(V) K) map[K]V {
+	r := make(map[K]V)
+	for _, current := range values {
+		key := transformer(current)
+		r[key] = current
+	}
+	return r
+}
+
+func Coalesce[T any](pointers ...*T) *T {
+	for _, i := range pointers {
+		if i != nil {
+			return i
+		}
+	}
+	return nil
+}
+
+func First[T any](ss []T, test func(T) bool) (ret T, ok bool) {
+	for _, s := range ss {
+		if test(s) {
+			return s, true
+		}
+	}
+	return ret, false
 }

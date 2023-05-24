@@ -1,19 +1,20 @@
 //go:build integration
-// +build integration
 
 package main
 
 import (
 	"context"
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"github.com/signaux-faibles/datapi/src/core"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/test"
+	"github.com/signaux-faibles/datapi/src/wekan"
 	"github.com/stretchr/testify/assert"
-	"math/rand"
+	"log"
+	"math/big"
 	"os"
-	"strconv"
 	"testing"
 	"time"
 )
@@ -26,35 +27,58 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 // - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
-	test.FakeTime(tuTime)
-
+	var err error
+	ctx := context.Background()
 	testConfig := map[string]string{}
 	testConfig["postgres"] = test.GetDatapiDbURL()
-	testConfig["wekanMgoURL"] = test.GetWekanDbURL()
+	var wekanDbURL = test.GetWekanDbURL()
+	testConfig["wekanMgoURL"] = wekanDbURL
 
-	apiPort := strconv.Itoa(rand.Intn(500) + 30000)
+	apiPort := generateRandomPort()
 	testConfig["bind"] = ":" + apiPort
 	test.SetHostAndPort("http://localhost:" + apiPort)
 
-	adminWhitelist := "::1"
-	testConfig["adminWhitelist"] = adminWhitelist
-
-	test.Viperize(testConfig)
+	err = test.Viperize(testConfig)
+	if err != nil {
+		log.Printf("Erreur pendant la Viperation de la config : %s", err)
+	}
 
 	test.Wait4DatapiDb(test.GetDatapiDbURL())
 
+	err = test.Authenticate()
+	if err != nil {
+		log.Printf("Erreur pendant l'authentification : %s", err)
+	}
+
 	// run datapi
-	core.StartDatapi()
+	kanbanService := wekan.InitService(ctx, wekanDbURL, "test", "mgo", "*")
+	err = core.StartDatapi(kanbanService)
+	if err != nil {
+		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
+	}
+
 	go initAndStartAPI()
 	// time to API be ready
 	time.Sleep(1 * time.Second)
-	//Run tests
+	// run tests
+	test.FakeTime(tuTime)
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
 	// on peut placer ici du code de nettoyage si nécessaire
 
+	test.UnfakeTime()
 	os.Exit(code)
+}
+
+func generateRandomPort() string {
+	n, err := rand.Int(rand.Reader, big.NewInt(500))
+	n.Add(n, big.NewInt(30000))
+	if err != nil {
+		fmt.Println("erreur pendant la génération d'un nombre aléatoire : ", err)
+		return ""
+	}
+	return n.String()
 }
 
 func TestListes(t *testing.T) {
@@ -148,8 +172,8 @@ func TestSearch(t *testing.T) {
 	var siret string
 	err = db.Get().QueryRow(
 		context.Background(),
-		`select array_agg(distinct departement), substring(first(siret) from 1 for 3) 
-			from etablissement 
+		`select array_agg(distinct departement), substring(first(siret) from 1 for 3)
+			from etablissement
 			where departement < '10' and departement != '00'`,
 	).Scan(&departements, &siret)
 	if err != nil {

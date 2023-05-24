@@ -1,36 +1,51 @@
+// Package core embarque des types et fonctions communes de datapi
 package core
 
 import (
 	"bytes"
 	"context"
 	"fmt"
-	gocloak "github.com/Nerzal/gocloak/v10"
+	"github.com/Nerzal/gocloak/v10"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/datapi/src/db"
 	"github.com/signaux-faibles/datapi/src/utils"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net/http"
-	"time"
-
-	"github.com/spf13/viper"
 )
 
 var keycloak gocloak.GoCloak
-var mgoDB *mongo.Database
-var wekanConfig WekanConfig
+
+var Regions map[Region][]CodeDepartement
+var Departements map[CodeDepartement]string
 
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(path string, api *gin.Engine)
 
+var kanban KanbanService
+
 // StartDatapi se connecte aux bases de données et keycloak
-func StartDatapi() {
+func StartDatapi(kanbanService KanbanService) error {
+	var err error
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
-	mgoDB = connectWekanDB()
-	go watchWekanConfig(&wekanConfig, time.Second)
+	Departements, err = loadDepartementReferentiel()
+	if err != nil {
+		return fmt.Errorf("erreur pendant le chargement du référentiel des départements : %w", err)
+	}
+	Regions, err = loadRegionsReferentiel()
+	if err != nil {
+		fmt.Println(err)
+		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %w", err)
+	}
+
+	if kanbanService == nil {
+		return fmt.Errorf("le service Kanban n'est pas paramétré")
+	}
+	kanban = kanbanService
 	keycloak = connectKC()
+	return nil
 }
 
 // LoadConfig charge la config toml
@@ -50,36 +65,38 @@ func InitAPI(router *gin.Engine) {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
+	config.AddExposeHeaders("Content-Disposition")
+
 	config.AddAllowHeaders("Authorization")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
-	router.SetTrustedProxies(nil)
+	err := router.SetTrustedProxies(nil)
+	if err != nil {
+		panic(err.Error())
+	}
 
 	entreprise := router.Group("/entreprise", AuthMiddleware(), LogMiddleware)
-	entreprise.GET("/viewers/:siren", validSiren, getEntrepriseViewers)
-	entreprise.GET("/get/:siren", validSiren, getEntreprise)
-	entreprise.GET("/all/:siren", validSiren, getEntrepriseEtablissements)
+	entreprise.GET("/viewers/:siren", checkSirenFormat, getEntrepriseViewers)
+	entreprise.GET("/get/:siren", checkSirenFormat, getEntreprise)
+	entreprise.GET("/all/:siren", checkSirenFormat, getEntrepriseEtablissements)
 
 	etablissement := router.Group("/etablissement", AuthMiddleware(), LogMiddleware)
-	etablissement.GET("/viewers/:siret", validSiret, getEtablissementViewers)
-	etablissement.GET("/get/:siret", validSiret, getEtablissement)
-	etablissement.GET("/comments/:siret", validSiret, getEntrepriseComments)
-	etablissement.POST("/comments/:siret", validSiret, addEntrepriseComment)
+	etablissement.GET("/viewers/:siret", checkSiretFormat, getEtablissementViewers)
+	etablissement.GET("/get/:siret", checkSiretFormat, getEtablissement)
+	etablissement.GET("/comments/:siret", checkSiretFormat, getEntrepriseComments)
+	etablissement.POST("/comments/:siret", checkSiretFormat, addEntrepriseComment)
 	etablissement.PUT("/comments/:id", updateEntrepriseComment)
 	etablissement.POST("/search", searchEtablissementHandler)
 
 	follow := router.Group("/follow", AuthMiddleware(), LogMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
-	follow.POST("", getCardsForCurrentUser)
-	follow.POST("/:siret", validSiret, followEtablissement)
-	follow.DELETE("/:siret", validSiret, unfollowEtablissement)
+	follow.POST("/:siret", checkSiretFormat, followEtablissement)
+	follow.DELETE("/:siret", checkSiretFormat, unfollowEtablissement)
 
 	export := router.Group("/export/", AuthMiddleware(), LogMiddleware)
-	export.GET("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
-	export.GET("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
-	export.GET("/docx/siret/:siret", validSiret, getDOCXFromSiret)
+	export.GET("/docx/siret/:siret", checkSiretFormat, getDOCXFromSiret)
 
 	listes := router.Group("/listes", AuthMiddleware(), LogMiddleware)
 	listes.GET("", getListes)
@@ -91,18 +108,13 @@ func InitAPI(router *gin.Engine) {
 
 	reference := router.Group("/reference", AuthMiddleware(), LogMiddleware)
 	reference.GET("/naf", getCodesNaf)
-	reference.GET("/departements", getDepartements)
-	reference.GET("/regions", getRegions)
+	reference.GET("/departements", departementsHandler)
+	reference.GET("/regions", regionsHandler)
 
 	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
-	fce.GET("/:siret", validSiret, getFceURL)
+	fce.GET("/:siret", checkSiretFormat, getFceURL)
 
-	wekan := router.Group("/wekan", AuthMiddleware(), LogMiddleware)
-	wekan.GET("/cards/:siret", validSiret, wekanGetCardsHandler)
-	wekan.POST("/cards/:siret", validSiret, wekanNewCardHandler)
-	wekan.GET("/unarchive/:cardID", wekanUnarchiveCardHandler)
-	wekan.GET("/join/:cardId", wekanJoinCardHandler)
-	wekan.GET("/config", wekanConfigHandler)
+	configureKanbanEndpoint("/kanban", router)
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API
@@ -112,8 +124,9 @@ func AddEndpoint(router *gin.Engine, path string, endpoint Endpoint) {
 
 // StartAPI : démarre le serveur
 func StartAPI(router *gin.Engine) {
-	log.Print("Running API on " + viper.GetString("bind"))
-	err := router.Run(viper.GetString("bind"))
+	addr := viper.GetString("bind")
+	log.Print("Running API on " + addr)
+	err := router.Run(addr)
 	if err != nil {
 		fmt.Println(err.Error())
 	}
@@ -168,14 +181,24 @@ func LogMiddleware(c *gin.Context) {
 	c.Next()
 }
 
-// AdminAuthMiddleware stoppe la requˆete si l'ip client n'est pas contenue dans la whitelist
+const forbiddenIPMessage = "Erreur : Une tentative de connexion depuis `%s`, ce qui n'est pas autorisé dans `adminWhitelist`, voir config.toml\n"
+
+// AdminAuthMiddleware stoppe la requête si l'ip client n'est pas contenue dans la whitelist
 func AdminAuthMiddleware(c *gin.Context) {
-	var whitelist = viper.GetStringSlice("adminWhitelist")
-	if !utils.Contains(whitelist, c.ClientIP()) {
-		log.Printf("Connection from %s is not granted in adminWhitelist, see config.toml\n", c.ClientIP())
+	ok := utils.AcceptIP(c.ClientIP())
+	if !ok {
+		log.Printf(forbiddenIPMessage, c.ClientIP())
 		c.AbortWithStatus(http.StatusForbidden)
-		return
 	}
+}
+
+func configureKanbanEndpoint(path string, api *gin.Engine) {
+	kanban := api.Group(path, AuthMiddleware(), LogMiddleware)
+	kanban.GET("/config", CheckAnyRolesMiddleware("wekan"), kanbanConfigHandler)
+	kanban.GET("/cards/:siret", CheckAnyRolesMiddleware("wekan"), kanbanGetCardsHandler)
+	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)
+	kanban.POST("/card", CheckAnyRolesMiddleware("wekan"), kanbanNewCardHandler)
+	kanban.GET("/unarchive/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanUnarchiveCardHandler)
 }
 
 // True made global to ease pointers

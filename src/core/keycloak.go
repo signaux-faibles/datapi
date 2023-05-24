@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"github.com/signaux-faibles/datapi/src/db"
+	"github.com/signaux-faibles/datapi/src/utils"
 	"log"
+	"net/http"
 	"strings"
 
-	gocloak "github.com/Nerzal/gocloak/v10"
+	"github.com/Nerzal/gocloak/v10"
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt/v4"
 	"github.com/spf13/viper"
@@ -31,7 +33,7 @@ func getRawToken(c *gin.Context) ([]string, error) {
 	header := c.Request.Header["Authorization"][0]
 	rawToken := strings.Split(header, " ")
 	if len(rawToken) != 2 {
-		return nil, errors.New("malformed authorization header")
+		return nil, errors.New("erreur sur le header 'Authorization' header")
 	}
 	return rawToken, nil
 }
@@ -40,39 +42,39 @@ func keycloakMiddleware(c *gin.Context) {
 	rawToken, err := getRawToken(c)
 	if err != nil {
 		log.Println(err.Error())
-		c.AbortWithStatus(401)
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 	_, claims, err := keycloak.DecodeAccessToken(context.Background(), rawToken[1], viper.GetString("keycloakRealm"))
 
 	if err != nil {
 		log.Println("unable to decode token: " + err.Error())
-		c.AbortWithStatus(401)
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
 	if errValid := claims.Valid(); err != nil && errValid != nil {
 		log.Println("token is invalid: " + errValid.Error())
-		c.AbortWithStatus(401)
+		c.AbortWithStatus(http.StatusUnauthorized)
 		return
 	}
 
 	if username, ok := (*claims)["preferred_username"]; ok {
 		c.Set("username", username)
 	} else {
-		c.AbortWithStatusJSON(401, "username absent")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, "username absent")
 	}
 
 	if givenName, ok := (*claims)["given_name"]; ok {
 		c.Set("given_name", givenName)
 	} else {
-		c.AbortWithStatusJSON(401, "given_name absent")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, "given_name absent")
 	}
 
 	if givenName, ok := (*claims)["family_name"]; ok {
 		c.Set("family_name", givenName)
 	} else {
-		c.AbortWithStatusJSON(401, "family_name absent")
+		c.AbortWithStatusJSON(http.StatusUnauthorized, "family_name absent")
 	}
 
 	c.Set("claims", claims)
@@ -81,24 +83,29 @@ func keycloakMiddleware(c *gin.Context) {
 }
 
 func fakeCloakMiddleware(c *gin.Context) {
-	var fakeRoles []interface{}
-	for _, r := range viper.GetStringSlice("fakeKeycloakRoles") {
-		fakeRoles = append(fakeRoles, r)
-	}
+	var fakeRoles []string
+	fakeRoles = append(fakeRoles, viper.GetStringSlice("fakeKeycloakRoles")...)
+	middleware := addFakeRolesMiddleware(fakeRoles...)
+	middleware(c)
+}
 
-	var claims = jwt.MapClaims{
-		"resource_access": map[string]interface{}{
-			viper.GetString("keycloakClient"): map[string]interface{}{
-				"roles": fakeRoles,
+// addFakeRolesMiddleware ajoute les roles passés en paramètre dans le contexte `gin`
+// comme s'il s'agissait de roles venant de keycloak
+func addFakeRolesMiddleware(roles ...string) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		var claims = jwt.MapClaims{
+			"resource_access": map[string]interface{}{
+				viper.GetString("keycloakClient"): map[string]interface{}{
+					"roles": toInterfaces(roles),
+				},
 			},
-		},
-	}
+		}
 
-	c.Set("username", viper.GetString("fakeUsernameKeycloak"))
-	c.Set("given_name", "John")
-	c.Set("family_name", "Doe")
-	c.Set("claims", &claims)
-	c.Next()
+		c.Set("username", viper.GetString("fakeUsernameKeycloak"))
+		c.Set("given_name", "John")
+		c.Set("family_name", "Doe")
+		c.Set("claims", &claims)
+	}
 }
 
 func scopeFromClaims(claims *jwt.MapClaims) Scope {
@@ -138,26 +145,14 @@ func scopeFromContext(c *gin.Context) Scope {
 	return roles
 }
 
-func (sc Scope) zoneGeo() []string {
-	var zone []string
-	for _, role := range sc {
-		departements := db.GetDepartementForRole(role)
-		zone = append(zone, departements...)
-	}
-	for _, s := range sc {
-		zone = append(zone, s)
-	}
-	return zone
-}
-
-type user struct {
+type keycloakUser struct {
 	Username  *string `json:"username"`
 	FirstName *string `json:"firstName"`
 	LastName  *string `json:"lastName"`
 }
 
-func getUser(username string) (user, error) {
-	var u user
+func getUser(username string) (keycloakUser, error) {
+	var u keycloakUser
 	err := db.Get().QueryRow(context.Background(),
 		`select username, firstName, lastname from users where username = $1`,
 		username).Scan(
@@ -166,4 +161,8 @@ func getUser(username string) (user, error) {
 		&u.LastName,
 	)
 	return u, err
+}
+
+func toInterfaces[I any](items []I) []interface{} {
+	return utils.Convert(items, func(i I) interface{} { return interface{}(i) })
 }

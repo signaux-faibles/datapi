@@ -13,16 +13,16 @@ import (
 
 // Comment commentaire sur une enterprise
 type Comment struct {
-	ID             *int        `json:"id,omitempty"`
-	IDParent       *int        `json:"idParent,omitempty"`
-	Comments       []*Comment  `json:"comments,omitempty"`
-	Siret          *string     `json:"siret,omitempty"`
-	Username       *string     `json:"username,omitempty"`
-	User           *user       `json:"author,omitempty"`
-	DateHistory    []time.Time `json:"dateHistory,omitempty"`
-	Message        *string     `json:"message,omitempty"`
-	MessageHistory []string    `json:"messageHistory,omitempty"`
-	Scope          [][]string  `json:"scope,omitempty"`
+	ID             *int          `json:"id,omitempty"`
+	IDParent       *int          `json:"idParent,omitempty"`
+	Comments       []*Comment    `json:"comments,omitempty"`
+	Siret          *string       `json:"siret,omitempty"`
+	Username       *string       `json:"username,omitempty"`
+	User           *keycloakUser `json:"author,omitempty"`
+	DateHistory    []time.Time   `json:"dateHistory,omitempty"`
+	Message        *string       `json:"message,omitempty"`
+	MessageHistory []string      `json:"messageHistory,omitempty"`
+	Scope          [][]string    `json:"scope,omitempty"`
 }
 
 func getEntrepriseComments(c *gin.Context) {
@@ -83,9 +83,9 @@ func updateEntrepriseComment(c *gin.Context) {
 
 func (c *Comment) save() utils.Jerror {
 	sqlSaveComment := `insert into etablissement_comments
-	(id_parent, siret, siren, username, message_history) 
+	(id_parent, siret, siren, username, message_history)
 	select $1, $2, substring($3 from 0 for 9), $5, array[$6]
-	from etablissement0 e 
+	from etablissement0 e
 	left join etablissement_comments m on m.id = $7 and m.siret = e.siret
 	where e.siret = $4 and (m.id is not null or $7 is null)
 	returning id, siret, date_history, message_history;`
@@ -120,7 +120,7 @@ func (c *Comment) save() utils.Jerror {
 }
 
 func (c *Comment) load() utils.Jerror {
-	sqlListComment := `select 
+	sqlListComment := `select
 	e.id, id_parent, e.username, date_history, message_history, u.firstname, u.lastname
 	from etablissement_comments e
 	left join users u on u.username = e.username
@@ -137,7 +137,7 @@ func (c *Comment) load() utils.Jerror {
 	for rows.Next() {
 		var c Comment
 
-		c.User = &user{}
+		c.User = &keycloakUser{}
 		err := rows.Scan(&c.ID, &c.IDParent, &c.User.Username, &c.DateHistory, &c.MessageHistory, &c.User.FirstName, &c.User.LastName)
 		if err != nil {
 			return utils.ErrorToJSON(http.StatusInternalServerError, err)
@@ -160,7 +160,7 @@ func (c *Comment) load() utils.Jerror {
 }
 
 func (c *Comment) update() utils.Jerror {
-	sqlUpdateComment := `update etablissement_comments set 
+	sqlUpdateComment := `update etablissement_comments set
 	 message_history = array[$1] || message_history,
 	 date_history = current_timestamp::timestamp || date_history
 	 where username = $2 and id = $3 and message_history[1] != $4

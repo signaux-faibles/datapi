@@ -212,7 +212,7 @@ func (liste *Liste) getScores(roles Scope, page int, limit *int, username string
 	}
 
 	params := summaryParams{
-		roles.zoneGeo(), limit, &offset, &liste.ID, liste.CurrentList, &liste.Query.Filter, nil,
+		roles, limit, &offset, &liste.ID, liste.CurrentList, &liste.Query.Filter, nil,
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
 		liste.Query.EffectifMinEntreprise, liste.Query.EffectifMaxEntreprise, liste.Query.CaMin, liste.Query.CaMax,
@@ -223,12 +223,12 @@ func (liste *Liste) getScores(roles Scope, page int, limit *int, username string
 		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 
-	scores := summaries.summaries
+	scores := summaries.Summaries
 	// TODO: harmoniser les types de sorties pour éviter les remaniements
-	if summaries.global.count != nil {
-		liste.Total = *summaries.global.count
-		liste.NbF1 = *summaries.global.countF1
-		liste.NbF2 = *summaries.global.countF2
+	if summaries.Global.Count != nil {
+		liste.Total = *summaries.Global.Count
+		liste.NbF1 = *summaries.Global.CountF1
+		liste.NbF2 = *summaries.Global.CountF2
 	}
 
 	if limit == nil {
@@ -251,7 +251,7 @@ func findAllListes() ([]Liste, error) {
 	rows, err := db.Get().Query(context.Background(), `
 		select algo, batch, libelle, description from liste l
 		left join liste_description d on d.libelle_liste = l.libelle
-		where version=0 order by batch desc, algo asc
+		where version=0 order by batch desc, algo
 	`)
 	if err != nil {
 		return nil, err

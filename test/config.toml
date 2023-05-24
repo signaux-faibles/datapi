@@ -2,11 +2,13 @@ bind = "overrided in integration test"
 postgres = "overrided in integration test"
 prod = false
 corsAllowOrigins = ["http://localhost:8082"]
+adminWhitelist = "overrided in integration test"
+
 
 enableKeycloak = false
 #keycloakHostname = "http://localhost:8081/"
-#keycloakClient = "signauxfaibles"
-#keycloakRealm = "master"
+keycloakClient = "signauxfaibles"
+keycloakRealm = "master"
 
 fakeUsernameKeycloak = "christophe.ninucci@dreets.gouv.fr"
 fakeKeycloakRoles = [
@@ -17,7 +19,15 @@ fakeKeycloakRoles = [
     "dgefp",
     "urssaf",
     "bdf",
-    "pge"
+    "pge",
+    "75",
+    "77",
+    "78",
+    "91",
+    "92",
+    "93",
+    "94",
+    "95",
 ]
 
 searchPageLength = 10
