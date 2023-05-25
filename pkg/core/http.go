@@ -8,7 +8,7 @@ import (
 
 func CheckAllRolesMiddleware(roles ...string) gin.HandlerFunc {
 	return func(c *gin.Context) {
-		var s session
+		var s Session
 		s.Bind(c)
 		for _, role := range roles {
 			if !s.hasRole(role) {
@@ -24,7 +24,7 @@ func CheckAnyRolesMiddleware(roles ...string) gin.HandlerFunc {
 		if len(roles) == 0 {
 			return
 		}
-		var s session
+		var s Session
 		s.Bind(c)
 		for _, role := range roles {
 			if s.hasRole(role) {

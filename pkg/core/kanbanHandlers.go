@@ -11,14 +11,14 @@ import (
 )
 
 func kanbanConfigHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	kanbanConfig := kanban.LoadConfigForUser(libwekan.Username(s.Username))
 	c.JSON(http.StatusOK, kanbanConfig)
 }
 
 func kanbanGetCardsHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	siret := c.Param("siret")
 
@@ -35,10 +35,10 @@ func kanbanGetCardsHandler(c *gin.Context) {
 }
 
 func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 
-	if !utils.Contains(s.roles, "wekan") {
+	if !utils.Contains(s.Roles, "wekan") {
 		getEtablissementsFollowedByCurrentUser(c)
 		return
 	}
@@ -65,7 +65,7 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 
 	params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
-	cards, err := kanban.SelectFollowsForUser(c, params, db.Get(), s.roles)
+	cards, err := kanban.SelectFollowsForUser(c, params, db.Get(), s.Roles)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -79,7 +79,7 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 }
 
 func kanbanNewCardHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	var params KanbanNewCardParams
 	err := c.Bind(&params)

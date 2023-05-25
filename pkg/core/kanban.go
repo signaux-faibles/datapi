@@ -269,7 +269,7 @@ type KanbanCardAndComments struct {
 }
 
 func kanbanUnarchiveCardHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 
 	cardID := libwekan.CardID(c.Param("cardID"))
