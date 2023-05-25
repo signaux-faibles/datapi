@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"datapi/pkg/campaigns"
 	"datapi/pkg/core"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
@@ -40,5 +41,6 @@ func initAndStartAPI() {
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint)
+	core.AddEndpoint(router, "/campaign", campaigns.ConfigureEndpoint)
 	core.StartAPI(router)
 }
