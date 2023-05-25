@@ -2,7 +2,7 @@ package main
 
 import (
 	"context"
-	"datapi/pkg/campaign"
+	"datapi/pkg/campaigns"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"datapi/pkg/logPersistence"
@@ -45,5 +45,6 @@ func initAndStartAPI(datapi *core.Datapi) {
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
+	core.AddEndpoint(router, "/campaign", campaigns.ConfigureEndpoint)
 	core.StartAPI(router)
 }
