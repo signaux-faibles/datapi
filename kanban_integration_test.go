@@ -3,8 +3,8 @@
 package main
 
 import (
+	"datapi/pkg/test"
 	"github.com/jaswdr/faker"
-	"github.com/signaux-faibles/datapi/src/test"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"net/http"
