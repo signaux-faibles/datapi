@@ -76,7 +76,7 @@ func followEtablissement(c *gin.Context) {
 }
 
 func unfollowEtablissement(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	siret := c.Param("siret")
 
