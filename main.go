@@ -2,12 +2,12 @@ package main
 
 import (
 	"context"
+	"datapi/pkg/core"
+	"datapi/pkg/ops/imports"
+	"datapi/pkg/ops/misc"
+	"datapi/pkg/ops/refresh"
+	"datapi/pkg/wekan"
 	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/datapi/src/core"
-	"github.com/signaux-faibles/datapi/src/ops/imports"
-	"github.com/signaux-faibles/datapi/src/ops/misc"
-	"github.com/signaux-faibles/datapi/src/ops/refresh"
-	"github.com/signaux-faibles/datapi/src/wekan"
 	"github.com/spf13/viper"
 	"log"
 )

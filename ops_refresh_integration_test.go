@@ -4,13 +4,13 @@ package main
 
 import (
 	"context"
+	"datapi/pkg/db"
+	"datapi/pkg/ops/refresh"
+	"datapi/pkg/test"
+	"datapi/pkg/utils"
 	"encoding/json"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/signaux-faibles/datapi/src/db"
-	"github.com/signaux-faibles/datapi/src/ops/refresh"
-	"github.com/signaux-faibles/datapi/src/test"
-	"github.com/signaux-faibles/datapi/src/utils"
 	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"

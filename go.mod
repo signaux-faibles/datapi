@@ -1,4 +1,4 @@
-module github.com/signaux-faibles/datapi
+module datapi
 
 go 1.20
 
