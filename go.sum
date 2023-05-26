@@ -421,8 +421,6 @@ github.com/shopspring/decimal v1.2.0/go.mod h1:DKyhrW/HYNuLGql+MJL6WCR6knT2jwCFR
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/signaux-faibles/goSirene v0.2.4 h1:m74h4GNNTI2aQryakGj2vJIWl6/JUSLSdxetHOQxYQg=
 github.com/signaux-faibles/goSirene v0.2.4/go.mod h1:YdHQWRCIiyAmPievzBtFwsvA61MXrPkuPkJuGUu9kmU=
-github.com/signaux-faibles/libwekan v0.2.0 h1:rW5vtQWbKpEinDeyMmB4FHx1PJE17LQyKIY5zyPXFVw=
-github.com/signaux-faibles/libwekan v0.2.0/go.mod h1:XkEPsxXjVwALwHZOPkDveBWE2+DWXS/24d5W8ngKB6M=
 github.com/signaux-faibles/libwekan v0.2.1 h1:OzkHPmv0F838Xsp3e5l97aryZesQBFyIHYxxTTslmgE=
 github.com/signaux-faibles/libwekan v0.2.1/go.mod h1:vrHeRcpdsuEq3sd2EZ+iSYsQuVie+ig1XFXmVICxEas=
 github.com/sirupsen/logrus v1.2.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
@@ -456,8 +454,8 @@ github.com/stretchr/testify v1.7.0/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/
 github.com/stretchr/testify v1.7.1/go.mod h1:6Fq8oRcR53rry900zMqJjRRixrwX3KX962/h/Wwjteg=
 github.com/stretchr/testify v1.8.0/go.mod h1:yNjHg4UonilssWZ8iaSj1OCr/vHnekPRkoO+kdMU+MU=
 github.com/stretchr/testify v1.8.1/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
-github.com/stretchr/testify v1.8.2 h1:+h33VjcLVPDHtOdpUCuF+7gSuG3yGIftsP1YvFihtJ8=
-github.com/stretchr/testify v1.8.2/go.mod h1:w2LPCIKwWwSfY2zedu0+kehJoqGctiVI29o6fzry7u4=
+github.com/stretchr/testify v1.8.3 h1:RP3t2pwF7cMEbC1dqtB6poj3niw/9gnV4Cjg5oW5gtY=
+github.com/stretchr/testify v1.8.3/go.mod h1:sz/lmYIOXD/1dqDmKjjqLyZ2RngseejIcXlSw2iwfAo=
 github.com/subosito/gotenv v1.4.2 h1:X1TuBLAMDFbaTAChgCBLu3DU3UPyELpnF2jjJ2cz/S8=
 github.com/subosito/gotenv v1.4.2/go.mod h1:ayKnFf/c6rvx/2iiLrJUk1e6plDbT3edrFNGqEflhK0=
 github.com/syndtr/gocapability v0.0.0-20200815063812-42c35b437635/go.mod h1:hkRG7XYTFWNJGYcbNJQlaLq0fg1yr4J4t/NcTQtrfww=
