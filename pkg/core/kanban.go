@@ -23,6 +23,7 @@ type KanbanService interface {
 	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error
 	PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
+	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser

@@ -5,13 +5,18 @@ import (
 	"github.com/signaux-faibles/libwekan"
 )
 
+func (ws wekanService) SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard {
+	return SelectBoardsForUser(username)
+}
+
 func SelectBoardsForUser(username libwekan.Username) []libwekan.ConfigBoard {
 	user, ok := wekanConfig.GetUserByUsername(username)
 	if !ok {
 		return nil
 	}
 	configBoards := utils.GetValues(wekanConfig.Boards)
-	return utils.Filter(configBoards, userIsBoardActiveMember(user))
+	userBoards := utils.Filter(configBoards, userIsBoardActiveMember(user))
+	return userBoards
 }
 
 func userIsBoardActiveMember(user libwekan.User) func(board libwekan.ConfigBoard) bool {

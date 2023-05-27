@@ -9,7 +9,7 @@ import (
 // la fonction Items() doit retourner un slice de pointeurs des valeurs
 // recevant une nouvelle ligne de résultat de la requête
 type Scannable interface {
-	NewRowItems() []interface{}
+	NewItems() []interface{}
 }
 
 // Query est une fonction permettant l'exécution d'une requête sql et la récupération des résultats dans un slice
@@ -19,7 +19,7 @@ func Query(ctx context.Context, scannable Scannable, sql string, params ...inter
 		return err
 	}
 	for rows.Next() {
-		items := scannable.NewRowItems()
+		items := scannable.NewItems()
 		err := rows.Scan(items...)
 		spew.Dump(scannable)
 		spew.Dump(items)
