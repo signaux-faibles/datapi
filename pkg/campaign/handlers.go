@@ -18,14 +18,11 @@ func listeCampaignsHandler(c *gin.Context) {
 	s.Bind(c)
 
 	campaigns, err := selectAllCampaignsFromDB(c)
-
-	kanbanConfig := core.Kanban.LoadConfigForUser(libwekan.Username(s.Username))
-
-	campaignsForUser(kanbanConfig.Boards, campaigns)
-
 	if err != nil {
 		c.JSON(500, err.Error())
-	} else {
-		c.JSON(200, campaigns)
+		return
 	}
+
+	kanbanConfig := core.Kanban.LoadConfigForUser(libwekan.Username(s.Username))
+	c.JSON(200, campaignsForUser(kanbanConfig.Boards, campaigns))
 }
