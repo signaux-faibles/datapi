@@ -2,14 +2,17 @@ package main
 
 import (
 	"context"
-	"datapi/pkg/campaigns"
+	"datapi/pkg/campaign"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"datapi/pkg/logPersistence"
+	"datapi/pkg/kanban"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
-	"datapi/pkg/wekan"
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
+	"log"
 )
 
 func main() {
@@ -28,7 +31,7 @@ func main() {
 }
 
 func initWekanService(ctx context.Context) core.KanbanService {
-	return wekan.InitService(ctx,
+	return kanban.InitService(ctx,
 		viper.GetString("wekanMgoURL"),
 		viper.GetString("wekanMgoDB"),
 		viper.GetString("wekanAdminUsername"),
@@ -41,6 +44,6 @@ func initAndStartAPI(datapi *core.Datapi) {
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
-	core.AddEndpoint(router, "/campaign", campaigns.ConfigureEndpoint)
+	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
 	core.StartAPI(router)
 }

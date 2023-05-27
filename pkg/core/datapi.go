@@ -23,7 +23,7 @@ var Departements map[CodeDepartement]string
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(endpoint *gin.RouterGroup)
 
-var kanban KanbanService
+var Kanban KanbanService
 
 type Datapi struct {
 	saveAPICall SaveLogInfos
@@ -46,7 +46,7 @@ func StartDatapi(kanbanService KanbanService, saver SaveLogInfos) (*Datapi, erro
 	if kanbanService == nil {
 		return nil, fmt.Errorf("le service Kanban n'est pas paramétré")
 	}
-	kanban = kanbanService
+	Kanban = kanbanService
 	keycloak = connectKC()
 
 	datapi := Datapi{

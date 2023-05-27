@@ -274,7 +274,7 @@ func kanbanUnarchiveCardHandler(c *gin.Context) {
 
 	cardID := libwekan.CardID(c.Param("cardID"))
 
-	err := kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
+	err := Kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
 	if errors.Is(err, UnknownCardError{}) {
 		c.JSON(http.StatusNotFound, err.Error())
 	}

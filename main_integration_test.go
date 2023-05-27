@@ -4,6 +4,11 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
+	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/kanban"
+	"datapi/pkg/test"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -52,7 +57,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// run datapi
-	kanbanService := wekan.InitService(ctx, wekanDBURL, "test", "mgo", "*")
+	kanbanService := kanban.InitService(ctx, wekanDBURL, "test", "mgo", "*")
 	inMemoryLogSaver = test.NewInMemoryLogSaver()
 	datapi, err := core.StartDatapi(kanbanService, inMemoryLogSaver.SaveLog)
 	if err != nil {

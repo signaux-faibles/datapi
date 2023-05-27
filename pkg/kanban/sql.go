@@ -1,4 +1,4 @@
-package wekan
+package kanban
 
 // SqlGetCards $1 = roles.ZoneGeo, $2 = username, $3 = sirets
 const SqlGetCards = `
