@@ -5,7 +5,6 @@ import (
 	"bufio"
 	"bytes"
 	"datapi/pkg/db"
-	"datapi/pkg/kanban"
 	"datapi/pkg/utils"
 	"encoding/json"
 	"fmt"
@@ -246,13 +245,13 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
 	var ok bool
-	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+	params.User, ok = Kanban.GetUser(libwekan.Username(s.Username))
 	if !ok {
 		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
 		return
 	}
 
-	exports, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.Roles)
+	exports, err := Kanban.ExportFollowsForUser(c, params, db.Get(), s.Roles)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
@@ -282,7 +281,7 @@ func getDOCXFromSiret(c *gin.Context) {
 	s.Bind(c)
 
 	siret := c.Param("siret")
-	kanbanExports, err := kanban.SelectKanbanExportsWithSiret(c, siret, s.Username, db.Get(), s.Roles)
+	kanbanExports, err := Kanban.SelectKanbanExportsWithSiret(c, siret, s.Username, db.Get(), s.Roles)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
