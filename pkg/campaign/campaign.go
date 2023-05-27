@@ -8,7 +8,7 @@ import (
 )
 
 func campaignsForUser(userBoards core.KanbanBoards, allCampaigns Campaigns) Campaigns {
-	var userCampaigns Campaigns
+	var userCampaigns = make(Campaigns, 0)
 	for _, campaign := range allCampaigns {
 		if campaign.matchesBoards(utils.GetValues(userBoards)) {
 			userCampaigns = append(userCampaigns, campaign)
