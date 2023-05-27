@@ -52,7 +52,7 @@ func ContainsOnConditions[T interface{}](values []T, searched T, conditions ...f
 func Filter[T any](input []T, test func(T) bool) (output []T) {
 	for _, element := range input {
 		if test(element) {
-			output = append(output, element)
+			output = append(output)
 		}
 	}
 	return output

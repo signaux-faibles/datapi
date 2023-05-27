@@ -5,6 +5,7 @@ import (
 	"bufio"
 	"bytes"
 	"datapi/pkg/db"
+	"datapi/pkg/kanban"
 	"datapi/pkg/utils"
 	"encoding/json"
 	"fmt"

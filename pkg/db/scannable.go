@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"github.com/davecgh/go-spew/spew"
 )
 
 // Scannable est une interface permettant l'usage de la fonction Query
@@ -18,11 +19,10 @@ func Query(ctx context.Context, scannable Scannable, sql string, params ...inter
 		return err
 	}
 	for rows.Next() {
-		tuple := scannable.Tuple()
-		err = rows.Scan(tuple...)
-		if err != nil {
-			return err
-		}
+		items := scannable.NewRowItems()
+		err := rows.Scan(items...)
+		spew.Dump(scannable)
+		spew.Dump(items)
 		if err != nil {
 			return err
 		}
