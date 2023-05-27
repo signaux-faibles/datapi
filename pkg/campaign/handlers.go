@@ -17,12 +17,13 @@ func listeCampaignsHandler(c *gin.Context) {
 	var s core.Session
 	s.Bind(c)
 
-	campaigns, err := selectAllCampaignsFromDB(c)
+	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(s.Username))
+	slugs := utils.Convert(boards, libwekan.ConfigBoard.Slug)
+	campaigns, err := selectMatchingCampaigns(c, slugs)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
 	}
 
-	kanbanConfig := core.Kanban.LoadConfigForUser(libwekan.Username(s.Username))
-	c.JSON(200, campaignsForUser(kanbanConfig.Boards, campaigns))
+	c.JSON(200, campaigns)
 }

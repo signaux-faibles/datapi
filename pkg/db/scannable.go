@@ -19,7 +19,7 @@ func Query(ctx context.Context, scannable Scannable, sql string, params ...inter
 		return err
 	}
 	for rows.Next() {
-		items := scannable.NewRowItems()
+		items := scannable.NewItems()
 		err := rows.Scan(items...)
 		spew.Dump(scannable)
 		spew.Dump(items)
