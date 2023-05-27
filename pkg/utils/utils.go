@@ -49,6 +49,15 @@ func ContainsOnConditions[T interface{}](values []T, searched T, conditions ...f
 	return false
 }
 
+func Filter[T any](input []T, test func(T) bool) (output []T) {
+	for _, element := range input {
+		if test(element) {
+			output = append(output)
+		}
+	}
+	return output
+}
+
 func GetKeys[K comparable, V any](input map[K]V) []K {
 	keys := make([]K, 0, len(input))
 	for key := range input {
@@ -91,4 +100,13 @@ func First[T any](ss []T, test func(T) bool) (ret T, ok bool) {
 		}
 	}
 	return ret, false
+}
+
+func Any[T any](input []T, test func(T) bool) bool {
+	for _, element := range input {
+		if test(element) {
+			return true
+		}
+	}
+	return false
 }

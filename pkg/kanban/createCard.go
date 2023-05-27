@@ -1,4 +1,4 @@
-package wekan
+package kanban
 
 import (
 	"context"
