@@ -24,7 +24,7 @@ var Departements map[CodeDepartement]string
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(path string, api *gin.Engine)
 
-var kanban KanbanService
+var Kanban KanbanService
 
 // StartDatapi se connecte aux bases de données et keycloak
 func StartDatapi(kanbanService KanbanService) error {
@@ -43,7 +43,7 @@ func StartDatapi(kanbanService KanbanService) error {
 	if kanbanService == nil {
 		return fmt.Errorf("le service Kanban n'est pas paramétré")
 	}
-	kanban = kanbanService
+	Kanban = kanbanService
 	keycloak = connectKC()
 	return nil
 }

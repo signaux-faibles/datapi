@@ -7,8 +7,8 @@ import (
 	"crypto/rand"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
+	"datapi/pkg/kanban"
 	"datapi/pkg/test"
-	"datapi/pkg/wekan"
 	"encoding/json"
 	"fmt"
 	"github.com/stretchr/testify/assert"
@@ -51,7 +51,7 @@ func TestMain(m *testing.M) {
 	}
 
 	// run datapi
-	kanbanService := wekan.InitService(ctx, wekanDbURL, "test", "mgo", "*")
+	kanbanService := kanban.InitService(ctx, wekanDbURL, "test", "mgo", "*")
 	err = core.StartDatapi(kanbanService)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
