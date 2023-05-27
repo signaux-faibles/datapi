@@ -13,7 +13,7 @@ import (
 func kanbanConfigHandler(c *gin.Context) {
 	var s Session
 	s.Bind(c)
-	kanbanConfig := kanban.LoadConfigForUser(libwekan.Username(s.Username))
+	kanbanConfig := Kanban.LoadConfigForUser(libwekan.Username(s.Username))
 	c.JSON(http.StatusOK, kanbanConfig)
 }
 
@@ -22,7 +22,7 @@ func kanbanGetCardsHandler(c *gin.Context) {
 	s.Bind(c)
 	siret := c.Param("siret")
 
-	cards, err := kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
+	cards, err := Kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -57,13 +57,13 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	}
 
 	var ok bool
-	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+	params.User, ok = Kanban.GetUser(libwekan.Username(s.Username))
 	if !ok {
 		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
 		return
 	}
 
-	cards, err := kanban.SelectFollowsForUser(c, params, db.Get(), s.Roles)
+	cards, err := Kanban.SelectFollowsForUser(c, params, db.Get(), s.Roles)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -84,7 +84,7 @@ func kanbanNewCardHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
-	err = kanban.CreateCard(c, params, libwekan.Username(s.Username), db.Get())
+	err = Kanban.CreateCard(c, params, libwekan.Username(s.Username), db.Get())
 	if errors.As(err, &ForbiddenError{}) {
 		c.JSON(http.StatusForbidden, err.Error())
 	}

@@ -102,16 +102,16 @@ func unfollowEtablissement(c *gin.Context) {
 	}
 
 	if s.hasRole("wekan") {
-		user, ok := kanban.GetUser(libwekan.Username(s.Username))
+		user, ok := Kanban.GetUser(libwekan.Username(s.Username))
 		if !ok {
 			c.JSON(500, "l'utilisateur a le rôle wekan mais n'est pas présent dans l'application")
 		}
-		cards, err := kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
+		cards, err := Kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
 		if err != nil {
 			c.JSON(500, err.Error())
 		}
 		for _, card := range cards {
-			err := kanban.PartCard(c, card.ID, user.ID)
+			err := Kanban.PartCard(c, card.ID, user.ID)
 			if err != nil {
 				c.JSON(500, err.Error())
 				return
