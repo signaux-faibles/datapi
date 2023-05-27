@@ -1,31 +1,28 @@
 package campaign
 
 import (
-	"datapi/pkg/core"
-	"datapi/pkg/utils"
-	regexp2 "regexp"
 	"time"
 )
 
-func campaignsForUser(userBoards core.KanbanBoards, allCampaigns Campaigns) Campaigns {
-	var userCampaigns = make(Campaigns, 0)
-	for _, campaign := range allCampaigns {
-		if campaign.matchesBoards(utils.GetValues(userBoards)) {
-			userCampaigns = append(userCampaigns, campaign)
-		}
-	}
-	return userCampaigns
-}
-
-func (campaign Campaign) matchesBoards(configBoards []core.KanbanBoard) bool {
-	re, err := regexp2.Compile(campaign.WekanDomainRegexp)
-	if err != nil {
-		return false
-	}
-	return utils.Any(configBoards, func(kanbanBoard core.KanbanBoard) bool {
-		return re.MatchString(string(kanbanBoard.Slug))
-	})
-}
+//func campaignsForUser(userBoards core.KanbanBoards, allCampaigns Campaigns) Campaigns {
+//	var userCampaigns = make(Campaigns, 0)
+//	for _, campaign := range allCampaigns {
+//		if campaign.matchesBoards(utils.GetValues(userBoards)) {
+//			userCampaigns = append(userCampaigns, campaign)
+//		}
+//	}
+//	return userCampaigns
+//}
+//
+//func (campaign Campaign) matchesBoards(configBoards []core.KanbanBoard) bool {
+//	re, err := regexp2.Compile(campaign.WekanDomainRegexp)
+//	if err != nil {
+//		return false
+//	}
+//	return utils.Any(configBoards, func(kanbanBoard core.KanbanBoard) bool {
+//		return re.MatchString(string(kanbanBoard.Slug))
+//	})
+//}
 
 type Campaign struct {
 	ID                int       `json:"id"`
@@ -33,11 +30,12 @@ type Campaign struct {
 	DateEnd           time.Time `json:"date_fin"`
 	DateCreate        time.Time `json:"date_create"`
 	WekanDomainRegexp string    `json:"wekan_domain_regexp"`
+	BoardSlugs        []string  `json:"slugs"`
 }
 
 type Campaigns []*Campaign
 
-func (cs *Campaigns) NewRowItems() []interface{} {
+func (cs *Campaigns) NewItems() []interface{} {
 	c := Campaign{}
 	*cs = append(*cs, &c)
 	return []interface{}{
@@ -46,5 +44,6 @@ func (cs *Campaigns) NewRowItems() []interface{} {
 		&c.WekanDomainRegexp,
 		&c.DateEnd,
 		&c.DateCreate,
+		&c.BoardSlugs,
 	}
 }
