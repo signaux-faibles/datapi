@@ -31,11 +31,13 @@ type Campaign struct {
 	DateCreate        time.Time `json:"date_create"`
 	WekanDomainRegexp string    `json:"wekan_domain_regexp"`
 	BoardSlugs        []string  `json:"slugs"`
+	NBTotal           int       `json:"nb_total"`
+	NBPerimetre       int       `json:"nb_perimetre"`
 }
 
 type Campaigns []*Campaign
 
-func (cs *Campaigns) NewItems() []interface{} {
+func (cs *Campaigns) Tuple() []interface{} {
 	c := Campaign{}
 	*cs = append(*cs, &c)
 	return []interface{}{
@@ -45,5 +47,7 @@ func (cs *Campaigns) NewItems() []interface{} {
 		&c.DateEnd,
 		&c.DateCreate,
 		&c.BoardSlugs,
+		&c.NBTotal,
+		&c.NBPerimetre,
 	}
 }
