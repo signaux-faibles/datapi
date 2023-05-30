@@ -12,21 +12,19 @@ create table campaign_etablissement (
   id integer primary key default nextval('campaign_etablissement_id'),
   id_campaign integer,
   siret text,
-  data jsonb,
+  metadata jsonb,
   constraint fk_campaign
     foreign key(id_campaign)
       references campaign(id)
 );
 
-create sequence campaign_etablissement_user_id;
-create table campaign_etablissement_user (
-  id integer primary key default nextval('campaign_etablissement_user_id'),
+create sequence campaign_etablissement_action_id;
+create table campaign_etablissement_action (
+  id integer primary key default nextval('campaign_etablissement_action_id'),
   id_campaign_etablissement integer,
   username text,
-  date_start timestamp,
-  date_end timestamp,
+  date_action timestamp,
   action text,
-  data jsonb,
   constraint fk_campaign
     foreign key(id_campaign_etablissement)
       references campaign_etablissement(id)

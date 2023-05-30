@@ -19,7 +19,7 @@ func listeCampaignsHandler(c *gin.Context) {
 
 	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(s.Username))
 	slugs := utils.Convert(boards, libwekan.ConfigBoard.Slug)
-	campaigns, err := selectMatchingCampaigns(c, slugs)
+	campaigns, err := selectMatchingCampaigns(c, slugs, s.Roles)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
