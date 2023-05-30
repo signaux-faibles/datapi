@@ -18,8 +18,8 @@ func Query(ctx context.Context, scannable Scannable, sql string, params ...inter
 		return err
 	}
 	for rows.Next() {
-		items := scannable.Tuple()
-		err = rows.Scan(items...)
+		tuple := scannable.Tuple()
+		err = rows.Scan(tuple...)
 		if err != nil {
 			return err
 		}
