@@ -1,13 +1,17 @@
 package core
 
 import (
+	"log"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	"github.com/gin-gonic/gin"
 	"github.com/jaswdr/faker"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
-	"net/http"
-	"net/http/httptest"
-	"testing"
+
+	"datapi/pkg/utils"
 )
 
 func init() {
@@ -18,10 +22,9 @@ func init() {
 func TestCheckAllRolesMiddleware(t *testing.T) {
 	ass := assert.New(t)
 
-	someRoles := generateSomeRoles()
-	otherRoles := generateSomeRoles()
-	sameRolesAndMore := append(someRoles, otherRoles...)
-
+	someRoles := someRolesNotIn()
+	otherRoles := someRolesNotIn(someRoles...)
+	var sameRolesAndMore = append(someRoles, otherRoles...)
 	type args struct {
 		neededRoles   []string
 		providedRoles []string
@@ -63,10 +66,9 @@ func TestCheckAnyRolesMiddleware(t *testing.T) {
 
 	aPreciseRole := fake.Color().ColorName()
 
-	someRoles := append(generateSomeRoles(), aPreciseRole)
-	otherRoles := generateSomeRoles()
-	otherRolesWithPreciseRole := append(otherRoles, aPreciseRole)
-
+	someRoles := append(someRolesNotIn(), aPreciseRole)
+	otherRoles := someRolesNotIn(someRoles...)
+	var otherRolesWithPreciseRole = append(otherRoles, aPreciseRole)
 	type args struct {
 		neededRoles   []string
 		providedRoles []string
@@ -104,11 +106,15 @@ func TestCheckAnyRolesMiddleware(t *testing.T) {
 	}
 }
 
-func generateSomeRoles() []string {
+func someRolesNotIn(someRoles ...string) []string {
 	length := fake.IntBetween(1, 3)
 	r := make([]string, length)
 	for i := 0; i < length; i++ {
-		r[i] = fake.Lorem().Word()
+		var newRole string
+		for newRole = fake.Lorem().Word(); utils.Contains(someRoles, newRole); newRole = fake.Lorem().Word() {
+			log.Println(someRoles, "contient déjà le rôle", newRole, ". On génère un nouveau rôle aléatoire")
+		}
+		r[i] = newRole
 	}
 	return r
 }
