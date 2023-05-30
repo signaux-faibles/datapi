@@ -1,3 +1,5 @@
+create extension hstore;
+
 create sequence campaign_id;
 create table campaign (
   id integer primary key default nextval('campaign_id'),
@@ -12,7 +14,7 @@ create table campaign_etablissement (
   id integer primary key default nextval('campaign_etablissement_id'),
   id_campaign integer,
   siret text,
-  metadata jsonb,
+  metadata hstore,
   constraint fk_campaign
     foreign key(id_campaign)
       references campaign(id)
@@ -25,8 +27,10 @@ create table campaign_etablissement_action (
   username text,
   date_action timestamp,
   action text,
+  metadata hstore,
   constraint fk_campaign
     foreign key(id_campaign_etablissement)
       references campaign_etablissement(id)
 );
+
 
