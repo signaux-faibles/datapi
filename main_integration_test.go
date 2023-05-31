@@ -5,18 +5,20 @@ package main
 import (
 	"context"
 	"crypto/rand"
-	"datapi/pkg/core"
-	"datapi/pkg/db"
-	"datapi/pkg/test"
-	"datapi/pkg/wekan"
 	"encoding/json"
 	"fmt"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"math/big"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/test"
+	"datapi/pkg/wekan"
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
@@ -52,12 +54,12 @@ func TestMain(m *testing.M) {
 
 	// run datapi
 	kanbanService := wekan.InitService(ctx, wekanDbURL, "test", "mgo", "*")
-	err = core.StartDatapi(kanbanService)
+	datapi, err := core.StartDatapi(kanbanService)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
 
-	go initAndStartAPI()
+	go initAndStartAPI(datapi)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	// run tests

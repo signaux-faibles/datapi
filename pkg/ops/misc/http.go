@@ -2,16 +2,16 @@
 package misc
 
 import (
-	"datapi/pkg/core"
-	"datapi/pkg/utils"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
-	"net/http"
+
+	"datapi/pkg/utils"
 )
 
 // ConfigureEndpoint configure l'endpoint du package `ops`
-func ConfigureEndpoint(path string, api *gin.Engine) {
-	endpoint := api.Group(path, core.AdminAuthMiddleware)
+func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/keycloak", keycloakUsersHandler)
 	endpoint.GET("/metrics", gin.WrapH(promhttp.Handler()))
 }

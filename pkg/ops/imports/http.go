@@ -2,15 +2,15 @@
 package imports
 
 import (
-	"datapi/pkg/core"
-	"datapi/pkg/utils"
-	"github.com/gin-gonic/gin"
 	"net/http"
+
+	"github.com/gin-gonic/gin"
+
+	"datapi/pkg/utils"
 )
 
 // ConfigureEndpoint configure l'endpoint du package `ops`
-func ConfigureEndpoint(path string, api *gin.Engine) {
-	endpoint := api.Group(path, core.AdminAuthMiddleware)
+func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/ee", importEntrepriseAndEtablissementHandler) // 1
 	endpoint.GET("/sirene", importSireneHandler)                 // 2
 	endpoint.GET("/listes/:algo", importListesHandler)           // 3
