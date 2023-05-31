@@ -54,7 +54,7 @@ func TestMain(m *testing.M) {
 
 	// run datapi
 	kanbanService := wekan.InitService(ctx, wekanDbURL, "test", "mgo", "*")
-	datapi, err := core.StartDatapi(kanbanService)
+	datapi, err := core.StartDatapi(kanbanService, core.PrintLogToStdout)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
