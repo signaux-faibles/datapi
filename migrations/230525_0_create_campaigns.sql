@@ -32,5 +32,3 @@ create table campaign_etablissement_action (
     foreign key(id_campaign_etablissement)
       references campaign_etablissement(id)
 );
-
-

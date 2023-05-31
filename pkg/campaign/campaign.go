@@ -1,38 +1,22 @@
 package campaign
 
 import (
+	"context"
+	"github.com/jackc/pgx/v4/pgxpool"
 	"time"
 )
 
-//func campaignsForUser(userBoards core.KanbanBoards, allCampaigns Campaigns) Campaigns {
-//	var userCampaigns = make(Campaigns, 0)
-//	for _, campaign := range allCampaigns {
-//		if campaign.matchesBoards(utils.GetValues(userBoards)) {
-//			userCampaigns = append(userCampaigns, campaign)
-//		}
-//	}
-//	return userCampaigns
-//}
-//
-//func (campaign Campaign) matchesBoards(configBoards []core.KanbanBoard) bool {
-//	re, err := regexp2.Compile(campaign.WekanDomainRegexp)
-//	if err != nil {
-//		return false
-//	}
-//	return utils.Any(configBoards, func(kanbanBoard core.KanbanBoard) bool {
-//		return re.MatchString(string(kanbanBoard.Slug))
-//	})
-//}
+type CampaignID int
 
 type Campaign struct {
-	ID                int       `json:"id"`
-	Libelle           string    `json:"libelle"`
-	DateEnd           time.Time `json:"date_fin"`
-	DateCreate        time.Time `json:"date_create"`
-	WekanDomainRegexp string    `json:"wekan_domain_regexp"`
-	BoardSlugs        []string  `json:"slugs"`
-	NBTotal           int       `json:"nb_total"`
-	NBPerimetre       int       `json:"nb_perimetre"`
+	ID                CampaignID `json:"id"`
+	Libelle           string     `json:"libelle"`
+	DateEnd           time.Time  `json:"date_fin"`
+	DateCreate        time.Time  `json:"date_create"`
+	WekanDomainRegexp string     `json:"wekan_domain_regexp"`
+	BoardSlugs        []string   `json:"slugs"`
+	NBTotal           int        `json:"nb_total"`
+	NBPerimetre       int        `json:"nb_perimetre"`
 }
 
 type Campaigns []*Campaign
@@ -50,4 +34,11 @@ func (cs *Campaigns) Tuple() []interface{} {
 		&c.NBTotal,
 		&c.NBPerimetre,
 	}
+}
+
+func (cs *Campaign) Insert(ctx context.Context, db *pgxpool.Pool) (CampaignID, error) {
+	sql := `insert into campaign (libelle, wekan_domain_regexp, date_end, date_create)
+          values ($1, $2, $3, $4) returning id`
+	err := db.QueryRow(ctx, sql, cs.Libelle, cs.WekanDomainRegexp, cs.DateEnd, cs.DateCreate).Scan(&cs.ID)
+	return cs.ID, err
 }

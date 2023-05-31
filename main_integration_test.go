@@ -45,6 +45,9 @@ func TestMain(m *testing.M) {
 
 	test.Wait4DatapiDb(test.GetDatapiDbURL())
 
+	// test db init, entraine un panic si la migration ou la connexion à la DB est défectueuse
+	db.Init()
+
 	err = test.Authenticate()
 	if err != nil {
 		log.Printf("Erreur pendant l'authentification : %s", err)
