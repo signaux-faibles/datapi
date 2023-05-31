@@ -2,18 +2,17 @@
 package core
 
 import (
-	"bytes"
-	"context"
-	"datapi/pkg/db"
-	"datapi/pkg/utils"
 	"fmt"
+	"log"
+	"net/http"
+
 	"github.com/Nerzal/gocloak/v10"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
-	"io"
-	"log"
-	"net/http"
+
+	"datapi/pkg/db"
+	"datapi/pkg/utils"
 )
 
 var keycloak gocloak.GoCloak
@@ -22,30 +21,38 @@ var Regions map[Region][]CodeDepartement
 var Departements map[CodeDepartement]string
 
 // Endpoint handler pour définir un endpoint sur gin
-type Endpoint func(path string, api *gin.Engine)
+type Endpoint func(endpoint *gin.RouterGroup)
 
 var kanban KanbanService
 
+type Datapi struct {
+	saveAPICall SaveHTTPCall
+}
+
 // StartDatapi se connecte aux bases de données et keycloak
-func StartDatapi(kanbanService KanbanService) error {
+func StartDatapi(kanbanService KanbanService) (*Datapi, error) {
 	var err error
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	Departements, err = loadDepartementReferentiel()
 	if err != nil {
-		return fmt.Errorf("erreur pendant le chargement du référentiel des départements : %w", err)
+		return nil, fmt.Errorf("erreur pendant le chargement du référentiel des départements : %w", err)
 	}
 	Regions, err = loadRegionsReferentiel()
 	if err != nil {
 		fmt.Println(err)
-		return fmt.Errorf("erreur pendant le chargement du référentiel des régions : %w", err)
+		return nil, fmt.Errorf("erreur pendant le chargement du référentiel des régions : %w", err)
 	}
 
 	if kanbanService == nil {
-		return fmt.Errorf("le service Kanban n'est pas paramétré")
+		return nil, fmt.Errorf("le service Kanban n'est pas paramétré")
 	}
 	kanban = kanbanService
 	keycloak = connectKC()
-	return nil
+
+	datapi := Datapi{
+		saveAPICall: saveToDB,
+	}
+	return &datapi, nil
 }
 
 // LoadConfig charge la config toml
@@ -61,7 +68,7 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 }
 
 // InitAPI initialise l'api
-func InitAPI(router *gin.Engine) {
+func (datapi *Datapi) InitAPI(router *gin.Engine) {
 
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
@@ -75,12 +82,12 @@ func InitAPI(router *gin.Engine) {
 		panic(err.Error())
 	}
 
-	entreprise := router.Group("/entreprise", AuthMiddleware(), LogMiddleware)
+	entreprise := router.Group("/entreprise", AuthMiddleware(), datapi.LogMiddleware)
 	entreprise.GET("/viewers/:siren", checkSirenFormat, getEntrepriseViewers)
 	entreprise.GET("/get/:siren", checkSirenFormat, getEntreprise)
 	entreprise.GET("/all/:siren", checkSirenFormat, getEntrepriseEtablissements)
 
-	etablissement := router.Group("/etablissement", AuthMiddleware(), LogMiddleware)
+	etablissement := router.Group("/etablissement", AuthMiddleware(), datapi.LogMiddleware)
 	etablissement.GET("/viewers/:siret", checkSiretFormat, getEtablissementViewers)
 	etablissement.GET("/get/:siret", checkSiretFormat, getEtablissement)
 	etablissement.GET("/comments/:siret", checkSiretFormat, getEntrepriseComments)
@@ -88,38 +95,39 @@ func InitAPI(router *gin.Engine) {
 	etablissement.PUT("/comments/:id", updateEntrepriseComment)
 	etablissement.POST("/search", searchEtablissementHandler)
 
-	follow := router.Group("/follow", AuthMiddleware(), LogMiddleware)
+	follow := router.Group("/follow", AuthMiddleware(), datapi.LogMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
 	follow.POST("/:siret", checkSiretFormat, followEtablissement)
 	follow.DELETE("/:siret", checkSiretFormat, unfollowEtablissement)
 
-	export := router.Group("/export/", AuthMiddleware(), LogMiddleware)
+	export := router.Group("/export/", AuthMiddleware(), datapi.LogMiddleware)
 	export.POST("/xlsx/follow", getXLSXFollowedByCurrentUser)
 	export.POST("/docx/follow", getDOCXFollowedByCurrentUser)
 	export.GET("/docx/siret/:siret", checkSiretFormat, getDOCXFromSiret)
 
-	listes := router.Group("/listes", AuthMiddleware(), LogMiddleware)
+	listes := router.Group("/listes", AuthMiddleware(), datapi.LogMiddleware)
 	listes.GET("", getListes)
 
-	scores := router.Group("/scores", AuthMiddleware(), LogMiddleware)
+	scores := router.Group("/scores", AuthMiddleware(), datapi.LogMiddleware)
 	scores.POST("/liste", getLastListeScores)
 	scores.POST("/liste/:id", getListeScores)
 	scores.POST("/xls/:id", getXLSListeScores)
 
-	reference := router.Group("/reference", AuthMiddleware(), LogMiddleware)
+	reference := router.Group("/reference", AuthMiddleware(), datapi.LogMiddleware)
 	reference.GET("/naf", getCodesNaf)
 	reference.GET("/departements", departementsHandler)
 	reference.GET("/regions", regionsHandler)
 
-	fce := router.Group("/fce", AuthMiddleware(), LogMiddleware)
+	fce := router.Group("/fce", AuthMiddleware(), datapi.LogMiddleware)
 	fce.GET("/:siret", checkSiretFormat, getFceURL)
 
-	configureKanbanEndpoint("/kanban", router)
+	configureKanbanEndpoint("/kanban", router, AuthMiddleware(), datapi.LogMiddleware)
 }
 
 // AddEndpoint permet de rajouter un endpoint au niveau de l'API
-func AddEndpoint(router *gin.Engine, path string, endpoint Endpoint) {
-	endpoint(path, router)
+func AddEndpoint(router *gin.Engine, path string, endpoint Endpoint, handlers ...gin.HandlerFunc) {
+	group := router.Group(path, handlers...)
+	endpoint(group)
 }
 
 // StartAPI : démarre le serveur
@@ -140,47 +148,6 @@ func AuthMiddleware() gin.HandlerFunc {
 	return fakeCloakMiddleware
 }
 
-// LogMiddleware définit le middleware qui gère les logs
-func LogMiddleware(c *gin.Context) {
-	if c.Request.Body == nil {
-		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "request has nil body"})
-		return
-	}
-	path := c.Request.URL.Path
-	method := c.Request.Method
-	body, err := io.ReadAll(c.Request.Body)
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
-
-	var token []string
-	if viper.GetBool("enableKeycloak") {
-		token, err = getRawToken(c)
-		if err != nil {
-			c.AbortWithStatus(http.StatusInternalServerError)
-			return
-		}
-	} else {
-		token = []string{"", "fakeKeycloak"}
-	}
-
-	_, err = db.Get().Exec(
-		context.Background(),
-		`insert into logs (path, method, body, token) values ($1, $2, $3, $4);`,
-		path,
-		method,
-		string(body),
-		token[1],
-	)
-	if err != nil {
-		c.AbortWithStatus(500)
-		return
-	}
-	c.Next()
-}
-
 const forbiddenIPMessage = "Erreur : Une tentative de connexion depuis `%s`, ce qui n'est pas autorisé dans `adminWhitelist`, voir config.toml\n"
 
 // AdminAuthMiddleware stoppe la requête si l'ip client n'est pas contenue dans la whitelist
@@ -192,8 +159,8 @@ func AdminAuthMiddleware(c *gin.Context) {
 	}
 }
 
-func configureKanbanEndpoint(path string, api *gin.Engine) {
-	kanban := api.Group(path, AuthMiddleware(), LogMiddleware)
+func configureKanbanEndpoint(path string, api *gin.Engine, handlers ...gin.HandlerFunc) {
+	kanban := api.Group(path, handlers...)
 	kanban.GET("/config", CheckAnyRolesMiddleware("wekan"), kanbanConfigHandler)
 	kanban.GET("/cards/:siret", CheckAnyRolesMiddleware("wekan"), kanbanGetCardsHandler)
 	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)

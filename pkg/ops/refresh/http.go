@@ -4,18 +4,18 @@ package refresh
 
 import (
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/db"
-	"datapi/pkg/utils"
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 	"github.com/spf13/viper"
-	"net/http"
+
+	"datapi/pkg/db"
+	"datapi/pkg/utils"
 )
 
 // ConfigureEndpoint configure le endpoint du package `refresh`
-func ConfigureEndpoint(path string, api *gin.Engine) {
-	refreshRoute := api.Group(path, core.AdminAuthMiddleware)
+func ConfigureEndpoint(refreshRoute *gin.RouterGroup) {
 	refreshRoute.GET("/start", startHandler)
 	refreshRoute.GET("/status/:uuid", statusHandler)
 	refreshRoute.GET("/last", lastHandler)

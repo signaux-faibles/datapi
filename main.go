@@ -2,14 +2,16 @@ package main
 
 import (
 	"context"
+	"log"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
+
 	"datapi/pkg/core"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
 	"datapi/pkg/wekan"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"log"
 )
 
 func main() {
@@ -19,11 +21,11 @@ func main() {
 	}
 	ctx := context.Background()
 	kanban := initWekanService(ctx)
-	err := core.StartDatapi(kanban)
+	datapi, err := core.StartDatapi(kanban)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
 	}
-	initAndStartAPI()
+	initAndStartAPI(datapi)
 }
 
 func initWekanService(ctx context.Context) core.KanbanService {
@@ -34,11 +36,11 @@ func initWekanService(ctx context.Context) core.KanbanService {
 		viper.GetString("wekanSlugDomainRegexp"))
 }
 
-func initAndStartAPI() {
+func initAndStartAPI(datapi *core.Datapi) {
 	router := gin.Default()
-	core.InitAPI(router)
-	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint)
-	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint)
-	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint)
+	datapi.InitAPI(router)
+	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
+	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
+	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.StartAPI(router)
 }
