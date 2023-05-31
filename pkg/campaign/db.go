@@ -27,7 +27,7 @@ func selectMatchingCampaigns(ctx context.Context, boardSlugs []libwekan.BoardSlu
     group by cs.id, cs.libelle, cs.wekan_domain_regexp, cs.date_end, cs.date_create, cs.slugs`
 
 	var allCampaigns = Campaigns{}
-	err := db.Query(ctx, &allCampaigns, sql, boardSlugs, roles)
+	err := db.Scan(ctx, &allCampaigns, sql, boardSlugs, roles)
 
 	return allCampaigns, err
 }
