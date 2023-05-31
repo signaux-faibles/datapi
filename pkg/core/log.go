@@ -2,7 +2,6 @@ package core
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"log"
 	"net/http"
@@ -11,15 +10,14 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
-	"datapi/pkg/db"
 	"datapi/pkg/utils"
 )
 
 type LogInfos struct {
-	path   string
-	method string
-	body   []byte
-	token  []string
+	Path   string
+	Method string
+	Body   []byte
+	Token  []string
 }
 
 // SaveLogInfos handler pour définir une façon de sauver les logs
@@ -61,26 +59,14 @@ func extractAPICallInfosFrom(c *gin.Context) (LogInfos, error) {
 		token = []string{"", "fakeKeycloak"}
 	}
 	return LogInfos{
-		path:   path,
-		method: method,
-		body:   body,
-		token:  token,
+		Path:   path,
+		Method: method,
+		Body:   body,
+		Token:  token,
 	}, nil
 }
 
 func PrintLogToStdout(message LogInfos) error {
-	log.Printf("log -> %s - %s - %s - %s\n", message.path, message.method, message.body, message.token[1])
+	log.Printf("log -> %s - %s - %s - %s\n", message.Path, message.Method, message.Body, message.Token[1])
 	return nil
-}
-
-func SaveLogToDB(message LogInfos) error {
-	_, err := db.Get().Exec(
-		context.Background(),
-		`insert into logs (path, method, body, token) values ($1, $2, $3, $4);`,
-		message.path,
-		message.method,
-		string(message.body),
-		message.token[1],
-	)
-	return err
 }

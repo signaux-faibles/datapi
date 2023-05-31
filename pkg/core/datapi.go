@@ -69,7 +69,6 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 
 // InitAPI initialise l'api
 func (datapi *Datapi) InitAPI(router *gin.Engine) {
-
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
 	config.AddExposeHeaders("Content-Disposition")
