@@ -15,15 +15,15 @@ import (
 	"datapi/pkg/utils"
 )
 
-type HTTPCall struct {
+type LogInfos struct {
 	path   string
 	method string
 	body   []byte
 	token  []string
 }
 
-// SaveHTTPCall handler pour définir une façon de sauver les logs
-type SaveHTTPCall func(log HTTPCall) error
+// SaveLogInfos handler pour définir une façon de sauver les logs
+type SaveLogInfos func(log LogInfos) error
 
 // LogMiddleware définit le middleware qui gère les logs
 func (datapi *Datapi) LogMiddleware(c *gin.Context) {
@@ -41,15 +41,13 @@ func (datapi *Datapi) LogMiddleware(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
-
 }
-
-func extractAPICallInfosFrom(c *gin.Context) (HTTPCall, error) {
+func extractAPICallInfosFrom(c *gin.Context) (LogInfos, error) {
 	path := c.Request.URL.Path
 	method := c.Request.Method
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		return HTTPCall{}, errors.Wrap(err, "erreur pendant la lecture du body de la requête")
+		return LogInfos{}, errors.Wrap(err, "erreur pendant la lecture du body de la requête")
 	}
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
@@ -57,12 +55,12 @@ func extractAPICallInfosFrom(c *gin.Context) (HTTPCall, error) {
 	if viper.GetBool("enableKeycloak") {
 		token, err = getRawToken(c)
 		if err != nil {
-			return HTTPCall{}, errors.Wrap(err, "erreur pendant la récupération du token")
+			return LogInfos{}, errors.Wrap(err, "erreur pendant la récupération du token")
 		}
 	} else {
 		token = []string{"", "fakeKeycloak"}
 	}
-	return HTTPCall{
+	return LogInfos{
 		path:   path,
 		method: method,
 		body:   body,
@@ -70,12 +68,12 @@ func extractAPICallInfosFrom(c *gin.Context) (HTTPCall, error) {
 	}, nil
 }
 
-func printToStdout(message HTTPCall) error {
+func PrintLogToStdout(message LogInfos) error {
 	log.Printf("log -> %s - %s - %s - %s\n", message.path, message.method, message.body, message.token[1])
 	return nil
 }
 
-func saveToDB(message HTTPCall) error {
+func SaveLogToDB(message LogInfos) error {
 	_, err := db.Get().Exec(
 		context.Background(),
 		`insert into logs (path, method, body, token) values ($1, $2, $3, $4);`,

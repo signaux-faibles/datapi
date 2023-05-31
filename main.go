@@ -21,7 +21,7 @@ func main() {
 	}
 	ctx := context.Background()
 	kanban := initWekanService(ctx)
-	datapi, err := core.StartDatapi(kanban)
+	datapi, err := core.StartDatapi(kanban, core.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
 	}
