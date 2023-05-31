@@ -8,6 +8,8 @@ import (
 	"github.com/spf13/viper"
 
 	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/logPersistence"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
@@ -21,7 +23,8 @@ func main() {
 	}
 	ctx := context.Background()
 	kanban := initWekanService(ctx)
-	datapi, err := core.StartDatapi(kanban, core.SaveLogToDB)
+	saver := logPersistence.NewPostgresLogSaver(ctx, db.Get())
+	datapi, err := core.StartDatapi(kanban, saver.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
 	}
