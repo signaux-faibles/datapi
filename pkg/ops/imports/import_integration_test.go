@@ -3,14 +3,16 @@
 package imports
 
 import (
-	"datapi/pkg/test"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"os"
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/test"
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
@@ -18,14 +20,14 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 func TestMain(m *testing.M) {
 	test.FakeTime(tuTime)
 	testConfig := initTestConfig()
-	url := test.GetDatapiDbURL()
+	url := test.GetDatapiDBURL()
 	testConfig["postgres"] = url
 	testConfig["sourceEntreprise"] = "test/emptyJSON.gz"
 	testConfig["sourceEtablissement"] = "test/emptyJSON.gz"
 	if err := test.Viperize(testConfig); err != nil {
 		log.Fatalf("erreur pendant le chargement de la configuration ")
 	}
-	test.Wait4DatapiDb(url)
+	test.Wait4PostgresIsReady(url)
 	// Run tests
 	code := m.Run()
 

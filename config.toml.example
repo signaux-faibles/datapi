@@ -96,3 +96,6 @@ tableau-darp-na" = "Nouvelle-Aquitaine darp",
 tableau-darp-idf" = "Île-de-France darp",
 tableau-darp-guyane" = "Guyane darp",
 tableau-eti-france-entiere" = "France entière"
+
+[logs]
+db_url = postgres://<username>:<password>@<hostname>:<port>/<database_name>
