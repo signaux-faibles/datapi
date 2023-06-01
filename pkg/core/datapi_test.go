@@ -1,10 +1,6 @@
 package core
 
 import (
-	"github.com/gin-gonic/gin"
-	"github.com/jaswdr/faker"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"log"
 	"net"
 	"net/http"
@@ -12,6 +8,13 @@ import (
 	"net/url"
 	"strings"
 	"testing"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jaswdr/faker"
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/utils"
 )
 
 var fake faker.Faker
@@ -86,13 +89,25 @@ func configureAdminWhitelist(ips ...string) {
 }
 
 func generateRandomIPs() []string {
+	return generateRandomIPsNotIn(loopbackIPv6, loopbackIPv4)
+}
+
+func generateRandomIPsNotIn(forbidden ...string) []string {
 	size := fake.Int()%5 + 1
 	var r []string
 	for i := 0; i < size; i++ {
+		r = append(r, generateIPNotIn(forbidden...))
+	}
+	return r
+}
+
+func generateIPNotIn(forbidden ...string) string {
+	var r string
+	for next := true; next; next = utils.Contains(forbidden, r) {
 		if fake.Bool() {
-			r = append(r, fake.Internet().Ipv4())
+			r = fake.Internet().Ipv4()
 		} else {
-			r = append(r, fake.Internet().Ipv6())
+			r = fake.Internet().Ipv6()
 		}
 	}
 	return r
