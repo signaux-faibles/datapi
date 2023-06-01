@@ -91,7 +91,7 @@ func TestListes(t *testing.T) {
 	_, body, _ := test.HTTPGetAndFormatBody(t, "/listes")
 	// si on veut tester que le log handler a bien fonctionné
 	assertLogContains(t, "/listes", "GET")
-	test.ProcessGoldenFile(t, "test/data/listes.json.gz", body)
+	_, _ = test.ProcessGoldenFile(t, "test/data/listes.json.gz", body)
 }
 
 func TestFollow(t *testing.T) {
@@ -127,7 +127,7 @@ func TestFollow(t *testing.T) {
 		t.Errorf("erreur sql : %s", err.Error())
 	}
 	_, indented, _ := test.HTTPGetAndFormatBody(t, "/follow")
-	test.ProcessGoldenFile(t, "test/data/follow.json.gz", indented)
+	_, _ = test.ProcessGoldenFile(t, "test/data/follow.json.gz", indented)
 }
 
 func TestSearch(t *testing.T) {
@@ -170,7 +170,7 @@ func TestSearch(t *testing.T) {
 		t.Logf("la recherche %s est bien de la forme attendue", siret)
 		_, indented, _ := test.HTTPPostAndFormatBody(t, "/etablissement/search", params)
 		goldenFilePath := fmt.Sprintf("test/data/search-%d.json.gz", i)
-		test.ProcessGoldenFile(t, goldenFilePath, indented)
+		_, _ = test.ProcessGoldenFile(t, goldenFilePath, indented)
 		i++
 	}
 
@@ -197,7 +197,7 @@ func TestSearch(t *testing.T) {
 	t.Log("la recherche filtrée par départements est bien de la forme attendue")
 	_, indented, _ := test.HTTPPostAndFormatBody(t, "/etablissement/search", params)
 	goldenFilePath := "test/data/searchDepartement.json.gz"
-	test.ProcessGoldenFile(t, goldenFilePath, indented)
+	_, _ = test.ProcessGoldenFile(t, goldenFilePath, indented)
 	i++
 
 	// tester par activité
@@ -223,7 +223,7 @@ func TestSearch(t *testing.T) {
 	t.Log("la recherche filtrée par activites est bien de la forme attendue")
 	_, indented, _ = test.HTTPPostAndFormatBody(t, "/etablissement/search", params)
 	goldenFilePath = "test/data/searchActivites.json.gz"
-	test.ProcessGoldenFile(t, goldenFilePath, indented)
+	_, _ = test.ProcessGoldenFile(t, goldenFilePath, indented)
 }
 
 // TestPGE ; cette fonction teste si le PGE est bien retourné par l'API si
@@ -277,19 +277,19 @@ func TestScores(t *testing.T) {
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
 	_, indented, _ := test.HTTPPostAndFormatBody(t, "/scores/liste", nil)
-	test.ProcessGoldenFile(t, "test/data/scores.json.gz", indented)
+	_, _ = test.ProcessGoldenFile(t, "test/data/scores.json.gz", indented)
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true")
 	params := map[string]interface{}{
 		"ignoreZone": true,
 	}
 	_, indented, _ = test.HTTPPostAndFormatBody(t, "/scores/liste", params)
-	test.ProcessGoldenFile(t, "test/data/scores-ignoreZone.json.gz", indented)
+	_, _ = test.ProcessGoldenFile(t, "test/data/scores-ignoreZone.json.gz", indented)
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu avec ignoreZone=true et siegeUniquement=true")
 	params["siegeUniquement"] = true
 	_, indented, _ = test.HTTPPostAndFormatBody(t, "/scores/liste", params)
-	test.ProcessGoldenFile(t, "test/data/scores-siegeUniquement.json.gz", indented)
+	_, _ = test.ProcessGoldenFile(t, "test/data/scores-siegeUniquement.json.gz", indented)
 
 	t.Log("/scores/liste traite correctement les établissements suivis")
 	test.ExclureSuivi(t)
@@ -568,10 +568,10 @@ func testEtablissementVAF(t *testing.T, siret string, vaf string) {
 	goldenFilePath := fmt.Sprintf("test/data/getEtablissement-%s-%s.json.gz", vaf, siret)
 	t.Logf("l'établissement %s est bien de la forme attendue (ref %s)", siret, goldenFilePath)
 	_, indented, _ := test.HTTPGetAndFormatBody(t, "/etablissement/get/"+siret)
-	test.ProcessGoldenFile(t, goldenFilePath, indented)
+	_, _ = test.ProcessGoldenFile(t, goldenFilePath, indented)
 
 	var e test.EtablissementVAF
-	json.Unmarshal(indented, &e)
+	_ = json.Unmarshal(indented, &e)
 	if !(e.Visible == v.Visible && e.Followed == v.Followed) {
 		t.Errorf("l'établissement %s de type %s n'a pas les propriétés requises", siret, vaf)
 	}
@@ -624,7 +624,7 @@ func testSearchVAF(t *testing.T, siret string, vaf string) {
 	visible := vaf[0] == 'V'
 	followed := vaf[2] == 'F'
 	var e test.SearchVAF
-	json.Unmarshal(indented, &e)
+	_ = json.Unmarshal(indented, &e)
 	if len(e.Results) != 1 || !(e.Results[0].Visible == visible && e.Results[0].Followed == followed) {
 		fmt.Println(vaf, visible, followed)
 		t.Errorf("la recherche %s de type %s n'a pas les propriétés requises", siret, vaf)
