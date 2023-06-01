@@ -24,7 +24,7 @@ require (
 	github.com/signaux-faibles/goSirene v0.2.4
 	github.com/signaux-faibles/libwekan v0.2.1
 	github.com/spf13/viper v1.16.0
-	github.com/stretchr/testify v1.8.3
+	github.com/stretchr/testify v1.8.4
 	github.com/tealeg/xlsx v1.0.5
 	go.mongodb.org/mongo-driver v1.11.6
 )
