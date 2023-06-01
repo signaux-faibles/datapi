@@ -15,7 +15,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gosimple/slug v1.13.1
 	github.com/jackc/pgx/v4 v4.18.1
-	github.com/jaswdr/faker v1.17.0
+	github.com/jaswdr/faker v1.18.0
 	github.com/lib/pq v1.10.9
 	github.com/ory/dockertest/v3 v3.10.0
 	github.com/pkg/errors v0.9.1
