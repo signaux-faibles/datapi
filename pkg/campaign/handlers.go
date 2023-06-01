@@ -3,6 +3,7 @@ package campaign
 import (
 	"datapi/pkg/core"
 	"datapi/pkg/utils"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"strconv"
@@ -11,7 +12,7 @@ import (
 func ConfigureEndpoint(path string, api *gin.Engine) {
 	endpoint := api.Group(path, core.AuthMiddleware(), core.LogMiddleware)
 	endpoint.GET("/list", listCampaignsHandler) // 1
-	endpoint.GET("/get/:campaignID")
+	endpoint.GET("/get/:campaignID", selectCampaignHandler)
 }
 
 func listCampaignsHandler(c *gin.Context) {
@@ -32,10 +33,10 @@ func listCampaignsHandler(c *gin.Context) {
 func selectCampaignHandler(c *gin.Context) {
 	var s core.Session
 	s.Bind(c)
-	campaignIDParam := c.Param("id")
+	campaignIDParam := c.Param("campaignID")
 	campaignID, err := strconv.Atoi(campaignIDParam)
-	campaign, err := selectCampaignDetailsWithCampaignIDAndZone(c, CampaignID(campaignID), []string{"70", "90"})
-
+	campaign, err := selectCampaignDetailsWithCampaignIDAndZone(c, CampaignID(campaignID), []string{"79", "91"})
+	fmt.Println("hello")
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
