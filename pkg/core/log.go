@@ -2,6 +2,7 @@ package core
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -18,6 +19,14 @@ type LogInfos struct {
 	Method string
 	Body   []byte
 	Token  []string
+}
+
+func (infos LogInfos) String() string {
+	token := "empty"
+	if len(infos.Token) > 1 && len(infos.Token[1]) > 0 {
+		token = "[***]"
+	}
+	return fmt.Sprintf("log -> %s - %s - %s - %s", infos.Path, infos.Method, infos.Body, token)
 }
 
 // SaveLogInfos handler pour définir une façon de sauver les logs
@@ -67,6 +76,6 @@ func extractAPICallInfosFrom(c *gin.Context) (LogInfos, error) {
 }
 
 func PrintLogToStdout(message LogInfos) error {
-	log.Printf("log -> %s - %s - %s - %s\n", message.Path, message.Method, message.Body, message.Token[1])
+	log.Printf("%s", message)
 	return nil
 }
