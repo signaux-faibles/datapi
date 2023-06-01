@@ -22,6 +22,7 @@ import (
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
+var inMemoryLogSaver *test.MemoryLogSaver
 
 // TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
@@ -54,7 +55,8 @@ func TestMain(m *testing.M) {
 
 	// run datapi
 	kanbanService := wekan.InitService(ctx, wekanDbURL, "test", "mgo", "*")
-	datapi, err := core.StartDatapi(kanbanService, core.PrintLogToStdout)
+	inMemoryLogSaver = test.NewInMemoryLogSaver()
+	datapi, err := core.StartDatapi(kanbanService, inMemoryLogSaver.SaveLog)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
@@ -87,6 +89,8 @@ func TestListes(t *testing.T) {
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
 
 	_, body, _ := test.HTTPGetAndFormatBody(t, "/listes")
+	// si on veut tester que le log handler a bien fonctionné
+	assertLogContains(t, "/listes", "GET")
 	test.ProcessGoldenFile(t, "test/data/listes.json.gz", body)
 }
 
@@ -106,6 +110,7 @@ func TestFollow(t *testing.T) {
 		if resp.StatusCode != 201 {
 			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 		}
+		assertLogContains(t, "/follow/"+siret, "POST")
 	}
 
 	for _, siret := range sirets {
@@ -633,5 +638,13 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 			continue
 		}
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
+	}
+}
+
+func assertLogContains(t *testing.T, somethings ...string) {
+	last := inMemoryLogSaver.Last()
+	ass := assert.New(t)
+	for _, current := range somethings {
+		ass.Contains(last, current)
 	}
 }
