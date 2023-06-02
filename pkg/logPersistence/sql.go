@@ -35,7 +35,7 @@ func insertAccessLog(ctx context.Context, db *pgxpool.Pool, message core.AccessL
 
 func getLastAccessLog(ctx context.Context, db *pgxpool.Pool) (core.AccessLog, error) {
 	var r core.AccessLog
-	row := db.QueryRow(ctx, "SELECT path, method, body, token FROM logs ORDER BY id DESC LIMIT 1;")
+	row := db.QueryRow(ctx, "SELECT path, method, body, token FROM logs ORDER BY date_add DESC LIMIT 1;")
 	err := row.Scan(&r.Path, &r.Method, &r.Body, &r.Token)
 	return r, err
 }
