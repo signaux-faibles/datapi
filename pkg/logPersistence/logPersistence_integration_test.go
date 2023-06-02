@@ -9,7 +9,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
 
@@ -42,7 +42,7 @@ func TestMain(m *testing.M) {
 	test.Wait4PostgresIsReady(test.GetDatapiLogDBURL())
 
 	background := context.Background()
-	pool, err := pgxpool.Connect(background, test.GetDatapiLogDBURL())
+	pool, err := pgxpool.New(background, test.GetDatapiLogDBURL())
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}

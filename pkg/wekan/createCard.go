@@ -2,11 +2,13 @@ package wekan
 
 import (
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/utils"
-	"github.com/jackc/pgx/v4/pgxpool"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/signaux-faibles/libwekan"
 	"github.com/spf13/viper"
+
+	"datapi/pkg/core"
+	"datapi/pkg/utils"
 )
 
 // CreateCard permet la création d'une carte dans la base de données wekan

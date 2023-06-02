@@ -3,13 +3,15 @@ package misc
 
 import (
 	"context"
+	"net/http"
+
+	"github.com/Nerzal/gocloak/v10"
+	"github.com/jackc/pgx/v5"
+	"github.com/spf13/viper"
+
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"datapi/pkg/utils"
-	"github.com/Nerzal/gocloak/v10"
-	"github.com/jackc/pgx/v4"
-	"github.com/spf13/viper"
-	"net/http"
 )
 
 type keycloakUser struct {

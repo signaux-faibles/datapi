@@ -2,14 +2,15 @@
 package test
 
 import (
+	"context"
 	"crypto/rand"
-	"database/sql"
 	"fmt"
 	"log"
 	"math/big"
 	"path/filepath"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jaswdr/faker"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
@@ -36,7 +37,7 @@ func init() {
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.Panicf("Could not connect to docker: %s", err)
+		log.Panicf("Erreur lors de la connexion au pool Docker: %s", err)
 	}
 	newContext := dockerContext{
 		pool: pool,
@@ -223,11 +224,11 @@ func Wait4PostgresIsReady(datapiDBUrl string) {
 	pool := currentPool()
 	pool.MaxWait = 120 * time.Second
 	if err := pool.Retry(func() error {
-		pg, err := sql.Open("postgres", datapiDBUrl)
+		pgConnexion, err := pgx.Connect(context.Background(), datapiDBUrl)
 		if err != nil {
 			return err
 		}
-		return pg.Ping()
+		return pgConnexion.Ping(context.Background())
 	}); err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}

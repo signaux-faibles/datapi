@@ -4,8 +4,7 @@ import (
 	"context"
 	_ "embed"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	"datapi/pkg/core"
 )
@@ -14,10 +13,7 @@ import (
 var sql string
 
 func createStructure(ctx context.Context, db *pgxpool.Pool) error {
-	err := db.BeginFunc(ctx, func(tx pgx.Tx) error {
-		_, err := tx.Exec(ctx, sql)
-		return err
-	})
+	_, err := db.Exec(ctx, sql)
 	return err
 }
 

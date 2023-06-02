@@ -2,17 +2,19 @@ package imports
 
 import (
 	"context"
-	"datapi/pkg/db"
-	"datapi/pkg/utils"
 	"encoding/csv"
-	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/spf13/viper"
 	"os"
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/spf13/viper"
+
+	"datapi/pkg/db"
+	"datapi/pkg/utils"
 )
 
 type NullError struct{}
