@@ -5,10 +5,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/spf13/viper"
 	"net/http"
 	"net/url"
 	"os"
+
+	"github.com/spf13/viper"
 )
 
 var kcBearer string
@@ -47,9 +48,9 @@ func GetBearerForUser(host, realm, username, password string) (string, error) {
 	return bearer, nil
 }
 
-// Authenticate permet de récupérer un Bearer dans Keycloak (si activé) à partir des
+// KeycloakAuthenticate permet de récupérer un Bearer dans Keycloak (si activé) à partir des
 // credentials stoqués dans les variables d'env KC_USERNAME et KC_PASSWORD
-func Authenticate() error {
+func KeycloakAuthenticate() error {
 	var err error
 	if !viper.GetBool("enableKeycloak") {
 		kcBearer = "false keycloak"

@@ -17,14 +17,11 @@ func NewPostgresLogSaver(ctx context.Context, db *pgxpool.Pool) *PostgresLogSave
 	return &PostgresLogSaver{db: db, ctx: ctx}
 }
 
-func (pgSaver *PostgresLogSaver) SaveLogToDB(message core.LogInfos) error {
-	_, err := pgSaver.db.Exec(
-		pgSaver.ctx,
-		`insert into logs (path, method, body, token) values ($1, $2, $3, $4);`,
-		message.Path,
-		message.Method,
-		string(message.Body),
-		message.Token[1],
-	)
+func (pgSaver *PostgresLogSaver) Initialize() error {
+	return createStructure(pgSaver.ctx, pgSaver.db)
+}
+
+func (pgSaver *PostgresLogSaver) SaveLogToDB(message core.AccessLog) error {
+	err := insertAccessLog(pgSaver.ctx, pgSaver.db, message)
 	return err
 }

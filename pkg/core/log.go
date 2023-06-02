@@ -14,23 +14,19 @@ import (
 	"datapi/pkg/utils"
 )
 
-type LogInfos struct {
+type AccessLog struct {
 	Path   string
 	Method string
 	Body   []byte
-	Token  []string
+	Token  string
 }
 
-func (infos LogInfos) String() string {
-	token := "empty"
-	if len(infos.Token) > 1 && len(infos.Token[1]) > 0 {
-		token = "[***]"
-	}
-	return fmt.Sprintf("log -> %s - %s - %s - %s", infos.Path, infos.Method, infos.Body, token)
+func (infos AccessLog) String() string {
+	return fmt.Sprintf("log -> %s - %s - %s - %s", infos.Path, infos.Method, infos.Body, "[***]")
 }
 
 // SaveLogInfos handler pour définir une façon de sauver les logs
-type SaveLogInfos func(log LogInfos) error
+type SaveLogInfos func(log AccessLog) error
 
 // LogMiddleware définit le middleware qui gère les logs
 func (datapi *Datapi) LogMiddleware(c *gin.Context) {
@@ -38,7 +34,7 @@ func (datapi *Datapi) LogMiddleware(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "request has nil body"})
 		return
 	}
-	apiCall, err := extractAPICallInfosFrom(c)
+	apiCall, err := extractAccessLogFrom(c)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
@@ -49,12 +45,12 @@ func (datapi *Datapi) LogMiddleware(c *gin.Context) {
 		return
 	}
 }
-func extractAPICallInfosFrom(c *gin.Context) (LogInfos, error) {
+func extractAccessLogFrom(c *gin.Context) (AccessLog, error) {
 	path := c.Request.URL.Path
 	method := c.Request.Method
 	body, err := io.ReadAll(c.Request.Body)
 	if err != nil {
-		return LogInfos{}, errors.Wrap(err, "erreur pendant la lecture du body de la requête")
+		return AccessLog{}, errors.Wrap(err, "erreur pendant la lecture du body de la requête")
 	}
 	c.Request.Body = io.NopCloser(bytes.NewBuffer(body))
 
@@ -62,20 +58,20 @@ func extractAPICallInfosFrom(c *gin.Context) (LogInfos, error) {
 	if viper.GetBool("enableKeycloak") {
 		token, err = getRawToken(c)
 		if err != nil {
-			return LogInfos{}, errors.Wrap(err, "erreur pendant la récupération du token")
+			return AccessLog{}, errors.Wrap(err, "erreur pendant la récupération du token")
 		}
 	} else {
 		token = []string{"", "fakeKeycloak"}
 	}
-	return LogInfos{
+	return AccessLog{
 		Path:   path,
 		Method: method,
 		Body:   body,
-		Token:  token,
+		Token:  token[1],
 	}, nil
 }
 
-func PrintLogToStdout(message LogInfos) error {
+func PrintLogToStdout(message AccessLog) error {
 	log.Printf("%s", message)
 	return nil
 }
