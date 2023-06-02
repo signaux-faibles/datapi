@@ -3,11 +3,12 @@ package core
 import (
 	"context"
 	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/signaux-faibles/libwekan"
 )
 
 // KanbanService service définissant les méthodes de Kanban nécessaires dans Datapi

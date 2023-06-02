@@ -3,17 +3,18 @@ package core
 
 import (
 	"context"
-	"datapi/pkg/db"
 	"fmt"
-	"github.com/google/btree"
 	"log"
 	"os"
 	"strings"
 	"sync"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/google/btree"
+	"github.com/jackc/pgx/v5"
 	"github.com/signaux-faibles/goSirene"
 	"github.com/spf13/viper"
+
+	"datapi/pkg/db"
 )
 
 // InsertGeoSirene insère les informations géographiques des établissements dans la base

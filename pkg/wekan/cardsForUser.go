@@ -2,12 +2,14 @@ package wekan
 
 import (
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/utils"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/signaux-faibles/libwekan"
 	"go.mongodb.org/mongo-driver/bson"
-	"time"
+
+	"datapi/pkg/core"
+	"datapi/pkg/utils"
 )
 
 type Etablissements struct {

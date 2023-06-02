@@ -11,12 +11,9 @@ import (
 	"sort"
 	"sync"
 
-	"github.com/jackc/pgx/v4"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/spf13/viper"
-	// 🤷‍je ne sais pas pourquoi c'est là mais c'est nécessaire
-	// sinon le driver `postgres` n'est pas chargé
-	_ "github.com/lib/pq"
 )
 
 var db *pgxpool.Pool
@@ -38,7 +35,7 @@ func Get() *pgxpool.Pool {
 // Init : se connecte à la base de données et exécute les scripts de migrations nécessaires
 func Init() {
 	pgConnStr := viper.GetString("postgres")
-	pool, err := pgxpool.Connect(context.Background(), pgConnStr)
+	pool, err := pgxpool.New(context.Background(), pgConnStr)
 	if err != nil {
 		log.Fatal("database connexion:" + err.Error())
 	}

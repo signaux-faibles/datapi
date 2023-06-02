@@ -1,18 +1,18 @@
 package core
 
 import (
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 )
 
 func (e *Etablissements) addPGEsSelection(batch *pgx.Batch, roles Scope, username string) {
 	batch.Queue(
-		`select 
+		`select
 					e.siren,
        				bool_or(e.actif) actif
-				from 
+				from
 					entreprise_pge e
 					inner join f_etablissement_permissions($1, $2) p on p.siren = e.siren and pge
-				where 
+				where
 					e.siren=any($3)
 				group by e.siren
 				order by e.siren;`,

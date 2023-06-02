@@ -4,10 +4,11 @@ package refresh
 
 import (
 	"context"
-	"github.com/jackc/pgx/v4/pgxpool"
 	"log"
 	"os"
 	"strings"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // StartRefreshScript : crée un évènement de refresh, le démarre dans une routine et retourne son UUID

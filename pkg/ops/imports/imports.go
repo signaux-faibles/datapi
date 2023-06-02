@@ -4,12 +4,8 @@ package imports
 import (
 	"compress/gzip"
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/db"
-	"datapi/pkg/utils"
 	"encoding/json"
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"log"
 	"math"
@@ -20,8 +16,13 @@ import (
 	"time"
 
 	"github.com/globalsign/mgo/bson"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
+	"github.com/pkg/errors"
 	"github.com/spf13/viper"
+
+	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/utils"
 )
 
 type score struct {
