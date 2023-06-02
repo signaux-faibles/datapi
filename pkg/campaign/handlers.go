@@ -3,16 +3,37 @@ package campaign
 import (
 	"datapi/pkg/core"
 	"datapi/pkg/utils"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
+	"net/http"
 	"strconv"
 )
 
 func ConfigureEndpoint(path string, api *gin.Engine) {
 	endpoint := api.Group(path, core.AuthMiddleware(), core.LogMiddleware)
 	endpoint.GET("/list", listCampaignsHandler) // 1
-	endpoint.GET("/get/:campaignID", selectCampaignHandler)
+	endpoint.GET("/pending/:campaignID", pendingHandler)
+}
+
+func pendingHandler(c *gin.Context) {
+	var s core.Session
+	s.Bind(c)
+
+	id, err := strconv.Atoi(c.Param("campaignID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, "`"+c.Param("campaignID")+"` n'est pas un identifiant valide")
+	}
+
+	pending, err := selectPending(c, CampaignID(id), []string{})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, "erreur inattendue")
+		return
+	}
+	if len(pending.Etablissements) == 0 {
+		c.JSON(http.StatusNoContent, pending)
+		return
+	}
+	c.JSON(http.StatusOK, pending)
 }
 
 func listCampaignsHandler(c *gin.Context) {
@@ -30,17 +51,12 @@ func listCampaignsHandler(c *gin.Context) {
 	c.JSON(200, campaigns)
 }
 
-func selectCampaignHandler(c *gin.Context) {
-	var s core.Session
-	s.Bind(c)
-	campaignIDParam := c.Param("campaignID")
-	campaignID, err := strconv.Atoi(campaignIDParam)
-	campaign, err := selectCampaignDetailsWithCampaignIDAndZone(c, CampaignID(campaignID), []string{"79", "91"})
-	fmt.Println("hello")
-	if err != nil {
-		c.JSON(500, err.Error())
-		return
+func zoneFromBoards(boards []libwekan.ConfigBoard) []string {
+	var zone []string
+	for _, board := range boards {
+		for _, swimlane := range board.Swimlanes {
+			departement := swimlane.Title
+		}
 	}
-
-	c.JSON(200, campaign)
+	return nil
 }
