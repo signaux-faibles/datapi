@@ -2,7 +2,8 @@ package campaign
 
 import (
 	"context"
-	"github.com/jackc/pgx/v4/pgxpool"
+	"datapi/pkg/db"
+	"github.com/signaux-faibles/libwekan"
 	"time"
 )
 
@@ -36,9 +37,8 @@ func (cs *Campaigns) Tuple() []interface{} {
 	}
 }
 
-func (cs *Campaign) Insert(ctx context.Context, db *pgxpool.Pool) (CampaignID, error) {
-	sql := `insert into campaign (libelle, wekan_domain_regexp, date_end, date_create)
-          values ($1, $2, $3, $4) returning id`
-	err := db.QueryRow(ctx, sql, cs.Libelle, cs.WekanDomainRegexp, cs.DateEnd, cs.DateCreate).Scan(&cs.ID)
-	return cs.ID, err
+func selectMatchingCampaigns(ctx context.Context, boardSlugs []libwekan.BoardSlug, roles []string) (Campaigns, error) {
+	var allCampaigns = Campaigns{}
+	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, boardSlugs, roles)
+	return allCampaigns, err
 }
