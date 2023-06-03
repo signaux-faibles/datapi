@@ -2,10 +2,10 @@ package campaign
 
 import (
 	"datapi/pkg/core"
-	"datapi/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"net/http"
+	"regexp"
 	"strconv"
 )
 
@@ -24,7 +24,7 @@ func pendingHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "`"+c.Param("campaignID")+"` n'est pas un identifiant valide")
 	}
 
-	pending, err := selectPending(c, CampaignID(id), []string{})
+	pending, err := selectPending(c, CampaignID(id), []string{}, core.Page{10, 0})
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, "erreur inattendue")
 		return
@@ -39,24 +39,18 @@ func pendingHandler(c *gin.Context) {
 func listCampaignsHandler(c *gin.Context) {
 	var s core.Session
 	s.Bind(c)
-
 	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(s.Username))
-	slugs := utils.Convert(boards, libwekan.ConfigBoard.Slug)
-	campaigns, err := selectMatchingCampaigns(c, slugs, s.Roles)
+	zone := zonesFromBoards(boards)
+	campaigns, err := selectMatchingCampaigns(c, zone)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
 	}
-
-	c.JSON(200, campaigns)
+	c.JSON(200, campaignsp)
 }
 
-func zoneFromBoards(boards []libwekan.ConfigBoard) []string {
-	var zone []string
-	for _, board := range boards {
-		for _, swimlane := range board.Swimlanes {
-			departement := swimlane.Title
-		}
+func matchConfigBoardSlugFilter(wekanDomainRegexp regexp.Regexp) func(libwekan.ConfigBoard) bool {
+	return func(board libwekan.ConfigBoard) bool {
+		return wekanDomainRegexp.MatchString(string(board.Slug()))
 	}
-	return nil
 }
