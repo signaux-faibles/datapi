@@ -3,7 +3,9 @@ package campaign
 import (
 	"context"
 	"datapi/pkg/db"
+	"datapi/pkg/utils"
 	"github.com/signaux-faibles/libwekan"
+	"strings"
 	"time"
 )
 
@@ -37,8 +39,20 @@ func (cs *Campaigns) Tuple() []interface{} {
 	}
 }
 
-func selectMatchingCampaigns(ctx context.Context, boardSlugs []libwekan.BoardSlug, roles []string) (Campaigns, error) {
+func selectMatchingCampaigns(ctx context.Context, zones map[string][]string) (Campaigns, error) {
 	var allCampaigns = Campaigns{}
-	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, boardSlugs, roles)
+	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, zones)
 	return allCampaigns, err
+}
+
+func zonesFromBoards(boards []libwekan.ConfigBoard) map[string][]string {
+	zones := make(map[string][]string)
+	for _, board := range boards {
+		swimlanes := utils.GetValues(board.Swimlanes)
+		zone := utils.Convert(swimlanes, func(s libwekan.Swimlane) string {
+			return strings.Split(string(s.Title), " (")[0]
+		})
+		zones[string(board.Board.Slug)] = zone
+	}
+	return zones
 }
