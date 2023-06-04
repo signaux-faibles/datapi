@@ -41,12 +41,13 @@ func listCampaignsHandler(c *gin.Context) {
 	s.Bind(c)
 	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(s.Username))
 	zone := zonesFromBoards(boards)
-	campaigns, err := selectMatchingCampaigns(c, zone)
+	boardIDs := idsFromBoards(boards)
+	campaigns, err := selectMatchingCampaigns(c, zone, boardIDs)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
 	}
-	c.JSON(200, campaignsp)
+	c.JSON(200, campaigns)
 }
 
 func matchConfigBoardSlugFilter(wekanDomainRegexp regexp.Regexp) func(libwekan.ConfigBoard) bool {
