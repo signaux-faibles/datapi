@@ -4,6 +4,7 @@ import (
 	"context"
 	"datapi/pkg/db"
 	"datapi/pkg/utils"
+	"fmt"
 	"github.com/signaux-faibles/libwekan"
 	"strings"
 	"time"
@@ -17,9 +18,10 @@ type Campaign struct {
 	DateEnd           time.Time  `json:"date_fin"`
 	DateCreate        time.Time  `json:"date_create"`
 	WekanDomainRegexp string     `json:"wekan_domain_regexp"`
-	BoardSlugs        []string   `json:"slugs"`
 	NBTotal           int        `json:"nb_total"`
 	NBPerimetre       int        `json:"nb_perimetre"`
+	BoardIDs          []string   `json:"boardIDs"`
+	Zone              []string   `json:"zone"`
 }
 
 type Campaigns []*Campaign
@@ -33,15 +35,17 @@ func (cs *Campaigns) Tuple() []interface{} {
 		&c.WekanDomainRegexp,
 		&c.DateEnd,
 		&c.DateCreate,
-		&c.BoardSlugs,
 		&c.NBTotal,
 		&c.NBPerimetre,
+		&c.Zone,
+		&c.BoardIDs,
 	}
 }
 
-func selectMatchingCampaigns(ctx context.Context, zones map[string][]string) (Campaigns, error) {
+func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boardIDs map[string]string) (Campaigns, error) {
 	var allCampaigns = Campaigns{}
-	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, zones)
+	fmt.Println(boardIDs)
+	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, zones, boardIDs)
 	return allCampaigns, err
 }
 
@@ -55,4 +59,12 @@ func zonesFromBoards(boards []libwekan.ConfigBoard) map[string][]string {
 		zones[string(board.Board.Slug)] = zone
 	}
 	return zones
+}
+
+func idsFromBoards(boards []libwekan.ConfigBoard) map[string]string {
+	ids := make(map[string]string)
+	for _, board := range boards {
+		ids[string(board.Board.Slug)] = string(board.Board.ID)
+	}
+	return ids
 }
