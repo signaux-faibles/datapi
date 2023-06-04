@@ -189,7 +189,7 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
 		return
 	}
-	params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+	params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
 	exports, err := Kanban.ExportFollowsForUser(c, params, db.Get(), s.Roles)
 	if err != nil {
@@ -251,7 +251,7 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
 		return
 	}
-	params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+	params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
 	exports, err := Kanban.ExportFollowsForUser(c, params, db.Get(), s.Roles)
 	if err != nil {

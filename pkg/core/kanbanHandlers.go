@@ -63,7 +63,7 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 		return
 	}
 
-	params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+	params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
 	cards, err := Kanban.SelectFollowsForUser(c, params, db.Get(), s.Roles)
 

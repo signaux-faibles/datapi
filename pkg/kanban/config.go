@@ -63,7 +63,3 @@ func (service wekanService) ClearBoardIDs(boardIDs []libwekan.BoardID, user libw
 	}
 	return newBoardIDs
 }
-		wekanConfig = newWekanConfig
-		wekanConfigMutex.Unlock()
-	}
-}

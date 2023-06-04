@@ -1,7 +1,5 @@
-create extension hstore;
-
-create sequence campaign_id;
-create table campaign (
+create sequence if not exists campaign_id;
+create table if not exists campaign (
   id integer primary key default nextval('campaign_id'),
   libelle text,
   wekan_domain_regexp text,
@@ -9,25 +7,23 @@ create table campaign (
   date_create timestamp default current_timestamp
 );
 
-create sequence campaign_etablissement_id;
-create table campaign_etablissement (
+create sequence if not exists campaign_etablissement_id;
+create table if not exists campaign_etablissement (
   id integer primary key default nextval('campaign_etablissement_id'),
   id_campaign integer,
   siret text,
-  metadata hstore,
   constraint fk_campaign
     foreign key(id_campaign)
       references campaign(id)
 );
 
-create sequence campaign_etablissement_action_id;
-create table campaign_etablissement_action (
+create sequence if not exists campaign_etablissement_action_id;
+create table if not exists campaign_etablissement_action (
   id integer primary key default nextval('campaign_etablissement_action_id'),
   id_campaign_etablissement integer,
   username text,
   date_action timestamp,
   action text,
-  metadata hstore,
   constraint fk_campaign
     foreign key(id_campaign_etablissement)
       references campaign_etablissement(id)

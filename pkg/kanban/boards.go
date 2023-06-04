@@ -10,11 +10,11 @@ func (ws wekanService) SelectBoardsForUsername(username libwekan.Username) []lib
 }
 
 func SelectBoardsForUser(username libwekan.Username) []libwekan.ConfigBoard {
-	user, ok := wekanConfig.GetUserByUsername(username)
+	user, ok := WekanConfig.GetUserByUsername(username)
 	if !ok {
 		return nil
 	}
-	configBoards := utils.GetValues(wekanConfig.Boards)
+	configBoards := utils.GetValues(WekanConfig.Boards)
 	userBoards := utils.Filter(configBoards, userIsBoardActiveMember(user))
 	return userBoards
 }

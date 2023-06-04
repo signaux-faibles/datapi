@@ -9,10 +9,9 @@ import (
 	"strconv"
 )
 
-func ConfigureEndpoint(path string, api *gin.Engine) {
-	endpoint := api.Group(path, core.AuthMiddleware(), core.LogMiddleware)
-	endpoint.GET("/list", listCampaignsHandler) // 1
-	endpoint.GET("/pending/:campaignID", pendingHandler)
+func ConfigureEndpoint(campaignRoute *gin.RouterGroup) {
+	campaignRoute.GET("/list", listCampaignsHandler) // 1
+	campaignRoute.GET("/pending/:campaignID", pendingHandler)
 }
 
 func pendingHandler(c *gin.Context) {

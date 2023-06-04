@@ -5,8 +5,8 @@ import (
 	"datapi/pkg/campaign"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
-	"datapi/pkg/logPersistence"
 	"datapi/pkg/kanban"
+	"datapi/pkg/logPersistence"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
@@ -44,8 +44,6 @@ func initAndStartAPI(datapi *core.Datapi) {
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
-	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
-	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
-	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
+	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint, core.AuthMiddleware())
 	core.StartAPI(router)
 }
