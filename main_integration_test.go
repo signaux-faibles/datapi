@@ -4,11 +4,9 @@ package main
 
 import (
 	"context"
-	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"log"
-	"math/big"
 	"os"
 	"testing"
 	"time"
@@ -33,11 +31,11 @@ func TestMain(m *testing.M) {
 	var err error
 	ctx := context.Background()
 	testConfig := map[string]string{}
-	testConfig["postgres"] = test.GetDatapiDbURL()
-	var wekanDbURL = test.GetWekanDbURL()
-	testConfig["wekanMgoURL"] = wekanDbURL
+	testConfig["postgres"] = test.GetDatapiDBURL()
+	var wekanDBURL = test.GetWekanDBURL()
+	testConfig["wekanMgoURL"] = wekanDBURL
 
-	apiPort := generateRandomPort()
+	apiPort := test.GenerateRandomPort()
 	testConfig["bind"] = ":" + apiPort
 	test.SetHostAndPort("http://localhost:" + apiPort)
 
@@ -46,15 +44,15 @@ func TestMain(m *testing.M) {
 		log.Printf("Erreur pendant la Viperation de la config : %s", err)
 	}
 
-	test.Wait4DatapiDb(test.GetDatapiDbURL())
+	test.Wait4PostgresIsReady(test.GetDatapiDBURL())
 
-	err = test.Authenticate()
+	err = test.KeycloakAuthenticate()
 	if err != nil {
 		log.Printf("Erreur pendant l'authentification : %s", err)
 	}
 
 	// run datapi
-	kanbanService := wekan.InitService(ctx, wekanDbURL, "test", "mgo", "*")
+	kanbanService := wekan.InitService(ctx, wekanDBURL, "test", "mgo", "*")
 	inMemoryLogSaver = test.NewInMemoryLogSaver()
 	datapi, err := core.StartDatapi(kanbanService, inMemoryLogSaver.SaveLog)
 	if err != nil {
@@ -73,16 +71,6 @@ func TestMain(m *testing.M) {
 
 	test.UnfakeTime()
 	os.Exit(code)
-}
-
-func generateRandomPort() string {
-	n, err := rand.Int(rand.Reader, big.NewInt(500))
-	n.Add(n, big.NewInt(30000))
-	if err != nil {
-		fmt.Println("erreur pendant la génération d'un nombre aléatoire : ", err)
-		return ""
-	}
-	return n.String()
 }
 
 func TestListes(t *testing.T) {
