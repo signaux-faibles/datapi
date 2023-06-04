@@ -46,5 +46,6 @@ func initAndStartAPI(datapi *core.Datapi) {
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
+	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint)
 	core.StartAPI(router)
 }
