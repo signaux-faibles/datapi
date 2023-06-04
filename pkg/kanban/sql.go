@@ -66,7 +66,7 @@ select s.siret, s.siren, s.raison_sociale, s.commune,
 from v_summaries s
 inner join etablissement_follow f on f.active and f.siret = s.siret and f.username = $2
 inner join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
-where (s.code_departement = any($3) or coalesce($3, '{}') = '{}') and (s.siret != any($4) or $4 is null) and (s.raison_sociale ilike $5 or $5 is null)`
+where (s.code_departement = any($3) or coalesce($3, '{}') = '{}') and (not (s.siret = any($4)) or $4 is null) and (s.raison_sociale ilike $5 or $5 is null)`
 
 var sqlDbExport = `select v.siret, v.raison_sociale, v.code_departement, v.libelle_departement, v.commune,
 coalesce(v.code_territoire_industrie, ''), coalesce(v.libelle_territoire_industrie, ''), v.siege, coalesce(v.raison_sociale_groupe, ''),
