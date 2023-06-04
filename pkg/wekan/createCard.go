@@ -75,7 +75,7 @@ func labelNameToIDConvertor(board libwekan.ConfigBoard) func(libwekan.BoardLabel
 
 func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, error) {
 	wekanConfigMutex.Lock()
-	wc := wekanConfig.Copy()
+	wc := WekanConfig.Copy()
 	wekanConfigMutex.Unlock()
 
 	configBoard, ok := wc.Boards[boardID]
@@ -92,7 +92,7 @@ func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, 
 
 func getBoardWithSwimlaneID(swimlaneID libwekan.SwimlaneID) (libwekan.ConfigBoard, libwekan.Swimlane, error) {
 	wekanConfigMutex.Lock()
-	wc := wekanConfig.Copy()
+	wc := WekanConfig.Copy()
 	wekanConfigMutex.Unlock()
 
 	var swimlane libwekan.Swimlane

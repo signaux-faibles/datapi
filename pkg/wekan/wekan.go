@@ -11,7 +11,7 @@ import (
 )
 
 var wekan libwekan.Wekan
-var wekanConfig libwekan.Config
+var WekanConfig libwekan.Config
 var wekanConfigMutex = &sync.Mutex{}
 
 type wekanService struct{}
@@ -31,7 +31,7 @@ func (service wekanService) SelectCardsFromSiret(ctx context.Context, siret stri
 func GetUser(username libwekan.Username) (libwekan.User, bool) {
 	wekanConfigMutex.Lock()
 	defer wekanConfigMutex.Unlock()
-	return wekanConfig.GetUserByUsername(username)
+	return WekanConfig.GetUserByUsername(username)
 }
 
 func InitService(ctx context.Context, dBURL, dBName, admin, slugDomainRegexp string) core.KanbanService {
@@ -46,7 +46,7 @@ func InitService(ctx context.Context, dBURL, dBName, admin, slugDomainRegexp str
 
 func kanbanConfigForUser(username libwekan.Username) core.KanbanConfig {
 	wekanConfigMutex.Lock()
-	config := wekanConfig.Copy()
+	config := WekanConfig.Copy()
 	wekanConfigMutex.Unlock()
 	var kanbanConfig core.KanbanConfig
 	for wekanUserID, wekanUser := range config.Users {

@@ -56,21 +56,21 @@ func wekanCardURL(wekanCard libwekan.Card) string {
 	return fmt.Sprintf("%sb/%s/%s/%s",
 		viper.GetString("wekanURL"),
 		string(wekanCard.BoardID),
-		string(wekanConfig.Boards[wekanCard.BoardID].Board.Slug),
+		string(WekanConfig.Boards[wekanCard.BoardID].Board.Slug),
 		wekanCard.ID,
 	)
 }
 
 func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.KanbanCard {
 	return func(wekanCard libwekan.Card) core.KanbanCard {
-		user, _ := wekanConfig.GetUserByUsername(username)
-		boardConfig := wekanConfig.Boards[wekanCard.BoardID]
+		user, _ := WekanConfig.GetUserByUsername(username)
+		boardConfig := WekanConfig.Boards[wekanCard.BoardID]
 
 		card := core.KanbanCard{
 			ListTitle:    boardConfig.Lists[wekanCard.ListID].Title,
 			Archived:     wekanCard.Archived,
 			BoardTitle:   boardConfig.Board.Title,
-			Creator:      wekanConfig.Users[wekanCard.UserID].Username,
+			Creator:      WekanConfig.Users[wekanCard.UserID].Username,
 			LastActivity: wekanCard.DateLastActivity,
 			StartAt:      wekanCard.StartAt,
 			EndAt:        wekanCard.EndAt,

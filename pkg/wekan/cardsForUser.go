@@ -273,7 +273,8 @@ func kanbanDBExportHasSiret(siret string) func(export *core.KanbanDBExport) bool
 func joinCardsWithKanbanDBExports(kanbanDBExports core.KanbanDBExports, cards []libwekan.CardWithComments) core.KanbanExports {
 	var kanbanExports core.KanbanExports
 	for _, card := range cards {
-		siret := cardToSiret(wekanConfig)(card.Card)
+		siret := cardToSiret(WekanConfig)(card.Card)
+
 		kanbanDBExport, ok := utils.First(kanbanDBExports, kanbanDBExportHasSiret(siret))
 		if ok {
 			kanbanExports = append(kanbanExports, joinCardAndKanbanDBExport(card, *kanbanDBExport))
@@ -291,7 +292,7 @@ func kanbanDBExportToKanbanExports(kanbanDBExports core.KanbanDBExports) core.Ka
 }
 
 func (service wekanService) SelectFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
-	wc := wekanConfig.Copy()
+	wc := wekanConfigForUser(WekanConfig.Copy(), params.User)
 	pipeline := buildCardsForUserPipeline(wc, params)
 	pipeline.AppendStage(bson.M{
 		"$project": bson.M{

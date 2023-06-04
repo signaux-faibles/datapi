@@ -38,8 +38,8 @@ func Test_kanbanConfigForUser_withActiveMembers(t *testing.T) { // GIVEN
 	configBoardA := factory.OneConfigBoardWithMembers(userOne, userTwo)
 	configBoardB := factory.OneConfigBoardWithMembers(userOne, userThree)
 
-	// set up wekanConfig for test
-	wekanConfig = factory.LibwekanConfigWith(
+	// set up WekanConfig for test
+	WekanConfig = factory.LibwekanConfigWith(
 		[]libwekan.ConfigBoard{configBoardA, configBoardB},
 		[]libwekan.User{userOne, userTwo, userThree},
 	)
@@ -72,8 +72,8 @@ func Test_kanbanConfigForUser_assertThatAllUsersArePresents(t *testing.T) { // G
 	configBoardB := factory.OneConfigBoardWithMembers(userOne, userLambda2, userLambda3)
 	factory.DeactiveMembers(configBoardB, userLambda3)
 
-	// set up wekanConfig for test
-	wekanConfig = factory.LibwekanConfigWith(
+	// set up WekanConfig for test
+	WekanConfig = factory.LibwekanConfigWith(
 		[]libwekan.ConfigBoard{configBoardA, configBoardB},
 		[]libwekan.User{userOne, userLambda1, userLambda2, userLambda3},
 	)
@@ -103,8 +103,8 @@ func Test_kanbanConfigForUser_withInactiveMembers(t *testing.T) { // GIVEN
 	configBoardA := factory.OneConfigBoardWithMembers(userOne)
 	factory.DeactiveMembers(configBoardA, userOne)
 
-	// set up wekanConfig for test
-	wekanConfig = factory.LibwekanConfigWith(
+	// set up WekanConfig for test
+	WekanConfig = factory.LibwekanConfigWith(
 		[]libwekan.ConfigBoard{configBoardA},
 		[]libwekan.User{userOne},
 	)
@@ -149,8 +149,8 @@ func Test_kanbanConfigForUser_hasOnlyDepartementsFromSwimlanes(t *testing.T) {
 			configGenerale := factory.OneConfigBoardWithMembers(user)
 			factory.AddSwimlanesWithDepartments(&configGenerale, tt.args...)
 
-			// set up wekanConfig for t
-			wekanConfig = factory.LibwekanConfigWith(
+			// set up WekanConfig for t
+			WekanConfig = factory.LibwekanConfigWith(
 				[]libwekan.ConfigBoard{configGenerale},
 				[]libwekan.User{user},
 			)

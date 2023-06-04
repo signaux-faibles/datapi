@@ -78,13 +78,13 @@ func joinCardAndKanbanDBExport(cardAndComments libwekan.CardWithComments, kanban
 
 	we.DescriptionWekan = strings.TrimSuffix(card.Description+"\n\n"+strings.ReplaceAll(strings.Join(commentTexts, "\n\n"), "#export", ""), "\n")
 
-	board := wekanConfig.Boards[card.BoardID].Board
+	board := WekanConfig.Boards[card.BoardID].Board
 	we.Labels = utils.Convert(card.LabelIDs, labelIDToLabelName(board))
 
 	if card.EndAt != nil {
 		we.DateFinSuivi = dateUrssaf(*card.EndAt)
 	}
-	we.Board = string(wekanConfig.Boards[card.BoardID].Board.Title)
+	we.Board = string(WekanConfig.Boards[card.BoardID].Board.Title)
 
 	we.LastActivity = card.DateLastActivity
 
@@ -233,7 +233,7 @@ func buildCardToCardAndCommentsPipeline() libwekan.Pipeline {
 }
 
 func (service wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
-	wc := wekanConfig.Copy()
+	wc := WekanConfig.Copy()
 	pipeline := buildCardsForUserPipeline(wc, params)
 	pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
 
@@ -266,7 +266,7 @@ func (service wekanService) ExportFollowsForUser(ctx context.Context, params cor
 }
 
 func (service wekanService) SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
-	user, ok := wekanConfig.GetUserByUsername(libwekan.Username(username))
+	user, ok := WekanConfig.GetUserByUsername(libwekan.Username(username))
 	if !ok {
 		return nil, errors.New("utilisateur non trouvé")
 	}
