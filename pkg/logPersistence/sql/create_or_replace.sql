@@ -3,7 +3,7 @@
 --
 
 CREATE SEQUENCE IF NOT EXISTS logs_id
-  START WITH 1
+  START WITH 999999
   INCREMENT BY 1
   NO MINVALUE
   NO MAXVALUE
@@ -21,6 +21,14 @@ CREATE TABLE IF NOT EXISTS logs (
   body text,
   token text
 );
+
+--
+-- Name: logs logs_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
+--
+ALTER TABLE ONLY public.logs
+  DROP CONSTRAINT IF EXISTS logs_pkey;
+ALTER TABLE ONLY public.logs
+  ADD CONSTRAINT logs_pkey PRIMARY KEY (id);
 
 --
 -- Name: v_log; Type: VIEW
