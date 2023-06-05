@@ -113,14 +113,16 @@ func TestPostgresLogSaver_syncAccessLogs(t *testing.T) {
 	source := db.Get()
 	target := sut.db
 
-	// nombre de lignes de logs dans la base source
+	// récupère le nombre de lignes de logs dans la base source
 	expected, err = countAccessLogs(sut.ctx, source)
 	ass.NoError(err)
 
+	// synchronise une première fois
 	inserted, err = syncAccessLogs(sut.ctx, source, target)
 	ass.NoError(err)
 	ass.Equal(expected, inserted)
 
+	// récupère le nombre
 	actual, err = countAccessLogs(sut.ctx, target)
 	ass.NoError(err)
 	ass.Equal(expected, actual)
