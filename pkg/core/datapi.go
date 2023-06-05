@@ -26,11 +26,11 @@ type Endpoint func(endpoint *gin.RouterGroup)
 var kanban KanbanService
 
 type Datapi struct {
-	saveAPICall SaveLogInfos
+	saveAccessLog AccessLogSaver
 }
 
 // StartDatapi se connecte aux bases de données et keycloak
-func StartDatapi(kanbanService KanbanService, saver SaveLogInfos) (*Datapi, error) {
+func StartDatapi(kanbanService KanbanService, saver AccessLogSaver) (*Datapi, error) {
 	var err error
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	Departements, err = loadDepartementReferentiel()
@@ -50,7 +50,7 @@ func StartDatapi(kanbanService KanbanService, saver SaveLogInfos) (*Datapi, erro
 	keycloak = connectKC()
 
 	datapi := Datapi{
-		saveAPICall: saver,
+		saveAccessLog: saver,
 	}
 	return &datapi, nil
 }
