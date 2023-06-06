@@ -1,4 +1,4 @@
-package logPersistence
+package stats
 
 import (
 	"context"
