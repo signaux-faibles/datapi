@@ -318,8 +318,8 @@ github.com/segmentio/ksuid v1.0.4/go.mod h1:/XUiZBD3kVx5SmUOl55voK5yeAbBNNIed+2O
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/signaux-faibles/goSirene v0.2.4 h1:m74h4GNNTI2aQryakGj2vJIWl6/JUSLSdxetHOQxYQg=
 github.com/signaux-faibles/goSirene v0.2.4/go.mod h1:YdHQWRCIiyAmPievzBtFwsvA61MXrPkuPkJuGUu9kmU=
-github.com/signaux-faibles/libwekan v0.2.1 h1:OzkHPmv0F838Xsp3e5l97aryZesQBFyIHYxxTTslmgE=
-github.com/signaux-faibles/libwekan v0.2.1/go.mod h1:vrHeRcpdsuEq3sd2EZ+iSYsQuVie+ig1XFXmVICxEas=
+github.com/signaux-faibles/libwekan v0.2.2 h1:cwZ8ib6IlIyFnTGyLndvvThLGHN8s1uxujhzhvivR1k=
+github.com/signaux-faibles/libwekan v0.2.2/go.mod h1:ioobIVSPxSE3H/PqXbI+F3yuyblpsD1y+qJZis2X9dg=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/spf13/afero v1.9.5 h1:stMpOSZFs//0Lv29HduCmli3GUfpFoF3Y1Q/aXj/wVM=
