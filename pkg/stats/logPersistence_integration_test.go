@@ -11,6 +11,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaswdr/faker"
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
 
 	"datapi/pkg/core"
@@ -142,4 +143,12 @@ func randomAccessLog() core.AccessLog {
 		Token:  fake.Internet().User(),
 	}
 	return random
+}
+
+func eraseAccessLogs(ctx context.Context, db *pgxpool.Pool) error {
+	_, err := db.Exec(ctx, "DELETE FROM logs")
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la suppression des access logs")
+	}
+	return nil
 }

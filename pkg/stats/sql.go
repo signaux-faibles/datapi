@@ -73,11 +73,3 @@ func countAccessLogs(ctx context.Context, db *pgxpool.Pool) (int, error) {
 	}
 	return counter, nil
 }
-
-func eraseAccessLogs(ctx context.Context, db *pgxpool.Pool) error {
-	_, err := db.Exec(ctx, "DELETE FROM logs")
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant la suppression des access logs")
-	}
-	return nil
-}
