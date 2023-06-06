@@ -1,6 +1,6 @@
 //go:build integration
 
-package logPersistence
+package stats
 
 import (
 	"context"
