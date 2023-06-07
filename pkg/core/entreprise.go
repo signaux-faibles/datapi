@@ -1035,6 +1035,7 @@ func getEntrepriseViewers(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
+	defer rows.Close()
 	var users []keycloakUser
 	for rows.Next() {
 		var u keycloakUser
@@ -1063,6 +1064,7 @@ func getEtablissementViewers(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
+	defer rows.Close()
 	var users []keycloakUser
 	for rows.Next() {
 		var u keycloakUser
