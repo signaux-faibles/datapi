@@ -29,6 +29,5 @@ func getEtablissementDataFromDb(ctx context.Context, db *pgxpool.Pool, siret cor
 			return etsData, err
 		}
 	}
-	rows.Close()
 	return etsData, nil
 }
