@@ -168,10 +168,10 @@ func selectKanbanDBExportsWithSirets(ctx context.Context,
 	zone []string,
 	raisonSociale *string) (core.KanbanDBExports, error) {
 	rows, err := db.Query(ctx, sqlDbExport, roles, username, sirets, zone, raisonSocialeLike(raisonSociale))
+	defer rows.Close()
 	if err != nil {
 		return core.KanbanDBExports{}, err
 	}
-	defer rows.Close()
 
 	var kanbanDBExports core.KanbanDBExports
 	for rows.Next() {
