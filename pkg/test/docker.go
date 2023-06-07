@@ -60,6 +60,7 @@ func GetDatapiDBURL() string {
 	}
 	hostAndPort := datapiDB.GetHostPort("5432/tcp")
 	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiDatabaseName)
+	wait4PostgresIsReady(dbURL)
 	return dbURL
 }
 
@@ -73,6 +74,7 @@ func GetDatapiLogDBURL() string {
 	}
 	hostAndPort := datapiLogDB.GetHostPort("5432/tcp")
 	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiDatabaseName+"_log")
+	wait4PostgresIsReady(dbURL)
 	return dbURL
 }
 
@@ -219,7 +221,7 @@ func killContainer(resource *dockertest.Resource) {
 
 // Wait4PostgresIsReady attends que le container postgres pour DatapiDb soit prêt
 // TODO je pense qu'on peut améliorer cette partie pour la rendre plus agréable à utiliser
-func Wait4PostgresIsReady(datapiDBUrl string) {
+func wait4PostgresIsReady(datapiDBUrl string) {
 	// exponential backoff-retry, because the application in the container might not be ready to accept connections yet
 	pool := currentPool()
 	pool.MaxWait = 120 * time.Second
@@ -232,6 +234,7 @@ func Wait4PostgresIsReady(datapiDBUrl string) {
 	}); err != nil {
 		log.Fatalf("Could not connect to docker: %s", err)
 	}
+	log.Printf("la base de données à l'adresse %s est prête", datapiDBUrl)
 }
 
 func getContainer(name containerName) (*dockertest.Resource, bool) {
@@ -242,7 +245,7 @@ func currentPool() *dockertest.Pool {
 	return d.pool
 }
 
-func GenerateRandomPort() string {
+func GenerateRandomAPIPort() string {
 	n, err := rand.Int(rand.Reader, big.NewInt(500))
 	n.Add(n, big.NewInt(30000))
 	if err != nil {

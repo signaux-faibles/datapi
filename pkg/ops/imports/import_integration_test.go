@@ -27,7 +27,7 @@ func TestMain(m *testing.M) {
 	if err := test.Viperize(testConfig); err != nil {
 		log.Fatalf("erreur pendant le chargement de la configuration ")
 	}
-	test.Wait4PostgresIsReady(url)
+
 	// Run tests
 	code := m.Run()
 

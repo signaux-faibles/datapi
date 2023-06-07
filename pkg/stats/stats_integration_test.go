@@ -38,8 +38,8 @@ func TestMain(m *testing.M) {
 		log.Printf("Erreur pendant la Viperation de la config : %s", err)
 	}
 
-	test.Wait4PostgresIsReady(test.GetDatapiDBURL())
-	test.Wait4PostgresIsReady(test.GetDatapiLogDBURL())
+	//test.Wait4PostgresIsReady(test.GetDatapiDBURL())
+	//test.Wait4PostgresIsReady(test.GetDatapiLogDBURL())
 
 	background := context.Background()
 	pool, err := pgxpool.New(background, test.GetDatapiLogDBURL())
