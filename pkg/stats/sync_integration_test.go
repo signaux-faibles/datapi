@@ -25,7 +25,7 @@ func TestStats_syncAccessLogs(t *testing.T) {
 	expected = countAccessLogs(sut.ctx, t, source)
 
 	// synchronise une première fois
-	inserted, err = syncAccessLogs(sut.ctx, source, target)
+	inserted, err = SyncPostgresLogSaver(sut, source)
 	ass.NoError(err)
 	ass.Equal(expected, inserted)
 
@@ -33,7 +33,7 @@ func TestStats_syncAccessLogs(t *testing.T) {
 	actual = countAccessLogs(sut.ctx, t, target)
 	ass.Equal(expected, actual)
 
-	_, err = syncAccessLogs(sut.ctx, source, target)
+	_, err = SyncPostgresLogSaver(sut, source)
 	ass.ErrorContains(err, "ERROR: duplicate key value violates unique constraint \"logs_pkey\" (SQLSTATE 23505)")
 	actual = countAccessLogs(sut.ctx, t, target)
 	ass.Equal(expected, actual)
