@@ -10,6 +10,7 @@ func loadDepartementReferentiel() (map[CodeDepartement]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 	r := make(map[CodeDepartement]string)
 	for rows.Next() {
 		var code CodeDepartement
@@ -34,6 +35,7 @@ func loadRegionsReferentiel() (map[Region][]CodeDepartement, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer rows.Close()
 
 	r := make(map[Region][]CodeDepartement)
 	for rows.Next() {

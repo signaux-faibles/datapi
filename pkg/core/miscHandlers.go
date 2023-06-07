@@ -15,6 +15,7 @@ func getCodesNaf(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
+	defer rows.Close()
 	var naf = make(map[string]string)
 	for rows.Next() {
 		var code string
