@@ -69,10 +69,10 @@ func selectSummariesWithSirets(
 	raisonSociale *string,
 ) (core.Summaries, error) {
 	rows, err := db.Query(ctx, SqlGetCards, roles, user.Username, sirets, zone, limit, raisonSocialeLike(raisonSociale))
-	defer rows.Close()
 	if err != nil {
 		return core.Summaries{}, err
 	}
+	defer rows.Close()
 
 	var summaries core.Summaries
 	for rows.Next() {
