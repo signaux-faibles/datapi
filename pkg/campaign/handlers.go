@@ -4,35 +4,12 @@ import (
 	"datapi/pkg/core"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
-	"net/http"
 	"regexp"
-	"strconv"
 )
 
 func ConfigureEndpoint(campaignRoute *gin.RouterGroup) {
 	campaignRoute.GET("/list", listCampaignsHandler) // 1
 	campaignRoute.GET("/pending/:campaignID", pendingHandler)
-}
-
-func pendingHandler(c *gin.Context) {
-	var s core.Session
-	s.Bind(c)
-
-	id, err := strconv.Atoi(c.Param("campaignID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, "`"+c.Param("campaignID")+"` n'est pas un identifiant valide")
-	}
-
-	pending, err := selectPending(c, CampaignID(id), []string{}, core.Page{10, 0})
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, "erreur inattendue")
-		return
-	}
-	if len(pending.Etablissements) == 0 {
-		c.JSON(http.StatusNoContent, pending)
-		return
-	}
-	c.JSON(http.StatusOK, pending)
 }
 
 func listCampaignsHandler(c *gin.Context) {

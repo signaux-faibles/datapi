@@ -15,11 +15,11 @@ type CampaignID int
 type Campaign struct {
 	ID                CampaignID `json:"id"`
 	Libelle           string     `json:"libelle"`
-	DateEnd           time.Time  `json:"date_fin"`
-	DateCreate        time.Time  `json:"date_create"`
-	WekanDomainRegexp string     `json:"wekan_domain_regexp"`
-	NBTotal           int        `json:"nb_total"`
-	NBPerimetre       int        `json:"nb_perimetre"`
+	DateEnd           time.Time  `json:"dateFin"`
+	DateCreate        time.Time  `json:"dateCreate"`
+	WekanDomainRegexp string     `json:"wekanDomainRegexp"`
+	NBTotal           int        `json:"nbTotal"`
+	NBPerimetre       int        `json:"nbPerimetre"`
 	BoardIDs          []string   `json:"boardIDs"`
 	Zone              []string   `json:"zone"`
 }

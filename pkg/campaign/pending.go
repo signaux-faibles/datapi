@@ -4,20 +4,22 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
+	"github.com/gin-gonic/gin"
+	"net/http"
+	"strconv"
 )
 
 type CampaignEtablissement struct {
-	Siret                       core.Siret `json:"siret"`
-	Alert                       string     `json:"alert"`
-	Visible                     bool       `json:"visible"`
-	InZone                      bool       `json:"inZone"`
-	Followed                    bool       `json:"followed"`
-	FollowedEntreprise          bool       `json:"followedEntreprise"`
-	FirstAlert                  bool       `json:"firstAlert"`
-	EtatAdministratif           string     `json:"etatAdministratif"`
-	EtatAdministratifEntreprise string     `json:"etatAdministratifEntreprise"`
-	State                       string     `json:"campainEtablissementActions"`
-	Rank                        int        `json:"rank"`
+	ID                  int        `json:"id"`
+	Siret               core.Siret `json:"siret"`
+	Alert               string     `json:"alert"`
+	Followed            bool       `json:"followed"`
+	FirstAlert          bool       `json:"firstAlert"`
+	EtatAdministratif   string     `json:"etatAdministratif"`
+	Action              *string    `json:"action,omitempty"`
+	Rank                int        `json:"rank"`
+	RaisonSociale       string     `json:"raisonSociale"`
+	RaisonSocialeGroupe *string    `json:"raisonSocialeGroupe,omitempty"`
 }
 
 type Pending struct {
@@ -28,29 +30,46 @@ type Pending struct {
 	PageSize       int                      `json:"pageSize"`
 }
 
+func pendingHandler(c *gin.Context) {
+	var s core.Session
+	s.Bind(c)
+	id, err := strconv.Atoi(c.Param("campaignID"))
+	if err != nil {
+		c.JSON(http.StatusBadRequest, "`"+c.Param("campaignID")+"` n'est pas un identifiant valide")
+		return
+	}
+	pending, err := selectPending(c, CampaignID(id), []string{}, core.Page{10, 0})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, "erreur inattendue: "+err.Error())
+		return
+	}
+	if len(pending.Etablissements) == 0 {
+		c.JSON(http.StatusNoContent, pending)
+		return
+	}
+	c.JSON(http.StatusOK, pending)
+}
+
 func (p *Pending) Tuple() []interface{} {
 	var ce CampaignEtablissement
 	p.Etablissements = append(p.Etablissements, &ce)
 	return []interface{}{
 		&p.NbTotal,
-		&p.Page,
-		&p.PageMax,
-		&p.PageSize,
 		&ce.Siret,
+		&ce.RaisonSociale,
+		&ce.RaisonSocialeGroupe,
 		&ce.Alert,
-		&ce.Visible,
-		&ce.InZone,
+		&ce.ID,
 		&ce.Followed,
-		&ce.FollowedEntreprise,
 		&ce.FirstAlert,
 		&ce.EtatAdministratif,
-		&ce.EtatAdministratifEntreprise,
-		&ce.State,
+		&ce.Action,
 		&ce.Rank,
 	}
 }
 
 func selectPending(ctx context.Context, campaignID CampaignID, zone []string, page core.Page) (pending Pending, err error) {
-	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, campaignID, zone, page.Size, page.From())
-	return
+	pending.Page = page.Number
+	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, page.Number, page.Size, campaignID, []string{"90", "75"})
+	return pending, err
 }
