@@ -131,6 +131,7 @@ func (c *Comment) load() utils.Jerror {
 		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
 
+	defer rows.Close()
 	comments := make(map[int]*Comment)
 	var order []int
 

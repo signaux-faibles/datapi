@@ -142,6 +142,7 @@ func TestSearch(t *testing.T) {
 	if err != nil {
 		t.Errorf("impossible de se connecter à la base: %s", err.Error())
 	}
+	defer rows.Close()
 
 	i := 0
 	for rows.Next() {
