@@ -86,9 +86,6 @@ func kanbanNewCardHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
-	if params.Labels == nil {
-		params.Labels = make([]libwekan.BoardLabelName, 0)
-	}
 	err = kanban.CreateCard(c, params, libwekan.Username(s.Username), db.Get())
 	if errors.As(err, &ForbiddenError{}) {
 		c.JSON(http.StatusForbidden, err.Error())
