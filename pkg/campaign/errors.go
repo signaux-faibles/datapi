@@ -23,3 +23,15 @@ func (e CampaignNotFoundError) Error() string {
 func (e CampaignNotFoundError) Unwrap() error {
 	return e.err
 }
+
+type PendingNotFoundError struct {
+	err error
+}
+
+func (e PendingNotFoundError) Error() string {
+	return "établissement indisponible pour ce traitement"
+}
+
+func (e PendingNotFoundError) Unwrap() error {
+	return e.err
+}

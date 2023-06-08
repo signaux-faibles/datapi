@@ -17,6 +17,7 @@ func Scan(ctx context.Context, scannable Scannable, sql string, params ...interf
 	if err != nil {
 		return err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		tuple := scannable.Tuple()
 		err = rows.Scan(tuple...)

@@ -2,11 +2,11 @@ package campaign
 
 import (
 	"context"
+	"datapi/pkg/core"
 	"datapi/pkg/db"
-	"datapi/pkg/utils"
 	"fmt"
+	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
-	"strings"
 	"time"
 )
 
@@ -49,22 +49,24 @@ func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boa
 	return allCampaigns, err
 }
 
-func zonesFromBoards(boards []libwekan.ConfigBoard) map[string][]string {
-	zones := make(map[string][]string)
-	for _, board := range boards {
-		swimlanes := utils.GetValues(board.Swimlanes)
-		zone := utils.Convert(swimlanes, func(s libwekan.Swimlane) string {
-			return strings.Split(string(s.Title), " (")[0]
-		})
-		zones[string(board.Board.Slug)] = zone
-	}
-	return zones
-}
-
 func idsFromBoards(boards []libwekan.ConfigBoard) map[string]string {
 	ids := make(map[string]string)
 	for _, board := range boards {
 		ids[string(board.Board.Slug)] = string(board.Board.ID)
 	}
 	return ids
+}
+
+func listCampaignsHandler(c *gin.Context) {
+	var s core.Session
+	s.Bind(c)
+	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(s.Username))
+	zone := zonesFromBoards(boards)
+	boardIDs := idsFromBoards(boards)
+	campaigns, err := selectMatchingCampaigns(c, zone, boardIDs)
+	if err != nil {
+		c.JSON(500, err.Error())
+		return
+	}
+	c.JSON(200, campaigns)
 }

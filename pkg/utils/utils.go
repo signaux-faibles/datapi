@@ -110,3 +110,15 @@ func Any[T any](input []T, test func(T) bool) bool {
 	}
 	return false
 }
+
+func Uniq[Element comparable](array []Element) []Element {
+	m := make(map[Element]struct{})
+	for _, element := range array {
+		m[element] = struct{}{}
+	}
+	var set []Element
+	for element := range m {
+		set = append(set, element)
+	}
+	return set
+}

@@ -9,3 +9,6 @@ var sqlSelectMatchingCampaigns string
 
 //go:embed sql/selectPendingEtablissement.sql
 var sqlSelectPendingEtablissement string
+
+//go:embed sql/takePendingEtablissement.sql
+var sqlTakePendingEtablissement string
