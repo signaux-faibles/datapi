@@ -25,6 +25,7 @@ func getEtablissementDataFromDb(ctx context.Context, db *pgxpool.Pool, siret cor
 	if err != nil {
 		return etsData, err
 	}
+	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&etsData.Siret, &etsData.RaisonSociale, &etsData.Departement, &etsData.Region, &etsData.Effectif, &etsData.CodeActivite, &etsData.LibelleActivite)
 		if err != nil {
