@@ -2,15 +2,16 @@ package core
 
 import (
 	"context"
-	"datapi/pkg/db"
-	"datapi/pkg/utils"
 	"fmt"
 	"regexp"
 	"strings"
 	"time"
 
+	"datapi/pkg/db"
+	"datapi/pkg/utils"
+
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 )
 
 // Entreprise type entreprise pour l'API

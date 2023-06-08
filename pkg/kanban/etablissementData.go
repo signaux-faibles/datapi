@@ -2,8 +2,10 @@ package kanban
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+
 	"datapi/pkg/core"
-	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 func getEtablissementDataFromDb(ctx context.Context, db *pgxpool.Pool, siret core.Siret) (core.EtablissementData, error) {

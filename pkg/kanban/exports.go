@@ -2,15 +2,17 @@ package kanban
 
 import (
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/utils"
 	"errors"
 	"fmt"
-	"github.com/jackc/pgx/v4/pgxpool"
-	"github.com/signaux-faibles/libwekan"
-	"go.mongodb.org/mongo-driver/bson"
 	"strings"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/signaux-faibles/libwekan"
+	"go.mongodb.org/mongo-driver/bson"
+
+	"datapi/pkg/core"
+	"datapi/pkg/utils"
 )
 
 func textFromComment(comment libwekan.Comment) string {

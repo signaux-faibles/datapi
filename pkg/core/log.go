@@ -25,8 +25,8 @@ func (infos AccessLog) String() string {
 	return fmt.Sprintf("log -> %s - %s - %s - %s", infos.Path, infos.Method, infos.Body, "[***]")
 }
 
-// SaveLogInfos handler pour définir une façon de sauver les logs
-type SaveLogInfos func(log AccessLog) error
+// AccessLogSaver handler pour définir une façon de sauver les logs
+type AccessLogSaver func(log AccessLog) error
 
 // LogMiddleware définit le middleware qui gère les logs
 func (datapi *Datapi) LogMiddleware(c *gin.Context) {
@@ -34,12 +34,12 @@ func (datapi *Datapi) LogMiddleware(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusInternalServerError, gin.H{"error": "request has nil body"})
 		return
 	}
-	apiCall, err := extractAccessLogFrom(c)
+	accessLog, err := extractAccessLogFrom(c)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
-	err = datapi.saveAPICall(apiCall)
+	err = datapi.saveAccessLog(accessLog)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return

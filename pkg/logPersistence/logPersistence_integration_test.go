@@ -9,11 +9,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v4/pgxpool"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
 
 	"datapi/pkg/core"
+	"datapi/pkg/db"
 	"datapi/pkg/test"
 )
 
@@ -42,7 +43,7 @@ func TestMain(m *testing.M) {
 	test.Wait4PostgresIsReady(test.GetDatapiLogDBURL())
 
 	background := context.Background()
-	pool, err := pgxpool.Connect(background, test.GetDatapiLogDBURL())
+	pool, err := pgxpool.New(background, test.GetDatapiLogDBURL())
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}
@@ -79,14 +80,56 @@ func TestLog_Initialize_idempotent(t *testing.T) {
 
 	actual, _ := getLastAccessLog(sut.ctx, sut.db)
 	ass.Equal(expected, actual)
+	ass.NoError(err)
 }
 
 func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
+	t.Cleanup(func() {
+		err := eraseAccessLogs(sut.ctx, sut.db)
+		if err != nil {
+			t.Error("erreur pendant le nettoyage :", err)
+		}
+	})
 	ass := assert.New(t)
 	expected := randomAccessLog()
 	err := sut.SaveLogToDB(expected)
 	ass.NoError(err)
 	actual, err := getLastAccessLog(sut.ctx, sut.db)
+	ass.NoError(err)
+	ass.Equal(expected, actual)
+}
+
+func TestPostgresLogSaver_syncAccessLogs(t *testing.T) {
+	t.Cleanup(func() {
+		err := eraseAccessLogs(sut.ctx, sut.db)
+		if err != nil {
+			t.Error("erreur pendant le nettoyage :", err)
+		}
+	})
+	ass := assert.New(t)
+	var expected, inserted, actual int
+	var err error
+
+	source := db.Get()
+	target := sut.db
+
+	// récupère le nombre de lignes de logs dans la base source
+	expected, err = countAccessLogs(sut.ctx, source)
+	ass.NoError(err)
+
+	// synchronise une première fois
+	inserted, err = syncAccessLogs(sut.ctx, source, target)
+	ass.NoError(err)
+	ass.Equal(expected, inserted)
+
+	// récupère le nombre
+	actual, err = countAccessLogs(sut.ctx, target)
+	ass.NoError(err)
+	ass.Equal(expected, actual)
+
+	_, err = syncAccessLogs(sut.ctx, source, target)
+	ass.ErrorContains(err, "ERROR: duplicate key value violates unique constraint \"logs_pkey\" (SQLSTATE 23505)")
+	actual, err = countAccessLogs(sut.ctx, target)
 	ass.NoError(err)
 	ass.Equal(expected, actual)
 }
@@ -100,53 +143,3 @@ func randomAccessLog() core.AccessLog {
 	}
 	return random
 }
-
-//func TestNewPostgresLogSaver(t *testing.T) {
-//	type args struct {
-//		ctx context.Context
-//		db  *pgxpool.Pool
-//	}
-//	tests := []struct {
-//		name string
-//		args args
-//		want *PostgresLogSaver
-//	}{
-//		// TODO: Add test cases.
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			if got := NewPostgresLogSaver(tt.args.ctx, tt.args.db); !reflect.DeepEqual(got, tt.want) {
-//				t.Errorf("NewPostgresLogSaver() = %v, want %v", got, tt.want)
-//			}
-//		})
-//	}
-//}
-//
-//func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
-//	type fields struct {
-//		db  *pgxpool.Pool
-//		ctx context.Context
-//	}
-//	type args struct {
-//		message core.LogInfos
-//	}
-//	tests := []struct {
-//		name    string
-//		fields  fields
-//		args    args
-//		wantErr bool
-//	}{
-//		// TODO: Add test cases.
-//	}
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			pgSaver := &PostgresLogSaver{
-//				db:  tt.fields.db,
-//				ctx: tt.fields.ctx,
-//			}
-//			if err := pgSaver.SaveLogToDB(tt.args.message); (err != nil) != tt.wantErr {
-//				t.Errorf("SaveLogToDB() error = %v, wantErr %v", err, tt.wantErr)
-//			}
-//		})
-//	}
-//}
