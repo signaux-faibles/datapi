@@ -206,6 +206,7 @@ func selectKanbanDBExportsWithoutCard(
 	if err != nil {
 		return core.KanbanDBExports{}, err
 	}
+
 	var kanbanDBExports core.KanbanDBExports
 	for rows.Next() {
 		var s []interface{}

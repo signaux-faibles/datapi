@@ -247,6 +247,7 @@ func GetSiret(t *testing.T, v VAF, n int) []string {
 		v.Followed,
 		n,
 	)
+	defer rows.Close()
 	if err != nil {
 		t.Errorf("problème d'accès à la base de données: %s", err.Error())
 		return nil

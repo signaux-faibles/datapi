@@ -1032,6 +1032,7 @@ func getEntrepriseViewers(c *gin.Context) {
 
 	siren := c.Param("siren")
 	rows, err := db.Get().Query(context.Background(), sqlViewers, siren)
+	defer rows.Close()
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
@@ -1060,6 +1061,7 @@ func getEtablissementViewers(c *gin.Context) {
 
 	siren := c.Param("siret")[0:9]
 	rows, err := db.Get().Query(context.Background(), sqlViewers, siren)
+	defer rows.Close()
 	if err != nil {
 		c.JSON(500, err.Error())
 		return

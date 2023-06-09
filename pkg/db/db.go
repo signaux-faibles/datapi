@@ -73,6 +73,8 @@ func listDatabaseMigrations(db *pgxpool.Pool) []migrationScript {
 		panic("can't get migrations from database: " + err.Error())
 	}
 	var dbMigrations []migrationScript
+	defer dbMigrationsCursor.Close()
+
 	for dbMigrationsCursor.Next() {
 		var m migrationScript
 		dbMigrationsCursor.Scan(&m.fileName, &m.hash)

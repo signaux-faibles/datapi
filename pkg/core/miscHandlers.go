@@ -11,6 +11,7 @@ import (
 
 func getCodesNaf(c *gin.Context) {
 	rows, err := db.Get().Query(context.Background(), "select code, libelle from naf where niveau=1")
+	defer rows.Close()
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
