@@ -2,7 +2,6 @@ package kanban
 
 import (
 	"context"
-
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/signaux-faibles/libwekan"
 	"github.com/spf13/viper"
@@ -29,6 +28,7 @@ func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNe
 	if err != nil {
 		return err
 	}
+
 	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, etablissement, params.Labels)
 	if err != nil {
 		return err
@@ -59,8 +59,9 @@ func buildCard(
 	card.CustomFields = []libwekan.CardCustomField{activiteField, effectifField, contactField, siretField, ficheField}
 
 	labelIDs := utils.Convert(labels, labelNameToIDConvertor(configBoard))
-	card.LabelIDs = labelIDs
-
+	if labelIDs != nil {
+		card.LabelIDs = labelIDs
+	}
 	return card, nil
 }
 

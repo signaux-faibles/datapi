@@ -99,5 +99,5 @@ coalesce(v.periode_urssaf, '0001-01-01'), v.last_procol, coalesce(v.date_last_pr
 coalesce(f.comment, ''), (permissions($1, v.roles, v.first_list_entreprise, v.code_departement, f.siret is not null)).in_zone
 from v_summaries v
 inner join etablissement_follow f on f.siret = v.siret and f.username = $2 and active
-where (v.code_departement = any($4) or coalesce($4, '{}') = '{}') and v.siret != any($3) and (v.raison_sociale ilike $5 or $5 is null)
+where (v.code_departement = any($4) or coalesce($4, '{}') = '{}') and (not (v.siret = any($3)) or $3 is null) and (v.raison_sociale ilike $5 or $5 is null)
 order by f.id, v.siret`

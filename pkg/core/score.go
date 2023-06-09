@@ -253,10 +253,10 @@ func findAllListes() ([]Liste, error) {
 		left join liste_description d on d.libelle_liste = l.libelle
 		where version=0 order by batch desc, algo
 	`)
+	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	for rows.Next() {
 		var l Liste

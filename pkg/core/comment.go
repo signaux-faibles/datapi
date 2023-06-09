@@ -127,6 +127,7 @@ func (c *Comment) load() utils.Jerror {
 	where e.siret = $1 order by e.id`
 
 	rows, err := db.Get().Query(context.Background(), sqlListComment, c.Siret)
+	defer rows.Close()
 	if err != nil {
 		return utils.ErrorToJSON(http.StatusInternalServerError, err)
 	}
