@@ -21,11 +21,11 @@ func getEtablissementDataFromDb(ctx context.Context, db *pgxpool.Pool, siret cor
 	inner join regions r on r.id = d.id_region
 	where s.siret = $1`
 	rows, err := db.Query(ctx, sql, siret)
+	defer rows.Close()
 	var etsData core.EtablissementData
 	if err != nil {
 		return etsData, err
 	}
-	defer rows.Close()
 	for rows.Next() {
 		err := rows.Scan(&etsData.Siret, &etsData.RaisonSociale, &etsData.Departement, &etsData.Region, &etsData.Effectif, &etsData.CodeActivite, &etsData.LibelleActivite)
 		if err != nil {

@@ -139,10 +139,10 @@ func TestSearch(t *testing.T) {
 	order by substring(e.siret from 1 for 3)
 	limit 10
 	`)
+	defer rows.Close()
 	if err != nil {
 		t.Errorf("impossible de se connecter à la base: %s", err.Error())
 	}
-	defer rows.Close()
 
 	i := 0
 	for rows.Next() {
