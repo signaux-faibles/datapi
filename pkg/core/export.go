@@ -144,13 +144,24 @@ func (kanbanExport KanbanExport) docx(head ExportHeader) (Docx, error) {
 	if len(outErr.Bytes()) > 0 {
 		fmt.Println(outErr.String())
 	}
-	return Docx{
-		filename: fmt.Sprintf("%s-%s-%s.docx",
+
+	var filename string
+	if kanbanExport.Board == "" {
+		filename = fmt.Sprintf("ETABLISSEMENT-%s-%s.docx",
+			strings.Replace(kanbanExport.RaisonSociale, " ", "-", -1),
+			kanbanExport.Siret,
+		)
+	} else {
+		filename = fmt.Sprintf("%s-%s-%s.docx",
 			strings.Replace(kanbanExport.Board, " ", "-", -1),
 			strings.Replace(kanbanExport.RaisonSociale, " ", "-", -1),
 			kanbanExport.Siret,
-		),
-		data: file,
+		)
+	}
+
+	return Docx{
+		filename: filename,
+		data:     file,
 	}, nil
 }
 
@@ -183,14 +194,19 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
-	var ok bool
-	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
-	if !ok {
-		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
-		return
+	if s.hasRole("wekan") {
+		var ok bool
+		params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+		if !ok {
+			c.JSON(500, "utilisateur non reconnu")
+			return
+		}
+		params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+	} else {
+		params.User = libwekan.User{
+			Username: libwekan.Username(s.Username),
+		}
 	}
-	params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
-
 	exports, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
 	if err != nil {
 		utils.AbortWithError(c, err)
@@ -245,13 +261,20 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
-	var ok bool
-	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
-	if !ok {
-		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
-		return
+
+	if s.hasRole("wekan") {
+		var ok bool
+		params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+		if !ok {
+			c.JSON(500, "utilisateur non reconnu")
+			return
+		}
+		params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+	} else {
+		params.User = libwekan.User{
+			Username: libwekan.Username(s.Username),
+		}
 	}
-	params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
 	exports, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
 	if err != nil {
