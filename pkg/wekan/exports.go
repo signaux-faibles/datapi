@@ -202,10 +202,10 @@ func selectKanbanDBExportsWithoutCard(
 	raisonSociale *string,
 ) (core.KanbanDBExports, error) {
 	rows, err := db.Query(ctx, sqlDbExportWithoutCards, roles, user.Username, sirets, zone, raisonSocialeLike(raisonSociale))
-	defer rows.Close()
 	if err != nil {
 		return core.KanbanDBExports{}, err
 	}
+	defer rows.Close()
 
 	var kanbanDBExports core.KanbanDBExports
 	for rows.Next() {
