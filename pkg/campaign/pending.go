@@ -44,7 +44,9 @@ func pendingHandler(c *gin.Context) {
 		c.JSON(http.StatusBadRequest, "`"+c.Param("campaignID")+"` n'est pas un identifiant valide")
 		return
 	}
-	pending, err := selectPending(c, CampaignID(id), []string{}, core.Page{10, 0})
+	username := libwekan.Username(s.Username)
+	zone := zoneForUser(username)
+	pending, err := selectPending(c, CampaignID(id), zone, core.Page{10, 0}, username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, "erreur inattendue: "+err.Error())
 		return
@@ -75,9 +77,9 @@ func (p *Pending) Tuple() []interface{} {
 	}
 }
 
-func selectPending(ctx context.Context, campaignID CampaignID, zone []string, page core.Page) (pending Pending, err error) {
+func selectPending(ctx context.Context, campaignID CampaignID, zone []string, page core.Page, username libwekan.Username) (pending Pending, err error) {
 	pending.Page = page.Number
-	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, page.Number, page.Size, campaignID, []string{"90", "75"})
+	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, page.Number, page.Size, campaignID, zone, username)
 	return pending, err
 }
 

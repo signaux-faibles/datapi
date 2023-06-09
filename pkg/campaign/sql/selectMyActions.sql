@@ -1,5 +1,6 @@
 with actions as (
   select id_campaign_etablissement,
+    last(username order by id) as username,
     last(action order by id) as action
   from campaign_etablissement_action
   group by id_campaign_etablissement
@@ -20,6 +21,6 @@ from campaign_etablissement ce
   inner join v_summaries s on s.siret = ce.siret and s.code_departement = any($4)
   left join etablissement_follow f on f.siret = ce.siret and f.username=$5 and f.active
   left join actions a on a.id_campaign_etablissement = ce.id
-where ce.id_campaign = $3 and coalesce(a.action, 'cancel') = 'cancel'
+where ce.id_campaign = $3 and a.action= 'take' and a.username =
 limit $2::integer offset ($1::integer)*($2::integer)
 
