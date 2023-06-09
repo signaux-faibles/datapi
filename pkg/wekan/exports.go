@@ -163,11 +163,11 @@ func libelleCA(val float64, valPrec float64, variationCA float64) string {
 func selectKanbanDBExportsWithSirets(ctx context.Context,
 	sirets []string,
 	db *pgxpool.Pool,
-	user libwekan.User,
+	username string,
 	roles []string,
 	zone []string,
 	raisonSociale *string) (core.KanbanDBExports, error) {
-	rows, err := db.Query(ctx, sqlDbExport, roles, user.Username, sirets, zone, raisonSocialeLike(raisonSociale))
+	rows, err := db.Query(ctx, sqlDbExport, roles, username, sirets, zone, raisonSocialeLike(raisonSociale))
 	defer rows.Close()
 	if err != nil {
 		return core.KanbanDBExports{}, err
@@ -206,7 +206,6 @@ func selectKanbanDBExportsWithoutCard(
 	if err != nil {
 		return core.KanbanDBExports{}, err
 	}
-
 	var kanbanDBExports core.KanbanDBExports
 	for rows.Next() {
 		var s []interface{}
@@ -236,49 +235,56 @@ func buildCardToCardAndCommentsPipeline() libwekan.Pipeline {
 
 func (service wekanService) ExportFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
 	wc := WekanConfig.Copy()
-	pipeline := buildCardsForUserPipeline(wc, params)
-	pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
 
-	if params.Type == "no-card" {
-		params.Lists = nil
-		params.Labels = nil
-		params.BoardIDs = nil
-		params.Since = nil
-	}
-
-	var err error
-	var cards []libwekan.CardWithComments
+	var sirets []string
 	if utils.Contains(roles, "wekan") {
-		cards, err = wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", pipeline)
-	}
-	if err != nil {
-		return core.KanbanExports{}, err
-	}
-	sirets := utils.Convert(cards, cardWithCommentsToSiret(wc))
+		pipeline := buildCardsForUserPipeline(wc, params)
+		pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
 
-	// my-cards et all-cards utilisent la même méthode
-	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
-		kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, sirets, db, params.User, roles, params.Zone, params.RaisonSociale)
-		return joinCardsWithKanbanDBExports(kanbanDBExports, cards), err
-	}
+		if params.Type == "no-card" {
+			params.Lists = nil
+			params.Labels = nil
+			params.BoardIDs = nil
+			params.Since = nil
+		}
 
+		var err error
+		var cards []libwekan.CardWithComments
+		if utils.Contains(roles, "wekan") {
+			cards, err = wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", pipeline)
+		}
+		if err != nil {
+			return core.KanbanExports{}, err
+		}
+		sirets = utils.Convert(cards, cardWithCommentsToSiret(wc))
+
+		// my-cards et all-cards utilisent la même méthode
+		if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
+			kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, sirets, db, string(params.User.Username), roles, params.Zone, params.RaisonSociale)
+			return joinCardsWithKanbanDBExports(kanbanDBExports, cards), err
+		}
+	}
 	// alors que no-card retourne les suivis datapi sans carte kanban
 	kanbanDBExports, err := selectKanbanDBExportsWithoutCard(ctx, sirets, db, params.User, roles, params.Zone, params.RaisonSociale)
 	return kanbanDBExportToKanbanExports(kanbanDBExports), err
 }
 
 func (service wekanService) SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (core.KanbanExports, error) {
-	user, ok := WekanConfig.GetUserByUsername(libwekan.Username(username))
-	if !ok {
-		return nil, errors.New("utilisateur non trouvé")
+	var cardsWithComments []libwekan.CardWithComments
+	if utils.Contains(roles, "wekan") {
+		_, ok := WekanConfig.GetUserByUsername(libwekan.Username(username))
+		if !ok {
+			return nil, errors.New("utilisateur non trouvé")
+		}
+		pipeline := buildSelectCardsFromSiretPipeline(siret)
+		pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
+		var err error
+		cardsWithComments, err = wekan.SelectCardsWithCommentsFromPipeline(ctx, "customFields", pipeline)
+		if err != nil {
+			return nil, err
+		}
 	}
-	pipeline := buildSelectCardsFromSiretPipeline(siret)
-	pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
-	cardsWithComments, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "customFields", pipeline)
-	if err != nil {
-		return nil, err
-	}
-	kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, []string{siret}, db, user, roles, nil, nil)
+	kanbanDBExports, err := selectKanbanDBExportsWithSirets(ctx, []string{siret}, db, username, roles, nil, nil)
 	kanbanExports := joinCardsWithKanbanDBExports(kanbanDBExports, cardsWithComments)
 
 	if len(kanbanExports) > 0 {
