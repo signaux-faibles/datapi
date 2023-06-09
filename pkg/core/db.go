@@ -7,10 +7,10 @@ import (
 
 func loadDepartementReferentiel() (map[CodeDepartement]string, error) {
 	rows, err := db.Get().Query(context.Background(), "select code, libelle from departements")
+	defer rows.Close()
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 	r := make(map[CodeDepartement]string)
 	for rows.Next() {
 		var code CodeDepartement
@@ -31,11 +31,11 @@ func loadRegionsReferentiel() (map[Region][]CodeDepartement, error) {
     	union select 'France entière' as libelle, code from departements
 		order by libelle, code
 	`)
+	defer rows.Close()
 
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
 
 	r := make(map[Region][]CodeDepartement)
 	for rows.Next() {

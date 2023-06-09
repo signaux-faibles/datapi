@@ -222,12 +222,12 @@ func getSummaries(params summaryParams) (Summaries, error) {
 	}
 
 	rows, err := db.Get().Query(context.Background(), sql, sqlParams...)
+	defer rows.Close()
 	if err != nil {
 		fmt.Println(err)
 		return Summaries{}, err
 	}
 
-	defer rows.Close()
 	sms := Summaries{}
 	for rows.Next() {
 		s := sms.NewSummary()

@@ -1032,11 +1032,11 @@ func getEntrepriseViewers(c *gin.Context) {
 
 	siren := c.Param("siren")
 	rows, err := db.Get().Query(context.Background(), sqlViewers, siren)
+	defer rows.Close()
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
 	}
-	defer rows.Close()
 	var users []keycloakUser
 	for rows.Next() {
 		var u keycloakUser
@@ -1061,11 +1061,11 @@ func getEtablissementViewers(c *gin.Context) {
 
 	siren := c.Param("siret")[0:9]
 	rows, err := db.Get().Query(context.Background(), sqlViewers, siren)
+	defer rows.Close()
 	if err != nil {
 		c.JSON(500, err.Error())
 		return
 	}
-	defer rows.Close()
 	var users []keycloakUser
 	for rows.Next() {
 		var u keycloakUser
