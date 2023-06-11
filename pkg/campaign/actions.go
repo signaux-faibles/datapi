@@ -76,7 +76,7 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 			action,
 			params.Detail)
 
-		if errors.As(err, TakeNotFoundError{}) {
+		if errors.As(err, &TakeNotFoundError{}) {
 			ctx.JSON(http.StatusUnprocessableEntity, "traitement indisponible pour cet établissement")
 		}
 
