@@ -5,7 +5,6 @@ import (
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"net/http"
@@ -26,6 +25,7 @@ type CampaignEtablissement struct {
 	Rank                int                     `json:"rank"`
 	RaisonSociale       string                  `json:"raisonSociale"`
 	RaisonSocialeGroupe *string                 `json:"raisonSocialeGroupe,omitempty"`
+	Username            *string                 `json:"username,omitempty"`
 }
 
 type Pending struct {
@@ -78,8 +78,7 @@ func (p *Pending) Tuple() []interface{} {
 }
 
 func selectPending(ctx context.Context, campaignID CampaignID, zone []string, page core.Page, username libwekan.Username) (pending Pending, err error) {
-	pending.Page = page.Number
-	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, page.Number, page.Size, campaignID, zone, username)
+	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, campaignID, zone, username)
 	return pending, err
 }
 
@@ -111,7 +110,6 @@ func takePendingHandler(c *gin.Context) {
 	if errors.As(err, &PendingNotFoundError{}) {
 		c.JSON(http.StatusUnprocessableEntity, "établissement indisponible pour cette action")
 	} else if err != nil {
-		fmt.Println(err)
 		c.JSON(http.StatusInternalServerError, "erreur imprévue")
 	} else {
 		c.JSON(http.StatusOK, "ok")

@@ -4,7 +4,6 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"time"
@@ -44,7 +43,6 @@ func (cs *Campaigns) Tuple() []interface{} {
 
 func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boardIDs map[string]string) (Campaigns, error) {
 	var allCampaigns = Campaigns{}
-	fmt.Println(boardIDs)
 	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, zones, boardIDs)
 	return allCampaigns, err
 }

@@ -35,3 +35,15 @@ func (e PendingNotFoundError) Error() string {
 func (e PendingNotFoundError) Unwrap() error {
 	return e.err
 }
+
+type TakeNotFoundError struct {
+	err error
+}
+
+func (e TakeNotFoundError) Error() string {
+	return "établissement indisponible pour ce traitement"
+}
+
+func (e TakeNotFoundError) Unwrap() error {
+	return e.err
+}

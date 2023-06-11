@@ -9,7 +9,7 @@ import (
 	"strconv"
 )
 
-type MyActions struct {
+type AllActions struct {
 	Etablissements []*CampaignEtablissement `json:"etablissements"`
 	NbTotal        int                      `json:"nbTotal"`
 	Page           int                      `json:"page"`
@@ -17,7 +17,7 @@ type MyActions struct {
 	PageSize       int                      `json:"pageSize"`
 }
 
-func (p *MyActions) Tuple() []interface{} {
+func (p *AllActions) Tuple() []interface{} {
 	var ce CampaignEtablissement
 	p.Etablissements = append(p.Etablissements, &ce)
 	return []interface{}{
@@ -33,25 +33,29 @@ func (p *MyActions) Tuple() []interface{} {
 		&ce.EtatAdministratif,
 		&ce.Action,
 		&ce.Rank,
+		&ce.Username,
 	}
 }
 
-func myActionsHandler(c *gin.Context) {
+func allActionsHandler(c *gin.Context) {
 	var s core.Session
 	s.Bind(c)
-
 	campaignID, err := strconv.Atoi(c.Param("campaignID"))
 	if err != nil {
-		c.JSON(400, `/campaign/myactions/:campaignID: le parametre campaignID doit être un entier`)
+		c.JSON(400, `/campaign/allactions/:campaignID: le parametre campaignID doit être un entier`)
 		return
 	}
 	zone := zoneForUser(libwekan.Username(s.Username))
-	page := core.Page{10, 0}
-	myActions, err := selectMyActions(c, CampaignID(campaignID), zone, page, libwekan.Username(s.Username))
-	c.JSON(200, myActions)
+	allActions, err := selectAllActions(c, CampaignID(campaignID), zone, libwekan.Username(s.Username))
+
+	if err != nil {
+		c.JSON(500, err.Error())
+	} else {
+		c.JSON(200, allActions)
+	}
 }
 
-func selectMyActions(ctx context.Context, campaignID CampaignID, zone []string, page core.Page, username libwekan.Username) (myActions MyActions, err error) {
-	err = db.Scan(ctx, &myActions, sqlSelectMyActions, campaignID, zone, username)
-	return myActions, err
+func selectAllActions(ctx context.Context, campaignID CampaignID, zone []string, username libwekan.Username) (allActions AllActions, err error) {
+	err = db.Scan(ctx, &allActions, sqlSelectAllActions, campaignID, zone, username)
+	return allActions, err
 }

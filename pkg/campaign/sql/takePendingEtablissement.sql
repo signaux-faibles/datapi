@@ -5,7 +5,7 @@ with actions as (
   from campaign_etablissement_action
   group by id_campaign_etablissement
 )
-select ce.id, 'christophe.ninucci@beta.gouv.fr', current_timestamp, 'take'
+select ce.id, $3, current_timestamp, 'take'
 from campaign_etablissement ce
        inner join v_summaries s on s.siret = ce.siret and code_departement = any($4)
        left join etablissement_follow f on f.siret = ce.siret and f.username=$3 and f.active

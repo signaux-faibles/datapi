@@ -24,7 +24,20 @@ create table if not exists campaign_etablissement_action (
   username text,
   date_action timestamp,
   action text,
+  detail text,
   constraint fk_campaign
     foreign key(id_campaign_etablissement)
       references campaign_etablissement(id)
+);
+
+create sequence if not exists campaign_etablissement_comment_id;
+create table if not exists campaign_etablissement_comment (
+  id integer primary key default nextval('campaign_etablissement_comment'),
+  id_campaign_etablissement integer,
+  username text,
+  date_comment timestamp,
+  comment text,
+  constraint fk_campaign
+  foreign key(id_campaign_etablissement)
+  references campaign_etablissement(id)
 );

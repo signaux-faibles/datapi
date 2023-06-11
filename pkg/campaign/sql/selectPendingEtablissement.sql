@@ -17,9 +17,10 @@ select count(*) over () as nb_total,
    a.action,
    rank() over (order by ce.id) as rank
 from campaign_etablissement ce
-  inner join v_summaries s on s.siret = ce.siret and s.code_departement = any($4)
-  left join etablissement_follow f on f.siret = ce.siret and f.username=$5 and f.active
+  inner join v_summaries s on s.siret = ce.siret and s.code_departement = any($2)
+  left join etablissement_follow f on f.siret = ce.siret and f.username=$3 and f.active
   left join actions a on a.id_campaign_etablissement = ce.id
-where ce.id_campaign = $3 and coalesce(a.action, 'cancel') = 'cancel'
-limit $2::integer offset ($1::integer)*($2::integer)
+where ce.id_campaign = $1 and coalesce(a.action, 'cancel') = 'cancel'
+limit 30
+
 
