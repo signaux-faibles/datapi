@@ -4,6 +4,8 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
+	"encoding/json"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"time"
@@ -17,8 +19,10 @@ type Campaign struct {
 	DateEnd           time.Time  `json:"dateFin"`
 	DateCreate        time.Time  `json:"dateCreate"`
 	WekanDomainRegexp string     `json:"wekanDomainRegexp"`
-	NBTotal           int        `json:"nbTotal"`
 	NBPerimetre       int        `json:"nbPerimetre"`
+	NBPending         int        `json:"nbPending"`
+	NBTake            int        `json:"nbTake"`
+	NBDone            int        `json:"nbDone"`
 	BoardIDs          []string   `json:"boardIDs"`
 	Zone              []string   `json:"zone"`
 }
@@ -34,8 +38,10 @@ func (cs *Campaigns) Tuple() []interface{} {
 		&c.WekanDomainRegexp,
 		&c.DateEnd,
 		&c.DateCreate,
-		&c.NBTotal,
 		&c.NBPerimetre,
+		&c.NBPending,
+		&c.NBTake,
+		&c.NBDone,
 		&c.Zone,
 		&c.BoardIDs,
 	}
@@ -43,6 +49,10 @@ func (cs *Campaigns) Tuple() []interface{} {
 
 func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boardIDs map[string]string) (Campaigns, error) {
 	var allCampaigns = Campaigns{}
+	s, _ := json.Marshal(boardIDs)
+	v, _ := json.Marshal(zones)
+	fmt.Println(string(v))
+	fmt.Println(string(s))
 	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, zones, boardIDs)
 	return allCampaigns, err
 }
