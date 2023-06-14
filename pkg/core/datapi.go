@@ -71,9 +71,9 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 func (datapi *Datapi) InitAPI(router *gin.Engine) {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
-	config.AddExposeHeaders("Content-Disposition")
+	config.AddExposeHeaders("Content-Disposition", "responseType", "Content-Type", "Cache-Control", "Connection", "Transfer-Encoding")
 
-	config.AddAllowHeaders("Authorization")
+	config.AddAllowHeaders("Authorization", "responseType")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 	err := router.SetTrustedProxies(nil)

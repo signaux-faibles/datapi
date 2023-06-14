@@ -122,3 +122,14 @@ func Uniq[Element comparable](array []Element) []Element {
 	}
 	return set
 }
+
+func Overlaps[T comparable](array1 []T, array2 []T) bool {
+	for _, t1 := range array1 {
+		for _, t2 := range array2 {
+			if t1 == t2 {
+				return true
+			}
+		}
+	}
+	return false
+}

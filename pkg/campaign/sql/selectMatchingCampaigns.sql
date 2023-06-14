@@ -12,7 +12,13 @@ with zones as (
    from campaign c
    inner join zones z on z.slug ~ c.wekan_domain_regexp
    inner join id_boards i on i.slug = z.slug
-   group by c.id, c.libelle, c.wekan_domain_regexp, date_end, date_create)
+   group by c.id, c.libelle, c.wekan_domain_regexp, date_end, date_create
+), actions as (
+  select ce.id, coalesce(last(action), 'pending')
+  from campaign_etablissement ce
+         left join campaign_etablissement_action cea on cea.id_campaign_etablissement = ce.id
+  group by ce.id
+)
 select cs.id, cs.libelle, cs.wekan_domain_regexp, cs.date_end, cs.date_create,
        coalesce(count(distinct ce.id), 0) as nb_total,
        coalesce(sum(case when s.code_departement = any(cs.zones) then 1 else 0 end), 0) as nb_perimetre,

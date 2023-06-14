@@ -99,7 +99,7 @@ func takePendingHandler(c *gin.Context) {
 
 	zone := zoneForUser(libwekan.Username(s.Username))
 
-	err = takePending(
+	message, err := takePending(
 		c,
 		CampaignID(campaignID),
 		CampaignEtablissementID(campaignEtablissementID),
@@ -112,19 +112,27 @@ func takePendingHandler(c *gin.Context) {
 	} else if err != nil {
 		c.JSON(http.StatusInternalServerError, "erreur imprévue")
 	} else {
+		stream.Message <- message
 		c.JSON(http.StatusOK, "ok")
 	}
 }
 
-func takePending(ctx context.Context, campaignID CampaignID, campaignEtablissementID CampaignEtablissementID, username libwekan.Username, zone Zone) error {
+func takePending(ctx context.Context, campaignID CampaignID, campaignEtablissementID CampaignEtablissementID, username libwekan.Username, zone Zone) (Message, error) {
 	var campaignEtablissementActionID *int
+	var codeDepartement *string
 	dbConn := db.Get()
 	row := dbConn.QueryRow(ctx, sqlTakePendingEtablissement, campaignID, campaignEtablissementID, username, zone)
-	err := row.Scan(&campaignEtablissementActionID)
-	if campaignEtablissementActionID == nil {
-		return PendingNotFoundError{err: errors.New("aucun id retourné par l'insert")}
+	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
+	if campaignEtablissementActionID == nil || codeDepartement == nil {
+		return Message{}, PendingNotFoundError{err: errors.New("aucun id retourné par l'insert")}
 	} else if err != nil {
-		return err
+		return Message{}, err
 	}
-	return nil
+	return Message{
+		CampaignID:              campaignID,
+		CampaignEtablissementID: campaignEtablissementID,
+		Zone:                    []string{*codeDepartement},
+		Type:                    "pending",
+		Username:                string(username),
+	}, nil
 }
