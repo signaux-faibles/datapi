@@ -29,7 +29,7 @@ func main() {
 	}
 	_, err = stats.SyncPostgresLogSaver(saver, db.Get())
 	if err != nil {
-		log.Printf("ERREUR : erreur pendant la synchronisation des logs : ", err)
+		log.Printf("ERREUR : erreur pendant la synchronisation des logs : %s", err)
 	}
 	datapi, err := core.StartDatapi(kanban, saver.SaveLogToDB)
 	if err != nil {
