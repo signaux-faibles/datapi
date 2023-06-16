@@ -4,13 +4,9 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/db"
 	"encoding/json"
 	"flag"
 	"fmt"
-	"github.com/pmezard/go-difflib/difflib"
-	"github.com/spf13/viper"
 	"io"
 	"log"
 	"net/http"
@@ -18,6 +14,12 @@ import (
 	"sync/atomic"
 	"testing"
 	"time"
+
+	"github.com/pmezard/go-difflib/difflib"
+	"github.com/spf13/viper"
+
+	"datapi/pkg/core"
+	"datapi/pkg/db"
 )
 
 var apiHostAndPort = atomic.Value{}
@@ -25,6 +27,7 @@ var update = flag.Bool("overwriteGoldenFiles", false, "true pour écraser les go
 
 // DatapiDatabaseName contient le nom de la base de données de test
 const DatapiDatabaseName = "datapi_test"
+const DatapiLogsDatabaseName = "datapilogs_test"
 
 func compare(expected []byte, actual []byte) string {
 	diff := difflib.UnifiedDiff{
