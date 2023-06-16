@@ -18,11 +18,6 @@ func NewPostgresLogSaver(ctx context.Context, db *pgxpool.Pool) *PostgresLogSave
 	return &PostgresLogSaver{db: db, ctx: ctx}
 }
 
-//func NewPostgresLogSaverFromConfig(ctx context.Context) (*PostgresLogSaver, error) {
-//	logsDBURL := viper.GetString("logs.db_url")
-//	return NewPostgresLogSaverFromURL(ctx, logsDBURL)
-//}
-
 func NewPostgresLogSaverFromURL(ctx context.Context, connexionURL string) (*PostgresLogSaver, error) {
 	pool, err := pgxpool.New(ctx, connexionURL)
 	if err != nil {

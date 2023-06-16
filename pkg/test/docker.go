@@ -25,7 +25,6 @@ type containerName string
 
 const datapiDBName containerName = "datapiDBName"
 const wekanDBName containerName = "wekanDBName"
-const datapiLogDBName containerName = "datapiLogsDBName"
 
 var d *dockerContext
 
@@ -42,9 +41,8 @@ func init() {
 	newContext := dockerContext{
 		pool: pool,
 		containerNames: map[containerName]string{
-			datapiDBName:    "datapidb-ti-" + name,
-			datapiLogDBName: "datapilogdb-ti-" + name,
-			wekanDBName:     "mongodb-ti-" + name,
+			datapiDBName: "datapidb-ti-" + name,
+			wekanDBName:  "mongodb-ti-" + name,
 		},
 	}
 	d = &newContext
@@ -66,14 +64,14 @@ func GetDatapiDBURL() string {
 
 // GetDatapiLogDBURL démarre si nécessaire un container postgres et retourne l'URL pour y accéder
 func GetDatapiLogDBURL() string {
-	datapiLogDB, found := getContainer(datapiLogDBName)
+	datapiLogDB, found := getContainer(datapiDBName)
 	if !found {
-		datapiLogDB = startDatapiLogDB()
+		datapiLogDB = startDatapiDB()
 	} else {
 		log.Printf("le container %s a bien été retrouvé", datapiLogDB.Container.Name)
 	}
 	hostAndPort := datapiLogDB.GetHostPort("5432/tcp")
-	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiDatabaseName+"_log")
+	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiLogsDatabaseName)
 	wait4PostgresIsReady(dbURL)
 	return dbURL
 }
@@ -96,7 +94,7 @@ func startDatapiDB() *dockertest.Resource {
 		log.Panicf("Could not get absolute path: %s", err)
 	}
 	// sql dump to currentContext postgres data
-	sqlDump, _ := filepath.Abs("test/data")
+	sqlDump, _ := filepath.Abs("test/initDB")
 	// pulls an image, creates a container based on it and runs it
 	datapiContainerName := d.containerNames[datapiDBName]
 	log.Println("démarre le container datapi-db avec le nom : ", datapiContainerName)
@@ -164,50 +162,6 @@ func startWekanDB() *dockertest.Resource {
 		log.Fatal("erreur pendant la mise en expiration du container", mongoContainerName, err)
 	}
 	return wekanDB
-}
-
-func startDatapiLogDB() *dockertest.Resource {
-	// configuration file for postgres
-	postgresConfig, err := filepath.Abs("test/postgresql.conf")
-	if err != nil {
-		log.Panicf("Could not get absolute path: %s", err)
-	}
-	// sql dump to currentContext postgres data
-	// sqlDump, _ := filepath.Abs("test/data")
-	// pulls an image, creates a container based on it and runs it
-	datapiLogContainerName := d.containerNames[datapiLogDBName]
-	log.Println("démarre le container datapi-log-db avec le nom : ", datapiLogContainerName)
-
-	datapiLogDB, err := currentPool().RunWithOptions(&dockertest.RunOptions{
-		Name:       datapiLogContainerName,
-		Repository: "postgres",
-		Tag:        "15-alpine",
-		Env: []string{
-			"POSTGRES_PASSWORD=test",
-			"POSTGRES_USER=postgres",
-			"POSTGRES_DB=" + DatapiDatabaseName + "_log",
-			"listen_addresses = '*'"},
-		Mounts: []string{
-			postgresConfig + ":/etc/postgresql/postgresql.conf",
-			//sqlDump + ":/docker-entrypoint-initdb.d",
-		},
-	}, func(config *docker.HostConfig) {
-		// set AutoRemove to true so that stopped container goes away by itself
-		config.AutoRemove = true
-		config.RestartPolicy = docker.RestartPolicy{
-			Name: "no",
-		}
-	})
-	if err != nil {
-		killContainer(datapiLogDB)
-		log.Fatal("Could not start datapi-log-db", err)
-	}
-	// container stops after 20'
-	if err = datapiLogDB.Expire(600); err != nil {
-		killContainer(datapiLogDB)
-		log.Fatal("Could not set expiration on container datapi-log-db", err)
-	}
-	return datapiLogDB
 }
 
 func killContainer(resource *dockertest.Resource) {
