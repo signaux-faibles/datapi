@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"datapi/pkg/core"
-	"datapi/pkg/db"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
@@ -27,10 +26,10 @@ func main() {
 	if err != nil {
 		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
 	}
-	_, err = stats.SyncPostgresLogSaver(saver, db.Get())
-	if err != nil {
-		log.Printf("ERREUR : erreur pendant la synchronisation des logs : %s", err)
-	}
+	//_, err = stats.SyncPostgresLogSaver(saver, db.Get())
+	//if err != nil {
+	//	log.Printf("ERREUR : erreur pendant la synchronisation des logs : %s", err)
+	//}
 	datapi, err := core.StartDatapi(kanban, saver.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
