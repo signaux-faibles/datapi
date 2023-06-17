@@ -26,12 +26,14 @@ type KanbanService interface {
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
 	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
+	UpdateCard(ctx context.Context, cardID libwekan.CardID, description string) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
 
 type KanbanUser struct {
 	Username libwekan.Username `json:"username"`
+	Fullname string            `json:"fullname"`
 	Active   bool              `json:"active"`
 }
 
@@ -49,8 +51,8 @@ type KanbanSwimlane struct {
 
 type KanbanBoardMembers map[libwekan.UserID]KanbanBoardMember
 type KanbanBoardMember struct {
-	Username libwekan.Username `json:"username"`
-	Active   bool              `json:"active"`
+	UserID libwekan.UserID `json:"userID"`
+	Active bool            `json:"active"`
 }
 
 type KanbanBoardLabels map[libwekan.BoardLabelID]KanbanBoardLabel

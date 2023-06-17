@@ -5,6 +5,7 @@ import (
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"net/http"
@@ -17,20 +18,34 @@ func (c CampaignEtablissementActionID) Tuple() []interface{} {
 	return []interface{}{&c}
 }
 
-func doAction(ctx context.Context, campaignID CampaignID,
-	campaignEtablissementID CampaignEtablissementID, username libwekan.Username,
-	zone Zone, action string, detail string) error {
+func doAction(ctx context.Context,
+	campaignID CampaignID,
+	campaignEtablissementID CampaignEtablissementID,
+	username libwekan.Username,
+	zone Zone,
+	action string,
+	detail string,
+) (Message, error) {
 	var campaignEtablissementActionID *int
+	var codeDepartement *string
 	dbConn := db.Get()
 	row := dbConn.QueryRow(ctx, sqlActionMyEtablissement, campaignID,
 		campaignEtablissementID, username, zone, action, detail)
-	err := row.Scan(&campaignEtablissementActionID)
-	if campaignEtablissementActionID == nil {
-		return TakeNotFoundError{err: errors.New("aucun id retourné par l'insert")}
+	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
+	fmt.Println(err)
+	if campaignEtablissementActionID == nil || codeDepartement == nil {
+		return Message{}, TakeNotFoundError{err: errors.New("aucun id retourné par l'insert")}
 	} else if err != nil {
-		return err
+		return Message{}, err
 	}
-	return nil
+	message := Message{
+		campaignID,
+		campaignEtablissementID,
+		[]string{*codeDepartement},
+		action,
+		string(username),
+	}
+	return message, nil
 }
 
 type actionParam struct {
@@ -68,7 +83,7 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 		if err != nil {
 			ctx.JSON(http.StatusBadRequest, "/"+action+"/:campaignID, :campaignID n'est pas entier")
 		}
-		err = doAction(ctx,
+		message, err := doAction(ctx,
 			CampaignID(campaignID),
 			CampaignEtablissementID(campaignEtablissementID),
 			libwekan.Username(s.Username),
@@ -78,8 +93,13 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 
 		if errors.As(err, &TakeNotFoundError{}) {
 			ctx.JSON(http.StatusUnprocessableEntity, "traitement indisponible pour cet établissement")
+			return
+		} else if err != nil {
+			ctx.JSON(http.StatusInternalServerError, "erreur innattendue")
+			return
 		}
 
+		stream.Message <- message
 		ctx.JSON(http.StatusOK, "ok")
 	}
 }

@@ -4,7 +4,8 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
-	"errors"
+	"datapi/pkg/kanban"
+	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"net/http"
@@ -45,12 +46,14 @@ func pendingHandler(c *gin.Context) {
 		return
 	}
 	username := libwekan.Username(s.Username)
-	zone := zoneForUser(username)
-	pending, err := selectPending(c, CampaignID(id), zone, core.Page{10, 0}, username)
+	boards := kanban.SelectBoardsForUser(username)
+	zones := zonesFromBoards(boards)
+	pending, err := selectPending(c, CampaignID(id), zones, core.Page{10, 0}, username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, "erreur inattendue: "+err.Error())
 		return
 	}
+	fmt.Println(pending)
 	if len(pending.Etablissements) == 0 {
 		c.JSON(http.StatusNoContent, pending)
 		return
@@ -77,62 +80,7 @@ func (p *Pending) Tuple() []interface{} {
 	}
 }
 
-func selectPending(ctx context.Context, campaignID CampaignID, zone []string, page core.Page, username libwekan.Username) (pending Pending, err error) {
+func selectPending(ctx context.Context, campaignID CampaignID, zone BoardZones, page core.Page, username libwekan.Username) (pending Pending, err error) {
 	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, campaignID, zone, username)
 	return pending, err
-}
-
-func takePendingHandler(c *gin.Context) {
-	var s core.Session
-	s.Bind(c)
-
-	campaignID, err := strconv.Atoi(c.Param("campaignID"))
-	if err != nil {
-		c.JSON(400, `/campaign/take/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
-		return
-	}
-	campaignEtablissementID, err := strconv.Atoi(c.Param("campaignEtablissementID"))
-	if err != nil {
-		c.JSON(400, `/campaign/take/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
-		return
-	}
-
-	zone := zoneForUser(libwekan.Username(s.Username))
-
-	message, err := takePending(
-		c,
-		CampaignID(campaignID),
-		CampaignEtablissementID(campaignEtablissementID),
-		libwekan.Username(s.Username),
-		zone,
-	)
-
-	if errors.As(err, &PendingNotFoundError{}) {
-		c.JSON(http.StatusUnprocessableEntity, "établissement indisponible pour cette action")
-	} else if err != nil {
-		c.JSON(http.StatusInternalServerError, "erreur imprévue")
-	} else {
-		stream.Message <- message
-		c.JSON(http.StatusOK, "ok")
-	}
-}
-
-func takePending(ctx context.Context, campaignID CampaignID, campaignEtablissementID CampaignEtablissementID, username libwekan.Username, zone Zone) (Message, error) {
-	var campaignEtablissementActionID *int
-	var codeDepartement *string
-	dbConn := db.Get()
-	row := dbConn.QueryRow(ctx, sqlTakePendingEtablissement, campaignID, campaignEtablissementID, username, zone)
-	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
-	if campaignEtablissementActionID == nil || codeDepartement == nil {
-		return Message{}, PendingNotFoundError{err: errors.New("aucun id retourné par l'insert")}
-	} else if err != nil {
-		return Message{}, err
-	}
-	return Message{
-		CampaignID:              campaignID,
-		CampaignEtablissementID: campaignEtablissementID,
-		Zone:                    []string{*codeDepartement},
-		Type:                    "pending",
-		Username:                string(username),
-	}, nil
 }

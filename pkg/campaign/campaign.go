@@ -4,8 +4,6 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
-	"encoding/json"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"time"
@@ -47,14 +45,9 @@ func (cs *Campaigns) Tuple() []interface{} {
 	}
 }
 
-func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boardIDs map[string]string) (Campaigns, error) {
-	var allCampaigns = Campaigns{}
-	s, _ := json.Marshal(boardIDs)
-	v, _ := json.Marshal(zones)
-	fmt.Println(string(v))
-	fmt.Println(string(s))
-	err := db.Scan(ctx, &allCampaigns, sqlSelectMatchingCampaigns, zones, boardIDs)
-	return allCampaigns, err
+func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boardIDs map[string]string) (campaigns Campaigns, err error) {
+	err = db.Scan(ctx, &campaigns, sqlSelectMatchingCampaigns, zones, boardIDs)
+	return campaigns, err
 }
 
 func idsFromBoards(boards []libwekan.ConfigBoard) map[string]string {

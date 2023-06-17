@@ -30,4 +30,4 @@ from campaigns cs
        left join v_summaries s on s.siret = ce.siret
        left join actions a on a.id_campaign_etablissement = ce.id
 group by cs.id, cs.libelle, cs.wekan_domain_regexp, cs.date_end, cs.date_create, cs.slugs, cs.zones, cs.id_boards
-order by cs.id
+order by cs.id desc

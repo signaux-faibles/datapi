@@ -47,3 +47,16 @@ func (e TakeNotFoundError) Error() string {
 func (e TakeNotFoundError) Unwrap() error {
 	return e.err
 }
+
+type InvalidCampaignDomainError struct {
+	domain string
+	err    error
+}
+
+func (e InvalidCampaignDomainError) Error() string {
+	return "domaine wekan de la campagne invalide: " + e.domain
+}
+
+func (e InvalidCampaignDomainError) Unwrap() error {
+	return e.err
+}

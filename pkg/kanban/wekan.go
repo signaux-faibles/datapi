@@ -139,8 +139,8 @@ func fromWekanBoardMembers(
 	r := make(core.KanbanBoardMembers)
 	for _, member := range wekanBoardMembers {
 		r[member.UserID] = core.KanbanBoardMember{
-			Username: wekanConfigUsers[member.UserID].Username,
-			Active:   member.IsActive,
+			UserID: member.UserID,
+			Active: member.IsActive,
 		}
 	}
 	return r
