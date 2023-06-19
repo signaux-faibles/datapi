@@ -4,9 +4,7 @@ import (
 	"context"
 	"datapi/pkg/campaign"
 	"datapi/pkg/core"
-	"datapi/pkg/db"
 	"datapi/pkg/kanban"
-	"datapi/pkg/logPersistence"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
@@ -22,10 +20,10 @@ func main() {
 		gin.SetMode(gin.ReleaseMode)
 	}
 	ctx := context.Background()
-	kanban := initWekanService(ctx)
+	kanbanService := initWekanService(ctx)
 	saver := buildLogSaver()
 
-	datapi, err := core.StartDatapi(kanban, saver.SaveLogToDB)
+	datapi, err := core.StartDatapi(kanbanService, saver.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
 	}
