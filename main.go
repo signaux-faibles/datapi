@@ -44,7 +44,7 @@ func initAndStartAPI(datapi *core.Datapi) {
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
-	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint, core.AuthMiddleware())
+	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint, core.AuthMiddleware(), datapi.LogMiddleware)
 	core.StartAPI(router)
 }
 
@@ -52,6 +52,9 @@ func buildLogSaver() *stats.PostgresLogSaver {
 	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("logs.db_url"))
 	if err != nil {
 		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
+	}
+	if err := saver.Initialize(); err != nil {
+		log.Fatal("erreur pendant l'initialisation du AccessLogSaver : ", err)
 	}
 	return saver
 }
