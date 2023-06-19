@@ -58,10 +58,6 @@ func TestMain(m *testing.M) {
 	if err = logSaver.Initialize(); err != nil {
 		log.Fatalf("Erreur pendant l'initialisation du AccessLogSaver : %s", err)
 	}
-	_, err = stats.SyncPostgresLogSaver(logSaver, db.Get())
-	if err != nil {
-		log.Printf("Erreur pendant la synchronisation des logs : %s", err)
-	}
 	datapi, err := core.StartDatapi(kanbanService, logSaver.SaveLogToDB)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)

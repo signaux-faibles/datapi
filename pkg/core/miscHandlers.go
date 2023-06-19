@@ -2,11 +2,13 @@ package core
 
 import (
 	"context"
-	"datapi/pkg/db"
-	"datapi/pkg/utils"
-	"github.com/gin-gonic/gin"
 	"net/http"
 	"regexp"
+
+	"github.com/gin-gonic/gin"
+
+	"datapi/pkg/db"
+	"datapi/pkg/utils"
 )
 
 func getCodesNaf(c *gin.Context) {
@@ -63,6 +65,7 @@ type session struct {
 	roles    Scope
 }
 
+// TODO transformer cette méthode en constructeur
 func (s *session) Bind(c *gin.Context) {
 	s.Username = c.GetString("username")
 	s.auteur = c.GetString("given_name") + " " + c.GetString("family_name")
