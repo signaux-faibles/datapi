@@ -22,14 +22,9 @@ func main() {
 	}
 	ctx := context.Background()
 	kanban := initWekanService(ctx)
-	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("logs.db_url"))
-	if err != nil {
-		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
-	}
-	//_, err = stats.SyncPostgresLogSaver(saver, db.Get())
-	//if err != nil {
-	//	log.Printf("ERREUR : erreur pendant la synchronisation des logs : %s", err)
-	//}
+	saver := buildLogSaver()
+	// healthcheck := buildHealthcheck()
+
 	datapi, err := core.StartDatapi(kanban, saver.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
@@ -55,4 +50,12 @@ func initAndStartAPI(datapi *core.Datapi) {
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.StartAPI(router)
+}
+
+func buildLogSaver() *stats.PostgresLogSaver {
+	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("logs.db_url"))
+	if err != nil {
+		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
+	}
+	return saver
 }
