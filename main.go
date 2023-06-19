@@ -23,14 +23,10 @@ func main() {
 	ctx := context.Background()
 	kanban := initWekanService(ctx)
 	saver := buildLogSaver()
-	// healthcheck := buildHealthcheck()
 
 	datapi, err := core.StartDatapi(kanban, saver.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
-	}
-	if err != nil {
-		log.Fatal("erreur pendant l'instanciation du LogSyncer : ", err)
 	}
 	initAndStartAPI(datapi)
 }
