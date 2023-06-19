@@ -167,7 +167,7 @@ func selectKanbanDBExportsWithSirets(ctx context.Context,
 	roles []string,
 	zone []string,
 	raisonSociale *string) (core.KanbanDBExports, error) {
-	rows, err := db.Query(ctx, sqlDbExport, roles, username, sirets, zone, raisonSocialeLike(raisonSociale))
+	rows, err := db.Query(ctx, sqlGetDbExport, roles, username, sirets, zone, raisonSocialeLike(raisonSociale))
 	defer rows.Close()
 	if err != nil {
 		return core.KanbanDBExports{}, err
@@ -201,7 +201,7 @@ func selectKanbanDBExportsWithoutCard(
 	zone []string,
 	raisonSociale *string,
 ) (core.KanbanDBExports, error) {
-	rows, err := db.Query(ctx, sqlDbExportWithoutCards, roles, user.Username, sirets, zone, raisonSocialeLike(raisonSociale))
+	rows, err := db.Query(ctx, sqlGetDbExportWithoutCards, roles, user.Username, sirets, zone, raisonSocialeLike(raisonSociale))
 	defer rows.Close()
 	if err != nil {
 		return core.KanbanDBExports{}, err

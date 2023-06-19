@@ -100,7 +100,7 @@ type KanbanCard struct {
 	LastActivity      time.Time               `json:"lastActivity,omitempty"`
 	StartAt           time.Time               `json:"startAt,omitempty"`
 	EndAt             *time.Time              `json:"endAt,omitempty"`
-	LabelIDs          []libwekan.BoardLabelID `json:"labelIds,omitempty"`
+	LabelIDs          []libwekan.BoardLabelID `json:"labelIDs,omitempty"`
 	UserIsBoardMember bool                    `json:"userIsBoardMember"`
 }
 
