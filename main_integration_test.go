@@ -16,10 +16,15 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/stats"
+	"datapi/pkg/test"
+	"datapi/pkg/wekan"
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
-var inMemoryLogSaver *test.MemoryLogSaver
 
 // TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
@@ -34,16 +39,14 @@ func TestMain(m *testing.M) {
 	var wekanDBURL = test.GetWekanDBURL()
 	testConfig["wekanMgoURL"] = wekanDBURL
 
-	apiPort := test.GenerateRandomPort()
+	apiPort := test.GenerateRandomAPIPort()
 	testConfig["bind"] = ":" + apiPort
 	test.SetHostAndPort("http://localhost:" + apiPort)
 
 	err = test.Viperize(testConfig)
 	if err != nil {
-		log.Printf("Erreur pendant la Viperation de la config : %s", err)
+		log.Printf("Erreur pendant la Viperisation de la config : %s", err)
 	}
-
-	test.Wait4PostgresIsReady(test.GetDatapiDBURL())
 
 	// test db init, entraine un panic si la migration ou la connexion à la DB est défectueuse
 	db.Init()
@@ -55,8 +58,14 @@ func TestMain(m *testing.M) {
 
 	// run datapi
 	kanbanService := kanban.InitService(ctx, wekanDBURL, "test", "mgo", "*")
-	inMemoryLogSaver = test.NewInMemoryLogSaver()
-	datapi, err := core.StartDatapi(kanbanService, inMemoryLogSaver.SaveLog)
+	logSaver, err := stats.NewPostgresLogSaverFromURL(ctx, test.GetDatapiLogDBURL())
+	if err != nil {
+		log.Fatalf("Erreur pendant la construction du AccessLogSaver : %s", err)
+	}
+	if err = logSaver.Initialize(); err != nil {
+		log.Fatalf("Erreur pendant l'initialisation du AccessLogSaver : %s", err)
+	}
+	datapi, err := core.StartDatapi(kanbanService, logSaver.SaveLogToDB)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
@@ -79,8 +88,6 @@ func TestListes(t *testing.T) {
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
 
 	_, body, _ := test.HTTPGetAndFormatBody(t, "/listes")
-	// si on veut tester que le log handler a bien fonctionné
-	assertLogContains(t, "/listes", "GET")
 	_, _ = test.ProcessGoldenFile(t, "test/data/listes.json.gz", body)
 }
 
@@ -100,7 +107,6 @@ func TestFollow(t *testing.T) {
 		if resp.StatusCode != 201 {
 			t.Errorf("le suivi a échoué: %d", resp.StatusCode)
 		}
-		assertLogContains(t, "/follow/"+siret, "POST")
 	}
 
 	for _, siret := range sirets {
@@ -538,10 +544,8 @@ func TestPermissions(t *testing.T) {
 			t.Error("le résultat est incorrect")
 			fmt.Println("attendu", tt.result)
 			fmt.Println("obtenu", r)
-
 		}
 	}
-
 }
 
 func followEtablissementsThenCleanup(t *testing.T, sirets []string) {
@@ -629,13 +633,5 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 			continue
 		}
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
-	}
-}
-
-func assertLogContains(t *testing.T, somethings ...string) {
-	last := inMemoryLogSaver.Last()
-	ass := assert.New(t)
-	for _, current := range somethings {
-		ass.Contains(last, current)
 	}
 }

@@ -1,6 +1,6 @@
 //go:build integration
 
-package logPersistence
+package stats
 
 import (
 	"context"
@@ -14,7 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"datapi/pkg/core"
-	"datapi/pkg/db"
 	"datapi/pkg/test"
 )
 
@@ -38,9 +37,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Printf("Erreur pendant la Viperation de la config : %s", err)
 	}
-
-	test.Wait4PostgresIsReady(test.GetDatapiDBURL())
-	test.Wait4PostgresIsReady(test.GetDatapiLogDBURL())
 
 	background := context.Background()
 	pool, err := pgxpool.New(background, test.GetDatapiLogDBURL())
@@ -67,6 +63,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestLog_Initialize_idempotent(t *testing.T) {
+	t.Cleanup(func() { eraseAccessLogs(sut.ctx, t, sut.db) })
 	ass := assert.New(t)
 
 	// on insère une ligne de logs
@@ -84,52 +81,12 @@ func TestLog_Initialize_idempotent(t *testing.T) {
 }
 
 func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
-	t.Cleanup(func() {
-		err := eraseAccessLogs(sut.ctx, sut.db)
-		if err != nil {
-			t.Error("erreur pendant le nettoyage :", err)
-		}
-	})
+	t.Cleanup(func() { eraseAccessLogs(sut.ctx, t, sut.db) })
 	ass := assert.New(t)
 	expected := randomAccessLog()
 	err := sut.SaveLogToDB(expected)
 	ass.NoError(err)
 	actual, err := getLastAccessLog(sut.ctx, sut.db)
-	ass.NoError(err)
-	ass.Equal(expected, actual)
-}
-
-func TestPostgresLogSaver_syncAccessLogs(t *testing.T) {
-	t.Cleanup(func() {
-		err := eraseAccessLogs(sut.ctx, sut.db)
-		if err != nil {
-			t.Error("erreur pendant le nettoyage :", err)
-		}
-	})
-	ass := assert.New(t)
-	var expected, inserted, actual int
-	var err error
-
-	source := db.Get()
-	target := sut.db
-
-	// récupère le nombre de lignes de logs dans la base source
-	expected, err = countAccessLogs(sut.ctx, source)
-	ass.NoError(err)
-
-	// synchronise une première fois
-	inserted, err = syncAccessLogs(sut.ctx, source, target)
-	ass.NoError(err)
-	ass.Equal(expected, inserted)
-
-	// récupère le nombre
-	actual, err = countAccessLogs(sut.ctx, target)
-	ass.NoError(err)
-	ass.Equal(expected, actual)
-
-	_, err = syncAccessLogs(sut.ctx, source, target)
-	ass.ErrorContains(err, "ERROR: duplicate key value violates unique constraint \"logs_pkey\" (SQLSTATE 23505)")
-	actual, err = countAccessLogs(sut.ctx, target)
 	ass.NoError(err)
 	ass.Equal(expected, actual)
 }
@@ -142,4 +99,11 @@ func randomAccessLog() core.AccessLog {
 		Token:  fake.Internet().User(),
 	}
 	return random
+}
+
+func eraseAccessLogs(ctx context.Context, t *testing.T, db *pgxpool.Pool) {
+	_, err := db.Exec(ctx, "DELETE FROM logs")
+	if err != nil {
+		t.Errorf("erreur pendant la suppression des access logs : %v", err)
+	}
 }

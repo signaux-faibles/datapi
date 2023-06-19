@@ -10,6 +10,7 @@ import (
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
+	"datapi/pkg/stats"
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 	"log"
@@ -22,7 +23,8 @@ func main() {
 	}
 	ctx := context.Background()
 	kanban := initWekanService(ctx)
-	saver := logPersistence.NewPostgresLogSaver(ctx, db.Get())
+	saver := buildLogSaver()
+
 	datapi, err := core.StartDatapi(kanban, saver.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
@@ -46,4 +48,12 @@ func initAndStartAPI(datapi *core.Datapi) {
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint, core.AuthMiddleware())
 	core.StartAPI(router)
+}
+
+func buildLogSaver() *stats.PostgresLogSaver {
+	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("logs.db_url"))
+	if err != nil {
+		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
+	}
+	return saver
 }
