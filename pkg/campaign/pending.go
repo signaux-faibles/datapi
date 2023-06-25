@@ -1,15 +1,14 @@
 package campaign
 
 import (
-	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/db"
-	"datapi/pkg/kanban"
-	"fmt"
-	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/libwekan"
-	"net/http"
-	"strconv"
+  "context"
+  "datapi/pkg/core"
+  "datapi/pkg/db"
+  "datapi/pkg/kanban"
+  "github.com/gin-gonic/gin"
+  "github.com/signaux-faibles/libwekan"
+  "net/http"
+  "strconv"
 )
 
 type CampaignEtablissementID int
@@ -22,6 +21,7 @@ type CampaignEtablissement struct {
 	Followed            bool                    `json:"followed"`
 	FirstAlert          bool                    `json:"firstAlert"`
 	EtatAdministratif   string                  `json:"etatAdministratif"`
+	CodeDepartement     string                  `json:"codeDepartement"`
 	Action              *string                 `json:"action,omitempty"`
 	Rank                int                     `json:"rank"`
 	RaisonSociale       string                  `json:"raisonSociale"`
@@ -53,7 +53,6 @@ func pendingHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, "erreur inattendue: "+err.Error())
 		return
 	}
-	fmt.Println(pending)
 	if len(pending.Etablissements) == 0 {
 		c.JSON(http.StatusNoContent, pending)
 		return

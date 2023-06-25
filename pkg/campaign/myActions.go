@@ -33,6 +33,7 @@ func (p *MyActions) Tuple() []interface{} {
 		&ce.EtatAdministratif,
 		&ce.Action,
 		&ce.Rank,
+		&ce.CodeDepartement,
 	}
 }
 
