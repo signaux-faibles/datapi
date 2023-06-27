@@ -23,7 +23,7 @@ select cs.id, cs.libelle, cs.wekan_domain_regexp, cs.date_end, cs.date_create,
        coalesce(sum(case when s.code_departement = any(cs.zones) then 1 else 0 end), 0) as nb_perimetre,
        coalesce(sum(case when s.code_departement = any(cs.zones) and a.action in ('pending', 'cancel') then 1 else 0 end), 0) as nb_pending,
        coalesce(sum(case when s.code_departement = any(cs.zones) and a.action = 'take' then 1 else 0 end), 0) as nb_take,
-       coalesce(sum(case when s.code_departement = any(cs.zones) and a.action = 'done' then 1 else 0 end), 0) as nb_done,
+       coalesce(sum(case when s.code_departement = any(cs.zones) and a.action = 'success' then 1 else 0 end), 0) as nb_done,
        cs.zones, cs.id_boards
 from campaigns cs
        left join campaign_etablissement ce on ce.id_campaign = cs.id
