@@ -12,5 +12,5 @@ func ConfigureEndpoint(campaignRoute *gin.RouterGroup) {
 	campaignRoute.GET("/take/:campaignID/:campaignEtablissementID", takeHandler)
 	campaignRoute.POST("/success/:campaignID/:campaignEtablissementID", actionHandlerFunc("success"))
 	campaignRoute.POST("/cancel/:campaignID/:campaignEtablissementID", actionHandlerFunc("cancel"))
-	campaignRoute.GET("/stream/:campaignID", HeadersMiddleware(), stream.serveHTTP(), streamHandler)
+	campaignRoute.GET("/stream", HeadersMiddleware(), stream.serveHTTP(), streamHandler)
 }

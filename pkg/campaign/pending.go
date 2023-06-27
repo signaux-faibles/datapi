@@ -1,14 +1,14 @@
 package campaign
 
 import (
-  "context"
-  "datapi/pkg/core"
-  "datapi/pkg/db"
-  "datapi/pkg/kanban"
-  "github.com/gin-gonic/gin"
-  "github.com/signaux-faibles/libwekan"
-  "net/http"
-  "strconv"
+	"context"
+	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/kanban"
+	"github.com/gin-gonic/gin"
+	"github.com/signaux-faibles/libwekan"
+	"net/http"
+	"strconv"
 )
 
 type CampaignEtablissementID int
@@ -53,10 +53,6 @@ func pendingHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, "erreur inattendue: "+err.Error())
 		return
 	}
-	if len(pending.Etablissements) == 0 {
-		c.JSON(http.StatusNoContent, pending)
-		return
-	}
 	c.JSON(http.StatusOK, pending)
 }
 
@@ -80,6 +76,7 @@ func (p *Pending) Tuple() []interface{} {
 }
 
 func selectPending(ctx context.Context, campaignID CampaignID, zone BoardZones, page core.Page, username libwekan.Username) (pending Pending, err error) {
+	pending.Etablissements = make([]*CampaignEtablissement, 0)
 	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, campaignID, zone, username)
 	return pending, err
 }
