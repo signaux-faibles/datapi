@@ -17,11 +17,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"datapi/pkg/core"
-	"datapi/pkg/db"
 	"datapi/pkg/stats"
-	"datapi/pkg/test"
-	"datapi/pkg/wekan"
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
