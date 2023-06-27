@@ -4,6 +4,7 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"time"
@@ -46,6 +47,7 @@ func (cs *Campaigns) Tuple() []interface{} {
 }
 
 func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boardIDs map[string]string) (campaigns Campaigns, err error) {
+	campaigns = make(Campaigns, 0)
 	err = db.Scan(ctx, &campaigns, sqlSelectMatchingCampaigns, zones, boardIDs)
 	return campaigns, err
 }
@@ -69,5 +71,6 @@ func listCampaignsHandler(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
+	spew.Dump(campaigns)
 	c.JSON(200, campaigns)
 }
