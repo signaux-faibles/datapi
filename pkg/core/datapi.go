@@ -71,7 +71,7 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 func (datapi *Datapi) InitAPI(router *gin.Engine) {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
-	config.AddExposeHeaders("Content-Disposition", "responseType", "Content-Type", "Cache-Control", "Connection", "Transfer-Encoding")
+	config.AddExposeHeaders("Content-Disposition", "responseType", "Content-Type", "Cache-Control", "Connection", "Transfer-Encoding", "X-Accel-Buffering")
 
 	config.AddAllowHeaders("Authorization", "responseType")
 	config.AddAllowMethods("GET", "POST", "DELETE")
