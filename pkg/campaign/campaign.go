@@ -4,7 +4,6 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/db"
-	"github.com/davecgh/go-spew/spew"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"time"
@@ -71,6 +70,5 @@ func listCampaignsHandler(c *gin.Context) {
 		c.JSON(500, err.Error())
 		return
 	}
-	spew.Dump(campaigns)
 	c.JSON(200, campaigns)
 }
