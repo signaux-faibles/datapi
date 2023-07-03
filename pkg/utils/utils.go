@@ -2,9 +2,10 @@
 package utils
 
 import (
+	"net/http"
+
 	"github.com/gin-gonic/gin"
 	"github.com/google/go-cmp/cmp"
-	"net/http"
 )
 
 // AbortWithError gère le statut http en fonction de l'erreur
@@ -15,6 +16,13 @@ func AbortWithError(c *gin.Context, err error) {
 		code = err.Code()
 	}
 	c.AbortWithStatusJSON(code, message)
+}
+
+// Apply applique la fonction `consume` à tous les éléments d'un slice et ne retourne rien
+func Apply[I interface{}](values []I, consume func(I)) {
+	for _, current := range values {
+		consume(current)
+	}
 }
 
 // Convert applique la fonction `transformer` à tous les éléments d'un slice et retourne le tableau convertit
