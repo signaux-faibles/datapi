@@ -14,7 +14,9 @@ with zones as (
    inner join id_boards i on i.slug = z.slug
    group by c.id, c.libelle, c.wekan_domain_regexp, date_end, date_create
 ), actions as (
-  select ce.id as id_campaign_etablissement, coalesce(last(action order by cea.id), 'pending') as action
+  select ce.id as id_campaign_etablissement,
+         coalesce(last(action order by cea.id), 'pending') as action,
+         last(username order by cea.id) as username
   from campaign_etablissement ce
          left join campaign_etablissement_action cea on cea.id_campaign_etablissement = ce.id
   group by ce.id
@@ -23,6 +25,7 @@ select cs.id, cs.libelle, cs.wekan_domain_regexp, cs.date_end, cs.date_create,
        coalesce(sum(case when s.code_departement = any(cs.zones) then 1 else 0 end), 0) as nb_perimetre,
        coalesce(sum(case when s.code_departement = any(cs.zones) and a.action in ('pending', 'cancel') then 1 else 0 end), 0) as nb_pending,
        coalesce(sum(case when s.code_departement = any(cs.zones) and a.action = 'take' then 1 else 0 end), 0) as nb_take,
+       coalesce(sum(case when s.code_departement = any(cs.zones) and a.action = 'take' and a.username=$3 then 1 else 0 end), 0) as nb_my_actions,
        coalesce(sum(case when s.code_departement = any(cs.zones) and a.action = 'success' then 1 else 0 end), 0) as nb_done,
        cs.zones, cs.id_boards
 from campaigns cs

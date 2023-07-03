@@ -37,12 +37,12 @@ func (p *AllActions) Tuple() []interface{} {
 	}
 }
 
-func allActionsHandler(c *gin.Context) {
+func takenActionsHandler(c *gin.Context) {
 	var s core.Session
 	s.Bind(c)
 	campaignID, err := strconv.Atoi(c.Param("campaignID"))
 	if err != nil {
-		c.JSON(400, `/campaign/allactions/:campaignID: le parametre campaignID doit être un entier`)
+		c.JSON(400, `/campaign/actions/taken/:campaignID: le parametre campaignID doit être un entier`)
 		return
 	}
 	zone := zoneForUser(libwekan.Username(s.Username))

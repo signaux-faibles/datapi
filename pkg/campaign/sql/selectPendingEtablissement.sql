@@ -23,7 +23,8 @@ select count(*) over () as nb_total,
    s.first_alert,
    s.etat_administratif,
    a.action,
-   rank() over (order by ce.id) as rank
+   rank() over (order by ce.id) as rank,
+   s.code_departement
 from campaign_etablissement ce
   inner join zone z on true
   inner join v_summaries s on s.siret = ce.siret and s.code_departement = any(z.zone)

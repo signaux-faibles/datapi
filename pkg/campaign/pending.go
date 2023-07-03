@@ -72,6 +72,7 @@ func (p *Pending) Tuple() []interface{} {
 		&ce.EtatAdministratif,
 		&ce.Action,
 		&ce.Rank,
+		&ce.CodeDepartement,
 	}
 }
 

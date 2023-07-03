@@ -20,6 +20,7 @@ type Campaign struct {
 	NBPerimetre       int        `json:"nbPerimetre"`
 	NBPending         int        `json:"nbPending"`
 	NBTake            int        `json:"nbTake"`
+	NBMyActions       int        `json:"nbMyActions"`
 	NBDone            int        `json:"nbDone"`
 	BoardIDs          []string   `json:"boardIDs"`
 	Zone              []string   `json:"zone"`
@@ -39,15 +40,17 @@ func (cs *Campaigns) Tuple() []interface{} {
 		&c.NBPerimetre,
 		&c.NBPending,
 		&c.NBTake,
+		&c.NBMyActions,
 		&c.NBDone,
 		&c.Zone,
 		&c.BoardIDs,
 	}
 }
 
-func selectMatchingCampaigns(ctx context.Context, zones map[string][]string, boardIDs map[string]string) (campaigns Campaigns, err error) {
+func selectMatchingCampaigns(ctx context.Context, zones map[string][]string,
+	boardIDs map[string]string, username string) (campaigns Campaigns, err error) {
 	campaigns = make(Campaigns, 0)
-	err = db.Scan(ctx, &campaigns, sqlSelectMatchingCampaigns, zones, boardIDs)
+	err = db.Scan(ctx, &campaigns, sqlSelectMatchingCampaigns, zones, boardIDs, username)
 	return campaigns, err
 }
 
@@ -65,7 +68,7 @@ func listCampaignsHandler(c *gin.Context) {
 	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(s.Username))
 	zone := zonesFromBoards(boards)
 	boardIDs := idsFromBoards(boards)
-	campaigns, err := selectMatchingCampaigns(c, zone, boardIDs)
+	campaigns, err := selectMatchingCampaigns(c, zone, boardIDs, s.Username)
 	if err != nil {
 		c.JSON(500, err.Error())
 		return

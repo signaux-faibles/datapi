@@ -75,8 +75,8 @@ type Event struct {
 type ClientChan chan Message
 
 // Initialize event and Start procnteessing requests
-func NewServer() (event *Event) {
-	event = &Event{
+func NewServer() *Event {
+	event := &Event{
 		Message:       make(chan Message),
 		NewClients:    make(chan chan Message),
 		ClosedClients: make(chan chan Message),
@@ -85,7 +85,7 @@ func NewServer() (event *Event) {
 
 	go event.listen()
 
-	return
+	return event
 }
 
 // It Listens all incoming requests from clients.

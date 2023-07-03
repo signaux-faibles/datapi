@@ -6,9 +6,9 @@ import (
 
 func ConfigureEndpoint(campaignRoute *gin.RouterGroup) {
 	campaignRoute.GET("/list", listCampaignsHandler) // 1
-	campaignRoute.GET("/pending/:campaignID", pendingHandler)
-	campaignRoute.GET("/myactions/:campaignID", myActionsHandler)
-	campaignRoute.GET("/allactions/:campaignID", allActionsHandler)
+	campaignRoute.GET("/actions/pending/:campaignID", pendingHandler)
+	campaignRoute.GET("/actions/mine/:campaignID", myActionsHandler)
+	campaignRoute.GET("/actions/taken/:campaignID", takenActionsHandler)
 	campaignRoute.GET("/take/:campaignID/:campaignEtablissementID", takeHandler)
 	campaignRoute.POST("/success/:campaignID/:campaignEtablissementID", actionHandlerFunc("success"))
 	campaignRoute.POST("/cancel/:campaignID/:campaignEtablissementID", actionHandlerFunc("cancel"))
