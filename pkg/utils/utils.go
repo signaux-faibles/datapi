@@ -19,10 +19,14 @@ func AbortWithError(c *gin.Context, err error) {
 }
 
 // Apply applique la fonction `consume` à tous les éléments d'un slice et ne retourne rien
-func Apply[I interface{}](values []I, consume func(I)) {
+func Apply[I interface{}](values []I, consume func(I) error) error {
 	for _, current := range values {
-		consume(current)
+		err := consume(current)
+		if err != nil {
+			return err
+		}
 	}
+	return nil
 }
 
 // Convert applique la fonction `transformer` à tous les éléments d'un slice et retourne le tableau convertit

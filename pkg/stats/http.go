@@ -38,7 +38,7 @@ func (sh *StatsHandler) sinceMonthsHandler(c *gin.Context) {
 	}
 	index, err := strconv.Atoi(param)
 	if err != nil {
-		utils.AbortWithError(c, errors.Wrap(err, "le parametre 'n' n'est pas un entier"))
+		utils.AbortWithError(c, errors.Wrap(err, "le paramètre 'n' n'est pas un entier"))
 		return
 	}
 	since = time.Now().Add(time.Duration(index*-24) * time.Hour)
@@ -47,17 +47,27 @@ func (sh *StatsHandler) sinceMonthsHandler(c *gin.Context) {
 		utils.AbortWithError(c, errors.Wrap(err, "erreur lors de la recherche des logs en base"))
 		return
 	}
+	data, err := transformLogsToData(logs)
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
+	c.Data(http.StatusOK, "text/csv", data)
+}
+
+func transformLogsToData(logs []line) ([]byte, error) {
 	data := make([]byte, 0)
 	w := bytes.NewBuffer(data)
 	csvW := csv.NewWriter(w)
-	utils.Apply(logs, func(l line) {
+	err := utils.Apply(logs, func(l line) error {
 		wErr := csvW.Write(l.getFieldsAsStringArray())
 		if wErr != nil {
-			utils.AbortWithError(c, errors.Wrap(wErr, "erreur lors de la transformation de la ligne de log "+l.String()))
-			return
+			err := errors.Wrap(wErr, "erreur lors de la transformation de la ligne de log "+l.String())
+			return err
 		}
+		return nil
 	})
-	c.Data(http.StatusOK, "text/csv", data)
+	return data, err
 }
 
 func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time) ([]line, error) {
