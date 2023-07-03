@@ -187,7 +187,7 @@ func followToSummary(f Follow) *Summary {
 }
 
 func getXLSXFollowedByCurrentUser(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	var params KanbanSelectCardsForUserParams
 	err := c.Bind(&params)
@@ -196,18 +196,18 @@ func getXLSXFollowedByCurrentUser(c *gin.Context) {
 	}
 	if s.hasRole("wekan") {
 		var ok bool
-		params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+		params.User, ok = Kanban.GetUser(libwekan.Username(s.Username))
 		if !ok {
 			c.JSON(500, "utilisateur non reconnu")
 			return
 		}
-		params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+		params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 	} else {
 		params.User = libwekan.User{
 			Username: libwekan.Username(s.Username),
 		}
 	}
-	exports, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
+	exports, err := Kanban.ExportFollowsForUser(c, params, db.Get(), s.Roles)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
@@ -254,7 +254,7 @@ func (docxs Docxs) zip() []byte {
 }
 
 func getDOCXFollowedByCurrentUser(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	var params KanbanSelectCardsForUserParams
 	err := c.Bind(&params)
@@ -264,26 +264,26 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 
 	if s.hasRole("wekan") {
 		var ok bool
-		params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+		params.User, ok = Kanban.GetUser(libwekan.Username(s.Username))
 		if !ok {
 			c.JSON(500, "utilisateur non reconnu")
 			return
 		}
-		params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+		params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 	} else {
 		params.User = libwekan.User{
 			Username: libwekan.Username(s.Username),
 		}
 	}
 
-	exports, err := kanban.ExportFollowsForUser(c, params, db.Get(), s.roles)
+	exports, err := Kanban.ExportFollowsForUser(c, params, db.Get(), s.Roles)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
 
 	header := ExportHeader{
-		Auteur: s.auteur,
+		Auteur: s.Auteur,
 		Date:   time.Now(),
 	}
 
@@ -302,18 +302,18 @@ func getDOCXFollowedByCurrentUser(c *gin.Context) {
 }
 
 func getDOCXFromSiret(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 
 	siret := c.Param("siret")
-	kanbanExports, err := kanban.SelectKanbanExportsWithSiret(c, siret, s.Username, db.Get(), s.roles)
+	kanbanExports, err := Kanban.SelectKanbanExportsWithSiret(c, siret, s.Username, db.Get(), s.Roles)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
 
 	header := ExportHeader{
-		Auteur: s.auteur,
+		Auteur: s.Auteur,
 		Date:   time.Now(),
 	}
 

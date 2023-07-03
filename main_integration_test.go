@@ -4,6 +4,10 @@ package main
 
 import (
 	"context"
+	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/kanban"
+	"datapi/pkg/test"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -13,11 +17,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"datapi/pkg/core"
-	"datapi/pkg/db"
 	"datapi/pkg/stats"
-	"datapi/pkg/test"
-	"datapi/pkg/wekan"
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
@@ -44,13 +44,16 @@ func TestMain(m *testing.M) {
 		log.Printf("Erreur pendant la Viperisation de la config : %s", err)
 	}
 
+	// test db init, entraine un panic si la migration ou la connexion à la DB est défectueuse
+	db.Init()
+
 	err = test.KeycloakAuthenticate()
 	if err != nil {
 		log.Printf("Erreur pendant l'authentification : %s", err)
 	}
 
 	// run datapi
-	kanbanService := wekan.InitService(ctx, wekanDBURL, "test", "mgo", "*")
+	kanbanService := kanban.InitService(ctx, wekanDBURL, "test", "mgo", "*")
 	logSaver, err := stats.NewPostgresLogSaverFromURL(ctx, test.GetDatapiLogDBURL())
 	if err != nil {
 		log.Fatalf("Erreur pendant la construction du AccessLogSaver : %s", err)

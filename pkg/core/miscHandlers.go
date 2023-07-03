@@ -58,20 +58,20 @@ func checkSiretFormat(c *gin.Context) {
 	c.Next()
 }
 
-// session correspond aux informations du user de la session
-type session struct {
+// Session correspond aux informations du user de la Session
+type Session struct {
 	Username string
-	auteur   string
-	roles    Scope
+	Auteur   string
+	Roles    Scope
 }
 
 // TODO transformer cette méthode en constructeur
-func (s *session) Bind(c *gin.Context) {
+func (s *Session) Bind(c *gin.Context) {
 	s.Username = c.GetString("username")
-	s.auteur = c.GetString("given_name") + " " + c.GetString("family_name")
-	s.roles = scopeFromContext(c)
+	s.Auteur = c.GetString("given_name") + " " + c.GetString("family_name")
+	s.Roles = scopeFromContext(c)
 }
 
-func (s session) hasRole(role string) bool {
-	return utils.Contains(s.roles, role)
+func (s Session) hasRole(role string) bool {
+	return utils.Contains(s.Roles, role)
 }

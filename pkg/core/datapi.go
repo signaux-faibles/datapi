@@ -23,7 +23,7 @@ var Departements map[CodeDepartement]string
 // Endpoint handler pour définir un endpoint sur gin
 type Endpoint func(endpoint *gin.RouterGroup)
 
-var kanban KanbanService
+var Kanban KanbanService
 
 type Datapi struct {
 	saveAccessLog AccessLogSaver
@@ -46,7 +46,7 @@ func StartDatapi(kanbanService KanbanService, saver AccessLogSaver) (*Datapi, er
 	if kanbanService == nil {
 		return nil, fmt.Errorf("le service Kanban n'est pas paramétré")
 	}
-	kanban = kanbanService
+	Kanban = kanbanService
 	keycloak = connectKC()
 
 	datapi := Datapi{
@@ -71,9 +71,9 @@ func LoadConfig(confDirectory, confFile, migrationDir string) {
 func (datapi *Datapi) InitAPI(router *gin.Engine) {
 	config := cors.DefaultConfig()
 	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
-	config.AddExposeHeaders("Content-Disposition")
+	config.AddExposeHeaders("Content-Disposition", "responseType", "Content-Type", "Cache-Control", "Connection", "Transfer-Encoding", "X-Accel-Buffering")
 
-	config.AddAllowHeaders("Authorization")
+	config.AddAllowHeaders("Authorization", "responseType")
 	config.AddAllowMethods("GET", "POST", "DELETE")
 	router.Use(cors.New(config))
 	err := router.SetTrustedProxies(nil)

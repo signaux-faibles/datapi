@@ -24,13 +24,16 @@ type KanbanService interface {
 	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error
 	PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
+	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
+	UpdateCard(ctx context.Context, cardID libwekan.CardID, description string) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
 
 type KanbanUser struct {
 	Username libwekan.Username `json:"username"`
+	Fullname string            `json:"fullname"`
 	Active   bool              `json:"active"`
 }
 
@@ -48,8 +51,8 @@ type KanbanSwimlane struct {
 
 type KanbanBoardMembers map[libwekan.UserID]KanbanBoardMember
 type KanbanBoardMember struct {
-	Username libwekan.Username `json:"username"`
-	Active   bool              `json:"active"`
+	UserID libwekan.UserID `json:"userID"`
+	Active bool            `json:"active"`
 }
 
 type KanbanBoardLabels map[libwekan.BoardLabelID]KanbanBoardLabel
@@ -97,7 +100,7 @@ type KanbanCard struct {
 	LastActivity      time.Time               `json:"lastActivity,omitempty"`
 	StartAt           time.Time               `json:"startAt,omitempty"`
 	EndAt             *time.Time              `json:"endAt,omitempty"`
-	LabelIDs          []libwekan.BoardLabelID `json:"labelIds,omitempty"`
+	LabelIDs          []libwekan.BoardLabelID `json:"labelIDs,omitempty"`
 	UserIsBoardMember bool                    `json:"userIsBoardMember"`
 }
 
@@ -270,12 +273,12 @@ type KanbanCardAndComments struct {
 }
 
 func kanbanUnarchiveCardHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 
 	cardID := libwekan.CardID(c.Param("cardID"))
 
-	err := kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
+	err := Kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
 	if errors.Is(err, UnknownCardError{}) {
 		c.JSON(http.StatusNotFound, err.Error())
 	}

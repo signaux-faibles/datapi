@@ -11,18 +11,18 @@ import (
 )
 
 func kanbanConfigHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
-	kanbanConfig := kanban.LoadConfigForUser(libwekan.Username(s.Username))
+	kanbanConfig := Kanban.LoadConfigForUser(libwekan.Username(s.Username))
 	c.JSON(http.StatusOK, kanbanConfig)
 }
 
 func kanbanGetCardsHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	siret := c.Param("siret")
 
-	cards, err := kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
+	cards, err := Kanban.SelectCardsFromSiret(c, siret, libwekan.Username(s.Username))
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -35,10 +35,10 @@ func kanbanGetCardsHandler(c *gin.Context) {
 }
 
 func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 
-	if !utils.Contains(s.roles, "wekan") {
+	if !utils.Contains(s.Roles, "wekan") {
 		getEtablissementsFollowedByCurrentUser(c)
 		return
 	}
@@ -57,15 +57,15 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	}
 
 	var ok bool
-	params.User, ok = kanban.GetUser(libwekan.Username(s.Username))
+	params.User, ok = Kanban.GetUser(libwekan.Username(s.Username))
 	if !ok {
 		c.JSON(http.StatusForbidden, "le nom d'utilisateur n'est pas reconnu")
 		return
 	}
 
-	params.BoardIDs = kanban.ClearBoardIDs(params.BoardIDs, params.User)
+	params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
-	cards, err := kanban.SelectFollowsForUser(c, params, db.Get(), s.roles)
+	cards, err := Kanban.SelectFollowsForUser(c, params, db.Get(), s.Roles)
 
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
@@ -79,14 +79,14 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 }
 
 func kanbanNewCardHandler(c *gin.Context) {
-	var s session
+	var s Session
 	s.Bind(c)
 	var params KanbanNewCardParams
 	err := c.Bind(&params)
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
-	err = kanban.CreateCard(c, params, libwekan.Username(s.Username), db.Get())
+	err = Kanban.CreateCard(c, params, libwekan.Username(s.Username), db.Get())
 	if errors.As(err, &ForbiddenError{}) {
 		c.JSON(http.StatusForbidden, err.Error())
 	}
