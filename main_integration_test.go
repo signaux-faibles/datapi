@@ -26,7 +26,7 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 // TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
 // - le fichier de configuration de test -> test/config.toml
-// - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
+// - le fichier de création et d'import de données dans la base -> test/data/01_testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
 	var err error
