@@ -1,9 +1,7 @@
 package stats
 
 import (
-	"bytes"
 	"context"
-	"encoding/csv"
 	"net/http"
 	"strconv"
 	"strings"
@@ -21,29 +19,20 @@ type StatsHandler struct {
 	dbPool *pgxpool.Pool
 }
 
-type line struct {
-	date     time.Time
-	path     string
-	method   string
-	username string
-	roles    []string
-}
-
-// statusHandler : point d'entrée de l'API qui retourne les infos d'un `Refresh` depuis son `UUID`
-func (sh *StatsHandler) sinceMonthsHandler(c *gin.Context) {
+func (sh *StatsHandler) sinceDaysHandler(c *gin.Context) {
 	var since time.Time
 	param := c.Param("n")
 	if len(param) == 0 {
 		utils.AbortWithError(c, errors.New("pas de paramètre 'n'"))
 		return
 	}
-	index, err := strconv.Atoi(param)
+	nbDays, err := strconv.Atoi(param)
 	if err != nil {
 		utils.AbortWithError(c, errors.Wrap(err, "le paramètre 'n' n'est pas un entier"))
 		return
 	}
-	since = time.Now().Add(time.Duration(index*-24) * time.Hour)
-	logs, err := selectLogs(sh.ctx, sh.dbPool, since)
+	since = time.Now().AddDate(0, 0, -nbDays)
+	logs, err := selectLogs(sh.ctx, sh.dbPool, since, time.Now())
 	if err != nil {
 		utils.AbortWithError(c, errors.Wrap(err, "erreur lors de la recherche des logs en base"))
 		return
@@ -56,46 +45,6 @@ func (sh *StatsHandler) sinceMonthsHandler(c *gin.Context) {
 	c.Data(http.StatusOK, "text/csv", data)
 }
 
-func transformLogsToData(logs []line) ([]byte, error) {
-	data := make([]byte, 0)
-	w := bytes.NewBuffer(data)
-	csvW := csv.NewWriter(w)
-	err := utils.Apply(logs, func(l line) error {
-		wErr := csvW.Write(l.getFieldsAsStringArray())
-		if wErr != nil {
-			err := errors.Wrap(wErr, "erreur lors de la transformation de la ligne de log "+l.String())
-			return err
-		}
-		return nil
-	})
-	return data, err
-}
-
-func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time) ([]line, error) {
-	sql := `select date_add,
-       path,
-       method,
---        body,
-       tokencontent ->> 'preferred_username'::text as username,
-       translate(((tokencontent ->> 'resource_access')::json ->> 'signauxfaibles')::json ->> 'roles', '[]', '{}')::text[]  as roles
-    from v_log
-    where date_add > $1`
-	stats := []line{}
-	rows, err := dbPool.Query(ctx, sql, since)
-	if err != nil {
-		return stats, errors.Wrap(err, "erreur pendant la requête de sélection des logs")
-	}
-	for rows.Next() {
-		var statLine line
-		err := rows.Scan(&statLine.date, &statLine.path, &statLine.method, &statLine.username, &statLine.roles)
-		if err != nil {
-			return stats, errors.Wrap(err, "erreur pendant la récupération des résultats")
-		}
-		stats = append(stats, statLine)
-	}
-	return stats, nil
-}
-
 func (l line) getFieldsAsStringArray() []string {
 	return []string{
 		l.date.Format("20060102150405"),
@@ -103,8 +52,4 @@ func (l line) getFieldsAsStringArray() []string {
 		l.username,
 		strings.Join(l.roles, "-"),
 	}
-}
-
-func (l line) String() string {
-	return strings.Join(l.getFieldsAsStringArray(), ";")
 }
