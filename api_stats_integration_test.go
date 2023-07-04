@@ -3,6 +3,7 @@
 package main
 
 import (
+	_ "embed"
 	"net/http"
 	"testing"
 

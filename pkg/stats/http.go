@@ -64,6 +64,7 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 func (l line) getFieldsAsStringArray() []string {
 	return []string{
 		l.date.Format("20060102150405"),
+		l.path,
 		l.method,
 		l.username,
 		strings.Join(l.roles, "-"),

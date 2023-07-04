@@ -4,12 +4,16 @@ package main
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/pkg/errors"
 
 	"datapi/pkg/core"
 	"datapi/pkg/db"
@@ -22,6 +26,9 @@ import (
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
+
+//go:embed test/insert_some_logs.sql
+var insertLogsSQL string
 
 // TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
@@ -61,6 +68,7 @@ func TestMain(m *testing.M) {
 	}
 
 	statsAPI, err := stats.NewAPIFromConfiguration(ctx, test.GetDatapiLogDBURL())
+
 	if err != nil {
 		log.Fatalf("erreur pendant la création de l'API Stats : %s", err)
 	}
@@ -69,6 +77,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
+
+	insertSomeLogs(test.GetDatapiLogDBURL())
 
 	go initAndStartAPI(datapi, statsAPI)
 	// time to API be ready
@@ -633,5 +643,16 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 			continue
 		}
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
+	}
+}
+
+func insertSomeLogs(url string) {
+	pool, err := pgxpool.New(context.Background(), url)
+	if err != nil {
+		log.Fatal(errors.Wrapf(err, "erreur pendant la lecture de l'url de la base de données source '%s'", url))
+	}
+	_, err = pool.Exec(context.Background(), insertLogsSQL)
+	if err != nil {
+		log.Fatal(errors.Wrap(err, "erreur pendant l'insertion des logs"))
 	}
 }
