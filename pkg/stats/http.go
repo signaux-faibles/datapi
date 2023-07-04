@@ -23,6 +23,7 @@ type StatsHandler struct {
 
 type line struct {
 	date     time.Time
+	path     string
 	method   string
 	username string
 	roles    []string
@@ -82,11 +83,15 @@ func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time) ([]l
 	stats := []line{}
 	rows, err := dbPool.Query(ctx, sql, since)
 	if err != nil {
-		return stats, err
+		return stats, errors.Wrap(err, "erreur pendant la requête de sélection des logs")
 	}
-	err = rows.Scan(stats)
-	if err != nil {
-		return stats, err
+	for rows.Next() {
+		var statLine line
+		err := rows.Scan(&statLine.date, &statLine.path, &statLine.method, &statLine.username, &statLine.roles)
+		if err != nil {
+			return stats, errors.Wrap(err, "erreur pendant la récupération des résultats")
+		}
+		stats = append(stats, statLine)
 	}
 	return stats, nil
 }
