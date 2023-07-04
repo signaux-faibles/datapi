@@ -16,8 +16,8 @@ var sqlTakePendingEtablissement string
 //go:embed sql/selectMyActions.sql
 var sqlSelectMyActions string
 
-//go:embed sql/selectAllActions.sql
-var sqlSelectAllActions string
+//go:embed sql/selectTakenActions.sql
+var sqlSelectTakenActions string
 
 //go:embed sql/actionMyEtablissement.sql
 var sqlActionMyEtablissement string

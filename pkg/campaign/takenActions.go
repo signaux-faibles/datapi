@@ -46,7 +46,7 @@ func takenActionsHandler(c *gin.Context) {
 		return
 	}
 	zone := zoneForUser(libwekan.Username(s.Username))
-	allActions, err := selectAllActions(c, CampaignID(campaignID), zone, libwekan.Username(s.Username))
+	allActions, err := selectTakenActions(c, CampaignID(campaignID), zone, libwekan.Username(s.Username))
 
 	if err != nil {
 		c.JSON(500, err.Error())
@@ -55,7 +55,7 @@ func takenActionsHandler(c *gin.Context) {
 	}
 }
 
-func selectAllActions(ctx context.Context, campaignID CampaignID, zone []string, username libwekan.Username) (allActions AllActions, err error) {
-	err = db.Scan(ctx, &allActions, sqlSelectAllActions, campaignID, zone, username)
+func selectTakenActions(ctx context.Context, campaignID CampaignID, zone []string, username libwekan.Username) (allActions AllActions, err error) {
+	err = db.Scan(ctx, &allActions, sqlSelectTakenActions, campaignID, zone, username)
 	return allActions, err
 }

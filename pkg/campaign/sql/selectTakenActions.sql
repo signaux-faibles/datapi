@@ -22,6 +22,6 @@ from campaign_etablissement ce
   inner join v_summaries s on s.siret = ce.siret and s.code_departement = any($2)
   left join etablissement_follow f on f.siret = ce.siret and f.username=$3 and f.active
   left join actions a on a.id_campaign_etablissement = ce.id
-where ce.id_campaign = $1
+where ce.id_campaign = $1 and a.action in ('success', 'take')
 
 
