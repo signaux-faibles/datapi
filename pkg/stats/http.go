@@ -7,19 +7,35 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 
 	"datapi/pkg/utils"
 )
 
-type StatsHandler struct {
-	ctx    context.Context
-	dbPool *pgxpool.Pool
+type API struct {
+	db StatsDB
 }
 
-func (sh *StatsHandler) sinceDaysHandler(c *gin.Context) {
+func NewAPI(db StatsDB) *API {
+	return &API{db: db}
+}
+
+func NewAPIFromConfiguration(ctx context.Context, connexionURL string) (*API, error) {
+	statsDB, err := createStatsDBFromURL(ctx, connexionURL)
+	if err != nil {
+		return nil, errors.Wrap(err, "erreur lors de l'initialisation du module stats")
+	}
+	return NewAPI(statsDB), nil
+}
+
+func (api *API) ConfigureEndpoint(endpoint *gin.RouterGroup) {
+	endpoint.Use(gzip.Gzip(gzip.BestCompression))
+	endpoint.GET("/since/:n/days", api.sinceDaysHandler)
+}
+
+func (api *API) sinceDaysHandler(c *gin.Context) {
 	var since time.Time
 	param := c.Param("n")
 	if len(param) == 0 {
@@ -32,7 +48,7 @@ func (sh *StatsHandler) sinceDaysHandler(c *gin.Context) {
 		return
 	}
 	since = time.Now().AddDate(0, 0, -nbDays)
-	logs, err := selectLogs(sh.ctx, sh.dbPool, since, time.Now())
+	logs, err := selectLogs(api.db.ctx, api.db.pool, since, time.Now())
 	if err != nil {
 		utils.AbortWithError(c, errors.Wrap(err, "erreur lors de la recherche des logs en base"))
 		return

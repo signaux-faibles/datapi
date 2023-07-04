@@ -18,14 +18,13 @@ import (
 	"datapi/pkg/test"
 )
 
-var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 var fake faker.Faker
 
 //go:embed resources/tests/token
 var realtoken string
 
-// SYSTEM UNDER TEST
-var sut *PostgresLogSaver
+var logSaver *PostgresLogSaver
+var statsDB StatsDB
 
 func init() {
 	fake = faker.New()
@@ -47,8 +46,11 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}
-	sut = NewPostgresLogSaver(background, pool)
-	err = sut.Initialize()
+	statsDB, err = createStatsDB(background, pool)
+	if err != nil {
+		log.Fatalf("erreur pendant la création de la base de données de Stats : %s", err)
+	}
+	logSaver = NewPostgresLogSaver(statsDB)
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}
@@ -61,48 +63,48 @@ func TestMain(m *testing.M) {
 	// You can't defer this because os.Exit doesn't care for defer
 	// on peut placer ici du code de nettoyage si nécessaire
 
-	test.UnfakeTime()
 	os.Exit(code)
 }
 
-func TestLog_Initialize_idempotent(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(sut.ctx, t, sut.db) })
+func TestLog_create_tables_is_idempotent(t *testing.T) {
+	t.Cleanup(func() { eraseAccessLogs(t, statsDB) })
 	ass := assert.New(t)
 
 	// on insère une ligne de logs
+	// pour pouvoir vérifier qu'elle continue à exister
 	expected := randomAccessLog()
-	_ = sut.SaveLogToDB(expected)
+	_ = logSaver.SaveLogToDB(expected)
 
 	// on vérifie que l'initialisation est idempotente
 	// `Initialize` est déjà exécuté dans `TestMain`
-	err := sut.Initialize()
+	err := statsDB.create()
 	ass.NoError(err)
 
-	actual, _ := getLastAccessLog(sut.ctx, sut.db)
+	actual, _ := getLastAccessLog(logSaver.db.ctx, logSaver.db.pool)
 	ass.Equal(expected, actual)
 	ass.NoError(err)
 }
 
 func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(sut.ctx, t, sut.db) })
+	t.Cleanup(func() { eraseAccessLogs(t, statsDB) })
 	ass := assert.New(t)
 	expected := randomAccessLog()
-	err := sut.SaveLogToDB(expected)
+	err := logSaver.SaveLogToDB(expected)
 	ass.NoError(err)
-	actual, err := getLastAccessLog(sut.ctx, sut.db)
+	actual, err := getLastAccessLog(logSaver.db.ctx, logSaver.db.pool)
 	ass.NoError(err)
 	ass.Equal(expected, actual)
 }
 
 func Test_selectLines(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(sut.ctx, t, sut.db) })
+	t.Cleanup(func() { eraseAccessLogs(t, statsDB) })
 	ass := assert.New(t)
 	expected := randomAccessLog()
-	err := sut.SaveLogToDB(expected)
+	err := logSaver.SaveLogToDB(expected)
 	ass.NoError(err)
 	today := time.Now()
 	tomorrow := today.AddDate(0, 0, 1)
-	logs, err := selectLogs(sut.ctx, sut.db, today, tomorrow)
+	logs, err := selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow)
 	ass.NoError(err)
 	ass.Len(logs, 1)
 	ass.Equal("christophe.ninucci@beta.gouv.fr", logs[0].username)
@@ -130,8 +132,8 @@ func randomAccessLog() core.AccessLog {
 	return random
 }
 
-func eraseAccessLogs(ctx context.Context, t *testing.T, db *pgxpool.Pool) {
-	_, err := db.Exec(ctx, "DELETE FROM logs")
+func eraseAccessLogs(t *testing.T, db StatsDB) {
+	_, err := db.pool.Exec(db.ctx, "DELETE FROM logs")
 	if err != nil {
 		t.Errorf("erreur pendant la suppression des access logs : %v", err)
 	}

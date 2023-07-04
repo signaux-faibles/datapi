@@ -21,19 +21,19 @@ const day = time.Duration(24) * time.Hour
 
 func createStructure(ctx context.Context, db *pgxpool.Pool) error {
 	_, err := db.Exec(ctx, createTablesSQL)
-	return err
+	return errors.Wrap(err, "erreur lors de l'initialisation de la base de logs/stats")
 }
 
 func insertAccessLog(ctx context.Context, db *pgxpool.Pool, message core.AccessLog) error {
 	_, err := db.Exec(
 		ctx,
-		`insert into logs (path, method, body, token) values ($1, $2, $3, $4) ;`,
+		`insert into logs (path, method, body, token) values ($1, $2, $3, $4);`,
 		message.Path,
 		message.Method,
 		string(message.Body),
 		message.Token,
 	)
-	return err
+	return errors.Wrap(err, "erreur lors de l'insertion d'un access log ")
 }
 
 func getLastAccessLog(ctx context.Context, db *pgxpool.Pool) (core.AccessLog, error) {

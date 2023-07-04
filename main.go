@@ -2,6 +2,11 @@ package main
 
 import (
 	"context"
+	"log"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
+
 	"datapi/pkg/campaign"
 	"datapi/pkg/core"
 	"datapi/pkg/kanban"
@@ -9,9 +14,6 @@ import (
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
 	"datapi/pkg/stats"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
-	"log"
 )
 
 func main() {
@@ -22,12 +24,13 @@ func main() {
 	ctx := context.Background()
 	kanbanService := initWekanService(ctx)
 	saver := buildLogSaver()
+	statsAPI := buildStatsAPI()
 
-	datapi, err := core.StartDatapi(kanbanService, saver.SaveLogToDB)
+	datapi, err := core.PrepareDatapi(kanbanService, saver.SaveLogToDB)
 	if err != nil {
 		log.Println("erreur pendant le démarrage de Datapi : ", err)
 	}
-	initAndStartAPI(datapi)
+	initAndStartAPI(datapi, statsAPI)
 }
 
 func initWekanService(ctx context.Context) core.KanbanService {
@@ -38,13 +41,14 @@ func initWekanService(ctx context.Context) core.KanbanService {
 		viper.GetString("wekanSlugDomainRegexp"))
 }
 
-func initAndStartAPI(datapi *core.Datapi) {
+func initAndStartAPI(datapi *core.Datapi, statsAPI *stats.API) {
 	router := gin.Default()
 	datapi.InitAPI(router)
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint(datapi.KanbanService), core.AuthMiddleware(), datapi.LogMiddleware)
+	core.AddEndpoint(router, "/stats", statsAPI.ConfigureEndpoint, core.AuthMiddleware())
 	core.StartAPI(router)
 }
 
@@ -53,8 +57,13 @@ func buildLogSaver() *stats.PostgresLogSaver {
 	if err != nil {
 		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
 	}
-	if err := saver.Initialize(); err != nil {
-		log.Fatal("erreur pendant l'initialisation du AccessLogSaver : ", err)
-	}
 	return saver
+}
+
+func buildStatsAPI() *stats.API {
+	statsModule, err := stats.NewAPIFromConfiguration(context.Background(), viper.GetString("logs.db_url"))
+	if err != nil {
+		log.Fatal("erreur pendant l'instanciation du StatsAPI : ", err)
+	}
+	return statsModule
 }
