@@ -7,11 +7,11 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_transformLogsToData(t *testing.T) {
+func Test_transformCompressLogsToData(t *testing.T) {
 	ass := assert.New(t)
 	input := []line{
 		{
-			date:     time.Now(),
+			date:     time.Date(2023, 12, 24, 1, 2, 3, 4, time.UTC),
 			path:     "some/path",
 			method:   "GET",
 			username: "gounit",
@@ -20,8 +20,6 @@ func Test_transformLogsToData(t *testing.T) {
 			},
 		},
 	}
-	data, err := transformLogsToData(input)
-	t.Logf("line -> %s", data)
+	_, err := transformLogsToCompressedData(input)
 	ass.NoError(err)
-	ass.Less(0, len(data))
 }

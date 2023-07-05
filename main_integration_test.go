@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -77,8 +78,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
-
-	insertSomeLogs(test.GetDatapiLogDBURL())
 
 	go initAndStartAPI(datapi, statsAPI)
 	// time to API be ready
@@ -646,13 +645,22 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 	}
 }
 
-func insertSomeLogs(url string) {
+func insertSomeLogsAtTime(t time.Time) int {
+	url := test.GetDatapiLogsDBURL()
 	pool, err := pgxpool.New(context.Background(), url)
 	if err != nil {
 		log.Fatal(errors.Wrapf(err, "erreur pendant la lecture de l'url de la base de données source '%s'", url))
 	}
-	_, err = pool.Exec(context.Background(), insertLogsSQL)
-	if err != nil {
-		log.Fatal(errors.Wrap(err, "erreur pendant l'insertion des logs"))
+	var counter int
+	var insertLogSQL string
+	for counter, insertLogSQL = range strings.Split(insertLogsSQL, "\n") {
+		if len(insertLogSQL) == 0 || strings.HasPrefix(insertLogSQL, "--") {
+			continue
+		}
+		_, err = pool.Exec(context.Background(), insertLogSQL, t)
+		if err != nil {
+			log.Fatal(errors.Wrap(err, "erreur pendant l'insertion des logs"))
+		}
 	}
+	return counter
 }

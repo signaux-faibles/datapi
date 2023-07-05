@@ -7,7 +7,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/gin-contrib/gzip"
 	"github.com/gin-gonic/gin"
 	"github.com/pkg/errors"
 
@@ -31,7 +30,6 @@ func NewAPIFromConfiguration(ctx context.Context, connexionURL string) (*API, er
 }
 
 func (api *API) ConfigureEndpoint(endpoint *gin.RouterGroup) {
-	endpoint.Use(gzip.Gzip(gzip.BestCompression))
 	endpoint.GET("/since/:n/days", api.sinceDaysHandler)
 }
 
@@ -53,12 +51,13 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 		utils.AbortWithError(c, errors.Wrap(err, "erreur lors de la recherche des logs en base"))
 		return
 	}
-	data, err := transformLogsToData(logs)
+	data, err := transformLogsToCompressedData(logs)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.Data(http.StatusOK, "text/csv", data)
+	c.Header("Content-Disposition", "attachment; filename=statsSince"+param+"days.csv.gz")
+	c.Data(http.StatusOK, "application/octet-stream", data)
 }
 
 func (l line) getFieldsAsStringArray() []string {

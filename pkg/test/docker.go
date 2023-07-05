@@ -62,6 +62,20 @@ func GetDatapiDBURL() string {
 	return dbURL
 }
 
+// GetDatapiLogsDBURL démarre si nécessaire un container postgres et retourne l'URL pour y accéder
+func GetDatapiLogsDBURL() string {
+	datapiDB, found := getContainer(datapiDBName)
+	if !found {
+		datapiDB = startDatapiDB()
+	} else {
+		log.Printf("le container %s a bien été retrouvé", datapiDB.Container.Name)
+	}
+	hostAndPort := datapiDB.GetHostPort("5432/tcp")
+	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiLogsDatabaseName)
+	wait4PostgresIsReady(dbURL)
+	return dbURL
+}
+
 // GetDatapiLogDBURL démarre si nécessaire un container postgres et retourne l'URL pour y accéder
 func GetDatapiLogDBURL() string {
 	datapiLogDB, found := getContainer(datapiDBName)
