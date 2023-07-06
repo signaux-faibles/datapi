@@ -44,7 +44,7 @@ func getLastAccessLog(ctx context.Context, db *pgxpool.Pool) (core.AccessLog, er
 }
 
 func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to time.Time) ([]line, error) {
-	stats := []line{}
+	var stats []line
 	rows, err := dbPool.Query(ctx, selectLogsSQL, since.Truncate(day), to.Truncate(day))
 	if err != nil {
 		return stats, errors.Wrap(err, "erreur pendant la requête de sélection des logs")

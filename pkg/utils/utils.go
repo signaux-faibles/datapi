@@ -31,7 +31,7 @@ func Apply[I interface{}](values []I, consume func(I) error) error {
 
 // Convert applique la fonction `transformer` à tous les éléments d'un slice et retourne le tableau convertit
 func Convert[I interface{}, O interface{}](values []I, transformer func(I) O) []O {
-	var output []O
+	var output = []O{}
 	for _, current := range values {
 		output = append(output, transformer(current))
 	}
