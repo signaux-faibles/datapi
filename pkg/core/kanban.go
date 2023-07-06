@@ -16,6 +16,7 @@ import (
 type KanbanService interface {
 	LoadConfigForUser(username libwekan.Username) KanbanConfig
 	SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
+	SelectCardsFromSiretsAndBoardIDs(ctx context.Context, sirets []Siret, boardIDs []libwekan.BoardID, username libwekan.Username) ([]KanbanCard, error)
 	ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	SelectFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (Summaries, error)
 	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (KanbanExports, error)
@@ -102,6 +103,7 @@ type KanbanCard struct {
 	EndAt             *time.Time              `json:"endAt,omitempty"`
 	LabelIDs          []libwekan.BoardLabelID `json:"labelIDs,omitempty"`
 	UserIsBoardMember bool                    `json:"userIsBoardMember"`
+	Siret             Siret                   `json:"siret"`
 }
 
 type KanbanSelectCardsForUserParams struct {

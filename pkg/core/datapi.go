@@ -27,6 +27,7 @@ var Kanban KanbanService
 
 type Datapi struct {
 	saveAccessLog AccessLogSaver
+	KanbanService KanbanService
 }
 
 // StartDatapi se connecte aux bases de données et keycloak
@@ -51,6 +52,7 @@ func StartDatapi(kanbanService KanbanService, saver AccessLogSaver) (*Datapi, er
 
 	datapi := Datapi{
 		saveAccessLog: saver,
+		KanbanService: kanbanService,
 	}
 	return &datapi, nil
 }
