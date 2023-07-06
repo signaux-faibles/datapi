@@ -23,9 +23,9 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 
 	// GIVEN
 	var numberOfDays = 10
-	_ = insertSomeLogsAtTime(tuTime.AddDate(0, 0, -numberOfDays-1))
-	same := insertSomeLogsAtTime(tuTime.AddDate(0, 0, -numberOfDays))
-	after := insertSomeLogsAtTime(tuTime.AddDate(0, 0, -numberOfDays+1))
+	_ = test.InsertSomeLogsAtTime(tuTime.AddDate(0, 0, -numberOfDays-1))
+	same := test.InsertSomeLogsAtTime(tuTime.AddDate(0, 0, -numberOfDays))
+	after := test.InsertSomeLogsAtTime(tuTime.AddDate(0, 0, -numberOfDays+1))
 
 	path := fmt.Sprintf("/stats/since/%d/days", numberOfDays)
 	response := test.HTTPGet(t, path)
@@ -47,10 +47,10 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	nbDays := 3
 	dayToSelect, err := time.Parse(stats.DATE_FORMAT, search)
 	ass.NoError(err)
-	_ = insertSomeLogsAtTime(dayToSelect.Add(-1 * time.Millisecond))
-	betweenStart := insertSomeLogsAtTime(dayToSelect)
-	betweenEnd := insertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays))
-	_ = insertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays+1))
+	_ = test.InsertSomeLogsAtTime(dayToSelect.Add(-1 * time.Millisecond))
+	betweenStart := test.InsertSomeLogsAtTime(dayToSelect)
+	betweenEnd := test.InsertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays))
+	_ = test.InsertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays+1))
 	path := fmt.Sprintf("/stats/from/%s/for/%d/days", search, nbDays)
 	response := test.HTTPGet(t, path)
 

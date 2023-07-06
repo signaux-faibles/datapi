@@ -9,12 +9,8 @@ import (
 	"fmt"
 	"log"
 	"os"
-	"strings"
 	"testing"
 	"time"
-
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/pkg/errors"
 
 	"datapi/pkg/core"
 	"datapi/pkg/db"
@@ -27,9 +23,6 @@ import (
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
-
-//go:embed test/insert_some_logs.sql
-var insertLogsSQL string
 
 // TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
@@ -643,24 +636,4 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 		}
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
 	}
-}
-
-func insertSomeLogsAtTime(t time.Time) int {
-	url := test.GetDatapiLogsDBURL()
-	pool, err := pgxpool.New(context.Background(), url)
-	if err != nil {
-		log.Fatal(errors.Wrapf(err, "erreur pendant la lecture de l'url de la base de données source '%s'", url))
-	}
-	var counter int
-	var insertLogSQL string
-	for counter, insertLogSQL = range strings.Split(insertLogsSQL, "\n") {
-		if len(insertLogSQL) == 0 || strings.HasPrefix(insertLogSQL, "--") {
-			continue
-		}
-		_, err = pool.Exec(context.Background(), insertLogSQL, t)
-		if err != nil {
-			log.Fatal(errors.Wrap(err, "erreur pendant l'insertion des logs"))
-		}
-	}
-	return counter
 }
