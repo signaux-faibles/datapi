@@ -2,6 +2,7 @@ package stats
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -71,9 +72,9 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 }
 
 func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
-	logs, err := api.fetchLogs(since, to)
-	if err != nil {
-		utils.AbortWithError(c, errors.Wrap(err, "erreur lors de la recherche des logs en base"))
+	logs, jerr := api.fetchLogs(since, to)
+	if jerr != nil {
+		utils.AbortWithError(c, jerr)
 		return
 	}
 	data, err := transformLogsToCompressedData(logs)
@@ -85,10 +86,10 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 	c.Data(http.StatusOK, "application/octet-stream", data)
 }
 
-func (api *API) fetchLogs(since time.Time, to time.Time) ([]line, error) {
+func (api *API) fetchLogs(since time.Time, to time.Time) ([]line, utils.Jerror) {
 	logs, err := selectLogs(api.db.ctx, api.db.pool, since, to)
 	if err != nil {
-		return nil, errors.Wrap(err, "erreur pendant la récupération des logs")
+		return nil, utils.NewJSONerror(http.StatusInternalServerError, fmt.Sprintf("erreur pendant la récupération des logs : %s", err.Error()))
 	}
 	nbLogs := len(logs)
 	if nbLogs == 0 {
