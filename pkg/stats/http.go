@@ -109,8 +109,11 @@ func (api *API) fromStartForDaysHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": err.Error()})
 		return
 	}
-
 	nbDays, err := utils.GetIntHTTPParameter(c, "n")
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": err.Error()})
+		return
+	}
 	to = from.AddDate(0, 0, nbDays)
 
 	api.handleStatsInInterval(c, from, to)
@@ -125,10 +128,13 @@ func (api *API) fromStartForMonthsHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": err.Error()})
 		return
 	}
-
 	nbDays, err := utils.GetIntHTTPParameter(c, "n")
-	end = start.AddDate(0, 0, nbDays)
+	if err != nil {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": err.Error()})
+		return
+	}
 
+	end = start.AddDate(0, 0, nbDays)
 	api.handleStatsInInterval(c, start, end)
 }
 

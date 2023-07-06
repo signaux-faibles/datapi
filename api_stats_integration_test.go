@@ -63,29 +63,58 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	ass.Equal(betweenStart+betweenEnd, len(records))
 }
 
-//func TestAPI_get_stats_with_bad_format_in_param(t *testing.T) {
-//	ass := assert.New(t)
-//
-//	// GIVEN
-//	search := "2023-03-01"
-//	nbDays := 3
-//	dayToSelect, err := time.Parse(stats.DATE_FORMAT, search)
-//	ass.NoError(err)
-//	_ = insertSomeLogsAtTime(dayToSelect.Add(-1 * time.Millisecond))
-//	betweenStart := insertSomeLogsAtTime(dayToSelect)
-//	betweenEnd := insertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays))
-//	_ = insertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays+1))
-//	path := fmt.Sprintf("/stats/from/%s/for/%s/days", search, "COUC")
-//	response := test.HTTPGet(t, path)
-//
-//	ass.Equal(http.StatusOK, response.StatusCode)
-//	body := test.GetBodyQuietly(response)
-//	records, err := readGZippedCSV(body)
-//	ass.NoError(err)
-//	// on compare le nombre de lignes lues dans le fichier
-//	// et le nombre de lignes insérés en base
-//	ass.Equal(betweenStart+betweenEnd, len(records))
-//}
+func TestAPI_get_stats_testing_params(t *testing.T) {
+	ass := assert.New(t)
+	type want struct {
+		code    int
+		message string
+	}
+	tests := []struct {
+		name string
+		path string
+		want want
+	}{
+		{
+			"mauvais format de date - 1",
+			"/stats/from/20/for/toto/days",
+			want{http.StatusBadRequest, "le paramètre 'start' n'est pas du bon type:"},
+		},
+		{
+			"mauvais format de date - 2",
+			"/stats/from/20/for/toto/months",
+			want{http.StatusBadRequest, "le paramètre 'start' n'est pas du bon type:"},
+		},
+		{
+			"mauvais format de date - 3",
+			"/stats/from/2012-03-21/for/any/days",
+			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+		},
+		{
+			"mauvais format de date - 4",
+			"/stats/from/2012-03-21/for/any/months",
+			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+		},
+		{
+			"mauvais format de date - 5",
+			"/stats/since/any/months",
+			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+		},
+		{
+			"mauvais format de date - 6",
+			"/stats/since/any/days",
+			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			response := test.HTTPGet(t, tt.path)
+			body := test.GetBodyQuietly(response)
+			t.Log("body --> ", string(body))
+			ass.Equal(tt.want.code, response.StatusCode)
+			ass.Contains(string(body), tt.want.message)
+		})
+	}
+}
 
 func readGZippedCSV(body []byte) ([][]string, error) {
 	var data bytes.Buffer
