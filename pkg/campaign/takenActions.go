@@ -67,6 +67,9 @@ func selectTakenActions(ctx context.Context, campaignID CampaignID, boards []lib
 	if err != nil {
 		return TakenActions{}, err
 	}
+	if len(takenActions.Etablissements) == 0 {
+		return TakenActions{Etablissements: []*CampaignEtablissement{}}, nil
+	}
 	// limiter les boards scannées au périmètre de la campagne
 	re, err := regexp.CompilePOSIX(takenActions.WekanDomainRegexp)
 	if err != nil {

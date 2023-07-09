@@ -93,6 +93,9 @@ func selectPending(ctx context.Context, campaignID CampaignID, boards []libwekan
 	if err != nil {
 		return Pending{}, err
 	}
+	if len(pending.Etablissements) == 0 {
+		return Pending{Etablissements: []*CampaignEtablissement{}}, nil
+	}
 
 	// limiter les boards scannées au périmètre de la campagne
 	re, err := regexp.CompilePOSIX(pending.WekanDomainRegexp)
