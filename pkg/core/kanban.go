@@ -27,7 +27,7 @@ type KanbanService interface {
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
 	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
-	UpdateCard(ctx context.Context, cardID libwekan.CardID, description string) error
+	UpdateCard(ctx context.Context, cardID KanbanCard, description string, username libwekan.Username) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser

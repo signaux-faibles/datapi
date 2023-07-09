@@ -31,6 +31,7 @@ type CampaignEtablissement struct {
 	Username            *string                 `json:"username,omitempty"`
 	CardID              *libwekan.CardID        `json:"cardID,omitempty"`
 	Description         *string                 `json:"description,omitempty"`
+	Detail              *string                 `json:"detail,omitempty"`
 }
 
 type Pending struct {
@@ -86,6 +87,7 @@ func (p *Pending) Tuple() []interface{} {
 
 func selectPending(ctx context.Context, campaignID CampaignID, boards []libwekan.ConfigBoard, page core.Page, username libwekan.Username, kanbanService core.KanbanService) (pending Pending, err error) {
 	pending.Etablissements = make([]*CampaignEtablissement, 0)
+
 	zones := zonesFromBoards(boards)
 	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, campaignID, zones, username)
 	if err != nil {

@@ -4,8 +4,15 @@ with actions as (
     last(action order by id) as action
   from campaign_etablissement_action
   group by id_campaign_etablissement
-)
+), zones as (
+  select key as slug, ARRAY(SELECT jsonb_array_elements_text(value)) as zone
+  from jsonb_each($2::jsonb)
+), zone as (select flatmap(z.zone) as zone
+  from campaign c
+  inner join zones z on z.slug ~ c.wekan_domain_regexp
+  where id = $1)
 select count(*) over () as nb_total,
+   c.wekan_domain_regexp,
    s.siret,
    s.raison_sociale,
    s.raison_sociale_groupe,
@@ -19,7 +26,9 @@ select count(*) over () as nb_total,
    rank() over (order by ce.id) as rank,
    s.code_departement
 from campaign_etablissement ce
-  inner join v_summaries s on s.siret = ce.siret and s.code_departement = any($2)
+  inner join zone z on true
+  inner join campaign c on c.id = ce.id_campaign
+  inner join v_summaries s on s.siret = ce.siret and s.code_departement = any(z.zone)
   left join etablissement_follow f on f.siret = ce.siret and f.username=$3 and f.active
   left join actions a on a.id_campaign_etablissement = ce.id
 where ce.id_campaign = $1 and a.action= 'take' and a.username = $3

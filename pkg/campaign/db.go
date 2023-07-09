@@ -21,3 +21,6 @@ var sqlSelectTakenActions string
 
 //go:embed sql/actionMyEtablissement.sql
 var sqlActionMyEtablissement string
+
+//go:embed sql/selectCampaignEtablissementID.sql
+var sqlSelectCampaignEtablissementID string
