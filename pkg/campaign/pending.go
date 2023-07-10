@@ -5,9 +5,11 @@ import (
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"datapi/pkg/kanban"
+	"datapi/pkg/utils"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"net/http"
+	"regexp"
 	"strconv"
 )
 
@@ -27,33 +29,39 @@ type CampaignEtablissement struct {
 	RaisonSociale       string                  `json:"raisonSociale"`
 	RaisonSocialeGroupe *string                 `json:"raisonSocialeGroupe,omitempty"`
 	Username            *string                 `json:"username,omitempty"`
+	CardID              *libwekan.CardID        `json:"cardID,omitempty"`
+	Description         *string                 `json:"description,omitempty"`
+	Detail              *string                 `json:"detail,omitempty"`
 }
 
 type Pending struct {
-	Etablissements []*CampaignEtablissement `json:"etablissements"`
-	NbTotal        int                      `json:"nbTotal"`
-	Page           int                      `json:"page"`
-	PageMax        int                      `json:"pageMax"`
-	PageSize       int                      `json:"pageSize"`
+	Etablissements    []*CampaignEtablissement `json:"etablissements"`
+	NbTotal           int                      `json:"nbTotal"`
+	Page              int                      `json:"page,omitempty"`
+	PageMax           int                      `json:"pageMax,omitempty"`
+	PageSize          int                      `json:"pageSize,omitempty"`
+	WekanDomainRegexp string                   `json:"-"`
 }
 
-func pendingHandler(c *gin.Context) {
-	var s core.Session
-	s.Bind(c)
-	id, err := strconv.Atoi(c.Param("campaignID"))
-	if err != nil {
-		c.JSON(http.StatusBadRequest, "`"+c.Param("campaignID")+"` n'est pas un identifiant valide")
-		return
+func pendingHandler(kanbanService core.KanbanService) func(c *gin.Context) {
+	return func(c *gin.Context) {
+		var s core.Session
+		s.Bind(c)
+		id, err := strconv.Atoi(c.Param("campaignID"))
+		if err != nil {
+			c.JSON(http.StatusBadRequest, "`"+c.Param("campaignID")+"` n'est pas un identifiant valide")
+			return
+		}
+		username := libwekan.Username(s.Username)
+		boards := kanban.SelectBoardsForUser(username)
+		pending, err := selectPending(c, CampaignID(id), boards, core.Page{10, 0}, username, kanbanService)
+
+		if err != nil {
+			c.JSON(http.StatusInternalServerError, "erreur inattendue: "+err.Error())
+			return
+		}
+		c.JSON(http.StatusOK, pending)
 	}
-	username := libwekan.Username(s.Username)
-	boards := kanban.SelectBoardsForUser(username)
-	zones := zonesFromBoards(boards)
-	pending, err := selectPending(c, CampaignID(id), zones, core.Page{10, 0}, username)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, "erreur inattendue: "+err.Error())
-		return
-	}
-	c.JSON(http.StatusOK, pending)
 }
 
 func (p *Pending) Tuple() []interface{} {
@@ -61,6 +69,7 @@ func (p *Pending) Tuple() []interface{} {
 	p.Etablissements = append(p.Etablissements, &ce)
 	return []interface{}{
 		&p.NbTotal,
+		&p.WekanDomainRegexp,
 		&ce.Siret,
 		&ce.RaisonSociale,
 		&ce.RaisonSocialeGroupe,
@@ -76,8 +85,47 @@ func (p *Pending) Tuple() []interface{} {
 	}
 }
 
-func selectPending(ctx context.Context, campaignID CampaignID, zone BoardZones, page core.Page, username libwekan.Username) (pending Pending, err error) {
+func selectPending(ctx context.Context, campaignID CampaignID, boards []libwekan.ConfigBoard, page core.Page, username libwekan.Username, kanbanService core.KanbanService) (pending Pending, err error) {
 	pending.Etablissements = make([]*CampaignEtablissement, 0)
-	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, campaignID, zone, username)
+
+	zones := zonesFromBoards(boards)
+	err = db.Scan(ctx, &pending, sqlSelectPendingEtablissement, campaignID, zones, username)
+	if err != nil {
+		return Pending{}, err
+	}
+	if len(pending.Etablissements) == 0 {
+		return Pending{Etablissements: []*CampaignEtablissement{}}, nil
+	}
+
+	// limiter les boards scannées au périmètre de la campagne
+	re, err := regexp.CompilePOSIX(pending.WekanDomainRegexp)
+	if err != nil {
+		return pending, err
+	}
+	matchingBoards := utils.Filter(boards, boardMatchesRegexpFunc(re))
+	err = appendCardsToPending(ctx, &pending, matchingBoards, kanbanService, username)
 	return pending, err
+}
+
+func appendCardsToPending(ctx context.Context, pending *Pending, boards []libwekan.ConfigBoard, kanbanService core.KanbanService, username libwekan.Username) error {
+	sirets := utils.Convert(pending.Etablissements, func(c *CampaignEtablissement) core.Siret { return c.Siret })
+	boardIDs := utils.Convert(boards, func(board libwekan.ConfigBoard) libwekan.BoardID { return board.Board.ID })
+	cards, err := kanbanService.SelectCardsFromSiretsAndBoardIDs(ctx, sirets, boardIDs, username)
+	if err != nil {
+		return err
+	}
+	for _, etablissement := range pending.Etablissements {
+		if card, ok := utils.First(cards, func(card core.KanbanCard) bool { return card.Siret == etablissement.Siret }); ok {
+			etablissement.CardID = &card.ID
+			etablissement.Description = &card.Description
+		}
+	}
+	return nil
+}
+
+func boardMatchesRegexpFunc(re *regexp.Regexp) func(libwekan.ConfigBoard) bool {
+	return func(board libwekan.ConfigBoard) bool {
+		slug := board.Board.Slug
+		return re.MatchString(string(slug))
+	}
 }

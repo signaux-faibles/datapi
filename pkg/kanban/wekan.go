@@ -68,17 +68,15 @@ func populateUsers(
 	r := make(core.KanbanUsers)
 	for _, value := range boards {
 		for _, member := range value.Board.Members {
-			// on ne rajoute pas le user courant dans les users de la board
-			if member.UserID == currentUserID {
-				continue
-			}
 			user, found := users[member.UserID]
 			if found {
 				user := core.KanbanUser{
 					Username: user.Username,
 					Active:   member.IsActive,
+					Fullname: users[member.UserID].Profile.Fullname,
 				}
 				r[member.UserID] = user
+
 			}
 		}
 	}

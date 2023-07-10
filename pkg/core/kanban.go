@@ -16,6 +16,7 @@ import (
 type KanbanService interface {
 	LoadConfigForUser(username libwekan.Username) KanbanConfig
 	SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
+	SelectCardsFromSiretsAndBoardIDs(ctx context.Context, sirets []Siret, boardIDs []libwekan.BoardID, username libwekan.Username) ([]KanbanCard, error)
 	ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	SelectFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (Summaries, error)
 	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (KanbanExports, error)
@@ -26,7 +27,7 @@ type KanbanService interface {
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
 	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
-	UpdateCard(ctx context.Context, cardID libwekan.CardID, description string) error
+	UpdateCard(ctx context.Context, cardID KanbanCard, description string, username libwekan.Username) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
@@ -102,6 +103,7 @@ type KanbanCard struct {
 	EndAt             *time.Time              `json:"endAt,omitempty"`
 	LabelIDs          []libwekan.BoardLabelID `json:"labelIDs,omitempty"`
 	UserIsBoardMember bool                    `json:"userIsBoardMember"`
+	Siret             Siret                   `json:"siret"`
 }
 
 type KanbanSelectCardsForUserParams struct {

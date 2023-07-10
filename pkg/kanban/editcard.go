@@ -2,9 +2,17 @@ package kanban
 
 import (
 	"context"
+	"datapi/pkg/core"
+	"datapi/pkg/utils"
 	"github.com/signaux-faibles/libwekan"
 )
 
-func (s wekanService) UpdateCard(ctx context.Context, cardID libwekan.CardID, description string) error {
-	return nil
+func (s wekanService) UpdateCard(ctx context.Context, card core.KanbanCard,
+	description string, username libwekan.Username) error {
+	boards := s.SelectBoardsForUsername(username)
+	boardIDs := utils.Convert(boards, func(board libwekan.ConfigBoard) libwekan.BoardID { return board.Board.ID })
+	if utils.Contains(boardIDs, card.BoardID) {
+		return wekan.UpdateCardDescription(ctx, card.ID, description)
+	}
+	return core.ForbiddenError{}
 }

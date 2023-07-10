@@ -66,6 +66,8 @@ func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.
 		user, _ := WekanConfig.GetUserByUsername(username)
 		boardConfig := WekanConfig.Boards[wekanCard.BoardID]
 
+		siret, _ := WekanConfig.GetCardCustomFieldByName(wekanCard, "SIRET")
+
 		card := core.KanbanCard{
 			ListTitle:    boardConfig.Lists[wekanCard.ListID].Title,
 			Archived:     wekanCard.Archived,
@@ -75,6 +77,7 @@ func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.
 			StartAt:      wekanCard.StartAt,
 			EndAt:        wekanCard.EndAt,
 			ID:           wekanCard.ID,
+			Siret:        core.Siret(siret),
 		}
 
 		if boardConfig.Board.UserIsActiveMember(user) {
