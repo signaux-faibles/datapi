@@ -39,6 +39,33 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 	ass.Equal(same+after, len(records))
 }
 
+func TestAPI_get_stats_with_heavy_load(t *testing.T) {
+	ass := assert.New(t)
+	t.Log(t.Name(), "DEMARRAGE")
+	t.Log(t.Name(), "debut des insertions")
+
+	// GIVEN
+	total := 99999
+	for i := 0; i < total; {
+		t.Log(t.Name(), "il manque des insertions", total-i)
+		i += test.InsertSomeLogsAtTime(fake.Time().Time(time.Now()))
+	}
+	t.Log(t.Name(), "fin des insertions")
+
+	path := "/stats/since/2000-01-01/to/2099-01-01"
+	t.Log(t.Name(), "début de l'appel")
+	response := test.HTTPGet(t, path)
+	t.Log(t.Name(), "fin de l'appel")
+
+	ass.Equal(http.StatusOK, response.StatusCode)
+	body := test.GetBodyQuietly(response)
+	records, err := readGZippedCSV(body)
+	ass.NoError(err)
+	t.Logf("nombre de lignes -> %d", len(records))
+	// on compare le nombre de lignes lues dans le fichier
+	// et le nombre de lignes insérés en base
+}
+
 func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	ass := assert.New(t)
 

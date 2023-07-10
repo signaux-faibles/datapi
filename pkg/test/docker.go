@@ -67,12 +67,12 @@ func GetDatapiLogsDBURL() string {
 	datapiDB, found := getContainer(datapiDBName)
 	if !found {
 		datapiDB = startDatapiDB()
-	} else {
-		log.Printf("le container %s a bien été retrouvé", datapiDB.Container.Name)
 	}
 	hostAndPort := datapiDB.GetHostPort("5432/tcp")
 	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiLogsDatabaseName)
-	wait4PostgresIsReady(dbURL)
+	if !found {
+		wait4PostgresIsReady(dbURL)
+	}
 	return dbURL
 }
 
@@ -138,7 +138,7 @@ func startDatapiDB() *dockertest.Resource {
 		log.Fatal("Could not start datapi_db", err)
 	}
 	// container stops after 20'
-	if err = datapiDB.Expire(600); err != nil {
+	if err = datapiDB.Expire(60000); err != nil {
 		killContainer(datapiDB)
 		log.Fatal("Could not set expiration on container datapi_db", err)
 	}

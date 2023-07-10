@@ -25,6 +25,7 @@ var realtoken string
 
 var logSaver *PostgresLogSaver
 var statsDB StatsDB
+var api API
 
 func init() {
 	fake = faker.New()
@@ -54,7 +55,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}
-
+	api := NewAPI(statsDB)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	// run tests
@@ -99,12 +100,16 @@ func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
 func Test_selectLines(t *testing.T) {
 	t.Cleanup(func() { eraseAccessLogs(t, statsDB) })
 	ass := assert.New(t)
+	var err error
+	err = insertAccessLog()
+	ass.NoError(err)
 	expected := randomAccessLog()
-	err := logSaver.SaveLogToDB(expected)
+	err = logSaver.SaveLogToDB(expected)
 	ass.NoError(err)
 	today := time.Now()
 	tomorrow := today.AddDate(0, 0, 1)
-	logs, err := selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow)
+	var logs []line
+	logs, err = selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow)
 	ass.NoError(err)
 	ass.Len(logs, 1)
 	ass.Equal("christophe.ninucci@beta.gouv.fr", logs[0].username)
