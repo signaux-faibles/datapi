@@ -82,8 +82,8 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.Header("Content-Disposition", "attachment; filename=statsSince"+since.String()+".csv.gz")
-	c.Data(http.StatusOK, "application/octet-stream", data)
+	c.Header("Content-Disposition", "attachment; filename=statsSince"+since.String()+".zip")
+	c.Data(http.StatusOK, "application/zip", data)
 }
 
 func (api *API) fetchLogs(since time.Time, to time.Time) ([]line, utils.Jerror) {

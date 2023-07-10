@@ -46,13 +46,18 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 
 	// GIVEN
 	total := 99999
-	for i := 0; i < total; {
-		t.Log(t.Name(), "il manque des insertions", total-i)
-		i += test.InsertSomeLogsAtTime(fake.Time().Time(time.Now()))
+	var expected int
+
+	min := time.Date(2001, 1, 1, 1, 2, 3, 4, time.UTC)
+	max := time.Now()
+
+	for expected = 0; expected < total; {
+		t.Log(t.Name(), "il manque des insertions", total-expected)
+		expected += test.InsertSomeLogsAtTime(fake.Time().TimeBetween(min, max))
 	}
 	t.Log(t.Name(), "fin des insertions")
 
-	path := "/stats/since/2000-01-01/to/2099-01-01"
+	path := "/stats/from/2000-01-01/to/2099-01-01"
 	t.Log(t.Name(), "début de l'appel")
 	response := test.HTTPGet(t, path)
 	t.Log(t.Name(), "fin de l'appel")
@@ -62,6 +67,7 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 	records, err := readGZippedCSV(body)
 	ass.NoError(err)
 	t.Logf("nombre de lignes -> %d", len(records))
+	ass.Equal(expected, len(records))
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
 }
