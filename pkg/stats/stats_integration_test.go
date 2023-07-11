@@ -25,7 +25,7 @@ var realtoken string
 
 var logSaver *PostgresLogSaver
 var statsDB StatsDB
-var api API
+var api *API
 
 func init() {
 	fake = faker.New()
@@ -55,7 +55,7 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}
-	api := NewAPI(statsDB)
+	api = NewAPI(statsDB)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	// run tests
@@ -68,7 +68,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestLog_create_tables_is_idempotent(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(t, statsDB) })
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 
 	// on insère une ligne de logs
@@ -87,7 +87,7 @@ func TestLog_create_tables_is_idempotent(t *testing.T) {
 }
 
 func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(t, statsDB) })
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 	expected := randomAccessLog()
 	err := logSaver.SaveLogToDB(expected)
@@ -98,19 +98,20 @@ func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
 }
 
 func Test_selectLines(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(t, statsDB) })
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 	var err error
-	err = insertAccessLog()
-	ass.NoError(err)
+	var resultChan = make(chan accessLog)
 	expected := randomAccessLog()
 	err = logSaver.SaveLogToDB(expected)
 	ass.NoError(err)
 	today := time.Now()
 	tomorrow := today.AddDate(0, 0, 1)
-	var logs []line
-	logs, err = selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow)
-	ass.NoError(err)
+	go selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow, resultChan)
+	var logs []accessLog
+	for l := range resultChan {
+		logs = append(logs, l)
+	}
 	ass.Len(logs, 1)
 	ass.Equal("christophe.ninucci@beta.gouv.fr", logs[0].username)
 	ass.Len(logs[0].roles, 109)
@@ -135,11 +136,4 @@ func randomAccessLog() core.AccessLog {
 		Token:  realtoken,
 	}
 	return random
-}
-
-func eraseAccessLogs(t *testing.T, db StatsDB) {
-	_, err := db.pool.Exec(db.ctx, "DELETE FROM logs")
-	if err != nil {
-		t.Errorf("erreur pendant la suppression des access logs : %v", err)
-	}
 }

@@ -16,14 +16,14 @@ var insertLogsSQL string
 var pool *pgxpool.Pool
 
 func InsertSomeLogsAtTime(t time.Time) int {
-	result, err := getPool().Exec(context.Background(), insertLogsSQL, t)
+	result, err := GetLogPool().Exec(context.Background(), insertLogsSQL, t)
 	if err != nil {
 		log.Fatal(errors.Wrap(err, "erreur pendant l'insertion des logs"))
 	}
 	return int(result.RowsAffected())
 }
 
-func getPool() *pgxpool.Pool {
+func GetLogPool() *pgxpool.Pool {
 	if pool != nil {
 		return pool
 	}

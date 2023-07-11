@@ -10,7 +10,7 @@ import (
 
 // AbortWithError gère le statut http en fonction de l'erreur
 func AbortWithError(c *gin.Context, err error) {
-	message := err.Error()
+	message := gin.H{"erreur": err.Error()}
 	code := http.StatusInternalServerError
 	if err, ok := err.(Jerror); ok {
 		code = err.Code()

@@ -3,10 +3,7 @@
 package main
 
 import (
-	"bytes"
-	"compress/gzip"
 	_ "embed"
-	"encoding/csv"
 	"fmt"
 	"net/http"
 	"testing"
@@ -19,6 +16,7 @@ import (
 )
 
 func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 
 	// GIVEN
@@ -32,7 +30,8 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
-	records, err := readGZippedCSV(body)
+	records, err := test.ReadGZippedCSV(body)
+	//defer test.WriteFile(t.Name()+".csv.gz", body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
@@ -40,6 +39,7 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 }
 
 func TestAPI_get_stats_with_heavy_load(t *testing.T) {
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 	t.Log(t.Name(), "DEMARRAGE")
 	t.Log(t.Name(), "debut des insertions")
@@ -64,8 +64,9 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
-	records, err := readGZippedCSV(body)
-	ass.NoError(err)
+	records, err := test.ReadGZippedCSV(body)
+	test.WriteFile(t.Name()+".csv.gz", body)
+	ass.NoError(err, "contenu de la réponse : %s", body)
 	t.Logf("nombre de lignes -> %d", len(records))
 	ass.Equal(expected, len(records))
 	// on compare le nombre de lignes lues dans le fichier
@@ -73,6 +74,7 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 }
 
 func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 
 	// GIVEN
@@ -82,14 +84,14 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	ass.NoError(err)
 	_ = test.InsertSomeLogsAtTime(dayToSelect.Add(-1 * time.Millisecond))
 	betweenStart := test.InsertSomeLogsAtTime(dayToSelect)
-	betweenEnd := test.InsertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays))
+	betweenEnd := test.InsertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays).Add(-1 * time.Millisecond))
 	_ = test.InsertSomeLogsAtTime(dayToSelect.AddDate(0, 0, nbDays+1))
 	path := fmt.Sprintf("/stats/from/%s/for/%d/days", search, nbDays)
 	response := test.HTTPGet(t, path)
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
-	records, err := readGZippedCSV(body)
+	records, err := test.ReadGZippedCSV(body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
@@ -162,23 +164,4 @@ func TestAPI_get_stats_testing_params(t *testing.T) {
 			ass.Contains(string(body), tt.want.message)
 		})
 	}
-}
-
-func readGZippedCSV(body []byte) ([][]string, error) {
-	var data bytes.Buffer
-	_, err := data.Write(body)
-	if err != nil {
-		return nil, err
-	}
-	gzipReader, err := gzip.NewReader(&data)
-	if err != nil {
-		return nil, err
-	}
-	defer gzipReader.Close()
-	csvReader := csv.NewReader(gzipReader)
-	records, err := csvReader.ReadAll()
-	if err != nil {
-		return nil, err
-	}
-	return records, nil
 }

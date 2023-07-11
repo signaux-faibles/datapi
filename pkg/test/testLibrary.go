@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -409,4 +410,32 @@ func Viperize(testConfig map[string]string) error {
 	}
 
 	return viper.ReadInConfig()
+}
+
+func ReadGZippedCSV(data []byte) ([][]string, error) {
+	var buffer bytes.Buffer
+	_, err := buffer.Write(data)
+	if err != nil {
+		return nil, err
+	}
+	gzipReader, err := gzip.NewReader(&buffer)
+	if err != nil {
+		return nil, err
+	}
+	defer gzipReader.Close()
+	csvReader := csv.NewReader(gzipReader)
+	return csvReader.ReadAll()
+}
+
+func WriteFile(filename string, data []byte) {
+	if err := os.WriteFile(filename, data, 0666); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func EraseAccessLogs(t *testing.T) {
+	_, err := GetLogPool().Exec(context.Background(), "DELETE FROM logs")
+	if err != nil {
+		t.Errorf("erreur pendant la suppression des access logs : %v", err)
+	}
 }

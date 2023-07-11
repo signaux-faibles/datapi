@@ -2,7 +2,6 @@ package stats
 
 import (
 	"context"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -72,33 +71,19 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 }
 
 func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
-	logs, jerr := api.fetchLogs(since, to)
-	if jerr != nil {
-		utils.AbortWithError(c, jerr)
-		return
-	}
-	data, err := transformLogsToCompressedData(logs)
+	result := make(chan accessLog)
+	go api.fetchLogs(since, to, result)
+	data, err := writeLinesToCompressedCSV(result, api.maxResultsToReturn)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.Header("Content-Disposition", "attachment; filename=statsSince"+since.String()+".zip")
+	c.Header("Content-Disposition", "attachment; filename=statsSince"+since.String()+".csv.zip")
 	c.Data(http.StatusOK, "application/zip", data)
 }
 
-func (api *API) fetchLogs(since time.Time, to time.Time) ([]line, utils.Jerror) {
-	logs, err := selectLogs(api.db.ctx, api.db.pool, since, to)
-	if err != nil {
-		return nil, utils.NewJSONerror(http.StatusInternalServerError, fmt.Sprintf("erreur pendant la récupération des logs : %s", err.Error()))
-	}
-	nbLogs := len(logs)
-	if nbLogs == 0 {
-		return nil, utils.NewJSONerror(http.StatusBadRequest, "aucune logs trouvée, les critères sont trop restrictifs")
-	}
-	if nbLogs > api.maxResultsToReturn {
-		return nil, utils.NewJSONerror(http.StatusBadRequest, "trop de logs trouvées, les critères ne sont pas assez restrictifs")
-	}
-	return logs, nil
+func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) {
+	selectLogs(api.db.ctx, api.db.pool, since, to, result)
 }
 
 func (api *API) fromStartForDaysHandler(c *gin.Context) {
