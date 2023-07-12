@@ -76,13 +76,10 @@ func TestMain(m *testing.M) {
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	// run tests
-	test.FakeTime(tuTime)
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
 	// on peut placer ici du code de nettoyage si nécessaire
-
-	test.UnfakeTime()
 	os.Exit(code)
 }
 
@@ -272,6 +269,7 @@ func TestPGE(t *testing.T) {
 }
 
 func TestScores(t *testing.T) {
+	test.FakeTime(t, tuTime)
 	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
@@ -303,6 +301,7 @@ func TestScores(t *testing.T) {
 // A = entreprise dont un établissement a déjà été en alerte, a = entreprise sans aucune alerte
 // F = entreprise dont un établissement est suivi par l'utilisateur du test, f = enterprise non suivie
 func TestVAF(t *testing.T) {
+	test.FakeTime(t, tuTime)
 	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	for _, vaf := range []string{"vaf", "vaF", "vAf", "vAF", "Vaf", "VaF", "VAf", "VAF"} {

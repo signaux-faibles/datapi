@@ -18,7 +18,6 @@ import (
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 
 func TestMain(m *testing.M) {
-	test.FakeTime(tuTime)
 	testConfig := initTestConfig()
 	url := test.GetDatapiDBURL()
 	testConfig["postgres"] = url
@@ -38,12 +37,11 @@ func TestMain(m *testing.M) {
 }
 
 func Test_importEntreprisesAndEtablissement(t *testing.T) {
-
+	test.FakeTime(t, tuTime)
 	ass := assert.New(t)
 	//net.ParseIP()
 	err := importEntreprisesAndEtablissement()
 	ass.Nil(err)
-
 }
 
 func initTestConfig() map[string]string {

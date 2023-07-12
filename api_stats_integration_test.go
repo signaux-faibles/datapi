@@ -18,6 +18,7 @@ import (
 func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
+	tuTime := time.Now()
 
 	// GIVEN
 	var numberOfDays = 10
