@@ -9,17 +9,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-func ElapsedTimeHandler(c *gin.Context) {
-	start := time.Now()
-
-	// Appel de la logique du prochain middleware ou du handler
-	c.Next()
-
-	elapsed := time.Since(start)
-
-	fmt.Printf("Appel %s / Temps écoulé: %s\n", c.Request.URL, elapsed)
-}
-
 func GetHTTPParameter[T any](c *gin.Context, paramName string, converter func(string) (T, error)) (T, error) {
 	var empty T
 	param := c.Param(paramName)

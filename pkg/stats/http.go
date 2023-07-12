@@ -13,7 +13,7 @@ import (
 	"datapi/pkg/utils"
 )
 
-const MAX = 999999
+const MAX = 9999999
 const DATE_FORMAT = "2006-01-02"
 const STATS_FILENAME = "stats_datapi"
 
@@ -72,18 +72,6 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 	}
 	start = end.AddDate(0, 0, -nbDays)
 	api.handleStatsInInterval(c, start, end)
-}
-
-func (api *API) handleStatsInInterval2(c *gin.Context, since time.Time, to time.Time) {
-	result := make(chan accessLog)
-	go api.fetchLogs(since, to, result)
-	data, err := writeLinesToCompressedCSV(result, api.maxResultsToReturn)
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-	c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
-	c.Data(http.StatusOK, "application/zip", data)
 }
 
 func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
