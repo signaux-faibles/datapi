@@ -45,6 +45,7 @@ func (datapi *Datapi) LogMiddleware(c *gin.Context) {
 		return
 	}
 }
+
 func extractAccessLogFrom(c *gin.Context) (AccessLog, error) {
 	path := c.Request.URL.Path
 	method := c.Request.Method

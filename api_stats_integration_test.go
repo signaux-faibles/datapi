@@ -32,7 +32,7 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	records, err := test.ReadZippedCSV(body)
-	//defer test.WriteFile(t.Name()+".csv.gz", body)
+	defer test.WriteFile(t.Name()+".zip", body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
@@ -48,7 +48,6 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 	// GIVEN
 	total := 99999
 	var expected int
-
 	min := time.Date(2001, 1, 1, 1, 2, 3, 4, time.UTC)
 	max := time.Now()
 
@@ -60,13 +59,16 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 
 	path := "/stats/from/2000-01-01/to/2099-01-01"
 	t.Log(t.Name(), "début de l'appel")
+	start := time.Now()
 	response := test.HTTPGet(t, path)
-	t.Log(t.Name(), "fin de l'appel")
+	elapsed := time.Since(start)
+	t.Log(t.Name(), "fin de l'appel :", elapsed)
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	records, err := test.ReadZippedCSV(body)
-	ass.NoError(err, "contenu de la réponse : %s", body)
+	//ass.NoError(err, "contenu de la réponse : %s", body)
+	ass.NoError(err)
 	t.Logf("nombre de lignes -> %d", len(records))
 	ass.Equal(expected, len(records))
 	// on compare le nombre de lignes lues dans le fichier
