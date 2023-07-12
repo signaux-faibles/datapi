@@ -34,13 +34,3 @@ func writeLinesToCSV(logs chan accessLog, maxResults int, w io.Writer) error {
 	csvWriter.Flush()
 	return err
 }
-
-//func closeZip(archive *zip.Writer, err error) {
-//  if archive != nil {
-//    defer func() {
-//      if err := archive.Close(); err != nil {
-//        utils.AbortWithError(c, err)
-//      }
-//    }()
-//  }
-//}

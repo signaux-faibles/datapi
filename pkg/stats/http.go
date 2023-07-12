@@ -97,10 +97,12 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 		}
 		return false
 	})
+	// TODO il y a un problème en cas d'erreur de Flush (réécriture de header)
 	err = archive.Flush()
 	if err != nil {
 		utils.AbortWithError(c, err)
 	}
+	// TODO il y a un problème en cas d'erreur de Flush (réécriture de header)
 	if err := archive.Close(); err != nil {
 		utils.AbortWithError(c, err)
 	}
