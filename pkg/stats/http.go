@@ -1,7 +1,9 @@
 package stats
 
 import (
+	"archive/zip"
 	"context"
+	"io"
 	"net/http"
 	"time"
 
@@ -70,7 +72,7 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 	api.handleStatsInInterval(c, start, end)
 }
 
-func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
+func (api *API) handleStatsInInterval2(c *gin.Context, since time.Time, to time.Time) {
 	result := make(chan accessLog)
 	go api.fetchLogs(since, to, result)
 	data, err := writeLinesToCompressedCSV(result, api.maxResultsToReturn)
@@ -80,6 +82,42 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 	}
 	c.Header("Content-Disposition", "attachment; filename=statsSince"+since.String()+".csv.zip")
 	c.Data(http.StatusOK, "application/zip", data)
+}
+
+func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
+	result := make(chan accessLog)
+	go api.fetchLogs(since, to, result)
+	c.Writer.Header().Set("Content-type", "application/octet-stream")
+	c.Stream(func(w io.Writer) bool {
+		// Create a zip archive.
+		archive := zip.NewWriter(w)
+		entry, err := archive.CreateHeader(&zip.FileHeader{
+			Name:     "stats.csv",
+			Comment:  "fourni par Datapi avec amour",
+			NonUTF8:  false,
+			Modified: time.Now(),
+		})
+		c.Writer.Header().Set("Content-Disposition", "attachment; filename='datapi_stats.zip'")
+		if err != nil {
+			utils.AbortWithError(c, err)
+			return false
+		}
+		err = writeLinesToCSV(result, api.maxResultsToReturn, entry)
+		if err != nil {
+			utils.AbortWithError(c, err)
+			return false
+		}
+		err = archive.Flush()
+		if err != nil {
+			utils.AbortWithError(c, err)
+			return false
+		}
+		if err := archive.Close(); err != nil {
+			utils.AbortWithError(c, err)
+			return false
+		}
+		return false
+	})
 }
 
 func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) {
