@@ -15,15 +15,17 @@ import (
 
 const MAX = 999999
 const DATE_FORMAT = "2006-01-02"
+const STATS_FILENAME = "stats_datapi"
 
 type API struct {
 	db                 StatsDB
 	maxResultsToReturn int
 	dateFormat         string
+	filename           string
 }
 
 func NewAPI(db StatsDB) *API {
-	return &API{db: db, maxResultsToReturn: MAX, dateFormat: DATE_FORMAT}
+	return &API{db: db, maxResultsToReturn: MAX, dateFormat: DATE_FORMAT, filename: STATS_FILENAME}
 }
 
 func NewAPIFromConfiguration(ctx context.Context, connexionURL string) (*API, error) {
@@ -80,44 +82,40 @@ func (api *API) handleStatsInInterval2(c *gin.Context, since time.Time, to time.
 		utils.AbortWithError(c, err)
 		return
 	}
-	c.Header("Content-Disposition", "attachment; filename=statsSince"+since.String()+".csv.zip")
+	c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
 	c.Data(http.StatusOK, "application/zip", data)
 }
 
 func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
-	result := make(chan accessLog)
-	go api.fetchLogs(since, to, result)
-	c.Writer.Header().Set("Content-type", "application/octet-stream")
+	results := make(chan accessLog)
+	go api.fetchLogs(since, to, results)
+	// Create a zip archive.
+	archive := zip.NewWriter(c.Writer)
+	entry, err := archive.CreateHeader(&zip.FileHeader{
+		Name:     api.filename + ".csv",
+		Comment:  "fourni par Datapi avec amour",
+		NonUTF8:  false,
+		Modified: time.Now(),
+	})
+	c.Header("Content-type", "application/zip")
+	c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
 	c.Stream(func(w io.Writer) bool {
-		// Create a zip archive.
-		archive := zip.NewWriter(w)
-		entry, err := archive.CreateHeader(&zip.FileHeader{
-			Name:     "stats.csv",
-			Comment:  "fourni par Datapi avec amour",
-			NonUTF8:  false,
-			Modified: time.Now(),
-		})
-		c.Writer.Header().Set("Content-Disposition", "attachment; filename='datapi_stats.zip'")
 		if err != nil {
 			utils.AbortWithError(c, err)
-			return false
 		}
-		err = writeLinesToCSV(result, api.maxResultsToReturn, entry)
+		err = writeLinesToCSV(results, api.maxResultsToReturn, entry)
 		if err != nil {
 			utils.AbortWithError(c, err)
-			return false
-		}
-		err = archive.Flush()
-		if err != nil {
-			utils.AbortWithError(c, err)
-			return false
-		}
-		if err := archive.Close(); err != nil {
-			utils.AbortWithError(c, err)
-			return false
 		}
 		return false
 	})
+	err = archive.Flush()
+	if err != nil {
+		utils.AbortWithError(c, err)
+	}
+	if err := archive.Close(); err != nil {
+		utils.AbortWithError(c, err)
+	}
 }
 
 func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) {
