@@ -17,10 +17,10 @@ type accessLog struct {
 }
 
 func (l accessLog) String() string {
-	return strings.Join(l.getFieldsAsStringArray(), ";")
+	return strings.Join(l.toStringArray(), ";")
 }
 
-func (l accessLog) getFieldsAsStringArray() []string {
+func (l accessLog) toStringArray() []string {
 	return []string{
 		l.date.Format(AccessLogDateLayout),
 		l.path,

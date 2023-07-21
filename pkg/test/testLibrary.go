@@ -413,21 +413,6 @@ func Viperize(testConfig map[string]string) error {
 	return viper.ReadInConfig()
 }
 
-func ReadGZippedCSV(data []byte) ([][]string, error) {
-	var buffer bytes.Buffer
-	_, err := buffer.Write(data)
-	if err != nil {
-		return nil, err
-	}
-	gzipReader, err := gzip.NewReader(&buffer)
-	if err != nil {
-		return nil, err
-	}
-	defer gzipReader.Close()
-	csvReader := csv.NewReader(gzipReader)
-	return csvReader.ReadAll()
-}
-
 func ReadZippedCSV(data []byte) ([][]string, error) {
 	// create and open a temporary file
 	f, err := os.CreateTemp(os.TempDir(), "stats_csv.zip") // in Go version older than 1.17 you can use ioutil.TempFile

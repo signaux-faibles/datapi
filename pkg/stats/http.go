@@ -18,14 +18,14 @@ const DATE_FORMAT = "2006-01-02"
 const STATS_FILENAME = "stats_datapi"
 
 type API struct {
-	db                 StatsDB
-	maxResultsToReturn int
-	dateFormat         string
-	filename           string
+	db                StatsDB
+	maxResultsAllowed int
+	dateFormat        string
+	filename          string
 }
 
 func NewAPI(db StatsDB) *API {
-	return &API{db: db, maxResultsToReturn: MAX, dateFormat: DATE_FORMAT, filename: STATS_FILENAME}
+	return &API{db: db, maxResultsAllowed: MAX, dateFormat: DATE_FORMAT, filename: STATS_FILENAME}
 }
 
 func NewAPIFromConfiguration(ctx context.Context, connexionURL string) (*API, error) {
@@ -91,7 +91,7 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 		if err != nil {
 			utils.AbortWithError(c, err)
 		}
-		err = writeLinesToCSV(results, api.maxResultsToReturn, entry)
+		err = writeLinesToCSV(results, api.maxResultsAllowed, entry)
 		if err != nil {
 			utils.AbortWithError(c, err)
 		}
