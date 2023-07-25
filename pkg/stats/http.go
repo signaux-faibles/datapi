@@ -164,6 +164,6 @@ func (api *API) fromStartToHandler(c *gin.Context) {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": err.Error()})
 		return
 	}
-
-	api.handleStatsInInterval(c, start, end)
+	// end est inclus dans les résultats, donc on va jusqu'au lendemain exclus
+	api.handleStatsInInterval(c, start, end.AddDate(0, 0, 1))
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
@@ -58,6 +59,8 @@ func TestMain(m *testing.M) {
 	api = NewAPI(statsDB)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
+	gin.SetMode(gin.TestMode)
+
 	// run tests
 	code := m.Run()
 

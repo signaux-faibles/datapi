@@ -1,11 +1,12 @@
 package stats
 
 import (
+	"sort"
 	"strings"
 	"time"
 )
 
-const AccessLogDateLayout = "20060102150405"
+const accessLogDateLayout = "20060102150405"
 
 type accessLog struct {
 	date     time.Time
@@ -21,11 +22,12 @@ func (l accessLog) String() string {
 }
 
 func (l accessLog) toStringArray() []string {
+	sort.Strings(l.roles)
 	return []string{
-		l.date.Format(AccessLogDateLayout),
+		l.date.Format(accessLogDateLayout),
 		l.path,
 		l.method,
 		l.username,
-		strings.Join(l.roles, "-"),
+		strings.Join(l.roles, ","),
 	}
 }
