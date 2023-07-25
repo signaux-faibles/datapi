@@ -13,6 +13,7 @@ type accessLog struct {
 	path     string
 	method   string
 	username string
+	segment  string
 	roles    []string
 	err      error
 }
@@ -28,6 +29,7 @@ func (l accessLog) toStringArray() []string {
 		l.path,
 		l.method,
 		l.username,
+		l.segment,
 		strings.Join(l.roles, ","),
 	}
 }

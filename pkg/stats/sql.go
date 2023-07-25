@@ -51,7 +51,7 @@ func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to t
 	}
 	for rows.Next() {
 		var statLine accessLog
-		err := rows.Scan(&statLine.date, &statLine.path, &statLine.method, &statLine.username, &statLine.roles)
+		err := rows.Scan(&statLine.date, &statLine.path, &statLine.method, &statLine.username, &statLine.segment, &statLine.roles)
 		if err != nil {
 			r <- accessLog{err: errors.Wrap(err, "erreur pendant la récupération des résultats")}
 		}

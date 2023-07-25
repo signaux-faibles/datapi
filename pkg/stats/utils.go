@@ -14,7 +14,7 @@ import (
 
 const accessLogDateExcelLayout = "2006/01/02 15:04:05"
 
-var csvHeaders = []string{"date", "chemin", "methode", "utilisateur", "roles"}
+var csvHeaders = []string{"date", "chemin", "methode", "utilisateur", "segment", "roles"}
 
 func writeLinesToCSV(logs chan accessLog, maxResults int, w io.Writer) error {
 	csvWriter := csv.NewWriter(w)
@@ -52,6 +52,7 @@ func (l accessLog) toCSV() []string {
 		l.path,
 		l.method,
 		l.username,
+		l.segment,
 		strings.Join(l.roles, ","),
 	}
 }
