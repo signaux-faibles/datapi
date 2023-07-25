@@ -36,7 +36,8 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
-	ass.Equal(same+after, len(records))
+	// +1 pour les headers
+	ass.Equal(same+after+1, len(records))
 }
 
 func TestAPI_get_stats_with_heavy_load(t *testing.T) {
@@ -70,7 +71,8 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 	//ass.NoError(err, "contenu de la réponse : %s", body)
 	ass.NoError(err)
 	t.Logf("nombre de lignes -> %d", len(records))
-	ass.Equal(expected, len(records))
+	// +1 pour la ligne de headers
+	ass.Equal(expected+1, len(records))
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
 }
@@ -98,7 +100,8 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
-	ass.Equal(betweenStart+betweenEnd, len(records))
+	// +1 pour les headers
+	ass.Equal(betweenStart+betweenEnd+1, len(records))
 }
 
 func TestAPI_get_stats_testing_params(t *testing.T) {
