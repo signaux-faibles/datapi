@@ -3,20 +3,17 @@ package stats
 import (
 	"encoding/csv"
 	"io"
-	"net/http"
 	"sort"
 	"strings"
 
 	"github.com/pkg/errors"
-
-	"datapi/pkg/utils"
 )
 
 const accessLogDateExcelLayout = "2006/01/02 15:04:05"
 
 var csvHeaders = []string{"date", "chemin", "methode", "utilisateur", "segment", "roles"}
 
-func writeLinesToCSV(logs chan accessLog, maxResults int, w io.Writer) error {
+func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 	csvWriter := csv.NewWriter(w)
 	counter := 0
 	wErr := csvWriter.Write(csvHeaders)
@@ -36,12 +33,6 @@ func writeLinesToCSV(logs chan accessLog, maxResults int, w io.Writer) error {
 		counter++
 	}
 	csvWriter.Flush()
-	if counter == 0 {
-		return utils.NewJSONerror(http.StatusBadRequest, "aucune logs trouvée, les critères sont trop restrictifs")
-	}
-	if counter > maxResults {
-		return utils.NewJSONerror(http.StatusBadRequest, "trop de logs trouvées, les critères ne sont pas assez restrictifs")
-	}
 	return nil
 }
 

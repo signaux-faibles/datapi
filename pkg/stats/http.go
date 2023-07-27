@@ -18,14 +18,13 @@ const DATE_FORMAT = "2006-01-02"
 const STATS_FILENAME = "stats_datapi"
 
 type API struct {
-	db                StatsDB
-	maxResultsAllowed int
-	dateFormat        string
-	filename          string
+	db         StatsDB
+	dateFormat string
+	filename   string
 }
 
 func NewAPI(db StatsDB) *API {
-	return &API{db: db, maxResultsAllowed: MAX, dateFormat: DATE_FORMAT, filename: STATS_FILENAME}
+	return &API{db: db, dateFormat: DATE_FORMAT, filename: STATS_FILENAME}
 }
 
 func NewAPIFromConfiguration(ctx context.Context, connexionURL string) (*API, error) {
@@ -78,34 +77,32 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 	results := make(chan accessLog)
 	go api.fetchLogs(since, to, results)
 	// Create a zip archive.
-	archive := zip.NewWriter(c.Writer)
-	entry, err := archive.CreateHeader(&zip.FileHeader{
-		Name:     api.filename + ".csv",
-		Comment:  "fourni par Datapi avec amour",
-		NonUTF8:  false,
-		Modified: time.Now(),
-	})
-	c.Header("Content-type", "application/zip")
-	c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
+	c.Header("Content-type", "application/octet-stream")
 	c.Stream(func(w io.Writer) bool {
+		archive := zip.NewWriter(w)
+		entry, err := archive.CreateHeader(&zip.FileHeader{
+			Name:     api.filename + ".csv",
+			Comment:  "fourni par Datapi avec amour",
+			NonUTF8:  false,
+			Modified: time.Now(),
+		})
 		if err != nil {
-			utils.AbortWithError(c, err)
+			c.Status(http.StatusInternalServerError)
+			return false
 		}
-		err = writeLinesToCSV(results, api.maxResultsAllowed, entry)
+
+		c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
+		err = writeLinesToCSV(results, entry)
 		if err != nil {
-			utils.AbortWithError(c, err)
+			c.Status(http.StatusInternalServerError)
+			return false
+		}
+		err = archive.Close()
+		if err != nil {
+			c.Status(http.StatusInternalServerError)
 		}
 		return false
 	})
-	// TODO il y a un problème en cas d'erreur de Flush (réécriture de header)
-	err = archive.Flush()
-	if err != nil {
-		utils.AbortWithError(c, err)
-	}
-	// TODO il y a un problème en cas d'erreur de Flush (réécriture de header)
-	if err := archive.Close(); err != nil {
-		utils.AbortWithError(c, err)
-	}
 }
 
 func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) {

@@ -34,37 +34,15 @@ function main() {
   else
     log "la base de données est déjà démarrée"
   fi
-#  if [ "${SHUTDOWN_POSTGRES_ID}" != "${POSTGRES_ID}" ]; then
-#    log "suppression du container datapiDB déjà éteint"
-#    docker rm datapiDB
-#  fi
-#  docker run  --detach --tty \
-#              --name      datapiDB \
-#              --env       POSTGRES_USER=postgres \
-#              --env       POSTGRES_PASSWORD=test \
-#              --env       POSTGRES_DB=datapi_test \
-#              --env       listen_addresses='*' \
-#              --publish   5432:5432 \
-#              --mount     "type=bind,source=$(pwd)/test/postgresql.conf,destination=/etc/postgresql/postgresql.conf" \
-#              --mount     "type=bind,source=$(pwd)/test/initDB,destination=/docker-entrypoint-initdb.d" \
-#              postgres:15-alpine 2> /dev/null \
-#              || log "la base de données est déjà démarrée"
 
   ## Construction du binaire
   log "construit le binaire datapi avec les options de debug"
   go build -gcflags="-N -l" -o datapi
   log "pour debugger avec goland => 'Attach to process...'"
 
-  ## Extinction de DATAPI
-#  DATAPI_PID=$(ps | grep datapi | grep -v grep | awk '{print $1}')
-#  if [ "${DATAPI_PID}" -ge 5 ]; then
-#    log "extinction de datapi"
-#    kill "${DATAPI_PID}"
-#  fi
-
   ## Redémarrage de datapi
   log "redémarrage de datapi (configuration via le fichier config.toml)"
-  (ps | grep datapi | grep -v grep | awk '{print $1}' | xargs -r kill) || log "pas besoin de stopper datapi avant le démarrage"
+  (ps | grep datapi | grep -v grep | awk '{print $1}' | xargs -r kill -9) || log "pas besoin de stopper datapi avant le démarrage"
   ./datapi
 }
 
