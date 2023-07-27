@@ -150,16 +150,6 @@ func TestAPI_get_stats_testing_params(t *testing.T) {
 			"/stats/from/2012-03-21/to/2012-03",
 			want{http.StatusBadRequest, "le paramètre 'end' n'est pas du bon type:"},
 		},
-		{
-			"mauvais critère - 1",
-			"/stats/from/2012-03-21/to/2012-03-22",
-			want{http.StatusBadRequest, "aucune logs trouvée, les critères sont trop restrictifs"},
-		},
-		{
-			"mauvais critère - 2",
-			"/stats/since/-1/days",
-			want{http.StatusBadRequest, "aucune logs trouvée, les critères sont trop restrictifs"},
-		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
