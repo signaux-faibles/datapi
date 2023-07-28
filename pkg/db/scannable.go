@@ -15,7 +15,7 @@ type Scannable interface {
 
 // Scan est une fonction permettant l'exécution d'une requête sql et la récupération des résultats dans un slice
 func Scan(ctx context.Context, scannable Scannable, sql string, params ...interface{}) error {
-	return SelectTuples(ctx, Get(), scannable, sql, params)
+	return SelectTuples(ctx, Get(), scannable, sql, params...)
 }
 
 // SelectTuples est une fonction permettant l'exécution d'une requête sql et la récupération des résultats dans un slice
