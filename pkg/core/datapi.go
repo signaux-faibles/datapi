@@ -30,8 +30,8 @@ type Datapi struct {
 	KanbanService KanbanService
 }
 
-// StartDatapi se connecte aux bases de données et keycloak
-func StartDatapi(kanbanService KanbanService, saver AccessLogSaver) (*Datapi, error) {
+// PrepareDatapi se connecte aux bases de données et keycloak
+func PrepareDatapi(kanbanService KanbanService, saver AccessLogSaver) (*Datapi, error) {
 	var err error
 	db.Init() // fail fast - on n'attend pas la première requête pour savoir si on peut se connecter à la db
 	Departements, err = loadDepartementReferentiel()

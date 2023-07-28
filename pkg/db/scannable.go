@@ -2,6 +2,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 // Scannable est une interface permettant l'usage de la fonction Scan
@@ -13,7 +15,12 @@ type Scannable interface {
 
 // Scan est une fonction permettant l'exécution d'une requête sql et la récupération des résultats dans un slice
 func Scan(ctx context.Context, scannable Scannable, sql string, params ...interface{}) error {
-	rows, err := db.Query(ctx, sql, params...)
+	return SelectTuples(ctx, Get(), scannable, sql, params)
+}
+
+// SelectTuples est une fonction permettant l'exécution d'une requête sql et la récupération des résultats dans un slice
+func SelectTuples(ctx context.Context, dbPool *pgxpool.Pool, scannable Scannable, sql string, params ...interface{}) error {
+	rows, err := dbPool.Query(ctx, sql, params...)
 	if err != nil {
 		return err
 	}

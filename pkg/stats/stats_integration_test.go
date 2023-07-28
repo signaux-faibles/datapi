@@ -4,11 +4,13 @@ package stats
 
 import (
 	"context"
+	_ "embed"
 	"log"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
@@ -17,11 +19,14 @@ import (
 	"datapi/pkg/test"
 )
 
-var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 var fake faker.Faker
 
-// SYSTEM UNDER TEST
-var sut *PostgresLogSaver
+//go:embed resources/tests/token
+var realtoken string
+
+var logSaver *PostgresLogSaver
+var statsDB StatsDB
+var api *API
 
 func init() {
 	fake = faker.New()
@@ -43,52 +48,87 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}
-	sut = NewPostgresLogSaver(background, pool)
-	err = sut.Initialize()
+	statsDB, err = createStatsDB(background, pool)
+	if err != nil {
+		log.Fatalf("erreur pendant la création de la base de données de Stats : %s", err)
+	}
+	logSaver = NewPostgresLogSaver(statsDB)
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}
-
+	api = NewAPI(statsDB)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
+	gin.SetMode(gin.TestMode)
+
 	// run tests
-	test.FakeTime(tuTime)
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
 	// on peut placer ici du code de nettoyage si nécessaire
 
-	test.UnfakeTime()
 	os.Exit(code)
 }
 
-func TestLog_Initialize_idempotent(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(sut.ctx, t, sut.db) })
+func TestLog_create_tables_is_idempotent(t *testing.T) {
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 
 	// on insère une ligne de logs
+	// pour pouvoir vérifier qu'elle continue à exister
 	expected := randomAccessLog()
-	_ = sut.SaveLogToDB(expected)
+	_ = logSaver.SaveLogToDB(expected)
 
 	// on vérifie que l'initialisation est idempotente
 	// `Initialize` est déjà exécuté dans `TestMain`
-	err := sut.Initialize()
+	err := statsDB.create()
 	ass.NoError(err)
 
-	actual, _ := getLastAccessLog(sut.ctx, sut.db)
+	actual, _ := getLastAccessLog(logSaver.db.ctx, logSaver.db.pool)
 	ass.Equal(expected, actual)
 	ass.NoError(err)
 }
 
 func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
-	t.Cleanup(func() { eraseAccessLogs(sut.ctx, t, sut.db) })
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 	expected := randomAccessLog()
-	err := sut.SaveLogToDB(expected)
+	err := logSaver.SaveLogToDB(expected)
 	ass.NoError(err)
-	actual, err := getLastAccessLog(sut.ctx, sut.db)
+	actual, err := getLastAccessLog(logSaver.db.ctx, logSaver.db.pool)
 	ass.NoError(err)
 	ass.Equal(expected, actual)
+}
+
+func Test_selectLines(t *testing.T) {
+	t.Cleanup(func() { test.EraseAccessLogs(t) })
+	ass := assert.New(t)
+	var err error
+	var resultChan = make(chan accessLog)
+	expected := randomAccessLog()
+	err = logSaver.SaveLogToDB(expected)
+	ass.NoError(err)
+	today := time.Now()
+	tomorrow := today.AddDate(0, 0, 1)
+	go selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow, resultChan)
+	var logs []accessLog
+	for l := range resultChan {
+		logs = append(logs, l)
+	}
+	ass.Len(logs, 1)
+	ass.Equal("christophe.ninucci@beta.gouv.fr", logs[0].username)
+	ass.Len(logs[0].roles, 109)
+	ass.Equal(expected.Method, logs[0].method)
+	ass.Equal(expected.Path, logs[0].path)
+	ass.Contains(logs[0].roles, "score")
+	ass.Contains(logs[0].roles, "dgefp")
+	ass.Contains(logs[0].roles, "bdf")
+	ass.Contains(logs[0].roles, "urssaf")
+	ass.Contains(logs[0].roles, "France entière")
+	ass.Contains(logs[0].roles, "01")
+	ass.Contains(logs[0].roles, "16")
+	ass.Contains(logs[0].roles, "2A")
+	ass.Contains(logs[0].roles, "972")
 }
 
 func randomAccessLog() core.AccessLog {
@@ -96,14 +136,7 @@ func randomAccessLog() core.AccessLog {
 		Path:   fake.File().AbsoluteFilePathForUnix(2),
 		Method: fake.Internet().HTTPMethod(),
 		Body:   fake.Lorem().Bytes(256),
-		Token:  fake.Internet().User(),
+		Token:  realtoken,
 	}
 	return random
-}
-
-func eraseAccessLogs(ctx context.Context, t *testing.T, db *pgxpool.Pool) {
-	_, err := db.Exec(ctx, "DELETE FROM logs")
-	if err != nil {
-		t.Errorf("erreur pendant la suppression des access logs : %v", err)
-	}
 }

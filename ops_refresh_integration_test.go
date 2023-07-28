@@ -4,17 +4,19 @@ package main
 
 import (
 	"context"
+	"encoding/json"
+	"net/http"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/pkg/errors"
+	"github.com/stretchr/testify/assert"
+
 	"datapi/pkg/db"
 	"datapi/pkg/ops/refresh"
 	"datapi/pkg/test"
 	"datapi/pkg/utils"
-	"encoding/json"
-	"github.com/google/uuid"
-	"github.com/pkg/errors"
-	"github.com/stretchr/testify/assert"
-	"net/http"
-	"testing"
-	"time"
 )
 
 func TestFetchNonExistentRefresh(t *testing.T) {
@@ -91,6 +93,7 @@ func TestApi_OpsRefresh_StatusHandler(t *testing.T) {
 
 func TestApi_OpsRefresh_ListHandler(t *testing.T) {
 	ass := assert.New(t)
+	test.FakeTime(t, tuTime)
 
 	current := refresh.StartRefreshScript(context.Background(), db.Get(), "erreur !!! pas de script !!!")
 	expectedStatus := refresh.Failed

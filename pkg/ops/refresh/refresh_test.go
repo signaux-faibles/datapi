@@ -1,28 +1,18 @@
 package refresh
 
 import (
-	"datapi/pkg/test"
-	"github.com/stretchr/testify/assert"
-	"os"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/test"
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.Local)
 
-func TestMain(m *testing.M) {
-	test.FakeTime(tuTime)
-
-	code := m.Run()
-
-	// You can't defer this because os.Exit doesn't care for defer
-	// on peut placer ici du code de nettoyage si nécessaire
-	test.UnfakeTime()
-
-	os.Exit(code)
-}
-
 func Test_NewRefresh(t *testing.T) {
+	test.FakeTime(t, tuTime)
 	ass := assert.New(t)
 	current := New()
 	ass.Equal(Prepare, current.Status)
@@ -42,7 +32,7 @@ func Test_changeRefreshStateToRun(t *testing.T) {
 
 	// wait 5"
 	expectedTime := tuTime.Add(5 * time.Second)
-	test.FakeTime(expectedTime)
+	test.FakeTime(t, expectedTime)
 
 	current.run(expectedMessage)
 	ass.Exactly(expectedMessage, current.Message)

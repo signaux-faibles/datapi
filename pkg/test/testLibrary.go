@@ -1,9 +1,11 @@
 package test
 
 import (
+	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -409,4 +411,45 @@ func Viperize(testConfig map[string]string) error {
 	}
 
 	return viper.ReadInConfig()
+}
+
+func ReadZippedCSV(data []byte) ([][]string, error) {
+	// create and open a temporary file
+	f, err := os.CreateTemp(os.TempDir(), "stats_csv.zip") // in Go version older than 1.17 you can use ioutil.TempFile
+	if err != nil {
+		log.Fatal(err)
+	}
+	WriteFile(f.Name(), data)
+	// close and remove the temporary file at the end of the program
+	defer f.Close()
+	defer os.Remove(f.Name())
+	reader, err := zip.OpenReader(f.Name())
+	if err != nil {
+		return nil, err
+	}
+	defer reader.Close()
+	files := reader.File
+	if len(files) != 1 {
+		return nil, fmt.Errorf("trop ou pas assez de fichier dans le zip fourni : %s", f.Name())
+	}
+	csvFile := files[0]
+	csvContent, err := csvFile.Open()
+	if err != nil {
+		return nil, err
+	}
+	csvReader := csv.NewReader(csvContent)
+	return csvReader.ReadAll()
+}
+
+func WriteFile(filename string, data []byte) {
+	if err := os.WriteFile(filename, data, 0666); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func EraseAccessLogs(t *testing.T) {
+	_, err := GetLogPool().Exec(context.Background(), "DELETE FROM logs")
+	if err != nil {
+		t.Errorf("erreur pendant la suppression des access logs : %v", err)
+	}
 }

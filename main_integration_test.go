@@ -4,16 +4,18 @@ package main
 
 import (
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/db"
-	"datapi/pkg/kanban"
-	"datapi/pkg/test"
+	_ "embed"
 	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 	"testing"
 	"time"
+
+	"datapi/pkg/core"
+	"datapi/pkg/db"
+	"datapi/pkg/kanban"
+	"datapi/pkg/test"
 
 	"github.com/stretchr/testify/assert"
 
@@ -25,7 +27,7 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 // TestMain : lance datapi ainsi qu'un conteneur postgres bien paramétré
 // les informations de base de données doivent être identique dans :
 // - le fichier de configuration de test -> test/config.toml
-// - le fichier de création et d'import de données dans la base -> test/data/testData.sql.gz
+// - le fichier de création et d'import de données dans la base -> test/data/01_testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
 	var err error
@@ -56,27 +58,28 @@ func TestMain(m *testing.M) {
 	kanbanService := kanban.InitService(ctx, wekanDBURL, "test", "mgo", "*")
 	logSaver, err := stats.NewPostgresLogSaverFromURL(ctx, test.GetDatapiLogDBURL())
 	if err != nil {
-		log.Fatalf("Erreur pendant la construction du AccessLogSaver : %s", err)
+		log.Fatalf("erreur pendant la création du AccessLogSaver : %s", err)
 	}
-	if err = logSaver.Initialize(); err != nil {
-		log.Fatalf("Erreur pendant l'initialisation du AccessLogSaver : %s", err)
+
+	statsAPI, err := stats.NewAPIFromConfiguration(ctx, test.GetDatapiLogDBURL())
+
+	if err != nil {
+		log.Fatalf("erreur pendant la création de l'API Stats : %s", err)
 	}
-	datapi, err := core.StartDatapi(kanbanService, logSaver.SaveLogToDB)
+
+	datapi, err := core.PrepareDatapi(kanbanService, logSaver.SaveLogToDB)
 	if err != nil {
 		log.Printf("Erreur pendant le démarrage de Datapi : %s", err)
 	}
 
-	go initAndStartAPI(datapi)
+	go initAndStartAPI(datapi, statsAPI)
 	// time to API be ready
 	time.Sleep(1 * time.Second)
 	// run tests
-	test.FakeTime(tuTime)
 	code := m.Run()
 
 	// You can't defer this because os.Exit doesn't care for defer
 	// on peut placer ici du code de nettoyage si nécessaire
-
-	test.UnfakeTime()
 	os.Exit(code)
 }
 
@@ -266,6 +269,7 @@ func TestPGE(t *testing.T) {
 }
 
 func TestScores(t *testing.T) {
+	test.FakeTime(t, tuTime)
 	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	t.Log("/scores/liste retourne le même résultat qu'attendu")
@@ -297,6 +301,7 @@ func TestScores(t *testing.T) {
 // A = entreprise dont un établissement a déjà été en alerte, a = entreprise sans aucune alerte
 // F = entreprise dont un établissement est suivi par l'utilisateur du test, f = enterprise non suivie
 func TestVAF(t *testing.T) {
+	test.FakeTime(t, tuTime)
 	followEtablissementsThenCleanup(t, test.SelectSomeSiretsToFollow(t))
 
 	for _, vaf := range []string{"vaf", "vaF", "vAf", "vAF", "Vaf", "VaF", "VAf", "VAF"} {
