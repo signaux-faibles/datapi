@@ -44,12 +44,12 @@ func initWekanService(ctx context.Context) core.KanbanService {
 func initAndStartAPI(datapi *core.Datapi, statsAPI *stats.API) {
 	router := gin.Default()
 	datapi.InitAPI(router)
-	needRoleStats := core.NewSimpleMandatoryRoleChecker("stats")
+	needRoleStats := core.CheckAllRolesMiddleware("stats")
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint(datapi.KanbanService), core.AuthMiddleware(), datapi.LogMiddleware)
-	core.AddEndpoint(router, "/stats", statsAPI.ConfigureEndpoint, core.AuthMiddleware(), datapi.LogMiddleware, needRoleStats.CheckRoleMiddleware)
+	core.AddEndpoint(router, "/stats", statsAPI.ConfigureEndpoint, core.AuthMiddleware(), datapi.LogMiddleware, needRoleStats)
 	core.StartAPI(router)
 }
 
