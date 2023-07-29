@@ -28,6 +28,7 @@ fakeKeycloakRoles = [
     "93",
     "94",
     "95",
+    "stats",
 ]
 
 searchPageLength = 10
