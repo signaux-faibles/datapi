@@ -17,6 +17,7 @@ type KanbanService interface {
 	LoadConfigForUser(username libwekan.Username) KanbanConfig
 	SelectCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	SelectCardsFromSiretsAndBoardIDs(ctx context.Context, sirets []Siret, boardIDs []libwekan.BoardID, username libwekan.Username) ([]KanbanCard, error)
+	SelectCardFromCardID(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) (KanbanCard, error)
 	ExportCardsFromSiret(ctx context.Context, siret string, username libwekan.Username) ([]KanbanCard, error)
 	SelectFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (Summaries, error)
 	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (KanbanExports, error)
@@ -297,4 +298,23 @@ func kanbanUnarchiveCardHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	c.JSON(200, "traitement effectué")
+}
+
+func kanbanUpdateCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+	var params struct {
+		CardID      libwekan.CardID `json:"cardID"`
+		Description string          `json:"description"`
+	}
+	c.Bind(&params)
+
+	card, err := Kanban.SelectCardFromCardID(c, params.CardID, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur:" + err.Error()})
+	}
+	err = Kanban.UpdateCard(c, card, params.Description, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur: " + err.Error()})
+	}
 }
