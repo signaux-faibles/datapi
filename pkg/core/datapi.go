@@ -167,6 +167,7 @@ func configureKanbanEndpoint(path string, api *gin.Engine, handlers ...gin.Handl
 	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)
 	kanban.POST("/card", CheckAnyRolesMiddleware("wekan"), kanbanNewCardHandler)
 	kanban.GET("/unarchive/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanUnarchiveCardHandler)
+	kanban.POST("/updateCard", CheckAnyRolesMiddleware("wekan"), kanbanUpdateCardHandler)
 }
 
 // True made global to ease pointers

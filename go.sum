@@ -326,6 +326,8 @@ github.com/signaux-faibles/goSirene v0.2.4 h1:m74h4GNNTI2aQryakGj2vJIWl6/JUSLSdx
 github.com/signaux-faibles/goSirene v0.2.4/go.mod h1:YdHQWRCIiyAmPievzBtFwsvA61MXrPkuPkJuGUu9kmU=
 github.com/signaux-faibles/libwekan v0.3.0 h1:6MImB/BIk/ZgmOD60uxGtHGR8zUfIq5fRXPJaOUp3s8=
 github.com/signaux-faibles/libwekan v0.3.0/go.mod h1:CQw3TAfWRiy12eduon5uVEIEwB95ZNTmPM1jaTtZ+rk=
+github.com/signaux-faibles/libwekan v0.4.0 h1:QD20QofXlJUlPbPq0TSQhfAykH573qm1mbiu/+w5meM=
+github.com/signaux-faibles/libwekan v0.4.0/go.mod h1:CQw3TAfWRiy12eduon5uVEIEwB95ZNTmPM1jaTtZ+rk=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
 github.com/sirupsen/logrus v1.8.1/go.mod h1:yWOB1SBYBC5VeMP7gHvWumXLIWorT60ONWic61uBYv0=
 github.com/spf13/afero v1.9.5 h1:stMpOSZFs//0Lv29HduCmli3GUfpFoF3Y1Q/aXj/wVM=
