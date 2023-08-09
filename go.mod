@@ -20,7 +20,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.0
 	github.com/prometheus/client_golang v1.16.0
-	github.com/signaux-faibles/goSirene v0.2.4
+	github.com/signaux-faibles/goSirene v0.3.0
 	github.com/signaux-faibles/libwekan v0.4.0
 	github.com/spf13/viper v1.16.0
 	github.com/stretchr/testify v1.8.4

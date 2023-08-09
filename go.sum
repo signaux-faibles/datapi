@@ -316,8 +316,8 @@ github.com/seccomp/libseccomp-golang v0.9.2-0.20220502022130-f33da4d89646/go.mod
 github.com/segmentio/ksuid v1.0.4 h1:sBo2BdShXjmcugAMwjugoGUdUV0pcxY5mW4xKRn3v4c=
 github.com/segmentio/ksuid v1.0.4/go.mod h1:/XUiZBD3kVx5SmUOl55voK5yeAbBNNIed+2O73XgrPE=
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
-github.com/signaux-faibles/goSirene v0.2.4 h1:m74h4GNNTI2aQryakGj2vJIWl6/JUSLSdxetHOQxYQg=
-github.com/signaux-faibles/goSirene v0.2.4/go.mod h1:YdHQWRCIiyAmPievzBtFwsvA61MXrPkuPkJuGUu9kmU=
+github.com/signaux-faibles/goSirene v0.3.0 h1:8EC8sLShiqtBVc+je5am6J/DAIfmYchVXtvUrbWw3l4=
+github.com/signaux-faibles/goSirene v0.3.0/go.mod h1:YdHQWRCIiyAmPievzBtFwsvA61MXrPkuPkJuGUu9kmU=
 github.com/signaux-faibles/libwekan v0.4.0 h1:QD20QofXlJUlPbPq0TSQhfAykH573qm1mbiu/+w5meM=
 github.com/signaux-faibles/libwekan v0.4.0/go.mod h1:CQw3TAfWRiy12eduon5uVEIEwB95ZNTmPM1jaTtZ+rk=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
