@@ -2,8 +2,24 @@
 package core
 
 import (
+	"regexp"
 	"time"
 )
+
+// Siret : représente l'indifiant `Siret` d'un établissement
+type Siret string
+type Siren string
+
+// Siren : interpole la valeur Siren depuis le Siret d'un établissement
+func (s Siret) Siren() Siren {
+	return Siren(s[0:9])
+}
+
+var validSirenRegexp = regexp.MustCompile("^[0-9]{9}")
+
+func (s Siren) IsValid() bool {
+	return validSirenRegexp.MatchString(string(s))
+}
 
 // Diane représente les infos Diane sur une entreprise
 type Diane struct {

@@ -11,32 +11,38 @@ import (
 
 // ConfigureEndpoint configure l'endpoint du package `ops`
 func ConfigureEndpoint(endpoint *gin.RouterGroup) {
-	endpoint.GET("/ee", importEntrepriseAndEtablissementHandler) // 1
-	endpoint.GET("/sirene", importSireneHandler)                 // 2
-	endpoint.GET("/listes/:algo", importListesHandler)           // 3
-	endpoint.GET("/full", importEntrepriseAndEtablissementHandler, importSireneHandler)
-	endpoint.GET("/full/:algo", importEntrepriseAndEtablissementHandler, importSireneHandler, importListesHandler)
+	endpoint.GET("/ee", importEtablissementHandler)
+	endpoint.GET("/sirene/stocketablissement", importStockEtablissementsHandler)
+	endpoint.GET("/sirene/unitelegale", importUnitesLegalesHandler)
+	endpoint.GET("/listes/:algo", importListesHandler)
+	endpoint.GET("/full", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler)
+	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importListesHandler)
 	endpoint.GET("/bce", importBCEHandler)
+	endpoint.GET("/paydexhisto", importPaydexHistoHandler)
 }
 
-func importSireneHandler(c *gin.Context) {
-	err := importSirene()
+func importStockEtablissementsHandler(c *gin.Context) {
+	err := importStockEtablissement(c)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
-	//c.Next()
-	//c.JSON(http.StatusOK, "sirenes mis à jour")
 }
 
-func importEntrepriseAndEtablissementHandler(c *gin.Context) {
-	err := importEntreprisesAndEtablissement()
+func importUnitesLegalesHandler(c *gin.Context) {
+	err := importUnitesLegales(c)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
-	//c.Next()
-	//c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
+}
+
+func importEtablissementHandler(c *gin.Context) {
+	err := importEtablissement()
+	if err != nil {
+		utils.AbortWithError(c, err)
+		return
+	}
 }
 
 func importListesHandler(c *gin.Context) {
@@ -50,6 +56,11 @@ func importListesHandler(c *gin.Context) {
 		utils.AbortWithError(c, err)
 		return
 	}
-	//c.Next()
-	//c.JSON(http.StatusOK, "entreprises & etablissements mis à jour")
+}
+
+func importPaydexHistoHandler(c *gin.Context) {
+	err := importPaydexHisto(c)
+	if err != nil {
+		c.AbortWithError(http.StatusInternalServerError, err)
+	}
 }
