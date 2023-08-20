@@ -5,6 +5,8 @@ import (
 	"datapi/pkg/utils"
 	"encoding/json"
 	"github.com/stretchr/testify/assert"
+	"os"
+	"strings"
 	"testing"
 	"time"
 )
@@ -50,11 +52,24 @@ var expected = []PaydexHisto{
 	},
 }
 
+func getTestDataFilename() string {
+	cwd, _ := os.Getwd()
+	path := "test_histo_paydex.csv.zip"
+	if !strings.HasSuffix(cwd, "imports") {
+		path = "./pkg/ops/imports/" + path
+	}
+	return path
+}
+
 func Test_PaydexHistoReader(t *testing.T) {
 	ass := assert.New(t)
 
 	// GIVEN
-	paydexHistoChan, _ := PaydexHistoReader(context.Background(), "test_histo_paydex.csv.zip")
+
+	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
+	path := getTestDataFilename()
+
+	paydexHistoChan, _ := PaydexHistoReader(context.Background(), path)
 
 	// WHEN
 	var paydexHistos []PaydexHisto
@@ -73,8 +88,11 @@ func Test_PaydexHistoReader_cancelledContext(t *testing.T) {
 	ass := assert.New(t)
 
 	// GIVEN
+	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
+	path := getTestDataFilename()
+
 	ctx, cancelCtx := context.WithCancel(context.Background())
-	paydexHistoChan, _ := PaydexHistoReader(ctx, "test_histo_paydex.csv.zip")
+	paydexHistoChan, _ := PaydexHistoReader(ctx, path)
 	cancelCtx()
 	var paydexHistos []PaydexHisto
 	for paydexHisto := range paydexHistoChan {
@@ -89,7 +107,9 @@ func Test_PaydexHistoReader_missingFile(t *testing.T) {
 	ass := assert.New(t)
 
 	// GIVEN
-	paydexHistoChan, err := PaydexHistoReader(context.Background(), "missing_test_histo_paydex.csv.zip")
+	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
+	path := "bad" + getTestDataFilename()
+	paydexHistoChan, err := PaydexHistoReader(context.Background(), path)
 
 	// WHEN
 	var paydexHistos []PaydexHisto
@@ -105,7 +125,10 @@ func Test_CopyFromPaydexHisto_firstOccurence(t *testing.T) {
 	ass := assert.New(t)
 
 	// GIVEN
-	paydexHistoReader, _ := PaydexHistoReader(context.Background(), "test_histo_paydex.csv.zip")
+	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
+	path := getTestDataFilename()
+
+	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
 	copyFromPaydexHisto := CopyFromPaydexHisto{
 		PaydexHistoParser: paydexHistoReader,
 		Current:           new(PaydexHisto),
@@ -124,7 +147,10 @@ func Test_CopyFromPaydexHisto_allTuples(t *testing.T) {
 	ass := assert.New(t)
 
 	// GIVEN
-	paydexHistoReader, _ := PaydexHistoReader(context.Background(), "test_histo_paydex.csv.zip")
+	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
+	path := getTestDataFilename()
+
+	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
 	copyFromPaydexHisto := CopyFromPaydexHisto{
 		PaydexHistoParser: paydexHistoReader,
 		Current:           new(PaydexHisto),
@@ -149,7 +175,10 @@ func Test_CopyFromPaydexHisto_missingFile(t *testing.T) {
 	ass := assert.New(t)
 
 	// GIVEN
-	paydexHistoReader, _ := PaydexHistoReader(context.Background(), "missing_test_histo_paydex.csv.zip")
+	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
+	path := "bad" + getTestDataFilename()
+
+	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
 	copyFromPaydexHisto := CopyFromPaydexHisto{
 		PaydexHistoParser: paydexHistoReader,
 		Current:           new(PaydexHisto),

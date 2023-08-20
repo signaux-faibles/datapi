@@ -7,6 +7,7 @@ import (
 	"github.com/signaux-faibles/goSirene"
 	"github.com/stretchr/testify/assert"
 	"os"
+	"strings"
 	"testing"
 )
 
@@ -258,7 +259,15 @@ func TestCopyFromGeoSirene(t *testing.T) {
 	json.Unmarshal([]byte(expectedGeoSireneJSON), &expectedGeoSirene)
 	expectedTuples := utils.Convert(expectedGeoSirene, geoSireneData)
 	expectedTuplesJSON, _ := json.MarshalIndent(expectedTuples, " ", " ")
-	file, _ := os.Open("test_StockEtablissement_utf8_geo.csv.gz")
+
+	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
+	cwd, _ := os.Getwd()
+	path := "test_StockEtablissement_utf8_geo.csv.gz"
+	if !strings.HasSuffix(cwd, "imports") {
+		path = "./pkg/ops/imports/" + path
+	}
+
+	file, _ := os.Open(path)
 	geoSireneParser := goSirene.GeoSireneParser(context.Background(), file)
 
 	// WHEN
