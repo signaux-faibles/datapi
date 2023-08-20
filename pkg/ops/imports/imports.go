@@ -198,54 +198,54 @@ type sirene struct {
 
 func (e entreprise) intoBatch(batch *pgx.Batch) {
 	// TODO a remplacer par l'imports du fichier de Yan
-	sqlEntrepriseDiane := `insert into entreprise_diane
-		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere,
-		autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
-		capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
-	 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation,
-		couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
-		dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
-	 	endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
-	 	financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
-	 	liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
-	 	operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
-	 	performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
-	 	productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
-	 	rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
-	 	rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
-	 	taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-		taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee)
-	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
-	 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
-	 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
- 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79);`
+	//sqlEntrepriseDiane := `insert into entreprise_diane
+	//	(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere,
+	//	autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
+	//	capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
+	// 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation,
+	//	couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
+	//	dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
+	// 	endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
+	// 	financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
+	// 	liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
+	// 	operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
+	// 	performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
+	// 	productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
+	// 	rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
+	// 	rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
+	// 	taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
+	//	taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee)
+	//values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+	// 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
+	// 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
+	// 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79);`
 
-	for _, d := range e.Value.Diane {
-		if d.ArreteBilan.IsZero() {
-			continue
-		}
-
-		batch.Queue(
-			sqlEntrepriseDiane,
-			d.NumeroSiren, d.ArreteBilan, d.AchatMarchandises, d.AchatMatieresPremieres, d.AutonomieFinanciere,
-			d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises, d.BeneficeOuPerte, d.CAExportation,
-			d.CapaciteAutofinancement, d.CapaciteRemboursement, d.CAparEffectif, d.ChargeExceptionnelle, d.ChargePersonnel,
-			d.ChargesFinancieres, d.ChiffreAffaire, d.ConcesBrevEtDroitsSim, d.ConcoursBancaireCourant, d.Consommation,
-			d.CouvertureCaBesoinFdr, d.CouvertureCaFdr, d.CreditClient, d.CreditFournisseur, d.DegreImmoCorporelle,
-			d.DetteFiscaleEtSociale, d.DotationAmortissement, d.EffectifConsolide, d.EfficaciteEconomique, d.Endettement,
-			d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
-			d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
-			d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
-			d.OperationsCommun, d.PartAutofinancement, d.PartEtat, d.PartPreteur, d.PartSalaries, d.ParticipationSalaries,
-			d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
-			d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
-			d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
-			d.RentabiliteNette, d.ResultatAvantImpot, d.ResultatExploitation, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
-			d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
-			d.TauxMargeCommerciale, d.TauxValeurAjoutee, d.ValeurAjoutee,
-		)
-
-	}
+	//for _, d := range e.Value.Diane {
+	//	if d.ArreteBilan.IsZero() {
+	//		continue
+	//	}
+	//
+	//	batch.Queue(
+	//		sqlEntrepriseDiane,
+	//		d.NumeroSiren, d.ArreteBilan, d.AchatMarchandises, d.AchatMatieresPremieres, d.AutonomieFinanciere,
+	//		d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises, d.BeneficeOuPerte, d.CAExportation,
+	//		d.CapaciteAutofinancement, d.CapaciteRemboursement, d.CAparEffectif, d.ChargeExceptionnelle, d.ChargePersonnel,
+	//		d.ChargesFinancieres, d.ChiffreAffaire, d.ConcesBrevEtDroitsSim, d.ConcoursBancaireCourant, d.Consommation,
+	//		d.CouvertureCaBesoinFdr, d.CouvertureCaFdr, d.CreditClient, d.CreditFournisseur, d.DegreImmoCorporelle,
+	//		d.DetteFiscaleEtSociale, d.DotationAmortissement, d.EffectifConsolide, d.EfficaciteEconomique, d.Endettement,
+	//		d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
+	//		d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
+	//		d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
+	//		d.OperationsCommun, d.PartAutofinancement, d.PartEtat, d.PartPreteur, d.PartSalaries, d.ParticipationSalaries,
+	//		d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
+	//		d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
+	//		d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
+	//		d.RentabiliteNette, d.ResultatAvantImpot, d.ResultatExploitation, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
+	//		d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
+	//		d.TauxMargeCommerciale, d.TauxValeurAjoutee, d.ValeurAjoutee,
+	//	)
+	//
+	//}
 
 	//if e.Value.Ellisphere != nil {
 	//	sqlEllisphere := `insert into entreprise_ellisphere
@@ -260,16 +260,16 @@ func (e entreprise) intoBatch(batch *pgx.Batch) {
 	//		el.CodeFiliere, el.RefIDFiliere, el.PersonnePouMFiliere)
 	//}
 
-	if e.Value.Paydex != nil {
-		for _, p := range *e.Value.Paydex {
-			sqlPaydex := `insert into entreprise_paydex
-				(siren, date_valeur, nb_jours)
-				values ($1, $2, $3)`
-			el := p
-			el.Siren = e.Value.SireneUL.Siren
-			batch.Queue(sqlPaydex, el.Siren, el.DateValeur, el.NBJours)
-		}
-	}
+	//if e.Value.Paydex != nil {
+	//	for _, p := range *e.Value.Paydex {
+	//		sqlPaydex := `insert into entreprise_paydex
+	//			(siren, date_valeur, nb_jours)
+	//			values ($1, $2, $3)`
+	//		el := p
+	//		el.Siren = e.Value.SireneUL.Siren
+	//		batch.Queue(sqlPaydex, el.Siren, el.DateValeur, el.NBJours)
+	//	}
+	//}
 }
 
 func (e etablissement) intoBatch(batch *pgx.Batch) {

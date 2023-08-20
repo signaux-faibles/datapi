@@ -1,33 +1,82 @@
-drop table entreprise_diane cascade;
-
-create table entreprise_diane
-(
-  id                           integer   default nextval('entreprise_diane_id'::regclass) not null
-    primary key,
-  siren                        varchar(9),
-  arrete_bilan_diane           date,
-  exercice_diane               real,
-  chiffre_affaire              real,
-  resultat_expl                real,
-  excedent_brut_d_exploitation real,
-  benefice_ou_perte            real
-);
-
 alter table entreprise_diane
-  owner to postgres;
+drop column if exists version cascade,
+drop column if exists date_add cascade,
+drop column if exists nombre_etab_secondairecascade,
+drop column if exists nombre_filialecascade,
+drop column if exists nombre_moiscascade,
+drop column if exists credit_client cascade,
+drop column if exists achat_marchandises cascade,
+drop column if exists achat_matieres_premieres  cascade,
+drop column if exists autonomie_financiere cascade,
+drop column if exists autres_achats_charges_externes cascade,
+drop column if exists autres_produits_charges_reprises cascade,
+drop column if exists ca_exportation cascade,
+drop column if exists capacite_autofinancement cascade,
+drop column if exists capacite_remboursement cascade,
+drop column if exists charge_exceptionnelle cascade,
+drop column if exists charge_personnel cascade,
+drop column if exists charges_financieres cascade,
+drop column if exists conces_brev_et_droits_sim cascade,
+drop column if exists consommation cascade,
+drop column if exists couverture_ca_besoin_fdr cascade,
+drop column if exists couverture_ca_fdr cascade,
+drop column if exists credit_fournisseur cascade,
+drop column if exists degre_immo_corporelle cascade,
+drop column if exists dette_fiscale_et_sociale cascade,
+drop column if exists dotation_amortissement cascade,
+drop column if exists endettement cascade,
+drop column if exists endettement_global cascade,
+drop column if exists equilibre_financier cascade,
+drop column if exists exportation cascade,
+drop column if exists financement_actif_circulant cascade,
+drop column if exists frais_de_RetD cascade,
+drop column if exists impot_benefice cascade,
+drop column if exists impots_taxes cascade,
+drop column if exists independance_financiere cascade,
+drop column if exists interets cascade,
+drop column if exists liquidite_generale cascade,
+drop column if exists liquidite_reduite cascade,
+drop column if exists marge_commerciale cascade,
+drop column if exists operations_commun cascade,
+drop column if exists part_autofinancement cascade,
+drop column if exists part_etat cascade,
+drop column if exists part_preteur cascade,
+drop column if exists part_salaries cascade,
+drop column if exists participation_salaries cascade,
+drop column if exists performance cascade,
+drop column if exists poids_bfr_exploitation cascade,
+drop column if exists procedure_collective cascade,
+drop column if exists production cascade,
+drop column if exists productivite_capital_financier cascade,
+drop column if exists productivite_capital_investi cascade,
+drop column if exists productivite_potentiel_production cascade,
+drop column if exists produit_exceptionnel cascade,
+drop column if exists produits_financiers cascade,
+drop column if exists rendement_brut_fonds_propres cascade,
+drop column if exists rendement_capitaux_propres cascade,
+drop column if exists rendement_ressources_durables cascade,
+drop column if exists rentabilite_economique cascade,
+drop column if exists rentabilite_nette cascade,
+drop column if exists resultat_avant_impot cascade,
+drop column if exists rotation_stocks cascade,
+drop column if exists statut_juridique cascade,
+drop column if exists subventions_d_exploitation cascade,
+drop column if exists taille_compo_groupe cascade,
+drop column if exists taux_d_investissement_productif cascade,
+drop column if exists taux_endettement cascade,
+drop column if exists taux_interet_financier cascade,
+drop column if exists taux_interet_sur_ca cascade,
+drop column if exists taux_valeur_ajoutee cascade,
+drop column if exists valeur_ajoutee cascade,
+drop column if exists hash cascade;
 
-create index idx_entreprise_diane_siren
-  on entreprise_diane (siren);
-
-create view entreprise_diane0
+drop view if exists entreprise_diane0 cascade;
+create or replace view entreprise_diane0
     (id, siren, arrete_bilan_diane, exercice_diane, chiffre_affaire, resultat_expl,
       excedent_brut_d_exploitation, benefice_ou_perte)
-as
-SELECT *
+as SELECT id, siren, arrete_bilan_diane, exercice_diane, chiffre_affaire, resultat_expl,
+      excedent_brut_d_exploitation, benefice_ou_perte
 FROM entreprise_diane;
-
-alter table entreprise_diane0
-  owner to postgres;
 
 create materialized view v_diane_variation_ca as
 WITH diane AS (SELECT entreprise_diane0.siren,

@@ -400,6 +400,13 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		where (et.siret=any($3) or et.siren=any($4));
 	`, roles, username, e.Query.Sirets, e.Query.Sirens)
 
+	batch.Queue(`select siren, arrete_bilan_diane, chiffre_affaire, excedent_brut_d_exploitation, exercice_diane,
+       benefice_ou_perte, resultat_expl
+			from entreprise_diane0 en
+			where en.siren=any($1)
+			order by en.arrete_bilan_diane;`,
+		e.sirensFromQuery())
+
 	batch.Queue(`select s.siret, s.libelle_liste, s.batch, s.algo, s.periode, s.score, s.diff, s.alert,
 		case when s.libelle_liste = $5 then s.expl_selection_concerning else '[]' end,
 		case when s.libelle_liste = $5 then s.expl_selection_reassuring else '[]' end,
@@ -729,42 +736,28 @@ func (e *Etablissements) loadAPConso(rows *pgx.Rows) error {
 	return nil
 }
 
-//func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
-//	var dianes = make(map[string][]Diane)
-//	for (*rows).Next() {
-//		var di Diane
-//		var siren string
-//
-//		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.AchatMarchandises, &di.AchatMatieresPremieres, &di.AutonomieFinanciere,
-//			&di.AutresAchatsChargesExternes, &di.AutresProduitsChargesReprises, &di.BeneficeOuPerte, &di.CAExportation,
-//			&di.CapaciteAutofinancement, &di.CapaciteRemboursement, &di.CAparEffectif, &di.ChargeExceptionnelle, &di.ChargePersonnel,
-//			&di.ChargesFinancieres, &di.ChiffreAffaire, &di.ConcesBrevEtDroitsSim, &di.ConcoursBancaireCourant, &di.Consommation,
-//			&di.CouvertureCaBesoinFdr, &di.CouvertureCaFdr, &di.CreditClient, &di.CreditFournisseur, &di.DegreImmoCorporelle,
-//			&di.DetteFiscaleEtSociale, &di.DotationAmortissement, &di.EffectifConsolide, &di.EfficaciteEconomique, &di.Endettement,
-//			&di.EndettementGlobal, &di.EquilibreFinancier, &di.ExcedentBrutDExploitation, &di.Exercice, &di.Exportation,
-//			&di.FinancementActifCirculant, &di.FraisDeRetD, &di.ImpotBenefice, &di.ImpotsTaxes, &di.IndependanceFinanciere, &di.Interets,
-//			&di.LiquiditeGenerale, &di.LiquiditeReduite, &di.MargeCommerciale, &di.NombreEtabSecondaire, &di.NombreFiliale, &di.NombreMois,
-//			&di.OperationsCommun, &di.PartAutofinancement, &di.PartEtat, &di.PartPreteur, &di.PartSalaries, &di.ParticipationSalaries,
-//			&di.Performance, &di.PoidsBFRExploitation, &di.ProcedureCollective, &di.Production, &di.ProductiviteCapitalFinancier,
-//			&di.ProductiviteCapitalInvesti, &di.ProductivitePotentielProduction, &di.ProduitExceptionnel, &di.ProduitsFinanciers,
-//			&di.RendementBrutFondsPropres, &di.RendementCapitauxPropres, &di.RendementRessourcesDurables, &di.RentabiliteEconomique,
-//			&di.RentabiliteNette, &di.ResultatAvantImpot, &di.ResultatExploitation, &di.RotationStocks, &di.StatutJuridique, &di.SubventionsDExploitation,
-//			&di.TailleCompoGroupe, &di.TauxDInvestissementProductif, &di.TauxEndettement, &di.TauxInteretFinancier, &di.TauxInteretSurCA,
-//			&di.TauxMargeCommerciale, &di.TauxValeurAjoutee, &di.ValeurAjoutee,
-//		)
-//		if err != nil {
-//			return err
-//		}
-//		dianes[siren] = append(dianes[siren], di)
-//	}
-//
-//	for k, v := range dianes {
-//		entreprise := e.Entreprises[k]
-//		entreprise.Diane = v
-//		e.Entreprises[k] = entreprise
-//	}
-//	return nil
-//}
+func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
+	var dianes = make(map[string][]Diane)
+	for (*rows).Next() {
+		var di Diane
+		var siren string
+
+		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.ChiffreAffaire, &di.ExcedentBrutDExploitation,
+			&di.Exercice, &di.BeneficeOuPerte, &di.ResultatExploitation)
+
+		if err != nil {
+			return err
+		}
+		dianes[siren] = append(dianes[siren], di)
+	}
+
+	for k, v := range dianes {
+		entreprise := e.Entreprises[k]
+		entreprise.Diane = v
+		e.Entreprises[k] = entreprise
+	}
+	return nil
+}
 
 func (e *Etablissements) loadPaydex(rows *pgx.Rows) error {
 	allPaydex := make(map[string][]*string)
@@ -895,6 +888,15 @@ func (e *Etablissements) load(roles Scope, username string) error {
 		return err
 	}
 	err = e.loadSirene(&rows)
+	if err != nil {
+		return err
+	}
+
+	rows, err = b.Query()
+	if err != nil {
+		return err
+	}
+	err = e.loadDiane(&rows)
 	if err != nil {
 		return err
 	}
