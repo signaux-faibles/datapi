@@ -12,7 +12,7 @@ require (
 	github.com/google/btree v1.1.2
 	github.com/google/go-cmp v0.5.9
 	github.com/google/martian v2.1.0+incompatible
-	github.com/google/uuid v1.3.0
+	github.com/google/uuid v1.3.1
 	github.com/gosimple/slug v1.13.1
 	github.com/jackc/pgx/v5 v5.4.3
 	github.com/jaswdr/faker v1.18.1
