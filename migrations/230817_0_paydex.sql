@@ -17,5 +17,5 @@ create table entreprise_paydex
 );
 
 create index idx_entreprise_paydex_siren
-  on entreprise_paydex (siren);
+  on entreprise_paydex (siren, date_valeur);
 

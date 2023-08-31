@@ -233,7 +233,7 @@ func dropEntreprisePaydexIndex(ctx context.Context) error {
 func createEntreprisePaydexIndex(ctx context.Context) error {
 	conn := db.Get()
 	log.Println("creating database index")
-	sql := `create index idx_entreprise_paydex_siren on entreprise_paydex (siren);`
+	sql := `create index idx_entreprise_paydex_siren on entreprise_paydex (siren, date_valeur);`
 	_, err := conn.Exec(ctx, sql)
 	return err
 }
