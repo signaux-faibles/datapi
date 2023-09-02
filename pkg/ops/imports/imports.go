@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/globalsign/mgo/bson"
@@ -110,9 +109,9 @@ type entreprise struct {
 		Siren  string       `json:"siren"`
 		Diane  []core.Diane `json:"diane"`
 		//BDF        []core.Bdf       `json:"bdf"`
-		Ellisphere *core.Ellisphere `json:"ellisphere"`
-		SireneUL   sireneUL         `json:"sirene_ul"`
-		Paydex     *[]paydex        `json:"paydex"`
+		//Ellisphere *core.Ellisphere `json:"ellisphere"`
+		SireneUL sireneUL  `json:"sirene_ul"`
+		Paydex   *[]paydex `json:"paydex"`
 	} `bson:"value"`
 }
 
@@ -199,78 +198,78 @@ type sirene struct {
 
 func (e entreprise) intoBatch(batch *pgx.Batch) {
 	// TODO a remplacer par l'imports du fichier de Yan
-	sqlEntrepriseDiane := `insert into entreprise_diane
-		(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere,
-		autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
-		capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
-	 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation,
-		couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
-		dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
-	 	endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
-	 	financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
-	 	liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
-	 	operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
-	 	performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
-	 	productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
-	 	rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
-	 	rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
-	 	taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-		taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee)
-	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
-	 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
-	 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
- 	 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79);`
+	//sqlEntrepriseDiane := `insert into entreprise_diane
+	//	(siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere,
+	//	autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
+	//	capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
+	// 	charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation,
+	//	couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
+	//	dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
+	// 	endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
+	// 	financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
+	// 	liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
+	// 	operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
+	// 	performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
+	// 	productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
+	// 	rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
+	// 	rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
+	// 	taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
+	//	taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee)
+	//values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19,
+	// 	$20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42,
+	// 	$43, $44, $45, $46, $47, $48, $49, $50, $51, $52, $53, $54, $55, $56, $57, $58, $59, $60, $61, $62, $63, $64, $65,
+	// 	$66, $67, $68, $69, $70, $71, $72, $73, $74, $75, $76, $77, $78, $79);`
 
-	for _, d := range e.Value.Diane {
-		if d.ArreteBilan.IsZero() {
-			continue
-		}
+	//for _, d := range e.Value.Diane {
+	//	if d.ArreteBilan.IsZero() {
+	//		continue
+	//	}
+	//
+	//	batch.Queue(
+	//		sqlEntrepriseDiane,
+	//		d.NumeroSiren, d.ArreteBilan, d.AchatMarchandises, d.AchatMatieresPremieres, d.AutonomieFinanciere,
+	//		d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises, d.BeneficeOuPerte, d.CAExportation,
+	//		d.CapaciteAutofinancement, d.CapaciteRemboursement, d.CAparEffectif, d.ChargeExceptionnelle, d.ChargePersonnel,
+	//		d.ChargesFinancieres, d.ChiffreAffaire, d.ConcesBrevEtDroitsSim, d.ConcoursBancaireCourant, d.Consommation,
+	//		d.CouvertureCaBesoinFdr, d.CouvertureCaFdr, d.CreditClient, d.CreditFournisseur, d.DegreImmoCorporelle,
+	//		d.DetteFiscaleEtSociale, d.DotationAmortissement, d.EffectifConsolide, d.EfficaciteEconomique, d.Endettement,
+	//		d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
+	//		d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
+	//		d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
+	//		d.OperationsCommun, d.PartAutofinancement, d.PartEtat, d.PartPreteur, d.PartSalaries, d.ParticipationSalaries,
+	//		d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
+	//		d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
+	//		d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
+	//		d.RentabiliteNette, d.ResultatAvantImpot, d.ResultatExploitation, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
+	//		d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
+	//		d.TauxMargeCommerciale, d.TauxValeurAjoutee, d.ValeurAjoutee,
+	//	)
+	//
+	//}
 
-		batch.Queue(
-			sqlEntrepriseDiane,
-			d.NumeroSiren, d.ArreteBilan, d.AchatMarchandises, d.AchatMatieresPremieres, d.AutonomieFinanciere,
-			d.AutresAchatsChargesExternes, d.AutresProduitsChargesReprises, d.BeneficeOuPerte, d.CAExportation,
-			d.CapaciteAutofinancement, d.CapaciteRemboursement, d.CAparEffectif, d.ChargeExceptionnelle, d.ChargePersonnel,
-			d.ChargesFinancieres, d.ChiffreAffaire, d.ConcesBrevEtDroitsSim, d.ConcoursBancaireCourant, d.Consommation,
-			d.CouvertureCaBesoinFdr, d.CouvertureCaFdr, d.CreditClient, d.CreditFournisseur, d.DegreImmoCorporelle,
-			d.DetteFiscaleEtSociale, d.DotationAmortissement, d.EffectifConsolide, d.EfficaciteEconomique, d.Endettement,
-			d.EndettementGlobal, d.EquilibreFinancier, d.ExcedentBrutDExploitation, d.Exercice, d.Exportation,
-			d.FinancementActifCirculant, d.FraisDeRetD, d.ImpotBenefice, d.ImpotsTaxes, d.IndependanceFinanciere, d.Interets,
-			d.LiquiditeGenerale, d.LiquiditeReduite, d.MargeCommerciale, d.NombreEtabSecondaire, d.NombreFiliale, d.NombreMois,
-			d.OperationsCommun, d.PartAutofinancement, d.PartEtat, d.PartPreteur, d.PartSalaries, d.ParticipationSalaries,
-			d.Performance, d.PoidsBFRExploitation, d.ProcedureCollective, d.Production, d.ProductiviteCapitalFinancier,
-			d.ProductiviteCapitalInvesti, d.ProductivitePotentielProduction, d.ProduitExceptionnel, d.ProduitsFinanciers,
-			d.RendementBrutFondsPropres, d.RendementCapitauxPropres, d.RendementRessourcesDurables, d.RentabiliteEconomique,
-			d.RentabiliteNette, d.ResultatAvantImpot, d.ResultatExploitation, d.RotationStocks, d.StatutJuridique, d.SubventionsDExploitation,
-			d.TailleCompoGroupe, d.TauxDInvestissementProductif, d.TauxEndettement, d.TauxInteretFinancier, d.TauxInteretSurCA,
-			d.TauxMargeCommerciale, d.TauxValeurAjoutee, d.ValeurAjoutee,
-		)
+	//if e.Value.Ellisphere != nil {
+	//	sqlEllisphere := `insert into entreprise_ellisphere
+	//	(siren, code, refid, raison_sociale,	adresse, personne_pou_m,
+	//	niveau_detention, part_financiere, code_filiere, refid_filiere,
+	//	personne_pou_m_filiere)
+	//	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
+	//	el := *e.Value.Ellisphere
+	//	el.Siren = e.Value.SireneUL.Siren
+	//	batch.Queue(sqlEllisphere, el.Siren, el.CodeGroupe, el.RefIDGroupe, el.RaisocGroupe,
+	//		el.AdresseGroupe, el.PersonnePouMGroupe, el.NiveauDetention, el.PartFinanciere,
+	//		el.CodeFiliere, el.RefIDFiliere, el.PersonnePouMFiliere)
+	//}
 
-	}
-
-	if e.Value.Ellisphere != nil {
-		sqlEllisphere := `insert into entreprise_ellisphere
-		(siren, code, refid, raison_sociale,	adresse, personne_pou_m,
-		niveau_detention, part_financiere, code_filiere, refid_filiere,
-		personne_pou_m_filiere)
-		values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`
-		el := *e.Value.Ellisphere
-		el.Siren = e.Value.SireneUL.Siren
-		batch.Queue(sqlEllisphere, el.Siren, el.CodeGroupe, el.RefIDGroupe, el.RaisocGroupe,
-			el.AdresseGroupe, el.PersonnePouMGroupe, el.NiveauDetention, el.PartFinanciere,
-			el.CodeFiliere, el.RefIDFiliere, el.PersonnePouMFiliere)
-	}
-
-	if e.Value.Paydex != nil {
-		for _, p := range *e.Value.Paydex {
-			sqlPaydex := `insert into entreprise_paydex
-				(siren, date_valeur, nb_jours)
-				values ($1, $2, $3)`
-			el := p
-			el.Siren = e.Value.SireneUL.Siren
-			batch.Queue(sqlPaydex, el.Siren, el.DateValeur, el.NBJours)
-		}
-	}
+	//if e.Value.Paydex != nil {
+	//	for _, p := range *e.Value.Paydex {
+	//		sqlPaydex := `insert into entreprise_paydex
+	//			(siren, date_valeur, nb_jours)
+	//			values ($1, $2, $3)`
+	//		el := p
+	//		el.Siren = e.Value.SireneUL.Siren
+	//		batch.Queue(sqlPaydex, el.Siren, el.DateValeur, el.NBJours)
+	//	}
+	//}
 }
 
 func (e etablissement) intoBatch(batch *pgx.Batch) {
@@ -424,7 +423,7 @@ func (s scoreFile) toLibelle() string {
 	return months[month] + " " + year
 }
 
-func importEntreprisesAndEtablissement() error {
+func importEtablissement() error {
 	contexte := context.Background()
 	tx, err := db.Get().Begin(contexte)
 	if err != nil {
@@ -441,16 +440,16 @@ func importEntreprisesAndEtablissement() error {
 		}
 		return err
 	}
-	enterpriseFileConfigKey := "sourceEntreprise"
-	sourceEntreprise := viper.GetString(enterpriseFileConfigKey)
-	log.Printf("integration du fichier entreprise '%s' (clé de configuration : '%s')", sourceEntreprise, enterpriseFileConfigKey)
-	err = processEntreprise(sourceEntreprise, &tx)
-	if err != nil {
-		if txErr := tx.Rollback(contexte); txErr != nil {
-			return txErr
-		}
-		return err
-	}
+	//enterpriseFileConfigKey := "sourceEntreprise"
+	//sourceEntreprise := viper.GetString(enterpriseFileConfigKey)
+	//log.Printf("integration du fichier entreprise '%s' (clé de configuration : '%s')", sourceEntreprise, enterpriseFileConfigKey)
+	//err = processEntreprise(sourceEntreprise, &tx)
+	//if err != nil {
+	//	if txErr := tx.Rollback(contexte); txErr != nil {
+	//		return txErr
+	//	}
+	//	return err
+	//}
 
 	etablissementFileConfigKey := "sourceEtablissement"
 	sourceEtablissement := viper.GetString(etablissementFileConfigKey)
@@ -474,48 +473,48 @@ func importEntreprisesAndEtablissement() error {
 	return nil
 }
 
-func processEntreprise(fileName string, tx *pgx.Tx) error {
-	file, err := os.Open(fileName)
-	if err != nil {
-		log.Printf("erreur pendant l'ouverture du fichier '%s' : %s", fileName, err.Error())
-		return err
-	}
-	defer file.Close()
-	batches, wg := db.NewBatchRunner(tx)
-	unzip, err := gzip.NewReader(file)
-	if err != nil {
-		return err
-	}
-	decoder := json.NewDecoder(unzip)
-	i := 0
-	var batch pgx.Batch
-
-	for {
-		var e entreprise
-		err := decoder.Decode(&e)
-		if err != nil {
-			batches <- batch
-			close(batches)
-			wg.Wait()
-			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
-			if err == io.EOF {
-				return nil
-			}
-			return err
-		}
-
-		if e.Value.SireneUL.Siren != "" {
-			e.intoBatch(&batch)
-
-			i++
-			if math.Mod(float64(i), 1000) == 0 {
-				batches <- batch
-				batch = pgx.Batch{}
-				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
-			}
-		}
-	}
-}
+//func processEntreprise(fileName string, tx *pgx.Tx) error {
+//	file, err := os.Open(fileName)
+//	if err != nil {
+//		log.Printf("erreur pendant l'ouverture du fichier '%s' : %s", fileName, err.Error())
+//		return err
+//	}
+//	defer file.Close()
+//	batches, wg := db.NewBatchRunner(tx)
+//	unzip, err := gzip.NewReader(file)
+//	if err != nil {
+//		return err
+//	}
+//	decoder := json.NewDecoder(unzip)
+//	i := 0
+//	var batch pgx.Batch
+//
+//	for {
+//		var e entreprise
+//		err := decoder.Decode(&e)
+//		if err != nil {
+//			batches <- batch
+//			close(batches)
+//			wg.Wait()
+//			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
+//			if err == io.EOF {
+//				return nil
+//			}
+//			return err
+//		}
+//
+//		if e.Value.SireneUL.Siren != "" {
+//			e.intoBatch(&batch)
+//
+//			i++
+//			if math.Mod(float64(i), 1000) == 0 {
+//				batches <- batch
+//				batch = pgx.Batch{}
+//				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
+//			}
+//		}
+//	}
+//}
 
 func processEtablissement(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
@@ -568,10 +567,6 @@ func processEtablissement(fileName string, tx *pgx.Tx) error {
 func prepareImport(tx *pgx.Tx) error {
 	// var batch pgx.Batch
 	var tables = []string{
-		"entreprise_ellisphere",
-		"entreprise_bdf",
-		"entreprise_diane",
-		"entreprise_paydex",
 		"etablissement_apconso",
 		"etablissement_apdemande",
 		"etablissement_periode_urssaf",
@@ -714,23 +709,50 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 	)
 }
 
-func importSirene() error {
+func importUnitesLegales(ctx context.Context) error {
 	if viper.GetString("sireneULPath") == "" || viper.GetString("geoSirenePath") == "" {
 		return utils.NewJSONerror(http.StatusConflict, "not supported, missing parameters in server configuration")
 	}
-	log.Println("Truncate etablissement & entreprise table")
+	log.Println("Truncate entreprise table")
 
-	err := core.TruncateSirens()
+	err := TruncateEntreprise(ctx)
 	if err != nil {
 		return err
 	}
-	log.Println("Tables truncated")
+	log.Println("Table truncated")
 
-	wg := sync.WaitGroup{}
-	wg.Add(2)
-	ctx, cancelCtx := context.WithCancel(context.Background())
-	go core.InsertSireneUL(ctx, cancelCtx, &wg)
-	go core.InsertGeoSirene(ctx, cancelCtx, &wg)
-	wg.Wait()
-	return nil
+	err = DropEntrepriseIndex(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = InsertSireneUL(ctx)
+	if err != nil {
+		return err
+	}
+
+	return CreateEntrepriseIndex(ctx)
+}
+
+func importStockEtablissement(ctx context.Context) error {
+	if viper.GetString("geoSirenePath") == "" {
+		return utils.NewJSONerror(http.StatusConflict, "not supported, missing geoSirenePath parameters in server configuration")
+	}
+	log.Println("Truncate etablissement table")
+	err := TruncateEtablissement()
+	if err != nil {
+		return err
+	}
+
+	log.Println("Drop etablissement table indexes")
+	err = DropEtablissementIndex(ctx)
+	if err != nil {
+		return err
+	}
+	err = InsertGeoSirene(ctx)
+	if err != nil {
+		return err
+	}
+	log.Println("Create etablissement table indexes")
+	return CreateEtablissementIndex(ctx)
 }

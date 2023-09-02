@@ -61,8 +61,14 @@ type EtablissementSummary struct {
 
 // Paydex est l'index des retards de reglements de D&B
 type Paydex struct {
-	DateValeur []time.Time `json:"date_valeur"`
-	NBJours    []int       `json:"nb_jours"`
+	Paydex              []*string    `json:"paydex"`
+	JoursRetard         []*int       `json:"joursRetard"`
+	Fournisseurs        []*int       `json:"fournisseurs"`
+	Encours             []*float64   `json:"encours"`
+	ExperiencesPaiement []*int       `json:"experiencesPaiement"`
+	FPI30               []*int       `json:"fpi30"`
+	FPI90               []*int       `json:"fpi90"`
+	DateValeur          []*time.Time `json:"dateValeur"`
 }
 
 // Etablissements Collection d'établissements
@@ -394,22 +400,8 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		where (et.siret=any($3) or et.siren=any($4));
 	`, roles, username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select siren, arrete_bilan_diane, achat_marchandises, achat_matieres_premieres, autonomie_financiere,
-				autres_achats_charges_externes, autres_produits_charges_reprises, benefice_ou_perte, ca_exportation,
-				capacite_autofinancement, capacite_remboursement, ca_par_effectif, charge_exceptionnelle, charge_personnel,
-				charges_financieres, chiffre_affaire, conces_brev_et_droits_sim, concours_bancaire_courant,	consommation,
-				couverture_ca_besoin_fdr, couverture_ca_fdr, credit_client, credit_fournisseur, degre_immo_corporelle,
-				dette_fiscale_et_sociale, dotation_amortissement, effectif_consolide, efficacite_economique, endettement,
-				endettement_global, equilibre_financier, excedent_brut_d_exploitation, exercice_diane, exportation,
-				financement_actif_circulant, frais_de_RetD, impot_benefice, impots_taxes, independance_financiere, interets,
-				liquidite_generale, liquidite_reduite, marge_commerciale, nombre_etab_secondaire, nombre_filiale, nombre_mois,
-				operations_commun, part_autofinancement, part_etat, part_preteur, part_salaries, participation_salaries,
-				performance, poids_bfr_exploitation, procedure_collective, production, productivite_capital_financier,
-				productivite_capital_investi, productivite_potentiel_production, produit_exceptionnel, produits_financiers,
-				rendement_brut_fonds_propres, rendement_capitaux_propres, rendement_ressources_durables, rentabilite_economique,
-				rentabilite_nette, resultat_avant_impot, resultat_expl, rotation_stocks, statut_juridique, subventions_d_exploitation,
-				taille_compo_groupe, taux_d_investissement_productif, taux_endettement, taux_interet_financier, taux_interet_sur_ca,
-				taux_marge_commerciale,	taux_valeur_ajoutee, valeur_ajoutee
+	batch.Queue(`select siren, arrete_bilan_diane, chiffre_affaire, excedent_brut_d_exploitation, exercice_diane,
+       benefice_ou_perte, resultat_expl
 			from entreprise_diane0 en
 			where en.siren=any($1)
 			order by en.arrete_bilan_diane;`,
@@ -488,8 +480,9 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		 order by siren, min(date_effet)`,
 		e.sirensFromQuery())
 
-	batch.Queue(`select e.siren, e.date_valeur, e.nb_jours
-	from entreprise_paydex0 e
+	batch.Queue(`select e.siren, e.paydex, e.jours_retard, e.fournisseurs,
+       e.en_cours, e.experiences_paiement, e.fpi_30, e.fpi_90, e.date_valeur
+	from entreprise_paydex e
 	where e.siren=any($1) and date_valeur + '24 month'::interval >= $2
 	order by e.siren, date_valeur;`,
 		e.sirensFromQuery(), now)
@@ -749,23 +742,9 @@ func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
 		var di Diane
 		var siren string
 
-		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.AchatMarchandises, &di.AchatMatieresPremieres, &di.AutonomieFinanciere,
-			&di.AutresAchatsChargesExternes, &di.AutresProduitsChargesReprises, &di.BeneficeOuPerte, &di.CAExportation,
-			&di.CapaciteAutofinancement, &di.CapaciteRemboursement, &di.CAparEffectif, &di.ChargeExceptionnelle, &di.ChargePersonnel,
-			&di.ChargesFinancieres, &di.ChiffreAffaire, &di.ConcesBrevEtDroitsSim, &di.ConcoursBancaireCourant, &di.Consommation,
-			&di.CouvertureCaBesoinFdr, &di.CouvertureCaFdr, &di.CreditClient, &di.CreditFournisseur, &di.DegreImmoCorporelle,
-			&di.DetteFiscaleEtSociale, &di.DotationAmortissement, &di.EffectifConsolide, &di.EfficaciteEconomique, &di.Endettement,
-			&di.EndettementGlobal, &di.EquilibreFinancier, &di.ExcedentBrutDExploitation, &di.Exercice, &di.Exportation,
-			&di.FinancementActifCirculant, &di.FraisDeRetD, &di.ImpotBenefice, &di.ImpotsTaxes, &di.IndependanceFinanciere, &di.Interets,
-			&di.LiquiditeGenerale, &di.LiquiditeReduite, &di.MargeCommerciale, &di.NombreEtabSecondaire, &di.NombreFiliale, &di.NombreMois,
-			&di.OperationsCommun, &di.PartAutofinancement, &di.PartEtat, &di.PartPreteur, &di.PartSalaries, &di.ParticipationSalaries,
-			&di.Performance, &di.PoidsBFRExploitation, &di.ProcedureCollective, &di.Production, &di.ProductiviteCapitalFinancier,
-			&di.ProductiviteCapitalInvesti, &di.ProductivitePotentielProduction, &di.ProduitExceptionnel, &di.ProduitsFinanciers,
-			&di.RendementBrutFondsPropres, &di.RendementCapitauxPropres, &di.RendementRessourcesDurables, &di.RentabiliteEconomique,
-			&di.RentabiliteNette, &di.ResultatAvantImpot, &di.ResultatExploitation, &di.RotationStocks, &di.StatutJuridique, &di.SubventionsDExploitation,
-			&di.TailleCompoGroupe, &di.TauxDInvestissementProductif, &di.TauxEndettement, &di.TauxInteretFinancier, &di.TauxInteretSurCA,
-			&di.TauxMargeCommerciale, &di.TauxValeurAjoutee, &di.ValeurAjoutee,
-		)
+		err := (*rows).Scan(&siren, &di.ArreteBilan, &di.ChiffreAffaire, &di.ExcedentBrutDExploitation,
+			&di.Exercice, &di.BeneficeOuPerte, &di.ResultatExploitation)
+
 		if err != nil {
 			return err
 		}
@@ -781,26 +760,52 @@ func (e *Etablissements) loadDiane(rows *pgx.Rows) error {
 }
 
 func (e *Etablissements) loadPaydex(rows *pgx.Rows) error {
-	var dateValeurs = make(map[string][]time.Time)
-	var nbJours = make(map[string][]int)
+	allPaydex := make(map[string][]*string)
+	allJoursRetard := make(map[string][]*int)
+	allFournisseurs := make(map[string][]*int)
+	allEncours := make(map[string][]*float64)
+	allExperiencesPaiement := make(map[string][]*int)
+	allFpi30 := make(map[string][]*int)
+	allFpi90 := make(map[string][]*int)
+	allDateValeurs := make(map[string][]*time.Time)
 
 	for (*rows).Next() {
 		var siren string
-		var dateValeur time.Time
-		var nBJours int
-		//var pd ops.paydex // resultat DB
-		err := (*rows).Scan(&siren, &dateValeur, &nBJours)
+		var paydex *string
+		var joursRetard *int
+		var fournisseurs *int
+		var encours *float64
+		var experiencesPaiement *int
+		var fpi30 *int
+		var fpi90 *int
+		var dateValeur *time.Time
+
+		err := (*rows).Scan(&siren, &paydex, &joursRetard, &fournisseurs, &encours, &experiencesPaiement, &fpi30, &fpi90, &dateValeur)
 		if err != nil {
 			return err
 		}
-		dateValeurs[siren] = append(dateValeurs[siren], dateValeur)
-		nbJours[siren] = append(nbJours[siren], nBJours)
+
+		allPaydex[siren] = append(allPaydex[siren], paydex)
+		allJoursRetard[siren] = append(allJoursRetard[siren], joursRetard)
+		allFournisseurs[siren] = append(allFournisseurs[siren], fournisseurs)
+		allEncours[siren] = append(allEncours[siren], encours)
+		allExperiencesPaiement[siren] = append(allExperiencesPaiement[siren], experiencesPaiement)
+		allFpi30[siren] = append(allFpi30[siren], fpi30)
+		allFpi90[siren] = append(allFpi90[siren], fpi90)
+		allDateValeurs[siren] = append(allDateValeurs[siren], dateValeur)
 	}
-	for siren, v := range dateValeurs {
+
+	for siren, _ := range allPaydex {
 		entreprise := e.Entreprises[siren]
 		p := Paydex{
-			DateValeur: v,
-			NBJours:    nbJours[siren],
+			Paydex:              allPaydex[siren],
+			JoursRetard:         allJoursRetard[siren],
+			Fournisseurs:        allFournisseurs[siren],
+			Encours:             allEncours[siren],
+			ExperiencesPaiement: allExperiencesPaiement[siren],
+			FPI30:               allFpi30[siren],
+			FPI90:               allFpi90[siren],
+			DateValeur:          allDateValeurs[siren],
 		}
 		entreprise.Paydex = &p
 		e.Entreprises[siren] = entreprise

@@ -1,9 +1,11 @@
 package imports
 
 import (
+	"archive/zip"
 	"context"
 	"encoding/csv"
-	"os"
+	"io"
+	"log"
 	"strconv"
 	"strings"
 	"time"
@@ -44,7 +46,7 @@ type BCE struct {
 	TypeBilan                       string
 }
 
-func (bce BCE) fields() []interface{} {
+func (bce BCE) tuple() []interface{} {
 	return []interface{}{
 		bce.Siren,
 		bce.DateClotureExercice,
@@ -73,8 +75,8 @@ func (bce BCE) fields() []interface{} {
 
 func importBCEHandler(c *gin.Context) {
 	sourcePath := viper.GetString("bceSourcePath")
-	db := db.Get()
-	err := importBCE(c, sourcePath, db)
+	conn := db.Get()
+	err := importBCE(c, sourcePath, conn)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
@@ -185,13 +187,13 @@ func parseInt(s string) (*int64, error) {
 	return &i, err
 }
 
-func populateDiane(ctx context.Context, db *pgxpool.Pool) error {
-	_, err := db.Exec(ctx, "truncate table entreprise_diane;")
+func populateDiane(ctx context.Context, conn *pgxpool.Pool) error {
+	_, err := conn.Exec(ctx, "truncate table entreprise_diane;")
 	if err != nil {
 		return err
 	}
 
-	_, err = db.Exec(ctx, "insert into entreprise_diane (siren, arrete_bilan_diane, exercice_diane, chiffre_affaire, resultat_expl, excedent_brut_d_exploitation, benefice_ou_perte)"+
+	_, err = conn.Exec(ctx, "insert into entreprise_diane (siren, arrete_bilan_diane, exercice_diane, chiffre_affaire, resultat_expl, excedent_brut_d_exploitation, benefice_ou_perte)"+
 		"select siren,"+
 		"  date_cloture_exercice,"+
 		"  extract(year from date_cloture_exercice - '6 month'::interval),"+
@@ -205,35 +207,74 @@ func populateDiane(ctx context.Context, db *pgxpool.Pool) error {
 	return err
 }
 
-func truncateBCE(ctx context.Context, db *pgxpool.Pool) error {
-	_, err := db.Exec(ctx, "truncate table entreprise_bce;")
+func truncateBCE(ctx context.Context, conn *pgxpool.Pool) error {
+	_, err := conn.Exec(ctx, "truncate table entreprise_bce;")
 	return err
 }
 
-func importBCE(ctx context.Context, path string, db *pgxpool.Pool) error {
-	bceSourceFile, err := os.Open(path)
+func BceParser(ctx context.Context, path string) (chan BCE, error) {
+	zr, err := zip.OpenReader(path)
+	if err != nil {
+		return nil, err
+	}
+	output := make(chan BCE)
+
+	go func() {
+		defer zr.Close()
+		defer close(output)
+		for _, zf := range zr.File {
+			file, err := zf.Open()
+			if err != nil {
+				continue
+			}
+			bceReader := csv.NewReader(file)
+			bceReader.Comma = ';'
+			// discard header
+			_, err = bceReader.Read()
+			if err != nil {
+				panic(err)
+			}
+			for {
+				data, err := bceReader.Read()
+				if err == io.EOF {
+					return
+				} else if err != nil {
+					panic(err)
+				}
+				bce := parseBCE(data)
+				select {
+				case output <- bce:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return output, nil
+}
+func importBCE(ctx context.Context, path string, conn *pgxpool.Pool) error {
+	bceParser, err := BceParser(ctx, path)
 	if err != nil {
 		return err
 	}
-	defer bceSourceFile.Close()
+	copyFromBCE := CopyFromBCE{
+		BCEParser: bceParser,
+		Current:   new(BCE),
+		Count:     new(int),
+	}
 
-	bceReader := csv.NewReader(bceSourceFile)
-	bceReader.Comma = ';'
-	data, err := bceReader.ReadAll()
-
-	bces := utils.Convert(data, parseBCE)
-	rows := utils.Convert(bces, BCE.fields)
-	err = truncateBCE(ctx, db)
+	err = truncateBCE(ctx, conn)
 	if err != nil {
 		return err
 	}
 
-	_, err = db.CopyFrom(ctx, pgx.Identifier{"entreprise_bce"}, bceColums, pgx.CopyFromRows(rows))
+	_, err = conn.CopyFrom(ctx, pgx.Identifier{"entreprise_bce"}, bceColums, copyFromBCE)
 	if err != nil {
 		return err
 	}
-	err = populateDiane(ctx, db)
-	return err
+
+	return populateDiane(ctx, conn)
 }
 
 var bceColums = []string{
@@ -259,4 +300,33 @@ var bceColums = []string{
 	"credit_clients_jours",
 	"credit_fournisseurs_jours",
 	"type_bilan",
+}
+
+type CopyFromBCE struct {
+	BCEParser chan BCE
+	Current   *BCE
+	Count     *int
+}
+
+func (c CopyFromBCE) Increment() {
+	*c.Count = *c.Count + 1
+}
+
+func (c CopyFromBCE) Next() bool {
+	var ok bool
+	select {
+	case *c.Current, ok = <-c.BCEParser:
+		if ok {
+			c.Increment()
+			if *c.Count%100000 == 0 {
+				log.Printf("%d bce objects copied\n", *c.Count)
+			}
+		}
+		return ok
+	}
+}
+
+func (c CopyFromBCE) Err() error { return nil }
+func (c CopyFromBCE) Values() ([]interface{}, error) {
+	return (*c.Current).tuple(), nil
 }

@@ -40,12 +40,11 @@ func Test_importEntreprisesAndEtablissement(t *testing.T) {
 	test.FakeTime(t, tuTime)
 	ass := assert.New(t)
 	//net.ParseIP()
-	err := importEntreprisesAndEtablissement()
+	err := importEtablissement()
 	ass.Nil(err)
 }
 
 func initTestConfig() map[string]string {
-
 	root, _ := os.Getwd()
 	viper.AddConfigPath(filepath.Join(root, "test"))
 	testConfig := map[string]string{}
