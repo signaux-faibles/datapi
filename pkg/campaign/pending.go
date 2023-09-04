@@ -19,7 +19,7 @@ type CampaignEtablissement struct {
 	ID                  CampaignEtablissementID `json:"id"`
 	CampaignID          int                     `json:"campaignID"`
 	Siret               core.Siret              `json:"siret"`
-	Alert               string                  `json:"alert"`
+	Alert               *string                 `json:"alert"`
 	Followed            bool                    `json:"followed"`
 	FirstAlert          bool                    `json:"firstAlert"`
 	EtatAdministratif   string                  `json:"etatAdministratif"`
