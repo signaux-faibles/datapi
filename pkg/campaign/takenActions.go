@@ -36,6 +36,7 @@ func (p *TakenActions) Tuple() []interface{} {
 		&ce.Rank,
 		&ce.Username,
 		&ce.Detail,
+		&ce.CodeDepartement,
 	}
 }
 
