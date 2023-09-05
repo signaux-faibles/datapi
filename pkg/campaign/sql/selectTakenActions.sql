@@ -26,7 +26,8 @@ select count(*) over () as nb_total,
    a.action,
    rank() over (order by ce.id) as rank,
    a.username,
-   a.detail
+   a.detail,
+   s.code_departement
 from campaign_etablissement ce
   inner join campaign c on c.id = ce.id_campaign
   inner join zone z on true
