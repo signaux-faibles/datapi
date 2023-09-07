@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"github.com/spf13/viper"
-	"log"
+	"log/slog"
 	"net"
 	"strings"
+
+	"github.com/spf13/viper"
 )
 
 func AcceptIP(ip string) bool {
@@ -17,7 +18,7 @@ func AcceptIP(ip string) bool {
 func isIPWhitelisted(whitelist []net.IP, ip string) bool {
 	clientIP := net.ParseIP(ip)
 	if len(whitelist) == 0 && clientIP.IsLoopback() {
-		log.Printf("Warning : Appel loopback depuis %s\n", ip)
+		slog.Warn("Appel loopback", slog.String("fromIp", ip))
 		return true
 	}
 	return Contains(whitelist, clientIP)
@@ -39,7 +40,7 @@ func parseWhitelist(whitelist string) []net.IP {
 		}
 	}
 	if len(malformed) > 0 {
-		log.Printf("Warning : IP whitelistées non prises en compte %s\n", malformed)
+		slog.Warn("IP whitelistées non prises en compte", slog.String("whitelist", whitelist))
 	}
 	return r
 }

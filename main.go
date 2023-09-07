@@ -14,13 +14,16 @@ import (
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
 	"datapi/pkg/stats"
+	"datapi/pkg/utils"
 )
 
 func main() {
+	utils.InitLogger()
 	core.LoadConfig(".", "config", "./migrations")
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}
+	utils.ConfigureLogLevel(viper.GetString("log.level"))
 	ctx := context.Background()
 	kanbanService := initWekanService(ctx)
 	saver := buildLogSaver()
