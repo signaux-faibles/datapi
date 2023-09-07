@@ -49,6 +49,11 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      - name: Set up Go 1.21
+        uses: actions/setup-go@v4
+        with:
+          go-version: 1.21.x
+
       - name: Prepare container sources & resources
         shell: bash
         run: |
