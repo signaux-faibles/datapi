@@ -68,21 +68,18 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 
 		campaignID, err := strconv.Atoi(ctx.Param("campaignID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/take/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
 			return
 		}
 
 		campaignEtablissementID, err := strconv.Atoi(ctx.Param("campaignEtablissementID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/take/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
 			return
 		}
 
 		zone := zoneForUser(libwekan.Username(s.Username))
 
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, "/"+action+"/:campaignID, :campaignID n'est pas entier")
-		}
 		message, err := doAction(ctx,
 			CampaignID(campaignID),
 			CampaignEtablissementID(campaignEtablissementID),

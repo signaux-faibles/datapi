@@ -82,6 +82,7 @@ func (p *Pending) Tuple() []interface{} {
 		&ce.Action,
 		&ce.Rank,
 		&ce.CodeDepartement,
+		&ce.Detail,
 	}
 }
 

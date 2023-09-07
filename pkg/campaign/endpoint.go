@@ -16,5 +16,6 @@ func ConfigureEndpoint(kanbanService core.KanbanService) func(campaignRoute *gin
 		campaignRoute.POST("/cancel/:campaignID/:campaignEtablissementID", actionHandlerFunc("cancel"))
 		campaignRoute.GET("/stream", HeadersMiddleware(), stream.serveHTTP(), streamHandler)
 		campaignRoute.POST("/upsertcard", upsertCardHandler(kanbanService))
+		campaignRoute.POST("/withdraw/:campaignID/:campaignEtablissementID", withdrawHandler)
 	}
 }
