@@ -58,5 +58,5 @@ docxifyPath = "./docxify3.py"
 docxifyWorkingDir = "/foo/bar"
 docxifyPython = "/usr/bin/python3"
 
-[logs]
-db_url = postgres://<username>:<password>@<hostname>:<port>/<database_name>
+[stats]
+  db_url = postgres://<username>:<password>@<hostname>:<port>/<database_name>

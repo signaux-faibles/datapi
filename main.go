@@ -57,7 +57,7 @@ func initAndStartAPI(datapi *core.Datapi, statsAPI *stats.API) {
 }
 
 func buildLogSaver() *stats.PostgresLogSaver {
-	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("logs.db_url"))
+	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("stats.db_url"))
 	if err != nil {
 		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
 	}
@@ -65,7 +65,7 @@ func buildLogSaver() *stats.PostgresLogSaver {
 }
 
 func buildStatsAPI() *stats.API {
-	statsModule, err := stats.NewAPIFromConfiguration(context.Background(), viper.GetString("logs.db_url"))
+	statsModule, err := stats.NewAPIFromConfiguration(context.Background(), viper.GetString("stats.db_url"))
 	if err != nil {
 		log.Fatal("erreur pendant l'instanciation du StatsAPI : ", err)
 	}
