@@ -6,36 +6,35 @@ import (
 	"datapi/pkg/db"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"strconv"
 )
 
-func withdrawPending(ctx context.Context,
-	campaignID CampaignID,
-	campaignEtablissementID CampaignEtablissementID,
-	username libwekan.Username,
-	zone Zone,
-	detail string,
-) (Message, error) {
+func withdrawPending(ctx context.Context, ids IDs, username string, detail string) (Message, error) {
 	var campaignEtablissementActionID *int
 	var codeDepartement *string
+
+	zone := zoneForUser(username)
+
 	dbConn := db.Get()
-	row := dbConn.QueryRow(ctx, sqlWithdrawPendingEtablissement, campaignID,
-		campaignEtablissementID, username, zone, detail)
+	row := dbConn.QueryRow(ctx, sqlWithdrawPendingEtablissement, ids.CampaignID,
+		ids.CampaignEtablissementID, username, zone, detail)
 	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
+
 	if campaignEtablissementActionID == nil || codeDepartement == nil {
 		return Message{}, TakeNotFoundError{err: errors.New("aucun id retourné par l'insert")}
 	} else if err != nil {
 		return Message{}, err
 	}
+
 	message := Message{
-		campaignID,
-		campaignEtablissementID,
+		ids.CampaignID,
+		ids.CampaignEtablissementID,
 		[]string{*codeDepartement},
 		"withdraw",
 		string(username),
 	}
+
 	return message, nil
 }
 
@@ -66,13 +65,14 @@ func withdrawHandler(ctx *gin.Context) {
 		return
 	}
 
-	zone := zoneForUser(libwekan.Username(s.Username))
-
-	message, err := withdrawPending(ctx,
+	ids := IDs{
 		CampaignID(campaignID),
 		CampaignEtablissementID(campaignEtablissementID),
-		libwekan.Username(s.Username),
-		zone,
+	}
+
+	message, err := withdrawPending(ctx,
+		ids,
+		s.Username,
 		params.Detail)
 
 	if errors.As(err, &TakeNotFoundError{}) {

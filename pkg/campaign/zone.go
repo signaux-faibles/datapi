@@ -22,8 +22,8 @@ func zonesFromBoards(boards []libwekan.ConfigBoard) BoardZones {
 	return zones
 }
 
-func zoneForUser(username libwekan.Username) Zone {
-	boards := core.Kanban.SelectBoardsForUsername(username)
+func zoneForUser(username string) Zone {
+	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(username))
 	zones := zonesFromBoards(boards)
 	return zoneFromBoardZones(zones)
 }

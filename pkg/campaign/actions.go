@@ -7,30 +7,32 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"strconv"
 )
 
 type CampaignEtablissementActionID int
 
+type Action struct {
+	action string
+	detail string
+}
+
 func (c CampaignEtablissementActionID) Tuple() []interface{} {
 	return []interface{}{&c}
 }
 
 func doAction(ctx context.Context,
-	campaignID CampaignID,
-	campaignEtablissementID CampaignEtablissementID,
-	username libwekan.Username,
-	zone Zone,
-	action string,
-	detail string,
+	ids IDs,
+	username string,
+	action Action,
 ) (Message, error) {
 	var campaignEtablissementActionID *int
 	var codeDepartement *string
+	zone := zoneForUser(username)
 	dbConn := db.Get()
-	row := dbConn.QueryRow(ctx, sqlActionMyEtablissement, campaignID,
-		campaignEtablissementID, username, zone, action, detail)
+	row := dbConn.QueryRow(ctx, sqlActionMyEtablissement, ids.CampaignID,
+		ids.CampaignEtablissementID, username, zone, action.action, action.detail)
 	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
 	fmt.Println(err)
 	if campaignEtablissementActionID == nil || codeDepartement == nil {
@@ -39,10 +41,10 @@ func doAction(ctx context.Context,
 		return Message{}, err
 	}
 	message := Message{
-		campaignID,
-		campaignEtablissementID,
+		ids.CampaignID,
+		ids.CampaignEtablissementID,
 		[]string{*codeDepartement},
-		action,
+		action.action,
 		string(username),
 	}
 	return message, nil
@@ -78,15 +80,21 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 			return
 		}
 
-		zone := zoneForUser(libwekan.Username(s.Username))
-
-		message, err := doAction(ctx,
+		ids := IDs{
 			CampaignID(campaignID),
 			CampaignEtablissementID(campaignEtablissementID),
-			libwekan.Username(s.Username),
-			zone,
+		}
+
+		action := Action{
+			action: action,
+			detail: params.Detail,
+		}
+
+		message, err := doAction(ctx,
+			ids,
+			s.Username,
 			action,
-			params.Detail)
+		)
 
 		if errors.As(err, &TakeNotFoundError{}) {
 			ctx.JSON(http.StatusUnprocessableEntity, "traitement indisponible pour cet établissement")

@@ -5,7 +5,6 @@ import (
 	"datapi/pkg/utils"
 	"encoding/json"
 	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/libwekan"
 	"io"
 	"log"
 )
@@ -41,7 +40,7 @@ func streamHandler(c *gin.Context) {
 		return
 	}
 
-	zone := zoneForUser(libwekan.Username(s.Username))
+	zone := zoneForUser(s.Username)
 
 	c.Stream(func(w io.Writer) bool {
 		// Stream message to client from message channel

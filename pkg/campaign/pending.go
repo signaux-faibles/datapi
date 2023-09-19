@@ -13,6 +13,11 @@ import (
 	"strconv"
 )
 
+type IDs struct {
+	CampaignID
+	CampaignEtablissementID
+}
+
 type CampaignEtablissementID int
 
 type CampaignEtablissement struct {
