@@ -1,4 +1,4 @@
-FROM alpine:3.12.0
+FROM alpine:3.18.3
 RUN apk add --no-cache python3 python3-dev musl-dev libxml2 libxml2-dev libxslt libxslt-dev gcc
 RUN python3 -m ensurepip
 RUN pip3 install docx-mailmerge==0.5.0
