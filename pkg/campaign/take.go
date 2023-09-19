@@ -6,7 +6,6 @@ import (
 	"datapi/pkg/db"
 	"errors"
 	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"strconv"
 )
@@ -26,15 +25,12 @@ func takeHandler(c *gin.Context) {
 		return
 	}
 
-	zone := zoneForUser(libwekan.Username(s.Username))
-
-	message, err := take(
-		c,
+	ids := IDs{
 		CampaignID(campaignID),
 		CampaignEtablissementID(campaignEtablissementID),
-		libwekan.Username(s.Username),
-		zone,
-	)
+	}
+
+	message, err := take(c, ids, s.Username)
 
 	if errors.As(err, &PendingNotFoundError{}) {
 		c.JSON(http.StatusUnprocessableEntity, "établissement indisponible pour cette action")
@@ -46,22 +42,26 @@ func takeHandler(c *gin.Context) {
 	}
 }
 
-func take(ctx context.Context, campaignID CampaignID, campaignEtablissementID CampaignEtablissementID, username libwekan.Username, zone Zone) (Message, error) {
+func take(ctx context.Context, ids IDs, username string) (Message, error) {
 	var campaignEtablissementActionID *int
 	var codeDepartement *string
+	zone := zoneForUser(username)
+
 	dbConn := db.Get()
-	row := dbConn.QueryRow(ctx, sqlTakePendingEtablissement, campaignID, campaignEtablissementID, username, zone)
+	row := dbConn.QueryRow(ctx, sqlTakePendingEtablissement, ids.CampaignID, ids.CampaignEtablissementID, username, zone)
 	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
+
 	if campaignEtablissementActionID == nil || codeDepartement == nil {
 		return Message{}, PendingNotFoundError{err: errors.New("aucun id retourné par l'insert")}
 	} else if err != nil {
 		return Message{}, err
 	}
+
 	return Message{
-		CampaignID:              campaignID,
-		CampaignEtablissementID: campaignEtablissementID,
+		CampaignID:              ids.CampaignID,
+		CampaignEtablissementID: ids.CampaignEtablissementID,
 		Zone:                    []string{*codeDepartement},
 		Type:                    "pending",
-		Username:                string(username),
+		Username:                username,
 	}, nil
 }

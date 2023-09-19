@@ -12,7 +12,7 @@ with actions as (
            left join actions a on a.id_campaign_etablissement = ce.id
     where ce.id_campaign = $1
       and ce.id = $2
-      and coalesce(a.action, 'cancel') = 'cancel'
+      and coalesce(a.action, 'cancel') in ('cancel', 'withdraw')
     returning id, id_campaign_etablissement)
 select i.id, s.code_departement from inserted i
 inner join campaign_etablissement ce on ce.id = i.id_campaign_etablissement

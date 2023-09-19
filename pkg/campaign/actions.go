@@ -7,30 +7,25 @@ import (
 	"errors"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"strconv"
 )
-
-type CampaignEtablissementActionID int
 
 func (c CampaignEtablissementActionID) Tuple() []interface{} {
 	return []interface{}{&c}
 }
 
 func doAction(ctx context.Context,
-	campaignID CampaignID,
-	campaignEtablissementID CampaignEtablissementID,
-	username libwekan.Username,
-	zone Zone,
-	action string,
-	detail string,
+	ids IDs,
+	username string,
+	action Action,
 ) (Message, error) {
 	var campaignEtablissementActionID *int
 	var codeDepartement *string
+	zone := zoneForUser(username)
 	dbConn := db.Get()
-	row := dbConn.QueryRow(ctx, sqlActionMyEtablissement, campaignID,
-		campaignEtablissementID, username, zone, action, detail)
+	row := dbConn.QueryRow(ctx, sqlActionMyEtablissement, ids.CampaignID,
+		ids.CampaignEtablissementID, username, zone, action.action, action.detail)
 	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
 	fmt.Println(err)
 	if campaignEtablissementActionID == nil || codeDepartement == nil {
@@ -39,17 +34,13 @@ func doAction(ctx context.Context,
 		return Message{}, err
 	}
 	message := Message{
-		campaignID,
-		campaignEtablissementID,
+		ids.CampaignID,
+		ids.CampaignEtablissementID,
 		[]string{*codeDepartement},
-		action,
+		action.action,
 		string(username),
 	}
 	return message, nil
-}
-
-type actionParam struct {
-	Detail string `json:"detail"`
 }
 
 func actionHandlerFunc(action string) func(ctx *gin.Context) {
@@ -68,28 +59,31 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 
 		campaignID, err := strconv.Atoi(ctx.Param("campaignID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/take/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
 			return
 		}
 
 		campaignEtablissementID, err := strconv.Atoi(ctx.Param("campaignEtablissementID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/take/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
 			return
 		}
 
-		zone := zoneForUser(libwekan.Username(s.Username))
-
-		if err != nil {
-			ctx.JSON(http.StatusBadRequest, "/"+action+"/:campaignID, :campaignID n'est pas entier")
-		}
-		message, err := doAction(ctx,
+		ids := IDs{
 			CampaignID(campaignID),
 			CampaignEtablissementID(campaignEtablissementID),
-			libwekan.Username(s.Username),
-			zone,
+		}
+
+		action := Action{
+			action: action,
+			detail: params.Detail,
+		}
+
+		message, err := doAction(ctx,
+			ids,
+			s.Username,
 			action,
-			params.Detail)
+		)
 
 		if errors.As(err, &TakeNotFoundError{}) {
 			ctx.JSON(http.StatusUnprocessableEntity, "traitement indisponible pour cet établissement")

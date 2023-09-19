@@ -24,3 +24,6 @@ var sqlActionMyEtablissement string
 
 //go:embed sql/selectCampaignEtablissementID.sql
 var sqlSelectCampaignEtablissementID string
+
+//go:embed sql/withdrawPendingEtablissement.sql
+var sqlWithdrawPendingEtablissement string

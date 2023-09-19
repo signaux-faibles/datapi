@@ -13,36 +13,6 @@ import (
 	"strconv"
 )
 
-type CampaignEtablissementID int
-
-type CampaignEtablissement struct {
-	ID                  CampaignEtablissementID `json:"id"`
-	CampaignID          int                     `json:"campaignID"`
-	Siret               core.Siret              `json:"siret"`
-	Alert               *string                 `json:"alert"`
-	Followed            bool                    `json:"followed"`
-	FirstAlert          bool                    `json:"firstAlert"`
-	EtatAdministratif   string                  `json:"etatAdministratif"`
-	CodeDepartement     string                  `json:"codeDepartement"`
-	Action              *string                 `json:"action,omitempty"`
-	Rank                int                     `json:"rank"`
-	RaisonSociale       string                  `json:"raisonSociale"`
-	RaisonSocialeGroupe *string                 `json:"raisonSocialeGroupe,omitempty"`
-	Username            *string                 `json:"username,omitempty"`
-	CardID              *libwekan.CardID        `json:"cardID,omitempty"`
-	Description         *string                 `json:"description,omitempty"`
-	Detail              *string                 `json:"detail,omitempty"`
-}
-
-type Pending struct {
-	Etablissements    []*CampaignEtablissement `json:"etablissements"`
-	NbTotal           int                      `json:"nbTotal"`
-	Page              int                      `json:"page,omitempty"`
-	PageMax           int                      `json:"pageMax,omitempty"`
-	PageSize          int                      `json:"pageSize,omitempty"`
-	WekanDomainRegexp string                   `json:"-"`
-}
-
 func pendingHandler(kanbanService core.KanbanService) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var s core.Session
@@ -82,6 +52,7 @@ func (p *Pending) Tuple() []interface{} {
 		&ce.Action,
 		&ce.Rank,
 		&ce.CodeDepartement,
+		&ce.Detail,
 	}
 }
 

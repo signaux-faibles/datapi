@@ -1,6 +1,7 @@
 with actions as (
   select id_campaign_etablissement,
-    last(action order by id) as action
+    last(action order by id) as action,
+    last(detail order by id) as detail
   from campaign_etablissement_action
   group by id_campaign_etablissement
 ), zones as (
@@ -23,7 +24,8 @@ select count(*) over ()             as nb_total,
   s.etat_administratif,
   a.action,
   rank() over (order by ce.id) as rank,
-  s.code_departement
+  s.code_departement,
+  a.detail
 from campaign_etablissement ce
   inner join zone z on true
   inner join campaign c on c.id = ce.id_campaign
@@ -31,6 +33,6 @@ from campaign_etablissement ce
   left join etablissement_follow f on f.siret = ce.siret and f.username = $3 and f.active
   left join actions a on a.id_campaign_etablissement = ce.id
 where ce.id_campaign = $1
-  and coalesce(a.action, 'cancel') = 'cancel'
+  and (a.action in ('cancel', 'withdraw') or a.action is null)
 
 

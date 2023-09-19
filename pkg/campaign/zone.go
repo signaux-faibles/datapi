@@ -7,9 +7,6 @@ import (
 	"strings"
 )
 
-type BoardZones map[string][]string
-type Zone []string
-
 func zonesFromBoards(boards []libwekan.ConfigBoard) BoardZones {
 	zones := make(map[string][]string)
 	for _, board := range boards {
@@ -22,8 +19,8 @@ func zonesFromBoards(boards []libwekan.ConfigBoard) BoardZones {
 	return zones
 }
 
-func zoneForUser(username libwekan.Username) Zone {
-	boards := core.Kanban.SelectBoardsForUsername(username)
+func zoneForUser(username string) Zone {
+	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(username))
 	zones := zonesFromBoards(boards)
 	return zoneFromBoardZones(zones)
 }

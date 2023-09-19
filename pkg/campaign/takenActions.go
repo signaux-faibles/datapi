@@ -11,12 +11,6 @@ import (
 	"strconv"
 )
 
-type TakenActions struct {
-	Etablissements    []*CampaignEtablissement `json:"etablissements"`
-	NbTotal           int                      `json:"nbTotal"`
-	WekanDomainRegexp string                   `json:"-"`
-}
-
 func (p *TakenActions) Tuple() []interface{} {
 	var ce CampaignEtablissement
 	p.Etablissements = append(p.Etablissements, &ce)
