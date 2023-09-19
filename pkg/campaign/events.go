@@ -11,14 +11,6 @@ import (
 
 var stream = NewServer()
 
-type Message struct {
-	CampaignID              CampaignID              `json:"campaignID"`
-	CampaignEtablissementID CampaignEtablissementID `json:"campaignEtablissementID"`
-	Zone                    []string                `json:"zone"`
-	Type                    string                  `json:"type"`
-	Username                string                  `json:"username"`
-}
-
 func (m Message) JSON() string {
 	msg, err := json.Marshal(m)
 	if err != nil {
@@ -53,25 +45,6 @@ func streamHandler(c *gin.Context) {
 		return false
 	})
 }
-
-// It keeps a list of clients those are currently attached
-// and broadcasting events to those clients.
-type Event struct {
-	// Events are pushed to this channel by the main events-gathering routine
-	Message chan Message
-
-	// New client connections
-	NewClients chan chan Message
-
-	// Closed client connections
-	ClosedClients chan chan Message
-
-	// Total client connections
-	TotalClients map[chan Message]bool
-}
-
-// New event messages are broadcast to all registered client connection channels
-type ClientChan chan Message
 
 // Initialize event and Start procnteessing requests
 func NewServer() *Event {

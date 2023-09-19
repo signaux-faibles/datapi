@@ -11,13 +11,6 @@ import (
 	"strconv"
 )
 
-type CampaignEtablissementActionID int
-
-type Action struct {
-	action string
-	detail string
-}
-
 func (c CampaignEtablissementActionID) Tuple() []interface{} {
 	return []interface{}{&c}
 }
@@ -48,10 +41,6 @@ func doAction(ctx context.Context,
 		string(username),
 	}
 	return message, nil
-}
-
-type actionParam struct {
-	Detail string `json:"detail"`
 }
 
 func actionHandlerFunc(action string) func(ctx *gin.Context) {

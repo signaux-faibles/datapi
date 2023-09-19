@@ -7,9 +7,6 @@ import (
 	"strings"
 )
 
-type BoardZones map[string][]string
-type Zone []string
-
 func zonesFromBoards(boards []libwekan.ConfigBoard) BoardZones {
 	zones := make(map[string][]string)
 	for _, board := range boards {

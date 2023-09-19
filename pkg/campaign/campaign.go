@@ -6,27 +6,7 @@ import (
 	"datapi/pkg/db"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
-	"time"
 )
-
-type CampaignID int
-
-type Campaign struct {
-	ID                CampaignID `json:"id"`
-	Libelle           string     `json:"libelle"`
-	DateEnd           time.Time  `json:"dateFin"`
-	DateCreate        time.Time  `json:"dateCreate"`
-	WekanDomainRegexp string     `json:"wekanDomainRegexp"`
-	NBPerimetre       int        `json:"nbPerimetre"`
-	NBPending         int        `json:"nbPending"`
-	NBTake            int        `json:"nbTake"`
-	NBMyActions       int        `json:"nbMyActions"`
-	NBDone            int        `json:"nbDone"`
-	BoardIDs          []string   `json:"boardIDs"`
-	Zone              []string   `json:"zone"`
-}
-
-type Campaigns []*Campaign
 
 func (cs *Campaigns) Tuple() []interface{} {
 	c := Campaign{}
