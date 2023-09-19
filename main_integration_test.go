@@ -16,6 +16,7 @@ import (
 	"datapi/pkg/db"
 	"datapi/pkg/kanban"
 	"datapi/pkg/test"
+	"datapi/pkg/utils"
 
 	"github.com/stretchr/testify/assert"
 
@@ -30,6 +31,7 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 // - le fichier de création et d'import de données dans la base -> test/data/01_testData.sql.gz
 // - la configuration du container
 func TestMain(m *testing.M) {
+	utils.ConfigureLogLevel("debug")
 	var err error
 	ctx := context.Background()
 	testConfig := map[string]string{}

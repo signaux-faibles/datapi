@@ -14,13 +14,16 @@ import (
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/refresh"
 	"datapi/pkg/stats"
+	"datapi/pkg/utils"
 )
 
 func main() {
+	utils.InitLogger()
 	core.LoadConfig(".", "config", "./migrations")
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}
+	utils.ConfigureLogLevel(viper.GetString("log.level"))
 	ctx := context.Background()
 	kanbanService := initWekanService(ctx)
 	saver := buildLogSaver()
@@ -54,7 +57,7 @@ func initAndStartAPI(datapi *core.Datapi, statsAPI *stats.API) {
 }
 
 func buildLogSaver() *stats.PostgresLogSaver {
-	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("logs.db_url"))
+	saver, err := stats.NewPostgresLogSaverFromURL(context.Background(), viper.GetString("stats.db_url"))
 	if err != nil {
 		log.Fatal("erreur pendant l'instanciation du AccessLogSaver : ", err)
 	}
@@ -62,7 +65,7 @@ func buildLogSaver() *stats.PostgresLogSaver {
 }
 
 func buildStatsAPI() *stats.API {
-	statsModule, err := stats.NewAPIFromConfiguration(context.Background(), viper.GetString("logs.db_url"))
+	statsModule, err := stats.NewAPIFromConfiguration(context.Background(), viper.GetString("stats.db_url"))
 	if err != nil {
 		log.Fatal("erreur pendant l'instanciation du StatsAPI : ", err)
 	}

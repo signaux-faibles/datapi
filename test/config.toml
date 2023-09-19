@@ -12,23 +12,26 @@ keycloakRealm = "master"
 
 fakeUsernameKeycloak = "christophe.ninucci@dreets.gouv.fr"
 fakeKeycloakRoles = [
-    "import",
-    "Île-de-France",
-    "detection",
-    "score",
-    "dgefp",
-    "urssaf",
-    "bdf",
-    "pge",
-    "75",
-    "77",
-    "78",
-    "91",
-    "92",
-    "93",
-    "94",
-    "95",
-    "stats",
+  "import",
+  "Île-de-France",
+  "detection",
+  "score",
+  "dgefp",
+  "urssaf",
+  "bdf",
+  "pge",
+  "75",
+  "77",
+  "78",
+  "91",
+  "92",
+  "93",
+  "94",
+  "95",
+  "stats",
 ]
 
 searchPageLength = 10
+
+[log]
+  level = "warn"

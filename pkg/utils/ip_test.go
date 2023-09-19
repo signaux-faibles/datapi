@@ -1,10 +1,11 @@
 package utils
 
 import (
-	"github.com/jaswdr/faker"
 	"net"
 	"reflect"
 	"testing"
+
+	"github.com/jaswdr/faker"
 )
 
 const loopbackIPv4 = "127.0.0.1"
@@ -14,6 +15,7 @@ var fake faker.Faker
 
 func init() {
 	fake = faker.New()
+	ConfigureLogLevel("debug")
 }
 
 func Test_parseWhitelist(t *testing.T) {
