@@ -16,7 +16,7 @@ with zones as (
 ), actions as (
   select ce.id as id_campaign_etablissement,
          coalesce(last(action order by cea.id), 'pending') as action,
-         last(username order by cea.id) as username
+         last(cea.username order by cea.id) as username
   from campaign_etablissement ce
          left join campaign_etablissement_action cea on cea.id_campaign_etablissement = ce.id
   group by ce.id

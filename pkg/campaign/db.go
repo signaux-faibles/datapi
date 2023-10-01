@@ -29,4 +29,7 @@ var sqlSelectCampaignEtablissementID string
 var sqlWithdrawPendingEtablissement string
 
 //go:embed sql/checkSirets.sql
-var sqlCheckSiret string
+var sqlCheckSirets string
+
+//go:embed sql/addSirets.sql
+var sqlAddSirets string

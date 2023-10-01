@@ -1,0 +1,1 @@
+alter table campaign_etablissement add column username text;

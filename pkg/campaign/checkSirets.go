@@ -56,6 +56,6 @@ func checkSirets(ctx context.Context, campaignID CampaignID, sirets []core.Siret
 	checkedSiret.Sirets = make([]*CheckedSiret, 0)
 	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(username))
 	zones := zonesFromBoards(boards)
-	err := db.Scan(ctx, &checkedSiret, sqlCheckSiret, campaignID, sirets, username, zones)
+	err := db.Scan(ctx, &checkedSiret, sqlCheckSirets, campaignID, sirets, zones)
 	return checkedSiret, err
 }

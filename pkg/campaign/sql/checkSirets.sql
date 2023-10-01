@@ -1,12 +1,11 @@
 with
     sirets as (select unnest($2::text[])::text as siret),
     zones as (select key as slug, ARRAY(SELECT jsonb_array_elements_text(value)) as zone
-               from jsonb_each($4::jsonb)),
+               from jsonb_each($3::jsonb)),
      zone as (select flatmap(z.zone) as zone
                    from campaign c
                             inner join zones z on z.slug ~ c.wekan_domain_regexp
-                   where c.id = $1),
-     actions as (select max(id_campaign_etablissement) from campaign_etablissement_action where username = $3)
+                   where c.id = $1)
 select distinct s.siret,
        case when v.siret is null then 'nonSiret'
             when not(v.code_departement = any (z.zone)) then 'horsZone'

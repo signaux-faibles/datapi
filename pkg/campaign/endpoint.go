@@ -18,5 +18,6 @@ func ConfigureEndpoint(kanbanService core.KanbanService) func(campaignRoute *gin
 		campaignRoute.POST("/upsertcard", upsertCardHandler(kanbanService))
 		campaignRoute.POST("/withdraw/:campaignID/:campaignEtablissementID", withdrawHandler)
 		campaignRoute.POST("/checksirets/:campaignID", checkSiretsHandler)
+		campaignRoute.POST("/addsirets/:campaignID", addSiretsHandler)
 	}
 }
