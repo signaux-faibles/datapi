@@ -17,6 +17,5 @@ select distinct s.siret,
 from sirets s
          left join v_summaries v on v.siret = s.siret
          left join zone z on true
-         left join campaign_etablissement ce on ce.siret = s.siret
-         left join campaign c on c.id = ce.id_campaign and c.id = $1
+         left join campaign_etablissement ce on ce.siret = s.siret and ce.id_campaign = $1
 where s.siret = any ($2)

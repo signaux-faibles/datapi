@@ -17,8 +17,7 @@ with sirets as (select unnest($2::text[])::text as siret),
                        from sirets s
                                 left join v_summaries v on v.siret = s.siret
                                 left join zone z on true
-                                left join campaign_etablissement ce on ce.siret = s.siret
-                                left join campaign c on c.id = ce.id_campaign and c.id = $1
+                                left join campaign_etablissement ce on ce.siret = s.siret and ce.id_campaign = $1
                        where s.siret = any ($2)),
      insertedSirets as (insert into campaign_etablissement (id_campaign, siret, username)
          select $1, siret, $4
