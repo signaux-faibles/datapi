@@ -35,7 +35,7 @@ func doAction(ctx context.Context,
 	}
 	message := Message{
 		ids.CampaignID,
-		ids.CampaignEtablissementID,
+		&ids.CampaignEtablissementID,
 		[]string{*codeDepartement},
 		action.action,
 		string(username),

@@ -29,7 +29,7 @@ func withdrawPending(ctx context.Context, ids IDs, username string, detail strin
 
 	message := Message{
 		ids.CampaignID,
-		ids.CampaignEtablissementID,
+		&ids.CampaignEtablissementID,
 		[]string{*codeDepartement},
 		"withdraw",
 		string(username),

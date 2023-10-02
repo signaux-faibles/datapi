@@ -63,7 +63,7 @@ func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablisseme
 		err := kanbanService.CreateCard(ctx, params, username, pool)
 
 		message := Message{
-			CampaignEtablissementID: campaignEtablissementID,
+			CampaignEtablissementID: &campaignEtablissementID,
 			CampaignID:              campaignID,
 			Zone:                    []string{string(codeDepartement)},
 			Type:                    "edit-card",
@@ -76,7 +76,7 @@ func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablisseme
 		return Message{}, err
 	}
 	message := Message{
-		CampaignEtablissementID: campaignEtablissementID,
+		CampaignEtablissementID: &campaignEtablissementID,
 		CampaignID:              campaignID,
 		Zone:                    []string{string(codeDepartement)},
 		Type:                    "edit-card",

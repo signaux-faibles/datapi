@@ -59,7 +59,7 @@ func take(ctx context.Context, ids IDs, username string) (Message, error) {
 
 	return Message{
 		CampaignID:              ids.CampaignID,
-		CampaignEtablissementID: ids.CampaignEtablissementID,
+		CampaignEtablissementID: &ids.CampaignEtablissementID,
 		Zone:                    []string{*codeDepartement},
 		Type:                    "pending",
 		Username:                username,
