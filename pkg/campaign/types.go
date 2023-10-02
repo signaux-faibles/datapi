@@ -33,11 +33,11 @@ type Campaign struct {
 type Campaigns []*Campaign
 
 type Message struct {
-	CampaignID              CampaignID              `json:"campaignID"`
-	CampaignEtablissementID CampaignEtablissementID `json:"campaignEtablissementID"`
-	Zone                    []string                `json:"zone"`
-	Type                    string                  `json:"type"`
-	Username                string                  `json:"username"`
+	CampaignID              CampaignID               `json:"campaignID"`
+	CampaignEtablissementID *CampaignEtablissementID `json:"campaignEtablissementID"`
+	Zone                    []string                 `json:"zone"`
+	Type                    string                   `json:"type"`
+	Username                string                   `json:"username"`
 }
 
 type MyActions struct {

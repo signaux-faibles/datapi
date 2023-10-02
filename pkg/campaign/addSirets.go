@@ -39,21 +39,35 @@ func addSiretsHandler(c *gin.Context) {
 	s.Bind(c)
 	campaignIDParam := c.Param("campaignID")
 	campaignID, err := strconv.Atoi(campaignIDParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, "campaignID doit être un nombre entier")
+		return
+	}
 	var params CheckSiretsParams
-	c.Bind(&params)
-	result, err := addSirets(c, CampaignID(campaignID), params.Sirets, s.Username)
+	err = c.Bind(&params)
+	if err != nil {
+		return
+	}
+	message, err := addSirets(c, CampaignID(campaignID), params.Sirets, s.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
 	}
-	c.JSON(http.StatusOK, result)
+	stream.Message <- message
+	c.JSON(http.StatusOK, message)
 }
 
-func addSirets(ctx context.Context, campaignID CampaignID, sirets []core.Siret, username string) (AddedSirets, error) {
+func addSirets(ctx context.Context, campaignID CampaignID, sirets []core.Siret, username string) (Message, error) {
 	var addedSirets AddedSirets
 	addedSirets.Sirets = make([]*AddedSiret, 0)
 	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(username))
 	zones := zonesFromBoards(boards)
 	err := db.Scan(ctx, &addedSirets, sqlAddSirets, campaignID, sirets, zones, username)
-	return addedSirets, err
+	message := Message{
+		CampaignID: 1,
+		Zone:       zoneFromBoardZones(zones),
+		Type:       "addSiret",
+		Username:   username,
+	}
+	return message, err
 }
