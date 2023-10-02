@@ -64,7 +64,7 @@ func addSirets(ctx context.Context, campaignID CampaignID, sirets []core.Siret, 
 	zones := zonesFromBoards(boards)
 	err := db.Scan(ctx, &addedSirets, sqlAddSirets, campaignID, sirets, zones, username)
 	message := Message{
-		CampaignID: 1,
+		CampaignID: campaignID,
 		Zone:       zoneFromBoardZones(zones),
 		Type:       "addSiret",
 		Username:   username,
