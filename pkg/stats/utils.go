@@ -64,10 +64,6 @@ func writeToExcel(file io.Writer) error {
 	}
 	// Set active sheet of the workbook.
 	f.SetActiveSheet(index)
-	// Save spreadsheet by the given path.
-	if err := f.SaveAs("Book1.xlsx"); err != nil {
-		fmt.Println(err)
-	}
 	_, err = f.WriteTo(file, excelize.Options{RawCellValue: true})
 	if err != nil {
 		fmt.Println(err)
