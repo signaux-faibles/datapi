@@ -99,44 +99,6 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 	})
 }
 
-func createCSV(archive *zip.Writer, filename string, results chan accessLog) error {
-	csvFile, err := archive.CreateHeader(&zip.FileHeader{
-		Name:     filename + ".csv",
-		Comment:  "fourni par Datapi avec amour",
-		NonUTF8:  false,
-		Modified: time.Now(),
-	})
-	if err != nil {
-		slog.Error("erreur pendant la création du csv dans le zip", slog.Any("error", err))
-		return err
-	}
-	err = writeLinesToCSV(results, csvFile)
-	if err != nil {
-		slog.Error("erreur pendant l'écriture du csv", slog.Any("error", err))
-		return err
-	}
-	return nil
-}
-
-func createExcel(archive *zip.Writer, filename string) error {
-	excelFile, err := archive.CreateHeader(&zip.FileHeader{
-		Name:     filename + ".xslx",
-		Comment:  "fourni par Datapi avec dégoût",
-		NonUTF8:  false,
-		Modified: time.Now(),
-	})
-	if err != nil {
-		slog.Error("erreur pendant la création du xls dans le zip", slog.Any("error", err))
-		return err
-	}
-	err = writeToExcel(excelFile)
-	if err != nil {
-		slog.Error("erreur pendant l'écriture du xls", slog.Any("error", err))
-		return err
-	}
-	return nil
-}
-
 func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) {
 	selectLogs(api.db.ctx, api.db.pool, since, to, result)
 }
