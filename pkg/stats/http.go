@@ -77,41 +77,16 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 	go api.fetchLogs(since, to, results)
 	// Create a zip archive.
 	c.Header("Content-type", "application/octet-stream")
+	c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
 	c.Stream(func(w io.Writer) bool {
 		archive := zip.NewWriter(w)
-		csvFile, err := archive.CreateHeader(&zip.FileHeader{
-			Name:     api.filename + ".csv",
-			Comment:  "fourni par Datapi avec amour",
-			NonUTF8:  false,
-			Modified: time.Now(),
-		})
+		err := createCSV(archive, api.filename, results)
 		if err != nil {
-			slog.Error("erreur pendant la création du csv dans le zip", slog.Any("error", err))
 			c.Status(http.StatusInternalServerError)
 			return false
 		}
-
-		c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
-		err = writeLinesToCSV(results, csvFile)
+		err = createExcel(archive, api.filename)
 		if err != nil {
-			slog.Error("erreur pendant l'écriture du csv", slog.Any("error", err))
-			c.Status(http.StatusInternalServerError)
-			return false
-		}
-		excelFile, err := archive.CreateHeader(&zip.FileHeader{
-			Name:     api.filename + ".xslx",
-			Comment:  "fourni par Datapi avec dégoût",
-			NonUTF8:  false,
-			Modified: time.Now(),
-		})
-		if err != nil {
-			slog.Error("erreur pendant la création du xls dans le zip", slog.Any("error", err))
-			c.Status(http.StatusInternalServerError)
-			return false
-		}
-		err = writeToExcel(excelFile)
-		if err != nil {
-			slog.Error("erreur pendant l'écriture du xls", slog.Any("error", err))
 			c.Status(http.StatusInternalServerError)
 			return false
 		}
@@ -122,6 +97,44 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 		}
 		return false
 	})
+}
+
+func createCSV(archive *zip.Writer, filename string, results chan accessLog) error {
+	csvFile, err := archive.CreateHeader(&zip.FileHeader{
+		Name:     filename + ".csv",
+		Comment:  "fourni par Datapi avec amour",
+		NonUTF8:  false,
+		Modified: time.Now(),
+	})
+	if err != nil {
+		slog.Error("erreur pendant la création du csv dans le zip", slog.Any("error", err))
+		return err
+	}
+	err = writeLinesToCSV(results, csvFile)
+	if err != nil {
+		slog.Error("erreur pendant l'écriture du csv", slog.Any("error", err))
+		return err
+	}
+	return nil
+}
+
+func createExcel(archive *zip.Writer, filename string) error {
+	excelFile, err := archive.CreateHeader(&zip.FileHeader{
+		Name:     filename + ".xslx",
+		Comment:  "fourni par Datapi avec dégoût",
+		NonUTF8:  false,
+		Modified: time.Now(),
+	})
+	if err != nil {
+		slog.Error("erreur pendant la création du xls dans le zip", slog.Any("error", err))
+		return err
+	}
+	err = writeToExcel(excelFile)
+	if err != nil {
+		slog.Error("erreur pendant l'écriture du xls", slog.Any("error", err))
+		return err
+	}
+	return nil
 }
 
 func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) {
