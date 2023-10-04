@@ -1,11 +1,14 @@
 package stats
 
 import (
+	"archive/zip"
 	"encoding/csv"
 	"fmt"
 	"io"
+	"log/slog"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
@@ -17,7 +20,6 @@ var csvHeaders = []string{"date", "chemin", "methode", "utilisateur", "segment",
 
 func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 	csvWriter := csv.NewWriter(w)
-	counter := 0
 	wErr := csvWriter.Write(csvHeaders)
 	if wErr != nil {
 		err := errors.Wrap(wErr, "erreur lors de l'écriture des headers")
@@ -32,7 +34,6 @@ func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 			err := errors.Wrap(wErr, "erreur lors de la transformation de la ligne de log")
 			return err
 		}
-		counter++
 	}
 	csvWriter.Flush()
 	return nil
@@ -82,4 +83,42 @@ func (l accessLog) toCSV() []string {
 		l.segment,
 		strings.Join(l.roles, ","),
 	}
+}
+
+func createCSV(archive *zip.Writer, filename string, results chan accessLog) error {
+	csvFile, err := archive.CreateHeader(&zip.FileHeader{
+		Name:     filename + ".csv",
+		Comment:  "fourni par Datapi avec amour",
+		NonUTF8:  false,
+		Modified: time.Now(),
+	})
+	if err != nil {
+		slog.Error("erreur pendant la création du csv dans le zip", slog.Any("error", err))
+		return err
+	}
+	err = writeLinesToCSV(results, csvFile)
+	if err != nil {
+		slog.Error("erreur pendant l'écriture du csv", slog.Any("error", err))
+		return err
+	}
+	return nil
+}
+
+func createExcel(archive *zip.Writer, filename string) error {
+	excelFile, err := archive.CreateHeader(&zip.FileHeader{
+		Name:     filename + ".xslx",
+		Comment:  "fourni par Datapi avec dégoût",
+		NonUTF8:  false,
+		Modified: time.Now(),
+	})
+	if err != nil {
+		slog.Error("erreur pendant la création du xls dans le zip", slog.Any("error", err))
+		return err
+	}
+	err = writeToExcel(excelFile)
+	if err != nil {
+		slog.Error("erreur pendant l'écriture du xls", slog.Any("error", err))
+		return err
+	}
+	return nil
 }
