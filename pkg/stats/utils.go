@@ -39,7 +39,7 @@ func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 	return nil
 }
 
-func writeToExcel(file io.Writer) error {
+func writeToExcel(file io.Writer, activites chan activiteParUtilisateur) error {
 	f := excelize.NewFile()
 	defer func() {
 		if err := f.Close(); err != nil {
@@ -47,24 +47,31 @@ func writeToExcel(file io.Writer) error {
 		}
 	}()
 	// Create a new sheet.
-	index, err := f.NewSheet("Sheet2")
+	sheetName := "Activité par utilisateur"
+	err := f.SetSheetName(f.GetSheetName(0), sheetName)
 	if err != nil {
-		fmt.Println(err)
 		return err
 	}
-	// Set value of a cell.
-	err = f.SetCellValue("Sheet2", "A2", "Hello world.")
-	if err != nil {
-		fmt.Println(err)
-		return err
+	f.SetActiveSheet(1)
+	var row = 1
+	for ligne := range activites {
+		cell, err := excelize.CoordinatesToCellName(1, row)
+		if err != nil {
+			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
+		}
+		err = f.SetCellStr(sheetName, cell, ligne.username)
+		if err != nil {
+			return err
+		}
+		cell, err = excelize.CoordinatesToCellName(2, row)
+		if err != nil {
+			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
+		}
+		err = f.SetCellStr(sheetName, cell, ligne.actions)
+		if err != nil {
+			return err
+		}
 	}
-	err = f.SetCellValue("Sheet1", "B2", 100)
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	// Set active sheet of the workbook.
-	f.SetActiveSheet(index)
 	_, err = f.WriteTo(file, excelize.Options{RawCellValue: true})
 	if err != nil {
 		fmt.Println(err)
@@ -104,7 +111,7 @@ func createCSV(archive *zip.Writer, filename string, results chan accessLog) err
 	return nil
 }
 
-func createExcel(archive *zip.Writer, filename string) error {
+func createExcel(archive *zip.Writer, filename string, activites chan activiteParUtilisateur) error {
 	excelFile, err := archive.CreateHeader(&zip.FileHeader{
 		Name:     filename + ".xslx",
 		Comment:  "fourni par Datapi avec dégoût",
@@ -115,7 +122,7 @@ func createExcel(archive *zip.Writer, filename string) error {
 		slog.Error("erreur pendant la création du xls dans le zip", slog.Any("error", err))
 		return err
 	}
-	err = writeToExcel(excelFile)
+	err = writeToExcel(excelFile, activites)
 	if err != nil {
 		slog.Error("erreur pendant l'écriture du xls", slog.Any("error", err))
 		return err
