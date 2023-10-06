@@ -17,6 +17,9 @@ var createTablesSQL string
 //go:embed resources/sql/select_logs.sql
 var selectLogsSQL string
 
+//go:embed resources/sql/select_activite_par_utilisateur.sql
+var selectActiviteParUtilisateurSQL string
+
 const day = time.Duration(24) * time.Hour
 
 func createStructure(ctx context.Context, db *pgxpool.Pool) error {
@@ -59,6 +62,31 @@ func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to t
 	}
 	if err := rows.Err(); err != nil {
 		r <- accessLog{err: errors.Wrap(err, "erreur après la récupération des résultats")}
+	}
+}
+
+func selectActiviteParUtilisateur(
+	ctx context.Context,
+	dbPool *pgxpool.Pool,
+	since time.Time,
+	to time.Time,
+	r chan activiteParUtilisateur,
+) {
+	defer close(r)
+	rows, err := dbPool.Query(ctx, selectActiviteParUtilisateurSQL, since.Truncate(day), to.Truncate(day))
+	if err != nil {
+		r <- activiteParUtilisateur{err: errors.Wrap(err, "erreur pendant la requête de sélection des activite")}
+	}
+	for rows.Next() {
+		var activite activiteParUtilisateur
+		err := rows.Scan(&activite.username, &activite.visites, &activite.actions, &activite.segment)
+		if err != nil {
+			r <- activiteParUtilisateur{err: errors.Wrap(err, "erreur pendant la récupération des résultats")}
+		}
+		r <- activite
+	}
+	if err := rows.Err(); err != nil {
+		r <- activiteParUtilisateur{err: errors.Wrap(err, "erreur après la récupération des résultats")}
 	}
 }
 

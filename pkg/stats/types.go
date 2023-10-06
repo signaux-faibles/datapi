@@ -18,6 +18,14 @@ type accessLog struct {
 	err      error
 }
 
+type activiteParUtilisateur struct {
+	username string
+	actions  string
+	visites  string
+	segment  string
+	err      error
+}
+
 func (l accessLog) String() string {
 	return strings.Join(l.toStringArray(), ";")
 }
