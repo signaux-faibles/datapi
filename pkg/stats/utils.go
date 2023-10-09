@@ -3,7 +3,6 @@ package stats
 import (
 	"archive/zip"
 	"encoding/csv"
-	"fmt"
 	"io"
 	"log/slog"
 	"sort"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
 
 const accessLogDateExcelLayout = "2006/01/02 15:04:05"
@@ -39,62 +37,29 @@ func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 	return nil
 }
 
-func writeToExcel(file io.Writer, activites chan activiteParUtilisateur) error {
-	f := excelize.NewFile()
+func writeToExcel(output io.Writer, activites chan activiteParUtilisateur) error {
+	f := newExcel()
 	defer func() {
 		if err := f.Close(); err != nil {
-			fmt.Println(err)
+			slog.Error("erreur à la fermeture du fichier", slog.Any("error", err), slog.String("filename", f.Path))
 		}
 	}()
-	// Create a new sheet.
-	sheetName := "Activité par utilisateur"
-	err := f.SetSheetName(f.GetSheetName(0), sheetName)
+	var sheetName, err = createSheet(f, "Activité par utilisateur", 0)
 	if err != nil {
 		return err
 	}
-	f.SetActiveSheet(1)
 	var row = 1
 	for ligne := range activites {
-		cell, err := excelize.CoordinatesToCellName(1, row)
-		if err != nil {
-			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
+		if ligne.err != nil {
+			return ligne.err
 		}
-		err = f.SetCellStr(sheetName, cell, ligne.username)
-		if err != nil {
-			return err
-		}
-		cell, err = excelize.CoordinatesToCellName(2, row)
-		if err != nil {
-			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
-		}
-		err = f.SetCellStr(sheetName, cell, ligne.actions)
-		if err != nil {
-			return err
-		}
-		cell, err = excelize.CoordinatesToCellName(3, row)
-		if err != nil {
-			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
-		}
-		err = f.SetCellStr(sheetName, cell, ligne.visites)
-		if err != nil {
-			return err
-		}
-		cell, err = excelize.CoordinatesToCellName(4, row)
-		if err != nil {
-			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
-		}
-		err = f.SetCellStr(sheetName, cell, ligne.segment)
+		err := writeActiviteToExcel(f, sheetName, ligne, row)
 		if err != nil {
 			return err
 		}
 		row++
 	}
-	_, err = f.WriteTo(file, excelize.Options{RawCellValue: true})
-	if err != nil {
-		fmt.Println(err)
-		return err
-	}
-	return nil
+	return exportTo(output, f)
 }
 
 func (l accessLog) toCSV() []string {
