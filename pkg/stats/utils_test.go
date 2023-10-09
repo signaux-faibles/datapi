@@ -28,23 +28,24 @@ func TestLog_writeToExcel(t *testing.T) {
 	require.NoError(t, err)
 	slog.Info("fichier de sortie du test", slog.String("filename", f.Name()))
 	nbActivities := 100
-	activitesParUtilisateur := createFakeActivites(nbActivities)
+	knownActivite := createFakeActivite()
+	activitesParUtilisateur := createFakeActivites(nbActivities, knownActivite)
 
 	// WHEN
 	err = writeToExcel(f, activitesParUtilisateur)
 	require.NoError(t, err)
 
 	// THEN
-	// toi qui lis ces lignes,
-	// va regarder le fichier excel comme un grand
-	// et sache que l'automatisation nuit à la responsabilisation
 	excel, err := excelize.OpenFile(f.Name())
 	require.NoError(t, err)
 	firstSheet := excel.WorkBook.Sheets.Sheet[0].Name
-	fmt.Printf("'%s' is first sheet of %d sheets.\n", firstSheet, excel.SheetCount)
 	rows, err := excel.GetRows(firstSheet)
 	require.NoError(t, err)
 	assert.Equal(t, nbActivities, len(rows))
+	assert.Equal(t, knownActivite.username, rows[0][0])
+	assert.Equal(t, knownActivite.visites, rows[0][1])
+	assert.Equal(t, knownActivite.actions, rows[0][2])
+	assert.Equal(t, knownActivite.segment, rows[0][3])
 	for _, row := range rows {
 		for _, colCell := range row {
 			fmt.Print(colCell, "\t")
@@ -53,13 +54,15 @@ func TestLog_writeToExcel(t *testing.T) {
 	}
 }
 
-func createFakeActivites(activitiesNumber int) chan activiteParUtilisateur {
+func createFakeActivites(activitiesNumber int, activites ...activiteParUtilisateur) chan activiteParUtilisateur {
 	r := make(chan activiteParUtilisateur)
 	go func() {
 		defer close(r)
-		for i := 0; i < activitiesNumber; i++ {
+		for _, activite := range activites {
+			r <- activite
+		}
+		for i := len(activites); i < activitiesNumber; i++ {
 			activite := createFakeActivite()
-			slog.Info("ajoute une activité", slog.Any("activité", activite), slog.Int("index", i))
 			r <- activite
 		}
 	}()
