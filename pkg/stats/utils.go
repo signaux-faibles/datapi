@@ -71,6 +71,23 @@ func writeToExcel(file io.Writer, activites chan activiteParUtilisateur) error {
 		if err != nil {
 			return err
 		}
+		cell, err = excelize.CoordinatesToCellName(3, row)
+		if err != nil {
+			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
+		}
+		err = f.SetCellStr(sheetName, cell, ligne.visites)
+		if err != nil {
+			return err
+		}
+		cell, err = excelize.CoordinatesToCellName(4, row)
+		if err != nil {
+			return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
+		}
+		err = f.SetCellStr(sheetName, cell, ligne.segment)
+		if err != nil {
+			return err
+		}
+		row++
 	}
 	_, err = f.WriteTo(file, excelize.Options{RawCellValue: true})
 	if err != nil {
