@@ -97,7 +97,7 @@ func createCSV(archive *zip.Writer, filename string, results chan accessLog) err
 
 func createExcel(archive *zip.Writer, filename string, activites chan activiteParUtilisateur) error {
 	slog.Info("crée l'entrée excel", slog.String("filename", filename))
-	excelFile, err := archive.CreateRaw(&zip.FileHeader{
+	excelFile, err := archive.CreateHeader(&zip.FileHeader{
 		Name:     filename + ".xlsx",
 		Comment:  "fourni par Datapi avec dégoût",
 		NonUTF8:  false,
