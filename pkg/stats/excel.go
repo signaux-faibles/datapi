@@ -51,10 +51,10 @@ func writeString(f *excelize.File, sheetName string, value string, col, row int)
 	return err
 }
 
-func exportTo(output io.Writer, excel *excelize.File) error {
-	_, err := excel.WriteTo(output, excelize.Options{RawCellValue: true})
+func exportTo(output io.Writer, xlsx *excelize.File) error {
+	err := xlsx.Write(output, excelize.Options{RawCellValue: true})
 	if err != nil {
-		slog.Error("erreur pendant l'écriture du fichier excel")
+		slog.Error("erreur pendant l'écriture du fichier xlsx")
 		return err
 	}
 	return nil
