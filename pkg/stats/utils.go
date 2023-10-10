@@ -49,15 +49,17 @@ func writeToExcel(output io.Writer, activites chan activiteParUtilisateur) error
 		return err
 	}
 	var row = 1
-	for ligne := range activites {
-		if ligne.err != nil {
-			return ligne.err
+	if activites != nil {
+		for ligne := range activites {
+			if ligne.err != nil {
+				return ligne.err
+			}
+			err := writeActiviteToExcel(f, sheetName, ligne, row)
+			if err != nil {
+				return err
+			}
+			row++
 		}
-		err := writeActiviteToExcel(f, sheetName, ligne, row)
-		if err != nil {
-			return err
-		}
-		row++
 	}
 	return exportTo(output, f)
 }
@@ -94,8 +96,9 @@ func createCSV(archive *zip.Writer, filename string, results chan accessLog) err
 }
 
 func createExcel(archive *zip.Writer, filename string, activites chan activiteParUtilisateur) error {
-	excelFile, err := archive.CreateHeader(&zip.FileHeader{
-		Name:     filename + ".xslx",
+	slog.Info("crée l'entrée excel", slog.String("filename", filename))
+	excelFile, err := archive.CreateRaw(&zip.FileHeader{
+		Name:     filename + ".xlsx",
 		Comment:  "fourni par Datapi avec dégoût",
 		NonUTF8:  false,
 		Modified: time.Now(),
