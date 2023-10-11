@@ -429,7 +429,7 @@ func ReadZippedCSV(data []byte) ([][]string, error) {
 	}
 	defer reader.Close()
 	files := reader.File
-	if len(files) != 1 {
+	if len(files) != 2 {
 		return nil, fmt.Errorf("trop ou pas assez de fichier dans le zip fourni : %s", f.Name())
 	}
 	csvFile := files[0]
@@ -442,7 +442,7 @@ func ReadZippedCSV(data []byte) ([][]string, error) {
 }
 
 func WriteFile(filename string, data []byte) {
-	if err := os.WriteFile(filename, data, 0666); err != nil {
+	if err := os.WriteFile(filename, data, 0600); err != nil {
 		log.Fatal(err)
 	}
 }

@@ -11,7 +11,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
-	"datapi/pkg/stats"
 	"datapi/pkg/test"
 )
 
@@ -49,12 +48,12 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 	// GIVEN
 	total := 99999
 	var expected int
-	min := time.Date(2001, 1, 1, 1, 2, 3, 4, time.UTC)
-	max := time.Now()
+	debut := time.Date(2001, 1, 1, 1, 2, 3, 4, time.UTC)
+	fin := time.Now()
 
 	for expected = 0; expected < total; {
 		t.Log(t.Name(), "il manque des insertions", total-expected)
-		expected += test.InsertSomeLogsAtTime(fake.Time().TimeBetween(min, max))
+		expected += test.InsertSomeLogsAtTime(fake.Time().TimeBetween(debut, fin))
 	}
 	t.Log(t.Name(), "fin des insertions")
 
@@ -84,7 +83,7 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	// GIVEN
 	search := "2023-03-01"
 	nbDays := 3
-	dayToSelect, err := time.Parse(stats.DATE_FORMAT, search)
+	dayToSelect, err := time.Parse(time.DateOnly, search)
 	ass.NoError(err)
 	_ = test.InsertSomeLogsAtTime(dayToSelect.Add(-1 * time.Millisecond))
 	betweenStart := test.InsertSomeLogsAtTime(dayToSelect)
