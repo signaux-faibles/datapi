@@ -26,7 +26,7 @@ func TestLog_writeToExcel(t *testing.T) {
 	// GIVEN
 	f, err := os.CreateTemp(os.TempDir(), "enveloppe_*.xlsx")
 	require.NoError(t, err)
-	slog.Info("fichier de sortie du test", slog.String("filename", f.Name()))
+	slog.Debug("fichier de sortie du test", slog.String("filename", f.Name()))
 	nbActivities := 100
 	knownActivite := createFakeActivite()
 	activitesParUtilisateur := createFakeActivites(nbActivities, knownActivite)
