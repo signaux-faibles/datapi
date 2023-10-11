@@ -413,9 +413,9 @@ func Viperize(testConfig map[string]string) error {
 	return viper.ReadInConfig()
 }
 
-func ReadZippedCSV(data []byte) ([][]string, error) {
+func ReadCSVFileInZip(data []byte) ([][]string, error) {
 	// create and open a temporary file
-	f, err := os.CreateTemp(os.TempDir(), "stats_csv.zip") // in Go version older than 1.17 you can use ioutil.TempFile
+	f, err := os.CreateTemp(os.TempDir(), "stats_csv.zip")
 	if err != nil {
 		log.Fatal(err)
 	}
