@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -141,7 +142,6 @@ func listDirMigrations() []migrationScript {
 			hash:     fmt.Sprintf("%x", hasher.Sum(nil)),
 		}
 		dirMigrations = append(dirMigrations, m)
-
 	}
 	sort.Slice(dirMigrations, func(i, j int) bool {
 		return dirMigrations[i].fileName < dirMigrations[j].fileName
@@ -161,7 +161,8 @@ func runMigrations(migrationScripts []migrationScript, db *pgxpool.Pool) {
 	for _, m := range migrationScripts {
 		_, err = tx.Exec(ctx, string(m.content))
 		if err != nil {
-			panic("error mig	rating " + m.fileName + ", no changes commited. see details:\n" + err.Error())
+			slog.Error("erreur pendant la migration. Pas de changement effectué", slog.Any("error", err), slog.String("filename", m.fileName), slog.Any("hash", m.hash))
+			panic(err)
 		}
 		_, err = tx.Exec(
 			ctx,
@@ -169,10 +170,13 @@ func runMigrations(migrationScripts []migrationScript, db *pgxpool.Pool) {
 		if err != nil {
 			panic("error inserting " + m.fileName + " in migration table, no changes commited. see details:\n" + err.Error())
 		}
-		log.Printf("%s rolled, registered with hash %s", m.fileName, m.hash)
+		slog.Info("migration effectuée", slog.String("filename", m.fileName), slog.Any("hash", m.hash))
 	}
-
-	tx.Commit(ctx)
+	err = tx.Commit(ctx)
+	if err != nil {
+		slog.Error("erreur pendant le commit de transaction", slog.Any("error", err))
+		panic(err)
+	}
 }
 
 func runBatch(tx *pgx.Tx, batch *pgx.Batch) {
