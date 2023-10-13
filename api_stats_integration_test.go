@@ -58,11 +58,23 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 	t.Log(t.Name(), "fin des insertions")
 
 	path := "/stats/from/2000-01-01/to/2099-01-01"
-	t.Log(t.Name(), "début de l'appel")
+	t.Log(t.Name(), "début de l'appel 1")
 	start := time.Now()
 	response := test.HTTPGet(t, path)
 	elapsed := time.Since(start)
-	t.Log(t.Name(), "fin de l'appel :", elapsed)
+	t.Log(t.Name(), "fin de l'appel 1 :", elapsed)
+
+	//t.Log(t.Name(), "début de l'appel 2")
+	//start = time.Now()
+	//response = test.HTTPGet(t, path)
+	//elapsed = time.Since(start)
+	//t.Log(t.Name(), "fin de l'appel 2 :", elapsed)
+	//
+	//t.Log(t.Name(), "début de l'appel 3")
+	//start = time.Now()
+	//response = test.HTTPGet(t, path)
+	//elapsed = time.Since(start)
+	//t.Log(t.Name(), "fin de l'appel 3 :", elapsed)
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
