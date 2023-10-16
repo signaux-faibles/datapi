@@ -55,7 +55,7 @@ func selectActiviteParJour(
 	}
 }
 
-func writeActiviteJourToExcel(f *excelize.File, sheetName string, ligne activiteParJour, row int) error {
+func writeOneActiviteJourToExcel(f *excelize.File, sheetName string, ligne activiteParJour, row int) error {
 	var i = 1
 	err := writeString(f, sheetName, ligne.jour.Format(time.DateOnly), i, row)
 	i++
@@ -100,7 +100,7 @@ func writeActivitesJoursToExcel(xls *excelize.File, pageIndex int, activites cha
 			if ligne.err != nil {
 				return ligne.err
 			}
-			err := writeActiviteJourToExcel(xls, sheetName, ligne, row)
+			err := writeOneActiviteJourToExcel(xls, sheetName, ligne, row)
 			if err != nil {
 				return err
 			}
