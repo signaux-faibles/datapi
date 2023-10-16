@@ -145,16 +145,16 @@ func TestLog_createExcel(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func createFakeActivites(activitiesNumber int, activites ...activiteParUtilisateur) chan activiteParUtilisateur {
-	r := make(chan activiteParUtilisateur)
+func createFakeActivites(activitiesNumber int, activites ...activiteParUtilisateur) chan row[activiteParUtilisateur] {
+	r := make(chan row[activiteParUtilisateur])
 	go func() {
 		defer close(r)
 		for _, activite := range activites {
-			r <- activite
+			r <- activite.row()
 		}
 		for i := len(activites); i < activitiesNumber; i++ {
 			activite := createFakeActivite()
-			r <- activite
+			r <- activite.row()
 		}
 	}()
 	return r

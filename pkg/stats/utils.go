@@ -68,7 +68,7 @@ func createCSV(archive *zip.Writer, filename string, results chan accessLog) err
 	return nil
 }
 
-func createExcel(archive *zip.Writer, filename string, activites chan activiteParUtilisateur, activitesParJour chan activiteParJour) error {
+func createExcel(archive *zip.Writer, filename string, activitesParUtilisateur chan row[activiteParUtilisateur], activitesParJour chan activiteParJour) error {
 	slog.Debug("crée l'entrée excel", slog.String("filename", filename))
 	zipEntry, err := archive.CreateHeader(&zip.FileHeader{
 		Name:     filename + ".xlsx",
@@ -86,7 +86,7 @@ func createExcel(archive *zip.Writer, filename string, activites chan activitePa
 			slog.Error("erreur à la fermeture du fichier", slog.Any("error", err), slog.String("filename", excelFile.Path))
 		}
 	}()
-	err = writeActivitesUtilisateurToExcel(excelFile, 0, activites)
+	err = writeActivitesUtilisateurToExcel(excelFile, 0, activitesParUtilisateur)
 	if err != nil {
 		slog.Error("erreur pendant l'écriture des activités utilisateurs dans le xls", slog.Any("error", err))
 		return err
