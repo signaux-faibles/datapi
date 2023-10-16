@@ -74,9 +74,11 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 
 func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
 	results := make(chan accessLog)
-	activites := make(chan activiteParUtilisateur)
+	activitesUtilisateur := make(chan activiteParUtilisateur)
+	activitesJour := make(chan activiteParJour)
 	go api.fetchLogs(since, to, results)
-	go api.fetchActivitesParUtilisateur(since, to, activites)
+	go api.fetchActivitesParUtilisateur(since, to, activitesUtilisateur)
+	go api.fetchActivitesParJour(since, to, activitesJour)
 	// Create a zip archive.
 	c.Header("Content-type", "application/octet-stream")
 	c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
@@ -87,7 +89,7 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 			c.Status(http.StatusInternalServerError)
 			return false
 		}
-		err = createExcel(archive, api.filename, activites)
+		err = createExcel(archive, api.filename, activitesUtilisateur, activitesJour)
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			return false
@@ -107,6 +109,10 @@ func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) 
 
 func (api *API) fetchActivitesParUtilisateur(since time.Time, to time.Time, result chan activiteParUtilisateur) {
 	selectActiviteParUtilisateur(api.db.ctx, api.db.pool, since, to, result)
+}
+
+func (api *API) fetchActivitesParJour(since time.Time, to time.Time, result chan activiteParJour) {
+	selectActiviteParJour(api.db.ctx, api.db.pool, since, to, result)
 }
 
 func (api *API) fromStartForDaysHandler(c *gin.Context) {

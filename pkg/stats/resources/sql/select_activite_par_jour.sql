@@ -5,17 +5,49 @@
 --     colonne 3 : nombre de fiches vues
 --     colonne 4 : nombre d’actions
 
-CREATE INDEX IF NOT EXISTS idx_v_log_email_segment ON v_log((tokencontent ->> 'email'),(tokencontent ->> 'segment'));
 
-WITH temp_logs AS (SELECT DATE_TRUNC('day', date_add)                     AS jour,
-                          path,
-                          COALESCE(tokencontent ->> 'segment'::text, '-') as segment
-                   FROM v_log
-                   WHERE date_add >= $1
-                     and date_add < $2)
-SELECT username,
-       count(distinct session) AS visites,
-       count(path)             AS actions,
-       segment
-FROM temp_logs
-GROUP BY username, segment;
+WITH stat_recherches AS (SELECT count(DISTINCT
+                                      CASE
+                                        WHEN v_log.method = 'GET'::text THEN v_log.path
+                                        ELSE v_log.body::json ->> 'search'::text
+                                        END || ((v_log.tokencontent ->> 'email'::text) ||
+                                                date_trunc('day'::text, v_log.date_add)::text)) AS recherches,
+                                coalesce(tokencontent ->> 'email', 'EMAIL INCONNU')             as username,
+                                date_trunc('day'::text, v_log.date_add)                         AS jour
+                         FROM v_log
+                         WHERE v_log.path ~~ '%/search%'::text
+                           AND date_add >= $1
+                           AND date_add < $2
+                         GROUP BY (date_trunc('day'::text, v_log.date_add)),
+                                  coalesce(tokencontent ->> 'email', 'EMAIL INCONNU')),
+     stat_fiches AS (SELECT count(v_log.path)                                   AS fiches,
+                            coalesce(tokencontent ->> 'email', 'EMAIL INCONNU') as username,
+                            date_trunc('day'::text, v_log.date_add)             AS jour
+                     FROM v_log
+                     WHERE v_log.path ~~ '/etablissement/get/%'::text
+                        OR v_log.path ~~ '/entreprise/%'::text
+                       AND date_add >= $1
+                       AND date_add < $2
+                     GROUP BY (date_trunc('day'::text, v_log.date_add)),
+                              coalesce(tokencontent ->> 'email', 'EMAIL INCONNU')),
+     stat_utilisateur AS (SELECT count(v_log.path)                                   AS actions,
+                                 coalesce(tokencontent ->> 'segment', '-')           as segment,
+                                 coalesce(tokencontent ->> 'email', 'EMAIL INCONNU') as username,
+                                 date_trunc('day'::text, v_log.date_add)             AS jour
+                          FROM v_log
+                          WHERE not starts_with(v_log.path, '/kanban/config')
+                            AND not starts_with(path, '/campaign/stream')
+                            AND date_add >= $1
+                            AND date_add < $2
+                          GROUP BY (date_trunc('day'::text, v_log.date_add)),
+                                   coalesce(tokencontent ->> 'email', 'EMAIL INCONNU'),
+                                   coalesce(tokencontent ->> 'segment', '-'))
+SELECT u.jour,
+       u.username,
+       u.actions,
+       coalesce(r.recherches, 0) as recherches,
+       coalesce(f.fiches, 0)     as fiches,
+       u.segment
+FROM stat_utilisateur u
+       LEFT JOIN stat_recherches r ON u.username = r.username AND u.jour = r.jour
+       LEFT JOIN stat_fiches f ON u.username = f.username AND u.jour = f.jour;
