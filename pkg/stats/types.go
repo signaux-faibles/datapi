@@ -33,3 +33,16 @@ func (l accessLog) toStringArray() []string {
 		strings.Join(l.roles, ","),
 	}
 }
+
+type row[A any] struct {
+	item A
+	err  error
+}
+
+func rowWithError[A any](_ A, err error) row[A] {
+	return row[A]{err: err}
+}
+
+func (r row[A]) value() A {
+	return r.item
+}

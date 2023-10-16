@@ -74,7 +74,7 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 
 func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
 	results := make(chan accessLog)
-	activitesUtilisateur := make(chan activiteParUtilisateur)
+	activitesUtilisateur := make(chan row[activiteParUtilisateur])
 	activitesJour := make(chan activiteParJour)
 	go api.fetchLogs(since, to, results)
 	go api.fetchActivitesParUtilisateur(since, to, activitesUtilisateur)
@@ -107,8 +107,8 @@ func (api *API) fetchLogs(since time.Time, to time.Time, result chan accessLog) 
 	selectLogs(api.db.ctx, api.db.pool, since, to, result)
 }
 
-func (api *API) fetchActivitesParUtilisateur(since time.Time, to time.Time, result chan activiteParUtilisateur) {
-	selectActiviteParUtilisateur(api.db.ctx, api.db.pool, since, to, result)
+func (api *API) fetchActivitesParUtilisateur(since time.Time, to time.Time, activites chan row[activiteParUtilisateur]) {
+	selectActiviteParUtilisateur(api.db.ctx, api.db.pool, since, to, activites)
 }
 
 func (api *API) fetchActivitesParJour(since time.Time, to time.Time, result chan activiteParJour) {
