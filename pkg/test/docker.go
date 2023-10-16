@@ -6,6 +6,7 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
+	"log/slog"
 	"math/big"
 	"path/filepath"
 	"time"
@@ -111,7 +112,7 @@ func startDatapiDB() *dockertest.Resource {
 	sqlDump, _ := filepath.Abs("test/initDB")
 	// pulls an image, creates a container based on it and runs it
 	datapiContainerName := d.containerNames[datapiDBName]
-	log.Println("démarre le container datapi-db avec le nom : ", datapiContainerName)
+	slog.Info("démarre le container", slog.String("name", datapiContainerName))
 
 	datapiDB, err := currentPool().RunWithOptions(&dockertest.RunOptions{
 		Name:       datapiContainerName,
@@ -135,7 +136,11 @@ func startDatapiDB() *dockertest.Resource {
 	})
 	if err != nil {
 		killContainer(datapiDB)
-		log.Fatal("Could not start datapi_db", err)
+		slog.Error(
+			"erreur lors du démarrage du container",
+			slog.Any("name", datapiDB.Container.Name),
+			slog.Any("error", err),
+		)
 	}
 	// container stops after 20'
 	if err = datapiDB.Expire(600); err != nil {

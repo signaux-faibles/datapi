@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
 
 const accessLogDateExcelLayout = "2006/01/02 15:04:05"
@@ -35,27 +34,6 @@ func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 		}
 	}
 	csvWriter.Flush()
-	return nil
-}
-
-func writeActivitesUtilisateurToExcel(xls *excelize.File, pageIndex int, activites chan activiteParUtilisateur) error {
-	var sheetName, err = createSheet(xls, "Activité par utilisateur", pageIndex)
-	if err != nil {
-		return err
-	}
-	var row = 1
-	if activites != nil {
-		for ligne := range activites {
-			if ligne.err != nil {
-				return ligne.err
-			}
-			err := writeActiviteUtilisateurToExcel(xls, sheetName, ligne, row)
-			if err != nil {
-				return err
-			}
-			row++
-		}
-	}
 	return nil
 }
 
