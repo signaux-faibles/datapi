@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"github.com/xuri/excelize/v2"
 )
 
 const accessLogDateExcelLayout = "2006/01/02 15:04:05"
@@ -37,14 +38,8 @@ func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 	return nil
 }
 
-func writeToExcel(output io.Writer, activites chan activiteParUtilisateur) error {
-	f := newExcel()
-	defer func() {
-		if err := f.Close(); err != nil {
-			slog.Error("erreur à la fermeture du fichier", slog.Any("error", err), slog.String("filename", f.Path))
-		}
-	}()
-	var sheetName, err = createSheet(f, "Activité par utilisateur", 0)
+func writeActivitesUtilisateurToExcel(xls *excelize.File, pageIndex int, activites chan activiteParUtilisateur) error {
+	var sheetName, err = createSheet(xls, "Activité par utilisateur", pageIndex)
 	if err != nil {
 		return err
 	}
@@ -54,14 +49,14 @@ func writeToExcel(output io.Writer, activites chan activiteParUtilisateur) error
 			if ligne.err != nil {
 				return ligne.err
 			}
-			err := writeActiviteToExcel(f, sheetName, ligne, row)
+			err := writeActiviteUtilisateurToExcel(xls, sheetName, ligne, row)
 			if err != nil {
 				return err
 			}
 			row++
 		}
 	}
-	return exportTo(output, f)
+	return nil
 }
 
 func (l accessLog) toCSV() []string {
@@ -95,9 +90,9 @@ func createCSV(archive *zip.Writer, filename string, results chan accessLog) err
 	return nil
 }
 
-func createExcel(archive *zip.Writer, filename string, activites chan activiteParUtilisateur) error {
+func createExcel(archive *zip.Writer, filename string, activites chan activiteParUtilisateur, activitesParJour chan activiteParJour) error {
 	slog.Debug("crée l'entrée excel", slog.String("filename", filename))
-	excelFile, err := archive.CreateHeader(&zip.FileHeader{
+	zipEntry, err := archive.CreateHeader(&zip.FileHeader{
 		Name:     filename + ".xlsx",
 		Comment:  "fourni par Datapi avec dégoût",
 		NonUTF8:  false,
@@ -107,10 +102,21 @@ func createExcel(archive *zip.Writer, filename string, activites chan activitePa
 		slog.Error("erreur pendant la création du xls dans le zip", slog.Any("error", err))
 		return err
 	}
-	err = writeToExcel(excelFile, activites)
+	excelFile := newExcel()
+	defer func() {
+		if err := excelFile.Close(); err != nil {
+			slog.Error("erreur à la fermeture du fichier", slog.Any("error", err), slog.String("filename", excelFile.Path))
+		}
+	}()
+	err = writeActivitesUtilisateurToExcel(excelFile, 0, activites)
 	if err != nil {
-		slog.Error("erreur pendant l'écriture du xls", slog.Any("error", err))
+		slog.Error("erreur pendant l'écriture des activités utilisateurs dans le xls", slog.Any("error", err))
 		return err
 	}
-	return nil
+	err = writeActivitesJoursToExcel(excelFile, 1, activitesParJour)
+	if err != nil {
+		slog.Error("erreur pendant l'écriture des activités jour dans le xls", slog.Any("error", err))
+		return err
+	}
+	return exportTo(zipEntry, excelFile)
 }

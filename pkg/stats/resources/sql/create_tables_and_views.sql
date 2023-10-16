@@ -16,10 +16,10 @@ CREATE SEQUENCE IF NOT EXISTS logs_id
 CREATE TABLE IF NOT EXISTS logs (
   id integer DEFAULT nextval('logs_id'::regclass) NOT NULL,
   date_add timestamp without time zone DEFAULT CURRENT_TIMESTAMP,
-  path text,
-  method text,
-  body text,
-  token text
+  path     text,
+  method   text,
+  body     text,
+  token    text
 );
 
 --
@@ -62,7 +62,7 @@ WITH stat_users AS (SELECT count(DISTINCT v_log.tokencontent ->> 'email'::text) 
                                         ELSE v_log.body::json ->> 'search'::text
                                         END || ((v_log.tokencontent ->> 'email'::text) ||
                                                 date_trunc('day'::text, v_log.date_add)::text)) AS recherches,
-                                date_trunc('month'::text, v_log.date_add)                         AS mois
+                                date_trunc('month'::text, v_log.date_add)                       AS mois
                          FROM v_log
                          WHERE v_log.path ~~ '%/search%'::text
                          GROUP BY (date_trunc('month'::text, v_log.date_add))),
@@ -89,7 +89,3 @@ FROM stat_users u
        JOIN stat_visites v ON v.mois = u.mois;
 
 alter materialized view v_stats owner to postgres;
-
-
-
-
