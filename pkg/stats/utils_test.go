@@ -41,9 +41,8 @@ func TestLog_writeActivitesUtilisateurToExcel(t *testing.T) {
 	f, err := os.CreateTemp(os.TempDir(), "*.xlsx")
 	require.NoError(t, err)
 	slog.Debug("fichier de sortie du test", slog.String("filename", f.Name()))
-	nbActivities := 100
-	knownActivite := createFakeActivite()
-	activitesParUtilisateur := createFakeActivites(nbActivities, knownActivite)
+	nbActivities := 3
+	lastActivite, activitesParUtilisateur := createFakeActivites(nbActivities, createFakeActiviteUtilisateur)
 
 	// WHEN
 	xls := newExcel()
@@ -65,11 +64,11 @@ func TestLog_writeActivitesUtilisateurToExcel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, rows, nbActivities)
 	assert.Len(t, rows[0], 4)
-	assert.Equal(t, knownActivite.username, rows[0][0])
-	assert.Equal(t, knownActivite.visites, rows[0][1])
-	assert.Equal(t, knownActivite.actions, rows[0][2])
-	assert.Equal(t, knownActivite.segment, rows[0][3])
-	assert.Equal(t, knownActivite.segment, rows[0][3])
+	assert.Equal(t, lastActivite.username, rows[0][0])
+	assert.Equal(t, lastActivite.visites, rows[0][1])
+	assert.Equal(t, lastActivite.actions, rows[0][2])
+	assert.Equal(t, lastActivite.segment, rows[0][3])
+	assert.Equal(t, lastActivite.segment, rows[0][3])
 	for _, row := range rows {
 		for _, colCell := range row {
 			fmt.Print(colCell, "\t")
@@ -145,7 +144,7 @@ func TestLog_createExcel(t *testing.T) {
 	require.NoError(t, err)
 }
 
-func createFakeActivites(activitiesNumber int, activites ...activiteParUtilisateur) chan row[activiteParUtilisateur] {
+func createFakeActivitesUtilisateur(activitiesNumber int, activites ...activiteParUtilisateur) chan row[activiteParUtilisateur] {
 	r := make(chan row[activiteParUtilisateur])
 	go func() {
 		defer close(r)
@@ -153,11 +152,24 @@ func createFakeActivites(activitiesNumber int, activites ...activiteParUtilisate
 			r <- activite.row()
 		}
 		for i := len(activites); i < activitiesNumber; i++ {
-			activite := createFakeActivite()
+			activite := createFakeActiviteUtilisateur()
 			r <- activite.row()
 		}
 	}()
 	return r
+}
+
+func createFakeActivites[A any](activitiesNumber int, newActivite func() A) (A, chan row[A]) {
+	r := make(chan row[A])
+	activite := newActivite()
+	go func() {
+		defer close(r)
+		r <- newRow(activite)
+		for i := 1; i < activitiesNumber; i++ {
+			r <- newRow(newActivite())
+		}
+	}()
+	return activite, r
 }
 
 func createFakeActivitesJour(activitiesNumber int, activites ...activiteParJour) chan activiteParJour {
@@ -189,7 +201,7 @@ func createFakeActiviteJour() activiteParJour {
 	}
 }
 
-func createFakeActivite() activiteParUtilisateur {
+func createFakeActiviteUtilisateur() activiteParUtilisateur {
 	var visites, actions int
 	visites = fakeTU.IntBetween(1, 99)
 	actions = visites * fakeTU.IntBetween(1, 11)
