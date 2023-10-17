@@ -43,6 +43,10 @@ func rowWithError[A any](_ A, err error) row[A] {
 	return row[A]{err: err}
 }
 
+func newRow[A any](value A) row[A] {
+	return row[A]{item: value}
+}
+
 func (r row[A]) value() A {
 	return r.item
 }
