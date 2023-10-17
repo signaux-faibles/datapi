@@ -31,6 +31,35 @@ func createSheet(f *excelize.File, sheetName string, index int) (string, error) 
 	return sheetName, err
 }
 
+type ExcelRowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row, row int) error
+
+func writeOneSheetToExcel[A any](
+	xls *excelize.File,
+	sheetLabel string,
+	sheetIndex int,
+	itemsToWrite chan row[A],
+	writer ExcelRowWriter[A],
+) error {
+	var sheetName, err = createSheet(xls, sheetLabel, sheetIndex)
+	if err != nil {
+		return err
+	}
+	var row = 1
+	if itemsToWrite != nil {
+		for ligne := range itemsToWrite {
+			if ligne.err != nil {
+				return ligne.err
+			}
+			err := writer(xls, sheetName, ligne.value, row)
+			if err != nil {
+				return err
+			}
+			row++
+		}
+	}
+	return nil
+}
+
 func writeString(f *excelize.File, sheetName string, value string, col, row int) error {
 	cell, err := excelize.CoordinatesToCellName(col, row)
 	if err != nil {

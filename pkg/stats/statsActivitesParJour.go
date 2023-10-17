@@ -3,6 +3,7 @@ package stats
 import (
 	"context"
 	_ "embed"
+	"fmt"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -23,17 +24,11 @@ type activiteParJour struct {
 	err        error
 }
 
-func selectActiviteParJour(
-	ctx context.Context,
-	dbPool *pgxpool.Pool,
-	since time.Time,
-	to time.Time,
-	r chan activiteParJour,
-) {
+func selectActiviteParJour(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to time.Time, r chan row[activiteParJour]) {
 	defer close(r)
 	rows, err := dbPool.Query(ctx, selectActiviteParJourSQL, since.Truncate(day), to.Truncate(day))
 	if err != nil {
-		r <- activiteParJour{err: errors.Wrap(err, "erreur pendant la requête de sélection des activite/jour")}
+		r <- rowWithError(activiteParJour{}, errors.Wrap(err, "erreur pendant la requête de sélection des activite/jour"))
 	}
 	for rows.Next() {
 		var activite activiteParJour
@@ -46,12 +41,12 @@ func selectActiviteParJour(
 			&activite.segment,
 		)
 		if err != nil {
-			r <- activiteParJour{err: errors.Wrap(err, "erreur pendant la récupération des résultats/jour")}
+			r <- rowWithError(activiteParJour{}, errors.Wrap(err, "erreur pendant la récupération des résultats/jour"))
 		}
-		r <- activite
+		r <- newRow(activite)
 	}
 	if err := rows.Err(); err != nil {
-		r <- activiteParJour{err: errors.Wrap(err, "erreur après la récupération des résultats/jour")}
+		r <- rowWithError(activiteParJour{}, errors.Wrap(err, "erreur après la récupération des résultats/jour"))
 	}
 }
 
@@ -89,23 +84,10 @@ func writeOneActiviteJourToExcel(f *excelize.File, sheetName string, ligne activ
 	return nil
 }
 
-func writeActivitesJoursToExcel(xls *excelize.File, pageIndex int, activites chan activiteParJour) error {
-	var sheetName, err = createSheet(xls, "Activité par jour", pageIndex)
+func writeActivitesJoursToExcel(xls *excelize.File, pageIndex int, activites chan row[activiteParJour]) error {
+	err := writeOneSheetToExcel(xls, "Activité par jour", pageIndex, activites, writeOneActiviteJourToExcel)
 	if err != nil {
-		return errors.Wrap(err, "erreur lors de la création de la feuille excel")
-	}
-	var row = 1
-	if activites != nil {
-		for ligne := range activites {
-			if ligne.err != nil {
-				return ligne.err
-			}
-			err := writeOneActiviteJourToExcel(xls, sheetName, ligne, row)
-			if err != nil {
-				return err
-			}
-			row++
-		}
+		return fmt.Errorf("erreur lors de l'écriture d'une ligne d'activités par utilisateurs : %w", err)
 	}
 	return nil
 }

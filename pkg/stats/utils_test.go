@@ -42,7 +42,7 @@ func TestLog_writeActivitesUtilisateurToExcel(t *testing.T) {
 	require.NoError(t, err)
 	slog.Debug("fichier de sortie du test", slog.String("filename", f.Name()))
 	nbActivities := 3
-	lastActivite, activitesParUtilisateur := createFakeActivites(nbActivities, createFakeActiviteUtilisateur)
+	lastActivite, activitesParUtilisateur := createFakeActivitesChan(nbActivities, createFakeActiviteUtilisateur)
 
 	// WHEN
 	xls := newExcel()
@@ -83,8 +83,7 @@ func TestLog_writeActiviteJourToExcel(t *testing.T) {
 	require.NoError(t, err)
 	slog.Debug("fichier de sortie du test", slog.String("filename", f.Name()))
 	nbActivities := 100
-	knownActivite := createFakeActiviteJour()
-	activitesParJour := createFakeActivitesJour(nbActivities, knownActivite)
+	firstActivite, activitesParJour := createFakeActivitesChan(nbActivities, createFakeActiviteJour)
 
 	// WHEN
 	xls := newExcel()
@@ -106,12 +105,12 @@ func TestLog_writeActiviteJourToExcel(t *testing.T) {
 	require.NoError(t, err)
 	assert.Len(t, rows, nbActivities)
 	assert.Len(t, rows[0], 6)
-	assert.Equal(t, knownActivite.jour.Format(time.DateOnly), rows[0][0])
-	assert.Equal(t, knownActivite.username, rows[0][1])
-	assert.Equal(t, strconv.Itoa(knownActivite.actions), rows[0][2])
-	assert.Equal(t, strconv.Itoa(knownActivite.recherches), rows[0][3])
-	assert.Equal(t, strconv.Itoa(knownActivite.fiches), rows[0][4])
-	assert.Equal(t, knownActivite.segment, rows[0][5])
+	assert.Equal(t, firstActivite.jour.Format(time.DateOnly), rows[0][0])
+	assert.Equal(t, firstActivite.username, rows[0][1])
+	assert.Equal(t, strconv.Itoa(firstActivite.actions), rows[0][2])
+	assert.Equal(t, strconv.Itoa(firstActivite.recherches), rows[0][3])
+	assert.Equal(t, strconv.Itoa(firstActivite.fiches), rows[0][4])
+	assert.Equal(t, firstActivite.segment, rows[0][5])
 	for _, row := range rows {
 		for _, colCell := range row {
 			fmt.Print(colCell, "\t")
@@ -140,26 +139,12 @@ func TestLog_createExcel(t *testing.T) {
 	require.NoError(t, err)
 	zipEntry, err := zip.Open(t.Name() + ".xlsx")
 	require.NoError(t, err)
-	_, err = excelize.OpenReader(zipEntry)
+	r, err := excelize.OpenReader(zipEntry)
 	require.NoError(t, err)
+	r.GetSheetList()
 }
 
-func createFakeActivitesUtilisateur(activitiesNumber int, activites ...activiteParUtilisateur) chan row[activiteParUtilisateur] {
-	r := make(chan row[activiteParUtilisateur])
-	go func() {
-		defer close(r)
-		for _, activite := range activites {
-			r <- activite.row()
-		}
-		for i := len(activites); i < activitiesNumber; i++ {
-			activite := createFakeActiviteUtilisateur()
-			r <- activite.row()
-		}
-	}()
-	return r
-}
-
-func createFakeActivites[A any](activitiesNumber int, newActivite func() A) (A, chan row[A]) {
+func createFakeActivitesChan[A any](activitiesNumber int, newActivite func() A) (A, chan row[A]) {
 	r := make(chan row[A])
 	activite := newActivite()
 	go func() {
@@ -170,21 +155,6 @@ func createFakeActivites[A any](activitiesNumber int, newActivite func() A) (A, 
 		}
 	}()
 	return activite, r
-}
-
-func createFakeActivitesJour(activitiesNumber int, activites ...activiteParJour) chan activiteParJour {
-	r := make(chan activiteParJour)
-	go func() {
-		defer close(r)
-		for _, activite := range activites {
-			r <- activite
-		}
-		for i := len(activites); i < activitiesNumber; i++ {
-			activite := createFakeActiviteJour()
-			r <- activite
-		}
-	}()
-	return r
 }
 
 func createFakeActiviteJour() activiteParJour {
