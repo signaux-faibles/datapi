@@ -16,7 +16,7 @@ const accessLogDateExcelLayout = "2006/01/02 15:04:05"
 
 var csvHeaders = []string{"date", "chemin", "methode", "utilisateur", "segment", "roles"}
 
-func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
+func writeLinesToCSV(logs chan row[accessLog], w io.Writer) error {
 	csvWriter := csv.NewWriter(w)
 	wErr := csvWriter.Write(csvHeaders)
 	if wErr != nil {
@@ -27,7 +27,7 @@ func writeLinesToCSV(logs chan accessLog, w io.Writer) error {
 		if l.err != nil {
 			return l.err
 		}
-		wErr := csvWriter.Write(l.toCSV())
+		wErr := csvWriter.Write(l.value.toCSV())
 		if wErr != nil {
 			err := errors.Wrap(wErr, "erreur lors de la transformation de la ligne de log")
 			return err
@@ -49,7 +49,7 @@ func (l accessLog) toCSV() []string {
 	}
 }
 
-func createCSV(archive *zip.Writer, filename string, results chan accessLog) error {
+func createCSV(archive *zip.Writer, filename string, results chan row[accessLog]) error {
 	csvFile, err := archive.CreateHeader(&zip.FileHeader{
 		Name:     filename + ".csv",
 		Comment:  "fourni par Datapi avec amour",

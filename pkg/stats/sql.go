@@ -43,22 +43,22 @@ func getLastAccessLog(ctx context.Context, db *pgxpool.Pool) (core.AccessLog, er
 	return r, err
 }
 
-func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to time.Time, r chan accessLog) {
+func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to time.Time, r chan row[accessLog]) {
 	defer close(r)
 	rows, err := dbPool.Query(ctx, selectLogsSQL, since.Truncate(day), to.Truncate(day))
 	if err != nil {
-		r <- accessLog{err: errors.Wrap(err, "erreur pendant la requête de sélection des logs")}
+		r <- rowWithError(accessLog{}, errors.Wrap(err, "erreur pendant la requête de sélection des logs"))
 	}
 	for rows.Next() {
 		var statLine accessLog
 		err := rows.Scan(&statLine.date, &statLine.path, &statLine.method, &statLine.username, &statLine.segment, &statLine.roles)
 		if err != nil {
-			r <- accessLog{err: errors.Wrap(err, "erreur pendant la récupération des résultats")}
+			r <- rowWithError(accessLog{}, errors.Wrap(err, "erreur pendant la récupération des résultats"))
 		}
-		r <- statLine
+		r <- newRow(statLine)
 	}
 	if err := rows.Err(); err != nil {
-		r <- accessLog{err: errors.Wrap(err, "erreur après la récupération des résultats")}
+		r <- rowWithError(accessLog{}, errors.Wrap(err, "erreur après la récupération des résultats"))
 	}
 }
 
