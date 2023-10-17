@@ -35,8 +35,8 @@ func (l accessLog) toStringArray() []string {
 }
 
 type row[A any] struct {
-	item A
-	err  error
+	value A
+	err   error
 }
 
 func rowWithError[A any](_ A, err error) row[A] {
@@ -44,9 +44,5 @@ func rowWithError[A any](_ A, err error) row[A] {
 }
 
 func newRow[A any](value A) row[A] {
-	return row[A]{item: value}
-}
-
-func (r row[A]) value() A {
-	return r.item
+	return row[A]{value: value}
 }
