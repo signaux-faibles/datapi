@@ -68,7 +68,12 @@ func createCSV(archive *zip.Writer, filename string, results chan accessLog) err
 	return nil
 }
 
-func createExcel(archive *zip.Writer, filename string, activitesParUtilisateur chan row[activiteParUtilisateur], activitesParJour chan activiteParJour) error {
+func createExcel(
+	archive *zip.Writer,
+	filename string,
+	activitesParUtilisateur chan row[activiteParUtilisateur],
+	activitesParJour chan row[activiteParJour],
+) error {
 	slog.Debug("crée l'entrée excel", slog.String("filename", filename))
 	zipEntry, err := archive.CreateHeader(&zip.FileHeader{
 		Name:     filename + ".xlsx",

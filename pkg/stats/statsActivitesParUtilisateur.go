@@ -22,7 +22,7 @@ type activiteParUtilisateur struct {
 }
 
 func (a activiteParUtilisateur) row() row[activiteParUtilisateur] {
-	return row[activiteParUtilisateur]{item: a}
+	return row[activiteParUtilisateur]{value: a}
 }
 
 func selectActiviteParUtilisateur(
@@ -51,56 +51,9 @@ func selectActiviteParUtilisateur(
 }
 
 func writeActivitesUtilisateurToExcel(xls *excelize.File, pageIndex int, activites chan row[activiteParUtilisateur]) error {
-	//var sheetName, err = createSheet(xls, "Activité par utilisateur", pageIndex)
-	//if err != nil {
-	//  return err
-	//}
-	//var row = 1
-	//if activites != nil {
-	//  for ligne := range activites {
-	//    if ligne.err != nil {
-	//      return ligne.err
-	//    }
-	//    err := writeOneActiviteUtilisateurToExcel(xls, sheetName, ligne, row)
-	//    if err != nil {
-	//      return err
-	//    }
-	//    row++
-	//  }
-	//}
-	//return nil
 	err := writeOneSheetToExcel(xls, "Activité par utilisateur", pageIndex, activites, writeOneActiviteUtilisateurToExcel)
 	if err != nil {
 		return fmt.Errorf("erreur lors de l'écriture d'une ligne d'activités par utilisateurs : %w", err)
-	}
-	return nil
-}
-
-type ExcelRowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row, row int) error
-
-func writeOneSheetToExcel[A any](
-	xls *excelize.File,
-	sheetLabel string,
-	sheetIndex int,
-	itemsToWrite chan row[A],
-	writer ExcelRowWriter[A],
-) error {
-	var sheetName, err = createSheet(xls, sheetLabel, sheetIndex)
-	if err != nil {
-		return err
-	}
-	var row = 1
-	if itemsToWrite != nil {
-		for ligne := range itemsToWrite {
-			if ligne.err != nil {
-				return ligne.err
-			}
-			err := writer(xls, sheetName, ligne.value(), row)
-			if err != nil {
-				return err
-			}
-			row++
-		}
 	}
 	return nil
 }
