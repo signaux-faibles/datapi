@@ -100,7 +100,7 @@ func Test_selectLines(t *testing.T) {
 	t.Cleanup(func() { test.EraseAccessLogs(t) })
 	ass := assert.New(t)
 	var err error
-	var resultChan = make(chan accessLog)
+	var resultChan = make(chan row[accessLog])
 	expected := randomAccessLog()
 	err = logSaver.SaveLogToDB(expected)
 	ass.NoError(err)
@@ -109,7 +109,7 @@ func Test_selectLines(t *testing.T) {
 	go selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow, resultChan)
 	var logs []accessLog
 	for l := range resultChan {
-		logs = append(logs, l)
+		logs = append(logs, l.value)
 	}
 	ass.Len(logs, 1)
 	ass.Equal("christophe.ninucci@beta.gouv.fr", logs[0].username)
