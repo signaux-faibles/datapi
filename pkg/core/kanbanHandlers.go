@@ -34,21 +34,6 @@ func kanbanGetCardsHandler(c *gin.Context) {
 	}
 }
 
-func kanbanGetCardHandler(c *gin.Context) {
-	var s Session
-	s.Bind(c)
-	cardID := libwekan.CardID(c.Param("cardID"))
-
-	card, err := Kanban.SelectCardFromCardID(c, cardID, libwekan.Username(s.Username))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	c.JSON(200, card)
-
-}
-
 func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	var s Session
 	s.Bind(c)
@@ -101,7 +86,7 @@ func kanbanNewCardHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
-	_, err = Kanban.CreateCard(c, params, libwekan.Username(s.Username), []libwekan.Username{libwekan.Username(s.Username)}, db.Get())
+	err = Kanban.CreateCard(c, params, libwekan.Username(s.Username), []libwekan.Username{libwekan.Username(s.Username)}, db.Get())
 	if errors.As(err, &ForbiddenError{}) {
 		c.JSON(http.StatusForbidden, err.Error())
 	}
@@ -152,49 +137,4 @@ func kanbanUnarchiveCardHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	c.JSON(200, "traitement effectué")
-}
-
-func kanbanPartCardHandler(c *gin.Context) {
-	var s Session
-	s.Bind(c)
-
-	cardID := libwekan.CardID(c.Param("cardID"))
-	if len(cardID) == 0 {
-		c.JSON(http.StatusBadRequest, "cardID est obligatoire")
-		return
-	}
-	user, ok := Kanban.GetUser(libwekan.Username(s.Username))
-
-	if !ok {
-		c.JSON(http.StatusInternalServerError, "nom d'utilisateur incohérent")
-	}
-
-	err := Kanban.PartCard(c, cardID, user)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	c.JSON(http.StatusOK, "ok")
-}
-
-func kanbanJoinCardHandler(c *gin.Context) {
-	var s Session
-	s.Bind(c)
-
-	cardID := libwekan.CardID(c.Param("cardID"))
-	if len(cardID) == 0 {
-		c.JSON(http.StatusBadRequest, "cardID est obligatoire")
-		return
-	}
-
-	user, ok := Kanban.GetUser(libwekan.Username(s.Username))
-
-	if !ok {
-		c.JSON(http.StatusInternalServerError, "nom d'utilisateur incohérent")
-	}
-
-	err := Kanban.JoinCard(c, cardID, user)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	c.JSON(http.StatusOK, "ok")
 }
