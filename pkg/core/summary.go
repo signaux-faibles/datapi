@@ -55,6 +55,7 @@ type Summary struct {
 	SecteurCovid                *string            `json:"secteurCovid,omitempty"`
 	EtatAdministratif           *string            `json:"etatAdministratif,omitempty"`
 	EtatAdministratifEntreprise *string            `json:"etatAdministratifEntreprise,omitempty"`
+	Cards                       []KanbanCard       `json:"cards,omitempty"`
 }
 
 type Summaries struct {

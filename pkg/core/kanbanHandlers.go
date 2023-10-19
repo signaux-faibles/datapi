@@ -94,3 +94,47 @@ func kanbanNewCardHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err.Error())
 	}
 }
+
+func kanbanUpdateCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+	var params struct {
+		CardID      libwekan.CardID `json:"cardID"`
+		Description string          `json:"description"`
+	}
+	c.Bind(&params)
+
+	card, err := Kanban.SelectCardFromCardID(c, params.CardID, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur:" + err.Error()})
+	}
+	err = Kanban.UpdateCard(c, card, params.Description, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur: " + err.Error()})
+	}
+}
+
+func kanbanUnarchiveCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+
+	cardID := libwekan.CardID(c.Param("cardID"))
+
+	err := Kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
+	if errors.Is(err, UnknownCardError{}) {
+		c.JSON(http.StatusNotFound, err.Error())
+	}
+	if errors.Is(err, ForbiddenError{}) {
+		c.JSON(http.StatusForbidden, err.Error())
+	}
+	if errors.Is(err, UnknownBoardError{}) {
+		c.JSON(http.StatusNotFound, err.Error())
+	}
+	if errors.Is(err, libwekan.NothingDoneError{}) {
+		c.JSON(http.StatusNoContent, err.Error())
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(200, "traitement effectué")
+}

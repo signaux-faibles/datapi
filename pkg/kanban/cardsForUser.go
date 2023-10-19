@@ -1,15 +1,15 @@
 package kanban
 
 import (
-	"context"
-	"time"
+    "context"
+    "time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/signaux-faibles/libwekan"
-	"go.mongodb.org/mongo-driver/bson"
+    "github.com/jackc/pgx/v5/pgxpool"
+    "github.com/signaux-faibles/libwekan"
+    "go.mongodb.org/mongo-driver/bson"
 
-	"datapi/pkg/core"
-	"datapi/pkg/utils"
+    "datapi/pkg/core"
+    "datapi/pkg/utils"
 )
 
 type Etablissements struct {
@@ -296,19 +296,13 @@ func kanbanDBExportToKanbanExports(kanbanDBExports core.KanbanDBExports) core.Ka
 func (service wekanService) SelectFollowsForUser(ctx context.Context, params core.KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (core.Summaries, error) {
 	wc := wekanConfigForUser(WekanConfig.Copy(), params.User)
 	pipeline := buildCardsForUserPipeline(wc, params)
-	pipeline.AppendStage(bson.M{
-		"$project": bson.M{
-			"boardId":      true,
-			"customFields": true,
-		},
-	})
+	pipeline.AppendPipeline(buildCardToCardAndCommentsPipeline())
 
-	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", pipeline)
-
+	cards, err := wekan.SelectCardsWithCommentsFromPipeline(ctx, "boards", pipeline)
 	if err != nil {
 		return core.Summaries{}, err
 	}
-	sirets := utils.Convert(cards, cardToSiret(wc))
+	sirets := utils.Convert(cards, cardWithCommentsToSiret(wc))
 	if params.Type == "my-cards" {
 		err := followSiretsFromWekan(ctx, params.User.Username, sirets)
 		if err != nil {
@@ -318,6 +312,7 @@ func (service wekanService) SelectFollowsForUser(ctx context.Context, params cor
 	// my-cards et all-cards utilisent la même méthode
 	if utils.Contains([]string{"my-cards", "all-cards"}, params.Type) {
 		summaries, err := selectSummariesWithSirets(ctx, sirets, db, params.User, roles, params.Zone, 100, params.RaisonSociale)
+		addKanbanCardsToSummaries(summaries, cards, params.User.Username)
 		return summaries, err
 	}
 	// no-cards retourne les suivis datapi sans carte kanban
@@ -328,4 +323,17 @@ func (service wekanService) SelectFollowsForUser(ctx context.Context, params cor
 func (service wekanService) PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error {
 	_, err := wekan.EnsureMemberOutOfCard(ctx, cardID, userID)
 	return err
+}
+
+func addKanbanCardsToSummaries(summaries core.Summaries, cards []libwekan.CardWithComments, username libwekan.Username) {
+	var mappedCards = make(map[string][]core.KanbanCard)
+	cardWithCommentsToSiretFunc := cardWithCommentsToSiret(WekanConfig)
+	wekanCardWithCommentsToKanbanCardFunc := wekanCardWithCommentsToKanbanCard(username)
+	for _, card := range cards {
+		siret := cardWithCommentsToSiretFunc(card)
+		mappedCards[siret] = append(mappedCards[siret], wekanCardWithCommentsToKanbanCardFunc(card))
+	}
+	for _, summary := range summaries.Summaries {
+		summary.Cards = mappedCards[summary.Siret]
+	}
 }
