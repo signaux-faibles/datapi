@@ -2,11 +2,8 @@ package core
 
 import (
 	"context"
-	"errors"
-	"net/http"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/signaux-faibles/libwekan"
 )
@@ -105,6 +102,15 @@ type KanbanCard struct {
 	LabelIDs          []libwekan.BoardLabelID `json:"labelIDs,omitempty"`
 	UserIsBoardMember bool                    `json:"userIsBoardMember"`
 	Siret             Siret                   `json:"siret"`
+	Comments          []KanbanComment         `json:"comments"`
+}
+
+type KanbanComment struct {
+	ID         string    `json:"id"`
+	Comment    string    `json:"comment"`
+	AuthorID   string    `json:"authorID"`
+	CreatedAt  time.Time `json:"createdAt"`
+	ModifiedAt time.Time `json:"modifiedAt"`
 }
 
 type KanbanSelectCardsForUserParams struct {
@@ -268,53 +274,4 @@ func (exports KanbanDBExports) NewDbExport() (KanbanDBExports, []interface{}) {
 		&e.InZone,
 	}
 	return exports, t
-}
-
-type KanbanCardAndComments struct {
-	Card     libwekan.Card      `json:"card"`
-	Comments []libwekan.Comment `json:"comments"`
-}
-
-func kanbanUnarchiveCardHandler(c *gin.Context) {
-	var s Session
-	s.Bind(c)
-
-	cardID := libwekan.CardID(c.Param("cardID"))
-
-	err := Kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
-	if errors.Is(err, UnknownCardError{}) {
-		c.JSON(http.StatusNotFound, err.Error())
-	}
-	if errors.Is(err, ForbiddenError{}) {
-		c.JSON(http.StatusForbidden, err.Error())
-	}
-	if errors.Is(err, UnknownBoardError{}) {
-		c.JSON(http.StatusNotFound, err.Error())
-	}
-	if errors.Is(err, libwekan.NothingDoneError{}) {
-		c.JSON(http.StatusNoContent, err.Error())
-	}
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, err.Error())
-	}
-	c.JSON(200, "traitement effectué")
-}
-
-func kanbanUpdateCardHandler(c *gin.Context) {
-	var s Session
-	s.Bind(c)
-	var params struct {
-		CardID      libwekan.CardID `json:"cardID"`
-		Description string          `json:"description"`
-	}
-	c.Bind(&params)
-
-	card, err := Kanban.SelectCardFromCardID(c, params.CardID, libwekan.Username(s.Username))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur:" + err.Error()})
-	}
-	err = Kanban.UpdateCard(c, card, params.Description, libwekan.Username(s.Username))
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur: " + err.Error()})
-	}
 }
