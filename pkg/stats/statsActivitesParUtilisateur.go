@@ -50,8 +50,8 @@ func selectActiviteParUtilisateur(
 	}
 }
 
-func writeActivitesUtilisateurToExcel(xls *excelize.File, pageIndex int, activites chan row[activiteParUtilisateur]) error {
-	err := writeOneSheetToExcel(xls, "Activité par utilisateur", pageIndex, activites, writeOneActiviteUtilisateurToExcel)
+func writeActivitesUtilisateurToExcel(xls *excelize.File, activites chan row[activiteParUtilisateur]) error {
+	err := writeOneSheetToExcel(xls, "Activité par utilisateur", activites, writeOneActiviteUtilisateurToExcel)
 	if err != nil {
 		return fmt.Errorf("erreur lors de l'écriture d'une ligne d'activités par utilisateurs : %w", err)
 	}

@@ -84,8 +84,8 @@ func writeOneActiviteJourToExcel(f *excelize.File, sheetName string, ligne activ
 	return nil
 }
 
-func writeActivitesJoursToExcel(xls *excelize.File, pageIndex int, activites chan row[activiteParJour]) error {
-	err := writeOneSheetToExcel(xls, "Activité par jour", pageIndex, activites, writeOneActiviteJourToExcel)
+func writeActivitesJoursToExcel(xls *excelize.File, activites chan row[activiteParJour]) error {
+	err := writeOneSheetToExcel(xls, "Activité par jour", activites, writeOneActiviteJourToExcel)
 	if err != nil {
 		return fmt.Errorf("erreur lors de l'écriture d'une ligne d'activités par utilisateurs : %w", err)
 	}
