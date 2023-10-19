@@ -1,12 +1,10 @@
 package stats
 
 import (
-	"context"
 	_ "embed"
-	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 )
@@ -21,41 +19,29 @@ type activiteParUtilisateur struct {
 	segment  string
 }
 
-func (a activiteParUtilisateur) row() row[activiteParUtilisateur] {
-	return row[activiteParUtilisateur]{value: a}
+type activiteParUtilisateurSelector struct {
+	from, to time.Time
 }
 
-func selectActiviteParUtilisateur(
-	ctx context.Context,
-	dbPool *pgxpool.Pool,
-	since time.Time,
-	to time.Time,
-	r chan row[activiteParUtilisateur],
-) {
-	defer close(r)
-	rows, err := dbPool.Query(ctx, selectActiviteParUtilisateurSQL, since.Truncate(day), to.Truncate(day))
-	if err != nil {
-		r <- rowWithError(activiteParUtilisateur{}, errors.Wrap(err, "erreur pendant la requête de sélection des activite"))
-	}
-	for rows.Next() {
-		var activite activiteParUtilisateur
-		err := rows.Scan(&activite.username, &activite.visites, &activite.actions, &activite.segment)
-		if err != nil {
-			r <- rowWithError(activiteParUtilisateur{}, errors.Wrap(err, "erreur pendant la récupération des résultats"))
-		}
-		r <- activite.row()
-	}
-	if err := rows.Err(); err != nil {
-		r <- rowWithError(activiteParUtilisateur{}, errors.Wrap(err, "erreur après la récupération des résultats"))
-	}
+func newActiviteParUtilisateurSelector(from time.Time, to time.Time) activiteParUtilisateurSelector {
+	return activiteParUtilisateurSelector{from: from.Truncate(day), to: to.Truncate(day)}
 }
 
-func writeActivitesUtilisateurToExcel(xls *excelize.File, activites chan row[activiteParUtilisateur]) error {
-	err := writeOneSheetToExcel(xls, "Activité par utilisateur", activites, writeOneActiviteUtilisateurToExcel)
+func (a activiteParUtilisateurSelector) sql() string {
+	return selectActiviteParUtilisateurSQL
+}
+
+func (a activiteParUtilisateurSelector) sqlArgs() []any {
+	return []any{a.from, a.to}
+}
+
+func (a activiteParUtilisateurSelector) toItem(rows pgx.Rows) (activiteParUtilisateur, error) {
+	var r activiteParUtilisateur
+	err := rows.Scan(&r.username, &r.visites, &r.actions, &r.segment)
 	if err != nil {
-		return fmt.Errorf("erreur lors de l'écriture d'une ligne d'activités par utilisateurs : %w", err)
+		return activiteParUtilisateur{}, errors.Wrap(err, "erreur lors la création de l'objet")
 	}
-	return nil
+	return r, nil
 }
 
 func writeOneActiviteUtilisateurToExcel(f *excelize.File, sheetName string, ligne activiteParUtilisateur, row int) error {
