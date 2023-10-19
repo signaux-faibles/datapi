@@ -73,6 +73,7 @@ func (api *API) sinceDaysHandler(c *gin.Context) {
 }
 
 func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.Time) {
+	logger := slog.Default().With(slog.Any("since", since), slog.Any("to", to))
 	results := make(chan row[accessLog])
 	activitesUtilisateur := make(chan row[activiteParUtilisateur])
 	activitesJour := make(chan row[activiteParJour])
@@ -84,16 +85,46 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 	c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
 	c.Stream(func(w io.Writer) bool {
 		archive := zip.NewWriter(w)
-		err := createCSV(archive, api.filename, results)
+		filename := api.filename + ".xlsx"
+		logger = slog.Default().With("filename", filename)
+		xlsInZip, err := createEntryInZip(archive, filename)
 		if err != nil {
 			c.Status(http.StatusInternalServerError)
 			return false
 		}
-		err = createExcel(archive, api.filename, activitesUtilisateur, activitesJour)
+		// crée le fichier excel
+		xls := newExcel()
+		defer func() {
+			if err := xls.Close(); err != nil {
+				logger.Error("erreur à la fermeture du fichier", slog.Any("error", err))
+			}
+		}()
+		err = writeOneSheetToExcel(xls, accessLogTitle, results, writeOneAccessLogToExcel)
 		if err != nil {
+			logger.Error("erreur pendant l'écriture des accessLogs", slog.Any("error", err))
 			c.Status(http.StatusInternalServerError)
 			return false
 		}
+		err = writeOneSheetToExcel(xls, "Activité par utilisateur", activitesUtilisateur, writeOneActiviteUtilisateurToExcel)
+		if err != nil {
+			logger.Error("erreur pendant l'écriture des activités utilisateurs", slog.Any("error", err))
+			c.Status(http.StatusInternalServerError)
+			return false
+		}
+		err = writeOneSheetToExcel(xls, "Activité par jour", activitesJour, writeOneActiviteJourToExcel)
+		if err != nil {
+			logger.Error("erreur pendant l'écriture des activités jour", slog.Any("error", err))
+			c.Status(http.StatusInternalServerError)
+			return false
+		}
+
+		err = exportTo(xlsInZip, xls)
+		if err != nil {
+			logger.Error("erreur pendant l'écriture du excel dans le zip", slog.Any("error", err))
+			c.Status(http.StatusInternalServerError)
+			return false
+		}
+
 		err = archive.Close()
 		if err != nil {
 			slog.Error("erreur pendant la fermeture de l'archive", slog.Any("error", err))
@@ -113,6 +144,20 @@ func (api *API) fetchActivitesParUtilisateur(since time.Time, to time.Time, acti
 
 func (api *API) fetchActivitesParJour(since time.Time, to time.Time, result chan row[activiteParJour]) {
 	selectActiviteParJour(api.db.ctx, api.db.pool, since, to, result)
+}
+
+func createEntryInZip(archive *zip.Writer, filename string) (io.Writer, error) {
+	xlsEntry, err := archive.CreateHeader(&zip.FileHeader{
+		Name:     filename,
+		Comment:  "fourni par Datapi avec dégoût",
+		NonUTF8:  false,
+		Modified: time.Now(),
+	})
+	if err != nil {
+		slog.Error("erreur pendant la création du xls dans le zip", slog.Any("error", err))
+		return xlsEntry, err
+	}
+	return xlsEntry, nil
 }
 
 func (api *API) fromStartForDaysHandler(c *gin.Context) {
