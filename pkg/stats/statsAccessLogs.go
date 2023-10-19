@@ -1,13 +1,18 @@
 package stats
 
 import (
+	_ "embed"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 )
 
 const accessLogTitle = "Access logs"
+
+//go:embed resources/sql/select_logs.sql
+var selectLogsSQL string
 
 func writeOneAccessLogToExcel(f *excelize.File, sheetName string, ligne accessLog, row int) error {
 	var i = 0
@@ -42,4 +47,30 @@ func writeOneAccessLogToExcel(f *excelize.File, sheetName string, ligne accessLo
 		return errors.Wrap(err, "erreur pendant l'écriture du nombre de segments")
 	}
 	return nil
+}
+
+type accessLogsSelector struct {
+	from time.Time
+	to   time.Time
+}
+
+func newAccessLogsSelector(from time.Time, to time.Time) accessLogsSelector {
+	return accessLogsSelector{from: from.Truncate(day), to: to.Truncate(day)}
+}
+
+func (a accessLogsSelector) sql() string {
+	return selectLogsSQL
+}
+
+func (a accessLogsSelector) sqlArgs() []any {
+	return []any{a.from, a.to}
+}
+
+func (a accessLogsSelector) toItem(rows pgx.Rows) (accessLog, error) {
+	var r accessLog
+	err := rows.Scan(&r.date, &r.path, &r.method, &r.username, &r.segment, &r.roles)
+	if err != nil {
+		return accessLog{}, errors.Wrap(err, "erreur lors la création de l'objet")
+	}
+	return r, nil
 }

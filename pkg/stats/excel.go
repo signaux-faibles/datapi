@@ -44,13 +44,13 @@ func addSheet(f *excelize.File, sheetName string) (int, error) {
 	return f.NewSheet(sheetName)
 }
 
-type ExcelRowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row, row int) error
+type rowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row, row int) error
 
 func writeOneSheetToExcel[A any](
 	xls *excelize.File,
 	sheetLabel string,
 	itemsToWrite chan row[A],
-	writer ExcelRowWriter[A],
+	writer rowWriter[A],
 ) error {
 	_, err := addSheet(xls, sheetLabel)
 	if err != nil {
