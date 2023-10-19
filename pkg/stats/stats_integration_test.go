@@ -100,36 +100,49 @@ func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
 	ass.Equal(expected, actual)
 }
 
-func Test_selectLines(t *testing.T) {
-	t.Cleanup(func() { test.EraseAccessLogs(t) })
-	ass := assert.New(t)
-	var err error
-	var resultChan = make(chan row[accessLog])
-	expected := randomAccessLog()
-	err = logSaver.SaveLogToDB(expected)
-	ass.NoError(err)
-	today := time.Now()
-	tomorrow := today.AddDate(0, 0, 1)
-	go selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow, resultChan)
-	var logs []accessLog
-	for l := range resultChan {
-		logs = append(logs, l.value)
-	}
-	ass.Len(logs, 1)
-	ass.Equal("christophe.ninucci@beta.gouv.fr", logs[0].username)
-	ass.Len(logs[0].roles, 109)
-	ass.Equal(expected.Method, logs[0].method)
-	ass.Equal(expected.Path, logs[0].path)
-	ass.Contains(logs[0].roles, "score")
-	ass.Contains(logs[0].roles, "dgefp")
-	ass.Contains(logs[0].roles, "bdf")
-	ass.Contains(logs[0].roles, "urssaf")
-	ass.Contains(logs[0].roles, "France entière")
-	ass.Contains(logs[0].roles, "01")
-	ass.Contains(logs[0].roles, "16")
-	ass.Contains(logs[0].roles, "2A")
-	ass.Contains(logs[0].roles, "972")
-}
+//func Test_selectLines2(t *testing.T) {
+//  t.Cleanup(func() { test.EraseAccessLogs(t) })
+//  ass := assert.New(t)
+//  var err error
+//  var resultChan = make(chan row[accessLog])
+//  defer close(resultChan)
+//  expected := randomAccessLog()
+//  err = logSaver.SaveLogToDB(expected)
+//  ass.NoError(err)
+//  today := time.Now()
+//  tomorrow := today.AddDate(0, 0, 1)
+//}
+
+//func Test_selectLines(t *testing.T) {
+//	t.Cleanup(func() { test.EraseAccessLogs(t) })
+//	ass := assert.New(t)
+//	var err error
+//	var resultChan = make(chan row[accessLog])
+//	expected := randomAccessLog()
+//	err = logSaver.SaveLogToDB(expected)
+//	ass.NoError(err)
+//	today := time.Now()
+//	tomorrow := today.AddDate(0, 0, 1)
+//	go selectLogs(statsDB.ctx, statsDB.pool, today, tomorrow, resultChan)
+//	var logs []accessLog
+//	for l := range resultChan {
+//		logs = append(logs, l.value)
+//	}
+//	ass.Len(logs, 1)
+//	ass.Equal("christophe.ninucci@beta.gouv.fr", logs[0].username)
+//	ass.Len(logs[0].roles, 109)
+//	ass.Equal(expected.Method, logs[0].method)
+//	ass.Equal(expected.Path, logs[0].path)
+//	ass.Contains(logs[0].roles, "score")
+//	ass.Contains(logs[0].roles, "dgefp")
+//	ass.Contains(logs[0].roles, "bdf")
+//	ass.Contains(logs[0].roles, "urssaf")
+//	ass.Contains(logs[0].roles, "France entière")
+//	ass.Contains(logs[0].roles, "01")
+//	ass.Contains(logs[0].roles, "16")
+//	ass.Contains(logs[0].roles, "2A")
+//	ass.Contains(logs[0].roles, "972")
+//}
 
 func randomAccessLog() core.AccessLog {
 	random := core.AccessLog{

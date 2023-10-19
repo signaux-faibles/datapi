@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/pkg/errors"
 
@@ -13,9 +14,6 @@ import (
 
 //go:embed resources/sql/create_tables_and_views.sql
 var createTablesSQL string
-
-//go:embed resources/sql/select_logs.sql
-var selectLogsSQL string
 
 const day = time.Duration(24) * time.Hour
 
@@ -44,7 +42,6 @@ func getLastAccessLog(ctx context.Context, db *pgxpool.Pool) (core.AccessLog, er
 }
 
 func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to time.Time, r chan row[accessLog]) {
-	defer close(r)
 	rows, err := dbPool.Query(ctx, selectLogsSQL, since.Truncate(day), to.Truncate(day))
 	if err != nil {
 		r <- rowWithError(accessLog{}, errors.Wrap(err, "erreur pendant la requête de sélection des logs"))
@@ -59,6 +56,44 @@ func selectLogs(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to t
 	}
 	if err := rows.Err(); err != nil {
 		r <- rowWithError(accessLog{}, errors.Wrap(err, "erreur après la récupération des résultats"))
+	}
+}
+
+type dataSelector[A any] interface {
+	sql() string
+	sqlArgs() []any
+	toItem(rows pgx.Rows) (A, error)
+}
+
+func fetchAny[A any](api *API, value A, selector dataSelector[A]) chan row[A] {
+	result := make(chan row[A])
+	go func() {
+		defer close(result)
+		selectAny(
+			api.db.ctx,
+			api.db.pool,
+			value,
+			selector,
+			result,
+		)
+	}()
+	return result
+}
+
+func selectAny[A any](ctx context.Context, dbPool *pgxpool.Pool, value A, selector dataSelector[A], r chan row[A]) {
+	rows, err := dbPool.Query(ctx, selector.sql(), selector.sqlArgs()...)
+	if err != nil {
+		r <- rowWithError(value, errors.Wrap(err, "erreur pendant la requête de sélection"))
+	}
+	for rows.Next() {
+		item, err := selector.toItem(rows)
+		if err != nil {
+			r <- rowWithError(value, errors.Wrap(err, "erreur pendant la récupération des résultats"))
+		}
+		r <- newRow(item)
+	}
+	if err := rows.Err(); err != nil {
+		r <- rowWithError(value, errors.Wrap(err, "erreur après la récupération des résultats"))
 	}
 }
 

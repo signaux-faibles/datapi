@@ -1,12 +1,10 @@
 package stats
 
 import (
-	"context"
 	_ "embed"
-	"fmt"
 	"time"
 
-	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
 )
@@ -24,30 +22,29 @@ type activiteParJour struct {
 	err        error
 }
 
-func selectActiviteParJour(ctx context.Context, dbPool *pgxpool.Pool, since time.Time, to time.Time, r chan row[activiteParJour]) {
-	defer close(r)
-	rows, err := dbPool.Query(ctx, selectActiviteParJourSQL, since.Truncate(day), to.Truncate(day))
+type activiteParJourSelector struct {
+	from, to time.Time
+}
+
+func (a activiteParJourSelector) sql() string {
+	return selectActiviteParJourSQL
+}
+
+func (a activiteParJourSelector) sqlArgs() []any {
+	return []any{a.from, a.to}
+}
+
+func (a activiteParJourSelector) toItem(rows pgx.Rows) (activiteParJour, error) {
+	var r activiteParJour
+	err := rows.Scan(&r.jour, &r.username, &r.actions, &r.recherches, &r.fiches, &r.segment)
 	if err != nil {
-		r <- rowWithError(activiteParJour{}, errors.Wrap(err, "erreur pendant la requête de sélection des activite/jour"))
+		return activiteParJour{}, errors.Wrap(err, "erreur lors la création de l'objet activiteParJour")
 	}
-	for rows.Next() {
-		var activite activiteParJour
-		err := rows.Scan(
-			&activite.jour,
-			&activite.username,
-			&activite.actions,
-			&activite.recherches,
-			&activite.fiches,
-			&activite.segment,
-		)
-		if err != nil {
-			r <- rowWithError(activiteParJour{}, errors.Wrap(err, "erreur pendant la récupération des résultats/jour"))
-		}
-		r <- newRow(activite)
-	}
-	if err := rows.Err(); err != nil {
-		r <- rowWithError(activiteParJour{}, errors.Wrap(err, "erreur après la récupération des résultats/jour"))
-	}
+	return r, nil
+}
+
+func newActiviteParJourSelector(from time.Time, to time.Time) activiteParJourSelector {
+	return activiteParJourSelector{from: from.Truncate(day), to: to.Truncate(day)}
 }
 
 func writeOneActiviteJourToExcel(f *excelize.File, sheetName string, ligne activiteParJour, row int) error {
@@ -80,14 +77,6 @@ func writeOneActiviteJourToExcel(f *excelize.File, sheetName string, ligne activ
 	err = writeString(f, sheetName, ligne.segment, i, row)
 	if err != nil {
 		return errors.Wrap(err, "erreur pendant l'écriture du nombre de segments")
-	}
-	return nil
-}
-
-func writeActivitesJoursToExcel(xls *excelize.File, activites chan row[activiteParJour]) error {
-	err := writeOneSheetToExcel(xls, "Activité par jour", activites, writeOneActiviteJourToExcel)
-	if err != nil {
-		return fmt.Errorf("erreur lors de l'écriture d'une ligne d'activités par utilisateurs : %w", err)
 	}
 	return nil
 }
