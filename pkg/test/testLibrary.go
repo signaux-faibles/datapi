@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
-	"encoding/csv"
 	"encoding/json"
 	"flag"
 	"fmt"
@@ -17,8 +16,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/spf13/viper"
+	"github.com/xuri/excelize/v2"
 
 	"datapi/pkg/core"
 	"datapi/pkg/db"
@@ -413,7 +414,7 @@ func Viperize(testConfig map[string]string) error {
 	return viper.ReadInConfig()
 }
 
-func ReadCSVFileInZip(data []byte) ([][]string, error) {
+func ReadXlsInZip(data []byte) (int, int, error) {
 	// create and open a temporary file
 	f, err := os.CreateTemp(os.TempDir(), "stats_csv.zip")
 	if err != nil {
@@ -425,20 +426,37 @@ func ReadCSVFileInZip(data []byte) ([][]string, error) {
 	defer os.Remove(f.Name())
 	reader, err := zip.OpenReader(f.Name())
 	if err != nil {
-		return nil, err
+		return -1, -1, err
 	}
 	defer reader.Close()
 	files := reader.File
-	if len(files) != 2 {
-		return nil, fmt.Errorf("trop ou pas assez de fichier dans le zip fourni : %s", f.Name())
+	if len(files) != 1 {
+		return -1, -1, fmt.Errorf("trop ou pas assez de fichier dans le zip fourni : %s", f.Name())
 	}
-	csvFile := files[0]
-	csvContent, err := csvFile.Open()
+	xlsEntry := files[0]
+	xlsContent, err := xlsEntry.Open()
 	if err != nil {
-		return nil, err
+		return -1, -1, errors.Wrap(err, "erreur à l'ouverture du fichier xls")
 	}
-	csvReader := csv.NewReader(csvContent)
-	return csvReader.ReadAll()
+	xlsFile, err := excelize.OpenReader(xlsContent)
+	if err != nil {
+		return -1, -1, errors.Wrap(err, "erreur à la lecture du fichier xls")
+	}
+	cols, err := xlsFile.Cols(xlsFile.GetSheetList()[0])
+	if err != nil {
+		return -1, -1, errors.Wrap(err, "erreur pendant la lecture des colonnes")
+	}
+	nbRows := 0
+	nbCols := 0
+	for cols.Next() {
+		nbCols++
+		rows, err := cols.Rows()
+		if err != nil {
+			return -1, -1, errors.Wrap(err, "erreur pendant la lecture des cellules")
+		}
+		nbRows = len(rows)
+	}
+	return nbRows, nbCols, nil
 }
 
 func WriteFile(filename string, data []byte) {

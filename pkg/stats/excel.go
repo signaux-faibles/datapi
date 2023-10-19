@@ -4,6 +4,7 @@ import (
 	"io"
 	"log/slog"
 	"strconv"
+	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
@@ -13,22 +14,34 @@ func newExcel() *excelize.File {
 	return excelize.NewFile()
 }
 
-func createSheet(f *excelize.File, sheetName string, index int) (string, error) {
-	// Create a new sheet.
-	originalName := f.GetSheetName(index)
-	if originalName == "" {
-		_, err := f.NewSheet(sheetName)
+//func createSheet(f *excelize.File, sheetName string, index int) (string, error) {
+//	// Create a new sheet.
+//	originalName := f.GetSheetName(index)
+//	if originalName == "" {
+//		_, err := f.NewSheet(sheetName)
+//		if err != nil {
+//			return "", err
+//		}
+//		return sheetName, nil
+//	}
+//	err := f.SetSheetName(originalName, sheetName)
+//	if err != nil {
+//		return "", err
+//	}
+//	// f.SetActiveSheet(index)
+//	return sheetName, err
+//}
+
+func addSheet(f *excelize.File, sheetName string) (int, error) {
+	defaultSheetName := "Sheet1"
+	if len(f.GetSheetList()) == 1 && f.GetSheetName(0) == defaultSheetName {
+		err := f.SetSheetName(defaultSheetName, sheetName)
 		if err != nil {
-			return "", err
+			return -1, errors.Wrap(err, "erreur lors du changement de nom de la première feuille")
 		}
-		return sheetName, nil
+		return f.GetSheetIndex(sheetName)
 	}
-	err := f.SetSheetName(originalName, sheetName)
-	if err != nil {
-		return "", err
-	}
-	// f.SetActiveSheet(index)
-	return sheetName, err
+	return f.NewSheet(sheetName)
 }
 
 type ExcelRowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row, row int) error
@@ -36,11 +49,10 @@ type ExcelRowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row,
 func writeOneSheetToExcel[A any](
 	xls *excelize.File,
 	sheetLabel string,
-	sheetIndex int,
 	itemsToWrite chan row[A],
 	writer ExcelRowWriter[A],
 ) error {
-	var sheetName, err = createSheet(xls, sheetLabel, sheetIndex)
+	_, err := addSheet(xls, sheetLabel)
 	if err != nil {
 		return err
 	}
@@ -50,7 +62,7 @@ func writeOneSheetToExcel[A any](
 			if ligne.err != nil {
 				return ligne.err
 			}
-			err := writer(xls, sheetName, ligne.value, row)
+			err := writer(xls, sheetLabel, ligne.value, row)
 			if err != nil {
 				return err
 			}
@@ -67,6 +79,10 @@ func writeString(f *excelize.File, sheetName string, value string, col, row int)
 	}
 	err = f.SetCellStr(sheetName, cell, value)
 	return err
+}
+
+func writeStrings(f *excelize.File, sheetName string, value []string, col, row int) error {
+	return writeString(f, sheetName, strings.Join(value, "; "), col, row)
 }
 
 func writeInt(f *excelize.File, sheetName string, value int, col, row int) error {

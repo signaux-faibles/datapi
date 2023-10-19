@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"archive/zip"
 	"fmt"
 	"log/slog"
 	"os"
@@ -46,7 +45,7 @@ func TestLog_writeActivitesUtilisateurToExcel(t *testing.T) {
 
 	// WHEN
 	xls := newExcel()
-	err = writeActivitesUtilisateurToExcel(xls, 0, activitesParUtilisateur)
+	err = writeActivitesUtilisateurToExcel(xls, activitesParUtilisateur)
 	require.NoError(t, err)
 	err = exportTo(f, xls)
 	require.NoError(t, err)
@@ -87,7 +86,7 @@ func TestLog_writeActiviteJourToExcel(t *testing.T) {
 
 	// WHEN
 	xls := newExcel()
-	err = writeActivitesJoursToExcel(xls, 0, activitesParJour)
+	err = writeActivitesJoursToExcel(xls, activitesParJour)
 	require.NoError(t, err)
 	err = exportTo(f, xls)
 	require.NoError(t, err)
@@ -117,31 +116,6 @@ func TestLog_writeActiviteJourToExcel(t *testing.T) {
 		}
 		fmt.Println()
 	}
-}
-
-func TestLog_createExcel(t *testing.T) {
-	// GIVEN
-	f, err := os.CreateTemp(os.TempDir(), t.Name()+"_*.zip")
-	require.NoError(t, err)
-	archive := zip.NewWriter(f)
-	slog.Info("fichier de sortie du test", slog.String("filename", f.Name()))
-
-	// WHEN
-	err = createExcel(archive, t.Name(), nil, nil)
-	require.NoError(t, err)
-	err = archive.Flush()
-	require.NoError(t, err)
-	err = archive.Close()
-	require.NoError(t, err)
-
-	// THEN
-	zip, err := zip.OpenReader(f.Name())
-	require.NoError(t, err)
-	zipEntry, err := zip.Open(t.Name() + ".xlsx")
-	require.NoError(t, err)
-	r, err := excelize.OpenReader(zipEntry)
-	require.NoError(t, err)
-	r.GetSheetList()
 }
 
 func createFakeActivitesChan[A any](activitiesNumber int, newActivite func() A) (A, chan row[A]) {
