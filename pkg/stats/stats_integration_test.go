@@ -100,19 +100,6 @@ func TestPostgresLogSaver_SaveLogToDB(t *testing.T) {
 	ass.Equal(expected, actual)
 }
 
-//func Test_selectLines2(t *testing.T) {
-//  t.Cleanup(func() { test.EraseAccessLogs(t) })
-//  ass := assert.New(t)
-//  var err error
-//  var resultChan = make(chan row[accessLog])
-//  defer close(resultChan)
-//  expected := randomAccessLog()
-//  err = logSaver.SaveLogToDB(expected)
-//  ass.NoError(err)
-//  today := time.Now()
-//  tomorrow := today.AddDate(0, 0, 1)
-//}
-
 //func Test_selectLines(t *testing.T) {
 //	t.Cleanup(func() { test.EraseAccessLogs(t) })
 //	ass := assert.New(t)
