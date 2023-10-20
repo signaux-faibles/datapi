@@ -27,7 +27,7 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 	sheetName := fakeTU.Lorem().Sentence(3)
 	item1 := fakeTU.Lorem().Word()
 	item2 := fakeTU.Lorem().Word()
-	itemsToWrite := createSomeItemsToWrite(item1, item2)
+	itemsToWrite := createStringChannel(item1, item2)
 	err := writeOneSheetToExcel(xls, sheetName, itemsToWrite, stringWriter)
 	require.NoError(t, err)
 	assert.Len(t, xls.WorkBook.Sheets.Sheet, 1)
@@ -49,15 +49,4 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 
 func stringWriter(f *excelize.File, name string, ligne string, r int) error {
 	return writeString(f, name, ligne, 1, r)
-}
-
-func createSomeItemsToWrite(items ...string) chan row[string] {
-	r := make(chan row[string])
-	go func() {
-		defer close(r)
-		for _, i := range items {
-			r <- newRow(i)
-		}
-	}()
-	return r
 }
