@@ -55,6 +55,17 @@ func createFakeActiviteJour() activiteParJour {
 	}
 }
 
+func createStringChannel(items ...string) chan row[string] {
+	r := make(chan row[string])
+	go func() {
+		defer close(r)
+		for _, i := range items {
+			r <- newRow(i)
+		}
+	}()
+	return r
+}
+
 func createFakeActiviteUtilisateur() activiteParUtilisateur {
 	var visites, actions int
 	visites = fakeTU.IntBetween(1, 99)
