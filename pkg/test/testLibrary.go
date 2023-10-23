@@ -414,7 +414,8 @@ func Viperize(testConfig map[string]string) error {
 	return viper.ReadInConfig()
 }
 
-func ReadXlsInZip(data []byte) (int, int, error) {
+// ReadXlsInZip lit le fichier excel contenu dans un zip et retourne le nombre de ligne, la première ligne ou une erreur
+func ReadXlsInZip(data []byte) (int, []string, error) {
 	// create and open a temporary file
 	f, err := os.CreateTemp(os.TempDir(), "stats_csv.zip")
 	if err != nil {
@@ -426,37 +427,45 @@ func ReadXlsInZip(data []byte) (int, int, error) {
 	defer os.Remove(f.Name())
 	reader, err := zip.OpenReader(f.Name())
 	if err != nil {
-		return -1, -1, err
+		return -1, nil, err
 	}
 	defer reader.Close()
 	files := reader.File
 	if len(files) != 1 {
-		return -1, -1, fmt.Errorf("trop ou pas assez de fichier dans le zip fourni : %s", f.Name())
+		return -1, nil, fmt.Errorf("trop ou pas assez de fichier dans le zip fourni : %s", f.Name())
 	}
 	xlsEntry := files[0]
 	xlsContent, err := xlsEntry.Open()
 	if err != nil {
-		return -1, -1, errors.Wrap(err, "erreur à l'ouverture du fichier xls")
+		return -1, nil, errors.Wrap(err, "erreur à l'ouverture du fichier xls")
 	}
 	xlsFile, err := excelize.OpenReader(xlsContent)
 	if err != nil {
-		return -1, -1, errors.Wrap(err, "erreur à la lecture du fichier xls")
+		return -1, nil, errors.Wrap(err, "erreur à la lecture du fichier xls")
 	}
+	// lecture des colonnes
 	cols, err := xlsFile.Cols(xlsFile.GetSheetList()[0])
 	if err != nil {
-		return -1, -1, errors.Wrap(err, "erreur pendant la lecture des colonnes")
+		return -1, nil, errors.Wrap(err, "erreur pendant la lecture des colonnes")
 	}
-	nbRows := 0
-	nbCols := 0
-	for cols.Next() {
-		nbCols++
-		rows, err := cols.Rows()
-		if err != nil {
-			return -1, -1, errors.Wrap(err, "erreur pendant la lecture des cellules")
-		}
-		nbRows = len(rows)
+	if !cols.Next() {
+		return -1, nil, errors.Wrap(err, "erreur pas de colonne dans le fichier")
 	}
-	return nbRows, nbCols, nil
+	cellFromFirstCol, err := cols.Rows()
+	if err != nil {
+		return -1, nil, errors.Wrap(err, "erreur pendant la lecture d'une colonne")
+	}
+	nbRows := len(cellFromFirstCol)
+	// lecture des lignes
+	rows, err := xlsFile.Rows(xlsFile.GetSheetList()[0])
+	if !rows.Next() {
+		return -1, nil, errors.Wrap(err, "pas de lignes dans le fichier")
+	}
+	firstRow, err := rows.Columns()
+	if err != nil {
+		return -1, nil, errors.Wrap(err, "erreur pendant la lecture des colonnes")
+	}
+	return nbRows, firstRow, nil
 }
 
 func WriteFile(filename string, data []byte) {

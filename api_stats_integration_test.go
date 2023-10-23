@@ -30,13 +30,13 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
-	rows, cols, err := test.ReadXlsInZip(body)
+	rows, first, err := test.ReadXlsInZip(body)
 	defer test.WriteFile(t.Name()+".zip", body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
 	ass.Equal(same+after, rows)
-	ass.Equal(6, cols)
+	ass.Len(first, 6)
 }
 
 func TestAPI_get_stats_with_heavy_load(t *testing.T) {
@@ -78,10 +78,11 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
-	rows, _, err := test.ReadXlsInZip(body)
+	rows, first, err := test.ReadXlsInZip(body)
 	//ass.NoError(err, "contenu de la réponse : %s", body)
 	ass.NoError(err)
 	ass.Equal(expected, rows)
+	ass.Len(first, 6)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
 }
@@ -105,11 +106,12 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	defer test.WriteFile(t.Name()+".zip", body)
-	rows, _, err := test.ReadXlsInZip(body)
+	rows, first, err := test.ReadXlsInZip(body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
 	ass.Equal(betweenStart+betweenEnd, rows)
+	ass.Len(first, 6)
 }
 
 func TestAPI_get_stats_testing_params(t *testing.T) {
