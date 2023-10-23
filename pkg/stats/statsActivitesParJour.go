@@ -80,3 +80,19 @@ func writeOneActiviteJourToExcel(f *excelize.File, sheetName string, ligne activ
 	}
 	return nil
 }
+
+func writeActiviteJourHeaders(f *excelize.File, sheetName string) {
+	options := excelize.HeaderFooterOptions{
+		AlignWithMargins: true,
+		DifferentFirst:   false,
+		DifferentOddEven: true,
+		ScaleWithDoc:     false,
+		OddHeader:        "OH",
+		OddFooter:        "OF",
+		EvenHeader:       "EH",
+		EvenFooter:       "EF",
+		FirstHeader:      "FH",
+		FirstFooter:      "FF",
+	}
+	f.SetHeaderFooter(sheetName, &options)
+}

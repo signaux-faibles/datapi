@@ -2,6 +2,7 @@ package stats
 
 import (
 	_ "embed"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -14,37 +15,25 @@ const accessLogTitle = "Access logs"
 //go:embed resources/sql/select_logs.sql
 var selectLogsSQL string
 
+func (ligne accessLog) toRow() *[]any {
+	return &[]any{
+		ligne.date.Format(time.DateTime),
+		ligne.path,
+		ligne.method,
+		ligne.username,
+		ligne.segment,
+		strings.Join(ligne.roles, "; "),
+	}
+}
+
 func writeOneAccessLogToExcel(f *excelize.File, sheetName string, ligne accessLog, row int) error {
-	var i = 0
-	i++
-	err := writeString(f, sheetName, ligne.date.Format(time.DateTime), i, row)
+	cellName, err := excelize.CoordinatesToCellName(1, row)
 	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture de la date")
+		return errors.Wrap(err, "erreur pendant la récupération du nom de la cellule")
 	}
-	i++
-	err = writeString(f, sheetName, ligne.path, i, row)
+	err = f.SetSheetRow(sheetName, cellName, ligne.toRow())
 	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du chemin")
-	}
-	i++
-	err = writeString(f, sheetName, ligne.method, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du verbe HTTP")
-	}
-	i++
-	err = writeString(f, sheetName, ligne.username, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nom de l'utilisateur")
-	}
-	i++
-	err = writeString(f, sheetName, ligne.segment, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du segment")
-	}
-	i++
-	err = writeStrings(f, sheetName, ligne.roles, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre de segments")
+		return errors.Wrap(err, "erreur pendant l'écriture de la ligne'")
 	}
 	return nil
 }

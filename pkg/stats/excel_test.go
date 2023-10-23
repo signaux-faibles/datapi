@@ -1,6 +1,7 @@
 package stats
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -45,6 +46,22 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 	actual, err = xls.GetCellValue(sheetName, name)
 	require.NoError(t, err)
 	assert.Equal(t, item2, actual)
+}
+
+func Test_writeSheetToExcel(t *testing.T) {
+
+	output, err := os.CreateTemp(os.TempDir(), t.Name()+"_*.xls")
+	require.NoError(t, err)
+	t.Log("destination du fichier excel", output.Name())
+	xls := newExcel()
+	sheetName := fakeTU.Lorem().Sentence(3)
+	_, err = addSheet(xls, sheetName)
+	require.NoError(t, err)
+	err = xls.SetSheetRow(sheetName, "B6", &[]interface{}{"1", nil, 2})
+	require.NoError(t, err)
+
+	err = xls.Write(output)
+	require.NoError(t, err)
 }
 
 func stringWriter(f *excelize.File, name string, ligne string, r int) error {
