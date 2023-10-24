@@ -23,11 +23,9 @@ type activiteParUtilisateurSelector struct {
 }
 
 var activitesParUtilisateurHeaders = map[any]float64{
-	"jour":        float64(-1),
 	"utilisateur": float64(-1),
 	"actions":     float64(-1),
-	"recherches":  float64(-1),
-	"fiches":      float64(-1),
+	"visites":     float64(-1),
 	"segment":     float64(-1),
 }
 
