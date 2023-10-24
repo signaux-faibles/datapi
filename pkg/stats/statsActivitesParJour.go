@@ -12,25 +12,16 @@ import (
 var selectActiviteParJourSQL string
 
 type activiteParJour struct {
-	jour       time.Time
-	username   string
-	actions    int
-	recherches int
-	fiches     int
-	segment    string
+	jour       time.Time `col:"jour" size:"32"`
+	username   string    `col:"utilisateur" size:"50"`
+	actions    int       `col:"actions" size:"8"`
+	recherches int       `col:"recherches" size:"8"`
+	fiches     int       `col:"fiches" size:"8"`
+	segment    string    `col:"segment" size:"16"`
 }
 
 type activiteParJourSelector struct {
 	from, to time.Time
-}
-
-var activitesParJourHeaders = map[any]float64{
-	"jour":        float64(-1),
-	"utilisateur": float64(-1),
-	"actions":     float64(-1),
-	"recherches":  float64(-1),
-	"fiches":      float64(-1),
-	"segment":     float64(-1),
 }
 
 func (a activiteParJourSelector) sql() string {
@@ -56,10 +47,10 @@ func newActiviteParJourSelector(from time.Time, to time.Time) activiteParJourSel
 
 func activitesJourSheetConfig() sheetConfig[activiteParJour] {
 	return anySheetConfig[activiteParJour]{
-		sheetName:      "activités par jour",
-		headersAndSize: activitesParJourHeaders,
-		startRow:       3,
-		asRow:          activiteParJoursToRow,
+		item:      activiteParJour{},
+		sheetName: "activités par jour",
+		startRow:  3,
+		asRow:     activiteParJoursToRow,
 	}
 }
 

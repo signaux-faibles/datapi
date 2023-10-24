@@ -12,21 +12,14 @@ import (
 var selectActiviteParUtilisateurSQL string
 
 type activiteParUtilisateur struct {
-	username string
-	actions  string
-	visites  string
-	segment  string
+	username string `col:"utilisateur" size:"42"`
+	actions  string `col:"actions" size:"8"`
+	visites  string `col:"visites" size:"8"`
+	segment  string `col:"segment" size:"16"`
 }
 
 type activiteParUtilisateurSelector struct {
 	from, to time.Time
-}
-
-var activitesParUtilisateurHeaders = map[any]float64{
-	"utilisateur": float64(-1),
-	"actions":     float64(-1),
-	"visites":     float64(-1),
-	"segment":     float64(-1),
 }
 
 func newActiviteParUtilisateurSelector(from time.Time, to time.Time) activiteParUtilisateurSelector {
@@ -52,10 +45,10 @@ func (a activiteParUtilisateurSelector) toItem(rows pgx.Rows) (activiteParUtilis
 
 func activitesUtilisateurSheetConfig() sheetConfig[activiteParUtilisateur] {
 	return anySheetConfig[activiteParUtilisateur]{
-		sheetName:      "activités par utilisateur",
-		headersAndSize: activitesParUtilisateurHeaders,
-		startRow:       3,
-		asRow:          activiteParUtilisateurToRow,
+		item:      activiteParUtilisateur{},
+		sheetName: "activités par utilisateur",
+		startRow:  3,
+		asRow:     activiteParUtilisateurToRow,
 	}
 }
 

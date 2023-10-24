@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"reflect"
 	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
-	"golang.org/x/exp/maps"
 )
 
 var headerStyle = excelize.Style{
@@ -48,24 +48,46 @@ func addSheet(f *excelize.File, sheetName string) (int, error) {
 
 type sheetConfig[A any] interface {
 	label() string
-	headers() map[any]float64
+	headers() []any
+	sizes() []float64
 	toRow(a A) []any
 	startAt() int
 }
 
 type anySheetConfig[A any] struct {
-	sheetName      string
-	headersAndSize map[any]float64
-	startRow       int
-	asRow          func(a A) []any
+	item      A
+	sheetName string
+	startRow  int
+	asRow     func(a A) []any
 }
 
 func (c anySheetConfig[A]) label() string {
 	return c.sheetName
 }
 
-func (c anySheetConfig[A]) headers() map[any]float64 {
-	return c.headersAndSize
+func (c anySheetConfig[A]) headers() []any {
+	structure := reflect.TypeOf(c.item)
+	headers := []any{}
+	for i := 0; i < structure.NumField(); i++ {
+		col := structure.Field(i).Tag.Get("col")
+		if col != "" {
+			headers = append(headers, col)
+		}
+	}
+	return headers
+}
+
+func (c anySheetConfig[A]) sizes() []float64 {
+	structure := reflect.TypeOf(c.item)
+	sizes := []float64{}
+	for i := 0; i < structure.NumField(); i++ {
+		size := structure.Field(i).Tag.Get("size")
+		if size != "" {
+			sizeF, _ := strconv.ParseFloat(size, 64)
+			sizes = append(sizes, float64(sizeF))
+		}
+	}
+	return sizes
 }
 
 func (c anySheetConfig[A]) toRow(a A) []any {
@@ -108,7 +130,7 @@ func writeOneSheetToExcel2[A any](
 }
 
 func writeHeaders[A any](xls *excelize.File, config sheetConfig[A]) error {
-	headers := maps.Keys(config.headers())
+	headers := config.headers()
 	err := writeRow(xls, config.label(), headers, 1)
 	if err != nil {
 		return errors.Wrap(err, "erreur pendant la récupération du nom de la cellule")
