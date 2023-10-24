@@ -11,4 +11,5 @@ SELECT username,
        count(path)             AS actions,
        segment
 FROM temp_logs
-GROUP BY username, segment;
+GROUP BY username, segment
+ORDER BY username;

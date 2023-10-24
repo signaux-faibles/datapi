@@ -50,4 +50,5 @@ SELECT u.jour,
        u.segment
 FROM stat_utilisateur u
        LEFT JOIN stat_recherches r ON u.username = r.username AND u.jour = r.jour
-       LEFT JOIN stat_fiches f ON u.username = f.username AND u.jour = f.jour;
+       LEFT JOIN stat_fiches f ON u.username = f.username AND u.jour = f.jour
+ORDER BY u.jour, u.username DESC;
