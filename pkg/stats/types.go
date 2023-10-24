@@ -15,7 +15,6 @@ type accessLog struct {
 	username string
 	segment  string
 	roles    []string
-	err      error
 }
 
 func (l accessLog) String() string {
