@@ -3,19 +3,9 @@ package stats
 import (
 	"sort"
 	"strings"
-	"time"
 )
 
 const accessLogDateLayout = "20060102150405"
-
-type accessLog struct {
-	date     time.Time
-	path     string
-	method   string
-	username string
-	segment  string
-	roles    []string
-}
 
 func (l accessLog) String() string {
 	return strings.Join(l.toStringArray(), ";")

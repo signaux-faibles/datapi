@@ -7,7 +7,6 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-	"golang.org/x/exp/maps"
 )
 
 func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
@@ -34,7 +33,7 @@ func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
 	require.True(t, rows.Next()) // il y a au moins la ligne des headers
 	headerValues, err := rows.Columns()
 	require.NoError(t, err)
-	assert.ElementsMatch(t, maps.Keys(sheetConf.headers()), headerValues)
+	assert.ElementsMatch(t, sheetConf.headers(), headerValues)
 
 	i := 1
 	for i < sheetConf.startAt() {
