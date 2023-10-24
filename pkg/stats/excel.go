@@ -151,34 +151,24 @@ func writeHeaders[A any](xls *excelize.File, config sheetConfig[A]) error {
 	if err != nil {
 		return errors.Wrap(err, "erreur pendant l'application du style de header'")
 	}
+
+	for i, size := range config.sizes() {
+		err := setColSize(xls, config.label(), i+1, size) // les colonnes en excel commencent à 1
+		if err != nil {
+			return errors.Wrap(err, "erreur pendant la mise à jour de la largeur de colonne")
+		}
+	}
 	return nil
 }
 
-//func writeOneSheetToExcel[A any](
-//	xls *excelize.File,
-//	sheetLabel string,
-//	itemsToWrite chan row[A],
-//	writer rowWriter[A],
-//) error {
-//	_, err := addSheet(xls, sheetLabel)
-//	if err != nil {
-//		return err
-//	}
-//	var row = 2
-//	if itemsToWrite != nil {
-//		for ligne := range itemsToWrite {
-//			if ligne.err != nil {
-//				return ligne.err
-//			}
-//			err := writer(xls, sheetLabel, ligne.value, row)
-//			if err != nil {
-//				return err
-//			}
-//			row++
-//		}
-//	}
-//	return nil
-//}
+func setColSize(xls *excelize.File, sheetName string, col int, size float64) error {
+	name, err := excelize.ColumnNumberToName(col)
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la récupération des coordonées")
+	}
+	err = xls.SetColWidth(sheetName, name, name, size)
+	return err
+}
 
 func writeString(f *excelize.File, sheetName string, value string, col, row int) error {
 	cell, err := excelize.CoordinatesToCellName(col, row)
