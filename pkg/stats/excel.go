@@ -1,36 +1,38 @@
 package stats
 
 import (
+	"fmt"
 	"io"
 	"log/slog"
 	"strconv"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/exp/maps"
 )
+
+var headerStyle = excelize.Style{
+	Border: []excelize.Border{{Type: "bottom",
+		Color: "000000",
+		Style: 2}},
+	Fill: excelize.Fill{Type: "gradient", Color: []string{"FFFFFF", "4E71BE"}, Shading: 10},
+	Font: nil,
+	Alignment: &excelize.Alignment{
+		Horizontal:  "center",
+		ShrinkToFit: true,
+		Vertical:    "justify",
+		WrapText:    false,
+	},
+	Protection:    nil,
+	NumFmt:        0,
+	DecimalPlaces: nil,
+	CustomNumFmt:  nil,
+	NegRed:        false,
+}
 
 func newExcel() *excelize.File {
 	return excelize.NewFile()
 }
-
-//func createSheet(f *excelize.File, sheetName string, index int) (string, error) {
-//	// Create a new sheet.
-//	originalName := f.GetSheetName(index)
-//	if originalName == "" {
-//		_, err := f.NewSheet(sheetName)
-//		if err != nil {
-//			return "", err
-//		}
-//		return sheetName, nil
-//	}
-//	err := f.SetSheetName(originalName, sheetName)
-//	if err != nil {
-//		return "", err
-//	}
-//	// f.SetActiveSheet(index)
-//	return sheetName, err
-//}
 
 func addSheet(f *excelize.File, sheetName string) (int, error) {
 	defaultSheetName := "Sheet1"
@@ -44,33 +46,117 @@ func addSheet(f *excelize.File, sheetName string) (int, error) {
 	return f.NewSheet(sheetName)
 }
 
+type sheetConfig[A any] interface {
+	label() string
+	headers() map[any]float64
+	toRow(a A) []any
+	startAt() int
+}
+
+type anySheetConfig[A any] struct {
+	sheetName      string
+	headersAndSize map[any]float64
+	startRow       int
+	asRow          func(a A) []any
+}
+
+func (c anySheetConfig[A]) label() string {
+	return c.sheetName
+}
+
+func (c anySheetConfig[A]) headers() map[any]float64 {
+	return c.headersAndSize
+}
+
+func (c anySheetConfig[A]) toRow(a A) []any {
+	return c.asRow(a)
+}
+
+func (c anySheetConfig[A]) startAt() int {
+	return c.startRow
+}
+
 type rowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row, row int) error
 
-func writeOneSheetToExcel[A any](
+func writeOneSheetToExcel2[A any](
 	xls *excelize.File,
-	sheetLabel string,
+	config sheetConfig[A],
 	itemsToWrite chan row[A],
-	writer rowWriter[A],
 ) error {
-	_, err := addSheet(xls, sheetLabel)
+	_, err := addSheet(xls, config.label())
 	if err != nil {
-		return err
+		return fmt.Errorf("erreur lors de l'ajout de la page `%s`: %w", config.label(), err)
 	}
-	var row = 1
+	err = writeHeaders(xls, config)
+	if err != nil {
+		return fmt.Errorf("erreur lors de l'écriture des headers : %w", err)
+	}
+	var rowIdx = config.startAt()
 	if itemsToWrite != nil {
 		for ligne := range itemsToWrite {
 			if ligne.err != nil {
 				return ligne.err
 			}
-			err := writer(xls, sheetLabel, ligne.value, row)
+			err := writeRow(xls, config.label(), config.toRow(ligne.value), rowIdx)
 			if err != nil {
 				return err
 			}
-			row++
+			rowIdx++
 		}
 	}
 	return nil
 }
+
+func writeHeaders[A any](xls *excelize.File, config sheetConfig[A]) error {
+	headers := maps.Keys(config.headers())
+	err := writeRow(xls, config.label(), headers, 1)
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la récupération du nom de la cellule")
+	}
+	//err = xls.SetRowOutlineLevel(config.label(), 1, 1)
+	//if err != nil {
+	//	return errors.Wrap(err, "erreur pendant la définition du niveau d'outline")
+	//}
+	err = xls.SetRowHeight(config.label(), 1, 32)
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la définition de la hauteur de colonne")
+	}
+	headerStyleID, err := xls.NewStyle(&headerStyle)
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la création du style de header")
+	}
+	err = xls.SetRowStyle(config.label(), 1, 1, headerStyleID)
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant l'application du style de header'")
+	}
+	return nil
+}
+
+//func writeOneSheetToExcel[A any](
+//	xls *excelize.File,
+//	sheetLabel string,
+//	itemsToWrite chan row[A],
+//	writer rowWriter[A],
+//) error {
+//	_, err := addSheet(xls, sheetLabel)
+//	if err != nil {
+//		return err
+//	}
+//	var row = 2
+//	if itemsToWrite != nil {
+//		for ligne := range itemsToWrite {
+//			if ligne.err != nil {
+//				return ligne.err
+//			}
+//			err := writer(xls, sheetLabel, ligne.value, row)
+//			if err != nil {
+//				return err
+//			}
+//			row++
+//		}
+//	}
+//	return nil
+//}
 
 func writeString(f *excelize.File, sheetName string, value string, col, row int) error {
 	cell, err := excelize.CoordinatesToCellName(col, row)
@@ -81,8 +167,16 @@ func writeString(f *excelize.File, sheetName string, value string, col, row int)
 	return err
 }
 
-func writeStrings(f *excelize.File, sheetName string, value []string, col, row int) error {
-	return writeString(f, sheetName, strings.Join(value, "; "), col, row)
+func writeRow(f *excelize.File, sheetName string, values []any, row int) error {
+	cell, err := excelize.CoordinatesToCellName(1, row)
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
+	}
+	err = f.SetSheetRow(sheetName, cell, &values)
+	if err != nil {
+		return fmt.Errorf("erreur pendant l'écriture de la ligne : %w", err)
+	}
+	return nil
 }
 
 func writeInt(f *excelize.File, sheetName string, value int, col, row int) error {

@@ -7,35 +7,18 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
-
-const accessLogTitle = "Access logs"
 
 //go:embed resources/sql/select_logs.sql
 var selectLogsSQL string
 
-func (ligne accessLog) toRow() *[]any {
-	return &[]any{
-		ligne.date.Format(time.DateTime),
-		ligne.path,
-		ligne.method,
-		ligne.username,
-		ligne.segment,
-		strings.Join(ligne.roles, "; "),
-	}
-}
-
-func writeOneAccessLogToExcel(f *excelize.File, sheetName string, ligne accessLog, row int) error {
-	cellName, err := excelize.CoordinatesToCellName(1, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant la récupération du nom de la cellule")
-	}
-	err = f.SetSheetRow(sheetName, cellName, ligne.toRow())
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture de la ligne'")
-	}
-	return nil
+var accessLogHeaders = map[any]float64{
+	"date":     float64(-1),
+	"chemin":   float64(-1),
+	"méthode":  float64(-1),
+	"username": float64(-1),
+	"segment":  float64(-1),
+	"rôle":     float64(-1),
 }
 
 type accessLogsSelector struct {
@@ -62,4 +45,24 @@ func (a accessLogsSelector) toItem(rows pgx.Rows) (accessLog, error) {
 		return accessLog{}, errors.Wrap(err, "erreur lors la création de l'objet")
 	}
 	return r, nil
+}
+
+func accessLogSheetConfig() sheetConfig[accessLog] {
+	return anySheetConfig[accessLog]{
+		sheetName:      "access logs",
+		headersAndSize: accessLogHeaders,
+		startRow:       3,
+		asRow:          toRow,
+	}
+}
+
+func toRow(ligne accessLog) []any {
+	return []any{
+		ligne.date.Format(time.DateTime),
+		ligne.path,
+		ligne.method,
+		ligne.username,
+		ligne.segment,
+		strings.Join(ligne.roles, "; "),
+	}
 }

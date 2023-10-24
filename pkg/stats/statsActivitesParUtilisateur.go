@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
 
 //go:embed resources/sql/select_activite_par_utilisateur.sql
@@ -21,6 +20,15 @@ type activiteParUtilisateur struct {
 
 type activiteParUtilisateurSelector struct {
 	from, to time.Time
+}
+
+var activitesParUtilisateurHeaders = map[any]float64{
+	"jour":        float64(-1),
+	"utilisateur": float64(-1),
+	"actions":     float64(-1),
+	"recherches":  float64(-1),
+	"fiches":      float64(-1),
+	"segment":     float64(-1),
 }
 
 func newActiviteParUtilisateurSelector(from time.Time, to time.Time) activiteParUtilisateurSelector {
@@ -44,22 +52,20 @@ func (a activiteParUtilisateurSelector) toItem(rows pgx.Rows) (activiteParUtilis
 	return r, nil
 }
 
-func writeOneActiviteUtilisateurToExcel(f *excelize.File, sheetName string, ligne activiteParUtilisateur, row int) error {
-	err := writeString(f, sheetName, ligne.username, 1, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du username")
+func activitesUtilisateurSheetConfig() sheetConfig[activiteParUtilisateur] {
+	return anySheetConfig[activiteParUtilisateur]{
+		sheetName:      "activités par utilisateur",
+		headersAndSize: activitesParUtilisateurHeaders,
+		startRow:       3,
+		asRow:          activiteParUtilisateurToRow,
 	}
-	err = writeString(f, sheetName, ligne.visites, 2, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre de visites")
+}
+
+func activiteParUtilisateurToRow(ligne activiteParUtilisateur) []any {
+	return []any{
+		ligne.username,
+		ligne.actions,
+		ligne.visites,
+		ligne.segment,
 	}
-	err = writeString(f, sheetName, ligne.actions, 3, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre d'actions")
-	}
-	err = writeString(f, sheetName, ligne.segment, 4, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre de segments")
-	}
-	return nil
 }
