@@ -4,19 +4,20 @@ import (
 	"log/slog"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 )
 
-func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
+func Test_write_statsAccessLogsSheet(t *testing.T) {
 	xls := newExcel()
-	first, items := createFakeActivitesChan(3, createFakeActiviteUtilisateur)
+	first, items := createFakeActivitesChan(3, createFakeAccessLog)
 
 	// écriture dans le fichier
 
-	sheetConf := activitesUtilisateurSheetConfig()
+	sheetConf := accessLogSheetConfig()
 	err := writeOneSheetToExcel2(xls, sheetConf, items)
 	require.NoError(t, err)
 
@@ -31,10 +32,10 @@ func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
 	rows, err := xls.Rows(sheetConf.label())
 	require.NoError(t, err)
 
-	require.True(t, rows.Next()) // il y a au moins la ligne des headers
+	require.True(t, rows.Next())
 	headerValues, err := rows.Columns()
 	require.NoError(t, err)
-	assert.ElementsMatch(t, maps.Keys(sheetConf.headers()), headerValues)
+	assert.ElementsMatch(t, maps.Keys(accessLogHeaders), headerValues)
 
 	i := 1
 	for i < sheetConf.startAt() {
@@ -44,4 +45,15 @@ func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
 	firstRowDataValues, err := rows.Columns()
 	require.NoError(t, err)
 	assert.ElementsMatch(t, sheetConf.toRow(first), firstRowDataValues)
+}
+
+func createFakeAccessLog() accessLog {
+	return accessLog{
+		date:     fakeTU.Time().TimeBetween(time.Now().AddDate(-3, 0, 0), time.Now()),
+		path:     fakeTU.Directory().Directory(fakeTU.IntBetween(1, 3)),
+		method:   fakeTU.Internet().HTTPMethod(),
+		username: fakeTU.Internet().User(),
+		segment:  fakeTU.RandomStringElement([]string{"bdf", "dgfip", "sf"}),
+		roles:    fakeTU.Lorem().Words(fakeTU.IntBetween(1, 99)),
+	}
 }

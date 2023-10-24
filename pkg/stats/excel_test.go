@@ -1,12 +1,14 @@
 package stats
 
 import (
+	"fmt"
 	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xuri/excelize/v2"
+	"golang.org/x/exp/maps"
 )
 
 func Test_addSheet(t *testing.T) {
@@ -25,27 +27,50 @@ func Test_addSheet(t *testing.T) {
 
 func Test_writeOneSheetToExcel(t *testing.T) {
 	xls := newExcel()
-	sheetName := fakeTU.Lorem().Sentence(3)
+	sheetName := fmt.Sprintf("%.25s", fakeTU.Lorem().Sentence(3))
 	item1 := fakeTU.Lorem().Word()
 	item2 := fakeTU.Lorem().Word()
 	itemsToWrite := createStringChannel(item1, item2)
-	err := writeOneSheetToExcel(xls, sheetName, itemsToWrite, stringWriter)
+	sheetConf := stringSheetConfig(sheetName)
+	err := writeOneSheetToExcel2(xls, sheetConf, itemsToWrite)
 	require.NoError(t, err)
 	assert.Len(t, xls.WorkBook.Sheets.Sheet, 1)
 	assert.Equal(t, xls.WorkBook.Sheets.Sheet[0].Name, sheetName)
 	assert.Contains(t, xls.GetSheetList(), sheetName)
 
-	name, err := excelize.CoordinatesToCellName(1, 1)
-	require.NoError(t, err)
-	actual, err := xls.GetCellValue(sheetName, name)
-	require.NoError(t, err)
-	assert.Equal(t, item1, actual)
+	// header
+	header := maps.Keys(sheetConf.headers())[0]
+	assertCellValue(t, xls, sheetName, 1, 1, header)
 
-	name, err = excelize.CoordinatesToCellName(1, 2)
+	// interligne
+	assertCellValue(t, xls, sheetName, 1, 2, "")
+
+	// value 1
+	assertCellValue(t, xls, sheetName, 1, 3, item1)
+
+	// value 2
+	assertCellValue(t, xls, sheetName, 1, 4, item2)
+}
+
+func assertCellValue(t *testing.T, xls *excelize.File, sheetName string, col, row int, expected any) {
+	cell, err := excelize.CoordinatesToCellName(col, row)
 	require.NoError(t, err)
-	actual, err = xls.GetCellValue(sheetName, name)
+	actual, err := xls.GetCellValue(sheetName, cell)
 	require.NoError(t, err)
-	assert.Equal(t, item2, actual)
+	assert.Equal(t, expected, actual)
+}
+
+func stringSheetConfig(label string) sheetConfig[string] {
+	header := map[any]float64{"value": float64(25)}
+	toRow := func(s string) []any {
+		return []any{s}
+	}
+	return anySheetConfig[string]{
+		sheetName:      label,
+		headersAndSize: header,
+		startRow:       3,
+		asRow:          toRow,
+	}
 }
 
 func Test_writeSheetToExcel(t *testing.T) {

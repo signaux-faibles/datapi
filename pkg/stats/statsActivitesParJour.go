@@ -6,7 +6,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
 
 //go:embed resources/sql/select_activite_par_jour.sql
@@ -19,11 +18,19 @@ type activiteParJour struct {
 	recherches int
 	fiches     int
 	segment    string
-	err        error
 }
 
 type activiteParJourSelector struct {
 	from, to time.Time
+}
+
+var activitesParJourHeaders = map[any]float64{
+	"jour":        float64(-1),
+	"utilisateur": float64(-1),
+	"actions":     float64(-1),
+	"recherches":  float64(-1),
+	"fiches":      float64(-1),
+	"segment":     float64(-1),
 }
 
 func (a activiteParJourSelector) sql() string {
@@ -47,52 +54,22 @@ func newActiviteParJourSelector(from time.Time, to time.Time) activiteParJourSel
 	return activiteParJourSelector{from: from.Truncate(day), to: to.Truncate(day)}
 }
 
-func writeOneActiviteJourToExcel(f *excelize.File, sheetName string, ligne activiteParJour, row int) error {
-	var i = 1
-	err := writeString(f, sheetName, ligne.jour.Format(time.DateOnly), i, row)
-	i++
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du jour")
+func activitesJourSheetConfig() sheetConfig[activiteParJour] {
+	return anySheetConfig[activiteParJour]{
+		sheetName:      "activités par jour",
+		headersAndSize: activitesParJourHeaders,
+		startRow:       3,
+		asRow:          activiteParJoursToRow,
 	}
-	err = writeString(f, sheetName, ligne.username, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nom de l'utilisateur")
-	}
-	i++
-	err = writeInt(f, sheetName, ligne.actions, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre d'actions")
-	}
-	i++
-	err = writeInt(f, sheetName, ligne.recherches, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre de recherches")
-	}
-	i++
-	err = writeInt(f, sheetName, ligne.fiches, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre de fiches")
-	}
-	i++
-	err = writeString(f, sheetName, ligne.segment, i, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'écriture du nombre de segments")
-	}
-	return nil
 }
 
-func writeActiviteJourHeaders(f *excelize.File, sheetName string) {
-	options := excelize.HeaderFooterOptions{
-		AlignWithMargins: true,
-		DifferentFirst:   false,
-		DifferentOddEven: true,
-		ScaleWithDoc:     false,
-		OddHeader:        "OH",
-		OddFooter:        "OF",
-		EvenHeader:       "EH",
-		EvenFooter:       "EF",
-		FirstHeader:      "FH",
-		FirstFooter:      "FF",
+func activiteParJoursToRow(ligne activiteParJour) []any {
+	return []any{
+		ligne.jour.Format(time.DateOnly),
+		ligne.username,
+		ligne.actions,
+		ligne.recherches,
+		ligne.fiches,
+		ligne.segment,
 	}
-	f.SetHeaderFooter(sheetName, &options)
 }
