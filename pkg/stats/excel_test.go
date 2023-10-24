@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/xuri/excelize/v2"
-	"golang.org/x/exp/maps"
 )
 
 func Test_addSheet(t *testing.T) {
@@ -31,7 +30,7 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 	item1 := fakeTU.Lorem().Word()
 	item2 := fakeTU.Lorem().Word()
 	itemsToWrite := createStringChannel(item1, item2)
-	sheetConf := stringSheetConfig(sheetName)
+	sheetConf := dummySheetConfig(sheetName)
 	err := writeOneSheetToExcel2(xls, sheetConf, itemsToWrite)
 	require.NoError(t, err)
 	assert.Len(t, xls.WorkBook.Sheets.Sheet, 1)
@@ -39,7 +38,7 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 	assert.Contains(t, xls.GetSheetList(), sheetName)
 
 	// header
-	header := maps.Keys(sheetConf.headers())[0]
+	header := sheetConf.headers()[0]
 	assertCellValue(t, xls, sheetName, 1, 1, header)
 
 	// interligne
@@ -60,16 +59,15 @@ func assertCellValue(t *testing.T, xls *excelize.File, sheetName string, col, ro
 	assert.Equal(t, expected, actual)
 }
 
-func stringSheetConfig(label string) sheetConfig[string] {
-	header := map[any]float64{"value": float64(25)}
-	toRow := func(s string) []any {
-		return []any{s}
+func dummySheetConfig(label string) sheetConfig[dummy] {
+	toRow := func(s dummy) []any {
+		return []any{s.value}
 	}
-	return anySheetConfig[string]{
-		sheetName:      label,
-		headersAndSize: header,
-		startRow:       3,
-		asRow:          toRow,
+	return anySheetConfig[dummy]{
+		item:      dummy{},
+		sheetName: label,
+		startRow:  3,
+		asRow:     toRow,
 	}
 }
 
@@ -87,8 +85,4 @@ func Test_writeSheetToExcel(t *testing.T) {
 
 	err = xls.Write(output)
 	require.NoError(t, err)
-}
-
-func stringWriter(f *excelize.File, name string, ligne string, r int) error {
-	return writeString(f, name, ligne, 1, r)
 }

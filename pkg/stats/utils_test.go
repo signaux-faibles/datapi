@@ -2,7 +2,6 @@ package stats
 
 import (
 	"strconv"
-	"time"
 
 	"github.com/jaswdr/faker"
 )
@@ -41,26 +40,16 @@ func createFakeActivitesChan[A any](activitiesNumber int, newActivite func() A) 
 	return activite, r
 }
 
-func createFakeActiviteJour() activiteParJour {
-	r := fakeTU.IntBetween(1, 99)
-	f := fakeTU.IntBetween(3, 99)
-	a := fakeTU.IntBetween(3, 99) + r + f
-	return activiteParJour{
-		jour:       fakeTU.Time().TimeBetween(time.Now().AddDate(0, -3, 0), time.Now()),
-		username:   fakeTU.RandomStringElement(usernames),
-		actions:    a,
-		recherches: r,
-		fiches:     f,
-		segment:    fakeTU.RandomStringElement(segments),
-	}
+type dummy struct {
+	value string `col:"valeur" size:"16"`
 }
 
-func createStringChannel(items ...string) chan row[string] {
-	r := make(chan row[string])
+func createStringChannel(items ...string) chan row[dummy] {
+	r := make(chan row[dummy])
 	go func() {
 		defer close(r)
 		for _, i := range items {
-			r <- newRow(i)
+			r <- newRow(dummy{i})
 		}
 	}()
 	return r

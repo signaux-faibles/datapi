@@ -12,13 +12,13 @@ import (
 //go:embed resources/sql/select_logs.sql
 var selectLogsSQL string
 
-var accessLogHeaders = map[any]float64{
-	"date":     float64(-1),
-	"chemin":   float64(-1),
-	"méthode":  float64(-1),
-	"username": float64(-1),
-	"segment":  float64(-1),
-	"rôle":     float64(-1),
+type accessLog struct {
+	date     time.Time `col:"date" size:"36"`
+	path     string    `col:"chemin" size:"36"`
+	method   string    `col:"méthode" size:"10"`
+	username string    `col:"utilisateur" size:"36"`
+	segment  string    `col:"segment" size:"24"`
+	roles    []string  `col:"rôles" size:"100"`
 }
 
 type accessLogsSelector struct {
@@ -49,10 +49,10 @@ func (a accessLogsSelector) toItem(rows pgx.Rows) (accessLog, error) {
 
 func accessLogSheetConfig() sheetConfig[accessLog] {
 	return anySheetConfig[accessLog]{
-		sheetName:      "access logs",
-		headersAndSize: accessLogHeaders,
-		startRow:       3,
-		asRow:          toRow,
+		item:      accessLog{},
+		sheetName: "access logs",
+		startRow:  3,
+		asRow:     toRow,
 	}
 }
 
