@@ -1,7 +1,6 @@
 package test
 
 import (
-	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -387,10 +386,10 @@ func Viperize(testConfig map[string]string) error {
 	return viper.ReadInConfig()
 }
 
-// ReadXlsInZip lit le fichier excel contenu dans un zip et retourne le nombre de ligne, la première ligne ou une erreur
-func ReadXlsInZip(data []byte) (int, []string, error) {
+// ReadXls lit le fichier excel contenu dans un zip et retourne le nombre de ligne, la première ligne ou une erreur
+func ReadXls(data []byte) (int, []string, error) {
 	// create and open a temporary file
-	f, err := os.CreateTemp(os.TempDir(), "stats_csv.zip")
+	f, err := os.CreateTemp(os.TempDir(), "stats.xlsx")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -398,21 +397,7 @@ func ReadXlsInZip(data []byte) (int, []string, error) {
 	// close and remove the temporary file at the end of the program
 	defer f.Close()
 	defer os.Remove(f.Name())
-	reader, err := zip.OpenReader(f.Name())
-	if err != nil {
-		return -1, nil, err
-	}
-	defer reader.Close()
-	files := reader.File
-	if len(files) != 1 {
-		return -1, nil, fmt.Errorf("trop ou pas assez de fichier dans le zip fourni : %s", f.Name())
-	}
-	xlsEntry := files[0]
-	xlsContent, err := xlsEntry.Open()
-	if err != nil {
-		return -1, nil, errors.Wrap(err, "erreur à l'ouverture du fichier xls")
-	}
-	xlsFile, err := excelize.OpenReader(xlsContent)
+	xlsFile, err := excelize.OpenReader(f)
 	if err != nil {
 		return -1, nil, errors.Wrap(err, "erreur à la lecture du fichier xls")
 	}
