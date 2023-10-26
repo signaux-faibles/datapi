@@ -31,7 +31,7 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 	item2 := fakeTU.Lorem().Word()
 	itemsToWrite := createStringChannel(item1, item2)
 	sheetConf := dummySheetConfig(sheetName)
-	err := writeOneSheetToExcel2(xls, sheetConf, itemsToWrite)
+	err := writeOneSheetToExcel(xls, sheetConf, itemsToWrite)
 	require.NoError(t, err)
 	assert.Len(t, xls.WorkBook.Sheets.Sheet, 1)
 	assert.Equal(t, xls.WorkBook.Sheets.Sheet[0].Name, sheetName)
