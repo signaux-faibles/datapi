@@ -21,7 +21,7 @@ func Test_write_statsAccessLogsSheet(t *testing.T) {
 	// écriture dans le fichier
 
 	sheetConf := accessLogSheetConfig()
-	err := writeOneSheetToExcel2(xls, sheetConf, items)
+	err := writeOneSheetToExcel(xls, sheetConf, items)
 	require.NoError(t, err)
 
 	// sauvegarde dans un fichier

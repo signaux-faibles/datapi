@@ -102,21 +102,19 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 			}
 		}()
 		// on écrit les données
-		err = writeOneSheetToExcel2(xls, accessLogSheetConfig(), accessLogs)
+		err = writeOneSheetToExcel(xls, accessLogSheetConfig(), accessLogs)
 		if err != nil {
 			logger.Error("erreur pendant l'écriture des accessLogs", slog.Any("error", err))
 			c.Status(http.StatusInternalServerError)
 			return false
 		}
-		err = writeOneSheetToExcel2(xls, activitesUtilisateurSheetConfig(), activitesUtilisateur)
-		//err = writeOneSheetToExcel(xls, "Activité par utilisateur", activitesUtilisateur, writeOneActiviteUtilisateurToExcel)
+		err = writeOneSheetToExcel(xls, activitesUtilisateurSheetConfig(), activitesUtilisateur)
 		if err != nil {
 			logger.Error("erreur pendant l'écriture des activités utilisateurs", slog.Any("error", err))
 			c.Status(http.StatusInternalServerError)
 			return false
 		}
-		err = writeOneSheetToExcel2(xls, activitesJourSheetConfig(), activitesJour)
-		//err = writeOneSheetToExcel(xls, "Activité par jour", activitesJour, writeOneActiviteJourToExcel)
+		err = writeOneSheetToExcel(xls, activitesJourSheetConfig(), activitesJour)
 		if err != nil {
 			logger.Error("erreur pendant l'écriture des activités jour", slog.Any("error", err))
 			c.Status(http.StatusInternalServerError)

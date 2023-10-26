@@ -98,28 +98,88 @@ func (c anySheetConfig[A]) startAt() int {
 	return c.startRow
 }
 
-type rowWriter[Row any] func(f *excelize.File, sheetName string, ligne Row, row int) error
-
-func writeOneSheetToExcel2[A any](
+func writeOneSheetToExcel[A any](
 	xls *excelize.File,
 	config sheetConfig[A],
 	itemsToWrite chan row[A],
 ) error {
-	_, err := addSheet(xls, config.label())
+	sheetName := config.label()
+	_, err := addSheet(xls, sheetName)
 	if err != nil {
-		return fmt.Errorf("erreur lors de l'ajout de la page `%s`: %w", config.label(), err)
+		return fmt.Errorf("erreur lors de l'ajout de la page `%s`: %w", sheetName, err)
 	}
-	err = writeHeaders(xls, config)
+
+	// ajoute les styles
+	headerStyleID, err := addStyle(xls, headerStyle)
 	if err != nil {
-		return fmt.Errorf("erreur lors de l'écriture des headers : %w", err)
+		return err
 	}
+
+	// prepare writing
+	writer, err := xls.NewStreamWriter(sheetName)
+	if err != nil {
+		return fmt.Errorf("erreur pendant la création du stream writer pour la page `%s`: %w", sheetName, err)
+	}
+	var flushError error
+	defer func() {
+		if flushError = writer.Flush(); flushError != nil {
+			slog.Error("erreur à la purge du writer", slog.Any("error", err), slog.String("page", sheetName))
+		}
+	}()
+
+	// configure la largeur des colonnes
+	err = configureColumns(writer, config.sizes())
+	if err != nil {
+		return fmt.Errorf("erreur pendant la configuration des colonnes pour la page `%s`: %w", sheetName, err)
+	}
+
+	// écrit les headers
+	err = writeHeaders(writer, config.headers(), headerStyleID)
+	if err != nil {
+		return err
+	}
+
+	// write rows
+	err = writeRows(writer, config, itemsToWrite)
+	if err != nil {
+		return fmt.Errorf("erreur pendant l'écriture des lignes pour la page `%s`: %w", sheetName, err)
+	}
+	return nil
+}
+
+func addStyle(xls *excelize.File, style excelize.Style) (int, error) {
+	styleID, err := xls.NewStyle(&style)
+	if err != nil {
+		return styleID, errors.Wrap(err, "erreur pendant l'ajout d'un style")
+	}
+	return styleID, nil
+}
+
+func writeHeaders(writer *excelize.StreamWriter, headers []any, style int) error {
+	headersRow := []interface{}{}
+	for _, header := range headers {
+		cell := excelize.Cell{
+			StyleID: style,
+			Value:   header,
+		}
+		headersRow = append(headersRow, cell)
+	}
+	err := writer.SetRow("A1", headersRow, excelize.RowOpts{Height: 45, Hidden: false})
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant l'ajout de la ligne des headers")
+	}
+	return nil
+}
+
+func writeRows[A any](writer *excelize.StreamWriter, config sheetConfig[A], itemsToWrite chan row[A]) error {
+	// write rows
 	var rowIdx = config.startAt()
 	if itemsToWrite != nil {
 		for ligne := range itemsToWrite {
 			if ligne.err != nil {
-				return ligne.err
+				return errors.Wrap(ligne.err, fmt.Sprint("erreur dans la ligne", rowIdx))
 			}
-			err := writeRow(xls, config.label(), config.toRow(ligne.value), rowIdx)
+			err := writeRow(writer, config.toRow(ligne.value), rowIdx)
 			if err != nil {
 				return err
 			}
@@ -129,70 +189,27 @@ func writeOneSheetToExcel2[A any](
 	return nil
 }
 
-func writeHeaders[A any](xls *excelize.File, config sheetConfig[A]) error {
-	headers := config.headers()
-	err := writeRow(xls, config.label(), headers, 1)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant la récupération du nom de la cellule")
-	}
-	//err = xls.SetRowOutlineLevel(config.label(), 1, 1)
-	//if err != nil {
-	//	return errors.Wrap(err, "erreur pendant la définition du niveau d'outline")
-	//}
-	err = xls.SetRowHeight(config.label(), 1, 32)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant la définition de la hauteur de colonne")
-	}
-	headerStyleID, err := xls.NewStyle(&headerStyle)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant la création du style de header")
-	}
-	err = xls.SetRowStyle(config.label(), 1, 1, headerStyleID)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant l'application du style de header'")
-	}
-
-	for i, size := range config.sizes() {
-		err := setColSize(xls, config.label(), i+1, size) // les colonnes en excel commencent à 1
+func configureColumns(writer *excelize.StreamWriter, widths []float64) error {
+	for i, width := range widths {
+		col := i + 1
+		err := writer.SetColWidth(col, col, width)
 		if err != nil {
-			return errors.Wrap(err, "erreur pendant la mise à jour de la largeur de colonne")
+			return fmt.Errorf("erreur pendant la configuration de la largeur de la colonne '%d' : %w", col, err)
 		}
 	}
 	return nil
 }
 
-func setColSize(xls *excelize.File, sheetName string, col int, size float64) error {
-	name, err := excelize.ColumnNumberToName(col)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant la récupération des coordonées")
-	}
-	err = xls.SetColWidth(sheetName, name, name, size)
-	return err
-}
-
-func writeString(f *excelize.File, sheetName string, value string, col, row int) error {
-	cell, err := excelize.CoordinatesToCellName(col, row)
-	if err != nil {
-		return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
-	}
-	err = f.SetCellStr(sheetName, cell, value)
-	return err
-}
-
-func writeRow(f *excelize.File, sheetName string, values []any, row int) error {
+func writeRow(f *excelize.StreamWriter, values []any, row int) error {
 	cell, err := excelize.CoordinatesToCellName(1, row)
 	if err != nil {
 		return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
 	}
-	err = f.SetSheetRow(sheetName, cell, &values)
+	err = f.SetRow(cell, values)
 	if err != nil {
 		return fmt.Errorf("erreur pendant l'écriture de la ligne : %w", err)
 	}
 	return nil
-}
-
-func writeInt(f *excelize.File, sheetName string, value int, col, row int) error {
-	return writeString(f, sheetName, strconv.Itoa(value), col, row)
 }
 
 func exportTo(output io.Writer, xlsx *excelize.File) error {
