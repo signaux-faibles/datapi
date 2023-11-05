@@ -92,7 +92,7 @@ type KanbanCard struct {
 	SwimlaneID        libwekan.SwimlaneID     `json:"swimlaneID,omitempty"`
 	URL               string                  `json:"url,omitempty"`
 	Description       string                  `json:"description,omitempty"`
-	AssigneeIDs       []libwekan.UserID       `json:"assigneesID,omitempty"`
+	AssigneeIDs       []libwekan.UserID       `json:"assigneeIDs,omitempty"`
 	MemberIDs         []libwekan.UserID       `json:"memberIDs,omitempty"`
 	CreatorID         libwekan.UserID         `json:"creatorID,omitempty"`
 	Creator           libwekan.Username       `json:"creator,omitempty"`
