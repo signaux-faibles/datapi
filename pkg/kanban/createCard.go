@@ -2,9 +2,11 @@ package kanban
 
 import (
 	"context"
+	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/signaux-faibles/libwekan"
 	"github.com/spf13/viper"
+	"slices"
 
 	"datapi/pkg/core"
 	"datapi/pkg/utils"
@@ -20,7 +22,7 @@ func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNe
 	if err != nil {
 		return err
 	}
-	list, err := getListWithBoardID(board.Board.ID, "A définir")
+	list, err := getListWithBoardID(board.Board.ID, 0)
 	if err != nil {
 		return err
 	}
@@ -76,7 +78,7 @@ func labelNameToIDConvertor(board libwekan.ConfigBoard) func(libwekan.BoardLabel
 	}
 }
 
-func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, error) {
+func getListWithBoardID(boardID libwekan.BoardID, rank int) (libwekan.List, error) {
 	wekanConfigMutex.Lock()
 	wc := WekanConfig.Copy()
 	wekanConfigMutex.Unlock()
@@ -85,12 +87,23 @@ func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, 
 	if !ok {
 		return libwekan.List{}, core.UnknownBoardError{BoardIdentifier: "id=" + string(boardID)}
 	}
+
+	var lists []libwekan.List
 	for _, list := range configBoard.Lists {
-		if list.Title == title {
-			return list, nil
-		}
+		lists = append(lists, list)
 	}
-	return libwekan.List{}, core.UnknownListError{ListIdentifier: "titre=" + title}
+	slices.SortFunc(lists, func(listA libwekan.List, listB libwekan.List) int {
+		if listA.Sort-listB.Sort > 0 {
+			return 1
+		} else {
+			return -1
+		}
+	})
+
+	if rank >= len(lists) {
+		return libwekan.List{}, core.UnknownListError{ListIdentifier: fmt.Sprint("rank=%d", rank)}
+	}
+	return lists[rank], nil
 }
 
 func getBoardWithSwimlaneID(swimlaneID libwekan.SwimlaneID) (libwekan.ConfigBoard, libwekan.Swimlane, error) {
