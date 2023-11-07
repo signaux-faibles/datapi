@@ -21,11 +21,12 @@ type KanbanService interface {
 	SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (KanbanExports, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
 	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error
-	PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
 	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
 	UpdateCard(ctx context.Context, cardID KanbanCard, description string, username libwekan.Username) error
+	JoinCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
+	PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser

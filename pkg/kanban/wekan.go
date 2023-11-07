@@ -104,9 +104,9 @@ func populateWekanConfigBoards(
 	return b
 }
 
-func populateDepartements(k core.KanbanConfig) map[core.CodeDepartement][]core.KanbanBoardSwimlane {
+func populateDepartements(kanbanConfig core.KanbanConfig) map[core.CodeDepartement][]core.KanbanBoardSwimlane {
 	kanbanDepartements := make(map[core.CodeDepartement][]core.KanbanBoardSwimlane)
-	for boardID, board := range k.Boards {
+	for boardID, board := range kanbanConfig.Boards {
 		for swimlaneID, swimlane := range board.Swimlanes {
 			zone := core.CodeDepartement(parseSwimlaneTitle(swimlane))
 			if _, ok := core.Departements[zone]; ok {

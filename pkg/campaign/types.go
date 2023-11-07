@@ -71,6 +71,7 @@ type CampaignEtablissement struct {
 	RaisonSocialeGroupe *string                 `json:"raisonSocialeGroupe,omitempty"`
 	Username            *string                 `json:"username,omitempty"`
 	CardID              *libwekan.CardID        `json:"cardID,omitempty"`
+	List                *string                 `json:"list,omitempty"`
 	Description         *string                 `json:"description,omitempty"`
 	Detail              *string                 `json:"detail,omitempty"`
 }
