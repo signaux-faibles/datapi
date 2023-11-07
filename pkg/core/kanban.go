@@ -20,14 +20,13 @@ type KanbanService interface {
 	ExportFollowsForUser(ctx context.Context, params KanbanSelectCardsForUserParams, db *pgxpool.Pool, roles []string) (KanbanExports, error)
 	SelectKanbanExportsWithSiret(ctx context.Context, siret string, username string, db *pgxpool.Pool, roles []string) (KanbanExports, error)
 	GetUser(username libwekan.Username) (libwekan.User, bool)
-	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username, assignees []libwekan.Username, db *pgxpool.Pool) (KanbanCard, error)
+	CreateCard(ctx context.Context, params KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error
 	UnarchiveCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
 	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
 	UpdateCard(ctx context.Context, cardID KanbanCard, description string, username libwekan.Username) error
-	JoinCard(ctx context.Context, cardID libwekan.CardID, username libwekan.User) error
-	PartCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error
-	MoveCardList(ctx context.Context, cardID libwekan.CardID, listID libwekan.ListID, user libwekan.User) error
+	JoinCard(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) error
+	PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
