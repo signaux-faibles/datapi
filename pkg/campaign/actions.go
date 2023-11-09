@@ -5,8 +5,8 @@ import (
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"errors"
+	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"strconv"
 )
@@ -27,6 +27,7 @@ func doAction(ctx context.Context,
 	row := dbConn.QueryRow(ctx, sqlActionMyEtablissement, ids.CampaignID,
 		ids.CampaignEtablissementID, username, zone, action.action, action.detail)
 	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
+	fmt.Println(err)
 	if campaignEtablissementActionID == nil || codeDepartement == nil {
 		return Message{}, TakeNotFoundError{err: errors.New("aucun id retourné par l'insert")}
 	} else if err != nil {
@@ -42,7 +43,7 @@ func doAction(ctx context.Context,
 	return message, nil
 }
 
-func actionHandlerFunc(actionLabel string, kanbanService core.KanbanService) func(ctx *gin.Context) {
+func actionHandlerFunc(action string) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		var s core.Session
 		s.Bind(ctx)
@@ -58,13 +59,13 @@ func actionHandlerFunc(actionLabel string, kanbanService core.KanbanService) fun
 
 		campaignID, err := strconv.Atoi(ctx.Param("campaignID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/`+actionLabel+`/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
 			return
 		}
 
 		campaignEtablissementID, err := strconv.Atoi(ctx.Param("campaignEtablissementID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/`+actionLabel+`/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
 			return
 		}
 
@@ -74,7 +75,7 @@ func actionHandlerFunc(actionLabel string, kanbanService core.KanbanService) fun
 		}
 
 		action := Action{
-			action: actionLabel,
+			action: action,
 			detail: params.Detail,
 		}
 
@@ -92,19 +93,9 @@ func actionHandlerFunc(actionLabel string, kanbanService core.KanbanService) fun
 			return
 		}
 
-		user, ok := kanbanService.GetUser(libwekan.Username(s.Username))
-		if !ok {
-			ctx.JSON(400, "nom d'utilisateur non présent dans la base")
-		}
-
 		if params.Effect != nil {
-			effect := buildEffect(*params.Effect, user, kanbanService, ids.CampaignEtablissementID)
-			err = effect.Do(ctx)
-			if err != nil {
-				stream.Message <- message
-				ctx.JSON(http.StatusOK, "partial ok")
-				return
-			}
+			effect := buildEffect(*params.Effect, CampaignEtablissementID(campaignEtablissementID))
+			effect.Do(ctx)
 		}
 
 		stream.Message <- message
