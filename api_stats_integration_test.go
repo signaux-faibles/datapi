@@ -6,6 +6,8 @@ import (
 	_ "embed"
 	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"testing"
 	"time"
 
@@ -32,7 +34,7 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	rows, first, err := test.ReadXls(body)
-	defer test.WriteFile(t.Name()+".xlsx", body)
+	defer test.WriteFile(filepath.Join(os.TempDir(), t.Name()+".xlsx"), body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
@@ -105,7 +107,7 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 
 	ass.Equal(http.StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
-	defer test.WriteFile(t.Name()+".zip", body)
+	defer test.WriteFile(filepath.Join(os.TempDir(), t.Name()+".xlsx"), body)
 	rows, first, err := test.ReadXls(body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier

@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync/atomic"
@@ -416,7 +417,7 @@ func Viperize(testConfig map[string]string) error {
 // ReadXls lit le fichier excel contenu dans un zip et retourne le nombre de ligne, la première ligne ou une erreur
 func ReadXls(data []byte) (int, []string, error) {
 	// create and open a temporary file
-	f, err := os.CreateTemp(os.TempDir(), "stats.xlsx")
+	f, err := os.CreateTemp(os.TempDir(), "stats_*.xlsx")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -454,6 +455,7 @@ func ReadXls(data []byte) (int, []string, error) {
 }
 
 func WriteFile(filename string, data []byte) {
+	slog.Info("ecriture du fichier", slog.String("filename", filename), slog.Int("length", len(data)))
 	if err := os.WriteFile(filename, data, 0600); err != nil {
 		log.Fatal(err)
 	}
