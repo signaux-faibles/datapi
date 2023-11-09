@@ -114,6 +114,10 @@ func writeOneSheetToExcel[A any](
 	if err != nil {
 		return err
 	}
+	err = setAutoFilter(xls, sheetName, config)
+	if err != nil {
+		return err
+	}
 
 	// prepare writing
 	writer, err := xls.NewStreamWriter(sheetName)
@@ -143,6 +147,19 @@ func writeOneSheetToExcel[A any](
 	err = writeRows(writer, config, itemsToWrite)
 	if err != nil {
 		return fmt.Errorf("erreur pendant l'écriture des lignes pour la page `%s`: %w", sheetName, err)
+	}
+	return flushError
+}
+
+func setAutoFilter[A any](xls *excelize.File, sheetName string, cf sheetConfig[A]) error {
+	var ops []excelize.AutoFilterOptions
+	name, err := excelize.CoordinatesToCellName(len(cf.headers()), cf.startAt())
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la configuration des auto filters (erreur de récupération de coordonnées)")
+	}
+	err = xls.AutoFilter(sheetName, "A1:"+name, ops)
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la configuration des auto filters")
 	}
 	return nil
 }
