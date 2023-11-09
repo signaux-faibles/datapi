@@ -40,11 +40,7 @@ func Test_write_statsAccessLogsSheet(t *testing.T) {
 	require.NoError(t, err)
 	assert.ElementsMatch(t, []string{"date", "chemin", "méthode", "utilisateur", "segment", "rôles"}, headerValues)
 
-	i := 1
-	for i < sheetConf.startAt() {
-		i++
-		require.True(t, rows.Next())
-	}
+	require.True(t, rows.Next())
 	firstRowDataValues, err := rows.Columns()
 	require.NoError(t, err)
 	assert.ElementsMatch(t, sheetConf.toRow(first), firstRowDataValues)

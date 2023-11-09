@@ -49,7 +49,6 @@ func activitesJourSheetConfig() sheetConfig[activiteParJour] {
 	return anySheetConfig[activiteParJour]{
 		item:      activiteParJour{},
 		sheetName: "activités par jour",
-		startRow:  3,
 		asRow:     activiteParJoursToRow,
 	}
 }
