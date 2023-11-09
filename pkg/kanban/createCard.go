@@ -13,11 +13,15 @@ import (
 )
 
 // CreateCard permet la création d'une carte dans la base de données wekan
-func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error {
+func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username, assignees []libwekan.Username, db *pgxpool.Pool) error {
 	user, ok := GetUser(username)
 	if !ok {
 		return core.ForbiddenError{Reason: "l'utilisateur n'est pas enregistré dans wekan"}
 	}
+	assigneesUsers := utils.Convert(assignees, func(username libwekan.Username) libwekan.User {
+		user, _ := GetUser(username)
+		return user
+	})
 	board, swimlane, err := getBoardWithSwimlaneID(params.SwimlaneID)
 	if err != nil {
 		return err
@@ -31,7 +35,7 @@ func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNe
 		return err
 	}
 
-	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, etablissement, params.Labels)
+	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, assigneesUsers, etablissement, params.Labels)
 	if err != nil {
 		return err
 	}
@@ -45,13 +49,14 @@ func buildCard(
 	description string,
 	siret core.Siret,
 	user libwekan.User,
+	assignees []libwekan.User,
 	etablissement core.EtablissementData,
 	labels []libwekan.BoardLabelName,
 ) (libwekan.Card, error) {
 	card := libwekan.BuildCard(configBoard.Board.ID, listID, swimlaneID, etablissement.RaisonSociale, description, user.ID)
 
 	// le créateur de la carte est assigné automatiquement
-	card.Assignees = []libwekan.UserID{user.ID}
+	card.Assignees = utils.Convert(assignees, func(user libwekan.User) libwekan.UserID { return user.ID })
 
 	activiteField := buildActiviteField(configBoard, etablissement.CodeActivite, etablissement.LibelleActivite)
 	effectifField := buildEffectifField(configBoard, etablissement.Effectif)
