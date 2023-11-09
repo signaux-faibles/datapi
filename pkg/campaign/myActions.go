@@ -83,6 +83,7 @@ func appendCardsToMyActions(ctx context.Context, myActions *MyActions, boards []
 		if card, ok := utils.First(cards, func(card core.KanbanCard) bool { return card.Siret == etablissement.Siret }); ok {
 			etablissement.CardID = &card.ID
 			etablissement.Description = &card.Description
+			etablissement.List = &card.ListTitle
 		}
 	}
 	return nil

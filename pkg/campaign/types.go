@@ -92,7 +92,8 @@ type TakenActions struct {
 }
 
 type actionParam struct {
-	Detail string `json:"detail"`
+	Detail string  `json:"detail"`
+	Effect *string `json:"effect"`
 }
 
 type Event struct {

@@ -93,6 +93,11 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 			return
 		}
 
+		if params.Effect != nil {
+			effect := buildEffect(*params.Effect, CampaignEtablissementID(campaignEtablissementID))
+			effect.Do(ctx)
+		}
+
 		stream.Message <- message
 		ctx.JSON(http.StatusOK, "ok")
 	}
