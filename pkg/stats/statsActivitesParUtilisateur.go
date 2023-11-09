@@ -47,7 +47,6 @@ func activitesUtilisateurSheetConfig() sheetConfig[activiteParUtilisateur] {
 	return anySheetConfig[activiteParUtilisateur]{
 		item:      activiteParUtilisateur{},
 		sheetName: "activités par utilisateur",
-		startRow:  3,
 		asRow:     activiteParUtilisateurToRow,
 	}
 }

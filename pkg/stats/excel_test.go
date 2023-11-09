@@ -1,7 +1,6 @@
 package stats
 
 import (
-	"fmt"
 	"os"
 	"testing"
 
@@ -26,7 +25,7 @@ func Test_addSheet(t *testing.T) {
 
 func Test_writeOneSheetToExcel(t *testing.T) {
 	xls := newExcel()
-	sheetName := fmt.Sprintf("%.25s", fakeTU.Lorem().Sentence(3))
+	sheetName := randomSheetName()
 	item1 := fakeTU.Lorem().Word()
 	item2 := fakeTU.Lorem().Word()
 	itemsToWrite := createStringChannel(item1, item2)
@@ -41,14 +40,11 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 	header := sheetConf.headers()[0]
 	assertCellValue(t, xls, sheetName, 1, 1, header)
 
-	// interligne
-	assertCellValue(t, xls, sheetName, 1, 2, "")
-
 	// value 1
-	assertCellValue(t, xls, sheetName, 1, 3, item1)
+	assertCellValue(t, xls, sheetName, 1, 2, item1)
 
 	// value 2
-	assertCellValue(t, xls, sheetName, 1, 4, item2)
+	assertCellValue(t, xls, sheetName, 1, 3, item2)
 }
 
 func assertCellValue(t *testing.T, xls *excelize.File, sheetName string, col, row int, expected any) {
@@ -66,7 +62,6 @@ func dummySheetConfig(label string) sheetConfig[dummy] {
 	return anySheetConfig[dummy]{
 		item:      dummy{},
 		sheetName: label,
-		startRow:  3,
 		asRow:     toRow,
 	}
 }
@@ -77,7 +72,7 @@ func Test_writeSheetToExcel(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("destination du fichier excel", output.Name())
 	xls := newExcel()
-	sheetName := fakeTU.Lorem().Sentence(3)
+	sheetName := randomSheetName()
 	_, err = addSheet(xls, sheetName)
 	require.NoError(t, err)
 	err = xls.SetSheetRow(sheetName, "B6", &[]interface{}{"1", nil, 2})
@@ -85,4 +80,12 @@ func Test_writeSheetToExcel(t *testing.T) {
 
 	err = xls.Write(output)
 	require.NoError(t, err)
+}
+
+func randomSheetName() string {
+	sentence := fakeTU.Lorem().Sentence(3)
+	if len(sentence) <= 31 {
+		return sentence
+	}
+	return sentence[:31]
 }

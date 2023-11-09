@@ -51,13 +51,11 @@ type sheetConfig[A any] interface {
 	headers() []any
 	sizes() []float64
 	toRow(a A) []any
-	startAt() int
 }
 
 type anySheetConfig[A any] struct {
 	item      A
 	sheetName string
-	startRow  int
 	asRow     func(a A) []any
 }
 
@@ -92,10 +90,6 @@ func (c anySheetConfig[A]) sizes() []float64 {
 
 func (c anySheetConfig[A]) toRow(a A) []any {
 	return c.asRow(a)
-}
-
-func (c anySheetConfig[A]) startAt() int {
-	return c.startRow
 }
 
 func writeOneSheetToExcel[A any](
@@ -153,7 +147,7 @@ func writeOneSheetToExcel[A any](
 
 func setAutoFilter[A any](xls *excelize.File, sheetName string, cf sheetConfig[A]) error {
 	var ops []excelize.AutoFilterOptions
-	name, err := excelize.CoordinatesToCellName(len(cf.headers()), cf.startAt())
+	name, err := excelize.CoordinatesToCellName(len(cf.headers()), 1)
 	if err != nil {
 		return errors.Wrap(err, "erreur pendant la configuration des auto filters (erreur de récupération de coordonnées)")
 	}
@@ -190,7 +184,7 @@ func writeHeaders(writer *excelize.StreamWriter, headers []any, style int) error
 
 func writeRows[A any](writer *excelize.StreamWriter, config sheetConfig[A], itemsToWrite chan row[A]) error {
 	// write rows
-	var rowIdx = config.startAt()
+	var rowIdx = 2 // le header est déjà écrit
 	if itemsToWrite != nil {
 		for ligne := range itemsToWrite {
 			if ligne.err != nil {
