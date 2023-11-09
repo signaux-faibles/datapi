@@ -51,7 +51,6 @@ func accessLogSheetConfig() sheetConfig[accessLog] {
 	return anySheetConfig[accessLog]{
 		item:      accessLog{},
 		sheetName: "access logs",
-		startRow:  3,
 		asRow:     toRow,
 	}
 }
