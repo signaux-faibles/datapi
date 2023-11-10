@@ -5,7 +5,6 @@ import (
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"net/http"
 	"strconv"
@@ -27,7 +26,6 @@ func doAction(ctx context.Context,
 	row := dbConn.QueryRow(ctx, sqlActionMyEtablissement, ids.CampaignID,
 		ids.CampaignEtablissementID, username, zone, action.action, action.detail)
 	err := row.Scan(&campaignEtablissementActionID, &codeDepartement)
-	fmt.Println(err)
 	if campaignEtablissementActionID == nil || codeDepartement == nil {
 		return Message{}, TakeNotFoundError{err: errors.New("aucun id retourné par l'insert")}
 	} else if err != nil {
@@ -43,7 +41,7 @@ func doAction(ctx context.Context,
 	return message, nil
 }
 
-func actionHandlerFunc(action string) func(ctx *gin.Context) {
+func actionHandlerFunc(actionLabel string) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		var s core.Session
 		s.Bind(ctx)
@@ -59,13 +57,13 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 
 		campaignID, err := strconv.Atoi(ctx.Param("campaignID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+actionLabel+`/:campaignID/:campaignEtablissementID: le parametre campaignID doit être un entier`)
 			return
 		}
 
 		campaignEtablissementID, err := strconv.Atoi(ctx.Param("campaignEtablissementID"))
 		if err != nil {
-			ctx.JSON(400, `/campaign/`+action+`/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
+			ctx.JSON(400, `/campaign/`+actionLabel+`/:campaignID/:campaignEtablissementID: le parametre campaignEtablissementID doit être un entier`)
 			return
 		}
 
@@ -75,7 +73,7 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 		}
 
 		action := Action{
-			action: action,
+			action: actionLabel,
 			detail: params.Detail,
 		}
 
@@ -95,7 +93,12 @@ func actionHandlerFunc(action string) func(ctx *gin.Context) {
 
 		if params.Effect != nil {
 			effect := buildEffect(*params.Effect, CampaignEtablissementID(campaignEtablissementID))
-			effect.Do(ctx)
+			err := effect.Do(ctx)
+			if err != nil {
+				stream.Message <- message
+				ctx.JSON(http.StatusOK, "partial ok")
+				return
+			}
 		}
 
 		stream.Message <- message

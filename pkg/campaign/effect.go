@@ -11,7 +11,7 @@ type CampaignEffect interface {
 
 func buildEffect(effect string, id CampaignEtablissementID) CampaignEffect {
 	switch effect {
-	case "FOLLOW":
+	case "follow":
 		{
 			return CampaignFollowEffect{
 				id: id,
@@ -32,6 +32,8 @@ type CampaignFollowEffect struct {
 }
 
 func (c CampaignFollowEffect) Do(ctx context.Context) error {
+	// On ajoute le participant à la carte
+	// Il en découle un accompagnement en cours
 	fmt.Println("Je fais le suivi %d", c.id)
 	return nil
 }
