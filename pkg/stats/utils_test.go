@@ -1,8 +1,6 @@
 package stats
 
 import (
-	"strconv"
-
 	"github.com/jaswdr/faker"
 )
 
@@ -61,8 +59,8 @@ func createFakeActiviteUtilisateur() activiteParUtilisateur {
 	actions = visites * fakeTU.IntBetween(1, 11)
 	return activiteParUtilisateur{
 		username: fakeTU.Internet().Email(),
-		actions:  strconv.Itoa(actions),
-		visites:  strconv.Itoa(visites),
+		actions:  actions,
+		visites:  visites,
 		segment:  fakeTU.RandomStringElement(segments),
 	}
 }

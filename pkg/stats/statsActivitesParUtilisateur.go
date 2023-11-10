@@ -13,8 +13,8 @@ var selectActiviteParUtilisateurSQL string
 
 type activiteParUtilisateur struct {
 	username string `col:"utilisateur" size:"42"`
-	actions  string `col:"actions" size:"8"`
-	visites  string `col:"visites" size:"8"`
+	actions  int    `col:"actions" size:"8"`
+	visites  int    `col:"visites" size:"8"`
 	segment  string `col:"segment" size:"16"`
 }
 

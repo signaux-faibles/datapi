@@ -12,6 +12,7 @@ import (
 	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -19,6 +20,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/require"
 	"github.com/xuri/excelize/v2"
 
 	"datapi/pkg/db"
@@ -438,4 +440,10 @@ func EraseAccessLogs(t *testing.T) {
 	if err != nil {
 		t.Errorf("erreur pendant la suppression des access logs : %v", err)
 	}
+}
+
+func ToInt(t *testing.T, value string) int {
+	number, err := strconv.Atoi(value)
+	require.NoError(t, err)
+	return number
 }
