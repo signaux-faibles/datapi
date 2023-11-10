@@ -2,7 +2,6 @@ package campaign
 
 import (
 	"context"
-	"fmt"
 )
 
 type CampaignEffect interface {
@@ -34,6 +33,5 @@ type CampaignFollowEffect struct {
 func (c CampaignFollowEffect) Do(ctx context.Context) error {
 	// On ajoute le participant à la carte
 	// Il en découle un accompagnement en cours
-	fmt.Println("Je fais le suivi %d", c.id)
 	return nil
 }
