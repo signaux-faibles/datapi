@@ -7,6 +7,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"datapi/pkg/test"
 )
 
 func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
@@ -22,7 +24,7 @@ func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
 	// sauvegarde dans un fichier
 	output, err := os.CreateTemp(os.TempDir(), t.Name()+"_*.xlsx")
 	require.NoError(t, err)
-	slog.Info("export du access log", slog.String("filename", output.Name()))
+	slog.Info("export de l'activité utilisateur", slog.String("filename", output.Name()))
 	err = xls.Write(output)
 	require.NoError(t, err)
 
@@ -38,5 +40,9 @@ func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
 	require.True(t, rows.Next())
 	firstRowDataValues, err := rows.Columns()
 	require.NoError(t, err)
-	assert.ElementsMatch(t, sheetConf.toRow(first), firstRowDataValues)
+	expected := sheetConf.toRow(first)
+	assert.Equal(t, expected[0], firstRowDataValues[0])
+	assert.Equal(t, expected[1], test.ToInt(t, firstRowDataValues[1]))
+	assert.Equal(t, expected[2], test.ToInt(t, firstRowDataValues[2]))
+	assert.Equal(t, expected[3], firstRowDataValues[3])
 }

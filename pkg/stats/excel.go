@@ -15,7 +15,7 @@ var headerStyle = excelize.Style{
 	Border: []excelize.Border{{Type: "bottom",
 		Color: "000000",
 		Style: 2}},
-	Fill: excelize.Fill{Type: "gradient", Color: []string{"FFFFFF", "4E71BE"}, Shading: 10},
+	Fill: excelize.Fill{Type: "pattern", Color: []string{"4E71BE"}, Pattern: 1},
 	Font: nil,
 	Alignment: &excelize.Alignment{
 		Horizontal:  "center",
