@@ -111,7 +111,7 @@ func unfollowEtablissement(c *gin.Context) {
 			c.JSON(500, err.Error())
 		}
 		for _, card := range cards {
-			err := Kanban.PartCard(c, card.ID, user.ID)
+			err := Kanban.PartCard(c, card.ID, user)
 			if err != nil {
 				c.JSON(500, err.Error())
 				return

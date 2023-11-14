@@ -25,8 +25,8 @@ type KanbanService interface {
 	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
 	UpdateCard(ctx context.Context, cardID KanbanCard, description string, username libwekan.Username) error
-	JoinCard(ctx context.Context, cardID libwekan.CardID, username libwekan.UserID) error
-	PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error
+	JoinCard(ctx context.Context, cardID libwekan.CardID, username libwekan.User) error
+	PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.User) error
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser

@@ -1,15 +1,15 @@
 package kanban
 
 import (
-    "context"
-    "time"
+	"context"
+	"time"
 
-    "github.com/jackc/pgx/v5/pgxpool"
-    "github.com/signaux-faibles/libwekan"
-    "go.mongodb.org/mongo-driver/bson"
+	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/signaux-faibles/libwekan"
+	"go.mongodb.org/mongo-driver/bson"
 
-    "datapi/pkg/core"
-    "datapi/pkg/utils"
+	"datapi/pkg/core"
+	"datapi/pkg/utils"
 )
 
 type Etablissements struct {
@@ -119,7 +119,6 @@ func buildMatchUserCardsStage(user libwekan.User) bson.M {
 		"$match": bson.M{
 			"$expr": bson.M{
 				"$or": bson.A{
-					bson.M{"$eq": bson.A{"$userId", user.ID}},
 					bson.M{"$in": bson.A{user.ID, "$members"}},
 					bson.M{"$in": bson.A{user.ID, "$assignees"}},
 				},
@@ -318,11 +317,6 @@ func (service wekanService) SelectFollowsForUser(ctx context.Context, params cor
 	// no-cards retourne les suivis datapi sans carte kanban
 	summaries, err := selectSummariesWithoutCard(ctx, sirets, db, params.User, roles, params.Zone, params.RaisonSociale)
 	return summaries, err
-}
-
-func (service wekanService) PartCard(ctx context.Context, cardID libwekan.CardID, userID libwekan.UserID) error {
-	_, err := wekan.EnsureMemberOutOfCard(ctx, cardID, userID)
-	return err
 }
 
 func addKanbanCardsToSummaries(summaries core.Summaries, cards []libwekan.CardWithComments, username libwekan.Username) {

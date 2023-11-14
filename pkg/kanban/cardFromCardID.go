@@ -9,11 +9,11 @@ import (
 
 func (service wekanService) SelectCardFromCardID(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) (core.KanbanCard, error) {
 	config := service.LoadConfigForUser(username)
-	wekanCard, err := wekan.GetCardFromID(ctx, cardID)
+	wekanCard, err := wekan.GetCardWithCommentsFromID(ctx, cardID)
 
 	boardIDs := utils.GetKeys(config.Boards)
-	if utils.Contains(boardIDs, wekanCard.BoardID) {
-		card := wekanCardToKanbanCard(username)(wekanCard)
+	if utils.Contains(boardIDs, wekanCard.Card.BoardID) {
+		card := wekanCardWithCommentsToKanbanCard(username)(wekanCard)
 		return card, err
 	}
 
