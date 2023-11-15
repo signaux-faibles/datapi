@@ -30,6 +30,14 @@ var headerStyle = excelize.Style{
 	NegRed:        false,
 }
 
+var dateOnlyStyle = excelize.Style{
+	NumFmt: 15,
+}
+
+var dateTimeStyle = excelize.Style{
+	NumFmt: 22,
+}
+
 func newExcel() *excelize.File {
 	return excelize.NewFile()
 }
@@ -48,7 +56,7 @@ func addSheet(f *excelize.File, sheetName string) (int, error) {
 
 type sheetConfig[A any] interface {
 	label() string
-	headers() []any
+	headers() ([]any, error)
 	sizes() []float64
 	toRow(a A) []any
 }
@@ -63,27 +71,30 @@ func (c anySheetConfig[A]) label() string {
 	return c.sheetName
 }
 
-func (c anySheetConfig[A]) headers() []any {
+func (c anySheetConfig[A]) headers() ([]any, error) {
 	structure := reflect.TypeOf(c.item)
 	headers := []any{}
 	for i := 0; i < structure.NumField(); i++ {
 		col := structure.Field(i).Tag.Get("col")
-		if col != "" {
-			headers = append(headers, col)
+		if col == "" {
+			return nil, errors.New("erreur pendant la génération des headers : le tag `col` n'est pas défini")
 		}
+		headers = append(headers, col)
 	}
-	return headers
+	return headers, nil
 }
 
 func (c anySheetConfig[A]) sizes() []float64 {
 	structure := reflect.TypeOf(c.item)
 	sizes := []float64{}
 	for i := 0; i < structure.NumField(); i++ {
-		size := structure.Field(i).Tag.Get("size")
-		if size != "" {
-			sizeF, _ := strconv.ParseFloat(size, 64)
-			sizes = append(sizes, float64(sizeF))
+		size := float64(24)
+		configuredSize := structure.Field(i).Tag.Get("size")
+		if configuredSize != "" {
+			sizeF, _ := strconv.ParseFloat(configuredSize, 64)
+			size = sizeF
 		}
+		sizes = append(sizes, size)
 	}
 	return sizes
 }
@@ -108,6 +119,16 @@ func writeOneSheetToExcel[A any](
 	if err != nil {
 		return err
 	}
+	//dateOnlyStyleID, err := addStyle(xls, dateOnlyStyle)
+	//if err != nil {
+	//  return err
+	//}
+	//dateTimeStyleID, err := addStyle(xls, dateTimeStyle)
+	//if err != nil {
+	//  return err
+	//}
+
+	// ajoute les auto filters
 	err = setAutoFilter(xls, sheetName, config)
 	if err != nil {
 		return err
@@ -132,7 +153,8 @@ func writeOneSheetToExcel[A any](
 	}
 
 	// écrit les headers
-	err = writeHeaders(writer, config.headers(), headerStyleID)
+	headers, err := config.headers()
+	err = writeHeaders(writer, headers, headerStyleID)
 	if err != nil {
 		return err
 	}
@@ -147,7 +169,11 @@ func writeOneSheetToExcel[A any](
 
 func setAutoFilter[A any](xls *excelize.File, sheetName string, cf sheetConfig[A]) error {
 	var ops []excelize.AutoFilterOptions
-	name, err := excelize.CoordinatesToCellName(len(cf.headers()), 1)
+	headers, err := cf.headers()
+	if err != nil {
+		return errors.Wrap(err, "erreur pendant la configuration des auto filters")
+	}
+	name, err := excelize.CoordinatesToCellName(len(headers), 1)
 	if err != nil {
 		return errors.Wrap(err, "erreur pendant la configuration des auto filters (erreur de récupération de coordonnées)")
 	}

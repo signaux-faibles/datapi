@@ -447,3 +447,10 @@ func ToInt(t *testing.T, value string) int {
 	require.NoError(t, err)
 	return number
 }
+
+func CreateTempExcelFile(t *testing.T, name string) *os.File {
+	output, err := os.CreateTemp(os.TempDir(), t.Name()+"_*.xls")
+	require.NoError(t, err)
+	t.Log("destination du fichier excel", output.Name())
+	return output
+}

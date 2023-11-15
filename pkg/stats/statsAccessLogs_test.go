@@ -43,7 +43,11 @@ func Test_write_statsAccessLogsSheet(t *testing.T) {
 	require.True(t, rows.Next())
 	firstRowDataValues, err := rows.Columns()
 	require.NoError(t, err)
-	assert.ElementsMatch(t, sheetConf.toRow(first), firstRowDataValues)
+
+	//
+	expected := sheetConf.toRow(first)
+	expected[0] = (expected[0].(time.Time)).Format(time.DateTime)
+	assert.ElementsMatch(t, expected, firstRowDataValues)
 }
 
 func createFakeAccessLog() accessLog {
