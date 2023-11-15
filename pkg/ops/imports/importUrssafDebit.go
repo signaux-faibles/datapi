@@ -22,7 +22,7 @@ type csvDebit struct {
 	dateTraitement               time.Time
 	partOuvriere                 float64
 	partPatronale                float64
-	numeroHistoriqueEcartNegatif string
+	numeroHistoriqueEcartNegatif int
 	etatCompte                   int
 	codeProcedureCollective      int
 	periode                      [2]time.Time
@@ -127,7 +127,7 @@ func parseDebit(line []string) (csvDebit, error) {
 	if err != nil {
 		return csvDebit{}, err
 	}
-	debit.numeroHistoriqueEcartNegatif = line[6]
+	debit.numeroHistoriqueEcartNegatif, err = strconv.Atoi(line[6])
 	debit.etatCompte, err = strconv.Atoi(line[7])
 	if err != nil {
 		return csvDebit{}, err
