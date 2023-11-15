@@ -3,16 +3,18 @@ package imports
 import (
 	"archive/zip"
 	"context"
-	"datapi/pkg/core"
-	"datapi/pkg/db"
 	"encoding/csv"
 	"fmt"
-	"github.com/jackc/pgx/v5"
-	"github.com/spf13/viper"
 	"io"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+	"github.com/spf13/viper"
+
+	"datapi/pkg/core"
+	"datapi/pkg/db"
 )
 
 type PaydexHisto struct {
@@ -217,14 +219,14 @@ func importPaydexHisto(ctx context.Context) error {
 
 func truncatePaydexTable(ctx context.Context) error {
 	conn := db.Get()
-	log.Println("truncating table")
+	slog.Info("truncating table")
 	sql := `truncate table entreprise_paydex;`
 	_, err := conn.Exec(ctx, sql)
 	return err
 }
 func dropEntreprisePaydexIndex(ctx context.Context) error {
 	conn := db.Get()
-	log.Println("dropping database index")
+	slog.Info("dropping database index")
 	sql := `drop index if exists idx_entreprise_paydex_siren;`
 	_, err := conn.Exec(ctx, sql)
 	return err
@@ -232,7 +234,7 @@ func dropEntreprisePaydexIndex(ctx context.Context) error {
 
 func createEntreprisePaydexIndex(ctx context.Context) error {
 	conn := db.Get()
-	log.Println("creating database index")
+	slog.Info("creating database index")
 	sql := `create index idx_entreprise_paydex_siren on entreprise_paydex (siren, date_valeur);`
 	_, err := conn.Exec(ctx, sql)
 	return err
@@ -277,7 +279,7 @@ func (c CopyFromPaydexHisto) Next() bool {
 			}
 			c.Increment()
 			if *c.Count%100000 == 0 {
-				log.Printf("%d paydexHisto objects copied\n", *c.Count)
+				slog.Info("paydexHisto objects copied", slog.Int("counter", *c.Count))
 			}
 		}
 		return ok

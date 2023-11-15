@@ -5,14 +5,15 @@ import (
 	"compress/gzip"
 	"context"
 	"errors"
-	"github.com/gin-gonic/gin"
-	"github.com/spf13/viper"
 	"io"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"strings"
 	"time"
+
+	"github.com/gin-gonic/gin"
+	"github.com/spf13/viper"
 )
 
 func importUrssafHandler(c *gin.Context) {
@@ -43,12 +44,12 @@ func runHandlers(ctx context.Context, reader *tar.Reader) error {
 			handler := selectHandler(header)
 			if handler != nil {
 				n, err := handler(ctx, reader)
-				log.Printf("%d lignes insérées", n)
+				slog.Info("lignes insérées", slog.Any("type", header.Name), slog.Any("number", n))
 				if err != nil {
 					return err
 				}
 			} else {
-				log.Printf("no handler for %s, skipping", header.Name)
+				slog.Info("pas de handler trouvé, on passe au suivant", slog.Any("type", header.Name))
 			}
 		}
 	}

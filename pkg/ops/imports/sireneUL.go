@@ -2,12 +2,14 @@ package imports
 
 import (
 	"context"
-	"datapi/pkg/db"
+	"log/slog"
+	"strings"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/signaux-faibles/goSirene"
 	"github.com/spf13/viper"
-	"log"
-	"strings"
+
+	"datapi/pkg/db"
 )
 
 // InsertSireneUL insère des trucs rapport aux sirene mais je sais pas trop quoi
@@ -43,7 +45,7 @@ func (c CopyFromSireneUL) Next() bool {
 			}
 			c.Increment()
 			if *c.Count%100000 == 0 {
-				log.Printf("%d sireneUL object copied\n", *c.Count)
+				slog.Info("sireneUL objects copied", slog.Int("counter", *c.Count))
 			}
 		}
 		return ok

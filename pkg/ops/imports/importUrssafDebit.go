@@ -3,14 +3,16 @@ package imports
 import (
 	"archive/tar"
 	"context"
-	"datapi/pkg/db"
 	_ "embed"
 	"encoding/csv"
-	"github.com/jackc/pgx/v5"
 	"io"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"datapi/pkg/db"
 )
 
 type csvDebit struct {
@@ -49,7 +51,7 @@ func (d csvDebit) Values() []interface{} {
 }
 
 func importDebit(ctx context.Context, reader *tar.Reader) (int64, error) {
-	log.Print("import des débits")
+	slog.Info("import des débits")
 	err := ensureTmpDebit(ctx)
 	if err != nil {
 		return 0, err

@@ -3,15 +3,17 @@ package imports
 import (
 	"archive/tar"
 	"context"
-	"datapi/pkg/db"
 	_ "embed"
 	"encoding/csv"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"io"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"datapi/pkg/db"
 )
 
 type csvEffectif struct {
@@ -32,7 +34,7 @@ func (d csvEffectif) Values() []interface{} {
 }
 
 func importEffectif(ctx context.Context, reader *tar.Reader) (int64, error) {
-	log.Print("import des effectifs")
+	slog.Info("import des effectifs")
 	err := ensureTmpEffectif(ctx)
 	if err != nil {
 		return 0, err

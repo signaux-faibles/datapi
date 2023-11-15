@@ -3,15 +3,17 @@ package imports
 import (
 	"archive/tar"
 	"context"
-	"datapi/pkg/db"
 	_ "embed"
 	"encoding/csv"
 	"fmt"
-	"github.com/jackc/pgx/v5"
 	"io"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"datapi/pkg/db"
 )
 
 type csvDelai struct {
@@ -47,7 +49,7 @@ func (d csvDelai) Values() []interface{} {
 }
 
 func importDelai(ctx context.Context, reader *tar.Reader) (int64, error) {
-	log.Print("import des délais")
+	slog.Info("import des délais")
 	err := ensureTmpDelai(ctx)
 	if err != nil {
 		return 0, err

@@ -2,13 +2,15 @@ package imports
 
 import (
 	"context"
-	"datapi/pkg/db"
+	"log/slog"
+	"os"
+	"strings"
+
 	"github.com/jackc/pgx/v5"
 	"github.com/signaux-faibles/goSirene"
 	"github.com/spf13/viper"
-	"log"
-	"os"
-	"strings"
+
+	"datapi/pkg/db"
 )
 
 func CreateEtablissementIndex(ctx context.Context) error {
@@ -66,7 +68,7 @@ func (c CopyFromGeoSirene) Next() bool {
 			}
 			c.Increment()
 			if *c.Count%100000 == 0 {
-				log.Printf("%d geoSirene object copied\n", *c.Count)
+				slog.Info("geoSirene objects copied", slog.Int("counter", *c.Count))
 			}
 		}
 		return ok

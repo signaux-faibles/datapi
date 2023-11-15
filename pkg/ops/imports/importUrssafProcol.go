@@ -3,13 +3,15 @@ package imports
 import (
 	"archive/tar"
 	"context"
-	"datapi/pkg/db"
 	_ "embed"
 	"encoding/csv"
-	"github.com/jackc/pgx/v5"
 	"io"
-	"log"
+	"log/slog"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"datapi/pkg/db"
 )
 
 type csvProcol struct {
@@ -30,7 +32,7 @@ func (d csvProcol) Values() []interface{} {
 }
 
 func importProcol(ctx context.Context, reader *tar.Reader) (int64, error) {
-	log.Print("import des Procol")
+	slog.Info("import des Procol")
 	err := ensureTmpProcol(ctx)
 	if err != nil {
 		return 0, err

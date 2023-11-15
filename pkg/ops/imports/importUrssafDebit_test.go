@@ -2,6 +2,8 @@ package imports
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"strings"
 	"testing"
 )
@@ -9,8 +11,9 @@ import (
 func Test_copyFromDebit(t *testing.T) {
 	// given
 	ass := assert.New(t)
-	tarReader, err := tarFileReader("tests/urssafTest.tar.gz")
-
+	tarPath := buildPath(t, "tests/urssafTest.tar.gz")
+	tarReader, err := tarFileReader(tarPath)
+	require.NoError(t, err)
 	for {
 		header, err := tarReader.Next()
 		ass.NoError(err)

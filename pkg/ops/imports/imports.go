@@ -7,7 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
+	"log/slog"
 	"math"
 	"net/http"
 	"os"
@@ -432,7 +432,7 @@ func importEtablissement() error {
 		}
 		return err
 	}
-	log.Print("preparing import (truncate tables)")
+	slog.Info("preparing import etablissements (truncate tables)")
 	err = prepareImport(&tx)
 	if err != nil {
 		if txErr := tx.Rollback(contexte); txErr != nil {
@@ -453,7 +453,11 @@ func importEtablissement() error {
 
 	etablissementFileConfigKey := "sourceEtablissement"
 	sourceEtablissement := viper.GetString(etablissementFileConfigKey)
-	log.Printf("integration du fichier etablissement '%s' (clé de configuration : '%s')", sourceEtablissement, etablissementFileConfigKey)
+	slog.Info(
+		"intégration du fichier établissement",
+		slog.String("filename", sourceEtablissement),
+		slog.String("configKey", etablissementFileConfigKey),
+	)
 	err = processEtablissement(sourceEtablissement, &tx)
 	if err != nil {
 		if txErr := tx.Rollback(contexte); txErr != nil {
@@ -461,11 +465,11 @@ func importEtablissement() error {
 		}
 		return err
 	}
-	log.Print("commiting changes to database")
+	slog.Info("commiting changes to database")
 	if txErr := tx.Commit(contexte); txErr != nil {
 		return txErr
 	}
-	log.Print("drop dead data")
+	slog.Info("drop dead data")
 	_, err = db.Get().Exec(contexte, "vacuum;")
 	if err != nil {
 		return err
@@ -519,7 +523,7 @@ func importEtablissement() error {
 func processEtablissement(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
 	if err != nil {
-		log.Printf("error opening file: %s", err.Error())
+		slog.Error("error opening file", slog.Any("error", err))
 		return err
 	}
 	defer file.Close()
@@ -713,13 +717,13 @@ func importUnitesLegales(ctx context.Context) error {
 	if viper.GetString("sireneULPath") == "" || viper.GetString("geoSirenePath") == "" {
 		return utils.NewJSONerror(http.StatusConflict, "not supported, missing parameters in server configuration")
 	}
-	log.Println("Truncate entreprise table")
+	slog.Info("Truncate entreprise table", slog.String("status", "start"))
 
 	err := TruncateEntreprise(ctx)
 	if err != nil {
 		return err
 	}
-	log.Println("Table truncated")
+	slog.Info("Truncate entreprise table", slog.String("status", "end"))
 
 	err = DropEntrepriseIndex(ctx)
 	if err != nil {
@@ -738,13 +742,13 @@ func importStockEtablissement(ctx context.Context) error {
 	if viper.GetString("geoSirenePath") == "" {
 		return utils.NewJSONerror(http.StatusConflict, "not supported, missing geoSirenePath parameters in server configuration")
 	}
-	log.Println("Truncate etablissement table")
+	slog.Info("Truncate etablissement table")
 	err := TruncateEtablissement()
 	if err != nil {
 		return err
 	}
 
-	log.Println("Drop etablissement table indexes")
+	slog.Info("Drop etablissement table indexes")
 	err = DropEtablissementIndex(ctx)
 	if err != nil {
 		return err
@@ -753,6 +757,6 @@ func importStockEtablissement(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	log.Println("Create etablissement table indexes")
+	slog.Info("Create etablissement table indexes")
 	return CreateEtablissementIndex(ctx)
 }

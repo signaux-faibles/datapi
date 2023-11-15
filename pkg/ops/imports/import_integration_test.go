@@ -3,7 +3,7 @@
 package imports
 
 import (
-	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"testing"
@@ -24,7 +24,7 @@ func TestMain(m *testing.M) {
 	testConfig["sourceEntreprise"] = "test/emptyJSON.gz"
 	testConfig["sourceEtablissement"] = "test/emptyJSON.gz"
 	if err := test.Viperize(testConfig); err != nil {
-		log.Fatalf("erreur pendant le chargement de la configuration ")
+		slog.Error("erreur pendant le chargement de la configuration ", slog.Any("error", err))
 	}
 
 	// Run tests

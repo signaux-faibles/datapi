@@ -2,6 +2,8 @@ package imports
 
 import (
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"strings"
 	"testing"
 	"time"
@@ -10,7 +12,9 @@ import (
 func Test_copyFromProcol(t *testing.T) {
 	// given
 	ass := assert.New(t)
-	tarReader, err := tarFileReader("tests/urssafTest.tar.gz")
+	abs := buildPath(t, "tests/urssafTest.tar.gz")
+	tarReader, err := tarFileReader(abs)
+	require.NoError(t, err)
 	for {
 		header, err := tarReader.Next()
 		ass.NoError(err)

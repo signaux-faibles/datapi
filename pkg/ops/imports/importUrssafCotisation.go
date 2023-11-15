@@ -3,14 +3,16 @@ package imports
 import (
 	"archive/tar"
 	"context"
-	"datapi/pkg/db"
 	_ "embed"
 	"encoding/csv"
-	"github.com/jackc/pgx/v5"
 	"io"
-	"log"
+	"log/slog"
 	"strconv"
 	"time"
+
+	"github.com/jackc/pgx/v5"
+
+	"datapi/pkg/db"
 )
 
 type csvCotisation struct {
@@ -34,7 +36,7 @@ func (d csvCotisation) Values() []interface{} {
 }
 
 func importCotisation(ctx context.Context, reader *tar.Reader) (int64, error) {
-	log.Print("import des cotisation")
+	slog.Info("import des cotisation")
 	err := ensureTmpCotisation(ctx)
 	if err != nil {
 		return 0, err
