@@ -35,7 +35,9 @@ func Test_write_writeActivitesUtilisateurToExcel(t *testing.T) {
 	require.True(t, rows.Next()) // il y a au moins la ligne des headers
 	headerValues, err := rows.Columns()
 	require.NoError(t, err)
-	assert.ElementsMatch(t, sheetConf.headers(), headerValues)
+	headers, err := sheetConf.headers()
+	require.NoError(t, err)
+	assert.ElementsMatch(t, headers, headerValues)
 
 	require.True(t, rows.Next())
 	firstRowDataValues, err := rows.Columns()

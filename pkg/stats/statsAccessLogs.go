@@ -57,7 +57,8 @@ func accessLogSheetConfig() sheetConfig[accessLog] {
 
 func toRow(ligne accessLog) []any {
 	return []any{
-		ligne.date.Format(time.DateTime),
+		//ligne.date.Format(time.DateTime),
+		ligne.date,
 		ligne.path,
 		ligne.method,
 		ligne.username,

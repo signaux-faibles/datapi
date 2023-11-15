@@ -1,6 +1,8 @@
 package stats
 
 import (
+	"time"
+
 	"github.com/jaswdr/faker"
 )
 
@@ -38,16 +40,19 @@ func createFakeActivitesChan[A any](activitiesNumber int, newActivite func() A) 
 	return activite, r
 }
 
-type dummy struct {
-	value string `col:"valeur" size:"16"`
+type testline struct {
+	valString  string    `col:"chaîne de caractères" size:"25"`
+	valDay     time.Time `col:"jour" size:"12"`
+	valInstant time.Time `col:"instant" size:"16"`
+	valInt     int       `col:"entier" size:"16"`
 }
 
-func createStringChannel(items ...string) chan row[dummy] {
-	r := make(chan row[dummy])
+func createTestChannel(items ...testline) chan row[testline] {
+	r := make(chan row[testline])
 	go func() {
 		defer close(r)
-		for _, i := range items {
-			r <- newRow(dummy{i})
+		for _, current := range items {
+			r <- newRow(current)
 		}
 	}()
 	return r
@@ -58,9 +63,25 @@ func createFakeActiviteUtilisateur() activiteParUtilisateur {
 	visites = fakeTU.IntBetween(1, 99)
 	actions = visites * fakeTU.IntBetween(1, 11)
 	return activiteParUtilisateur{
-		username: fakeTU.Internet().Email(),
+		username: fakeTU.RandomStringElement(usernames),
 		actions:  actions,
 		visites:  visites,
 		segment:  fakeTU.RandomStringElement(segments),
 	}
+}
+
+func createTestLine() testline {
+	now := time.Now()
+	t := fakeTU.Time().TimeBetween(now.AddDate(1, 0, 0), now)
+
+	return testline{
+		valString:  fakeTU.Lorem().Word(),
+		valDay:     truncateToDay(t),
+		valInstant: t,
+		valInt:     fakeTU.IntBetween(1, 999),
+	}
+}
+
+func truncateToDay(t time.Time) time.Time {
+	return time.Date(t.Year(), t.Month(), t.Day(), 0, 0, 0, 0, t.Location())
 }
