@@ -12,8 +12,7 @@ import (
 func Test_copyFromProcol(t *testing.T) {
 	// given
 	ass := assert.New(t)
-	abs := buildPath(t, "tests/urssafTest.tar.gz")
-	tarReader, err := tarFileReader(abs)
+	tarReader, err := tarFileReader("tests/urssafTest.tar.gz")
 	require.NoError(t, err)
 	for {
 		header, err := tarReader.Next()

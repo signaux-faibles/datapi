@@ -6,8 +6,8 @@ import (
 	"crypto/rand"
 	"fmt"
 	"log"
+	"log/slog"
 	"math/big"
-	"path/filepath"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -82,7 +82,7 @@ func GetDatapiLogDBURL() string {
 	if !found {
 		datapiLogDB = startDatapiDB()
 	} else {
-		log.Printf("le container %s a bien été retrouvé", datapiLogDB.Container.Name)
+		slog.Info("le container a bien été retrouvé", slog.String("name", datapiLogDB.Container.Name))
 	}
 	hostAndPort := datapiLogDB.GetHostPort("5432/tcp")
 	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiLogsDatabaseName)
@@ -103,12 +103,10 @@ func GetWekanDBURL() string {
 
 func startDatapiDB() *dockertest.Resource {
 	// configuration file for postgres
-	postgresConfig, err := filepath.Abs("test/postgresql.conf")
-	if err != nil {
-		log.Panicf("Could not get absolute path: %s", err)
-	}
+	postgresConfig := ProjectPathOf("test/postgresql.conf")
 	// sql dump to currentContext postgres data
-	sqlDump, _ := filepath.Abs("test/initDB")
+	sqlDump := ProjectPathOf("test/initDB")
+
 	// pulls an image, creates a container based on it and runs it
 	datapiContainerName := d.containerNames[datapiDBName]
 	log.Println("démarre le container datapi-db avec le nom : ", datapiContainerName)
@@ -168,12 +166,22 @@ func startWekanDB() *dockertest.Resource {
 	})
 	if err != nil {
 		killContainer(wekanDB)
-		log.Fatal("erreur pendant le démarrage du container", mongoContainerName, err)
+		slog.Error(
+			"erreur pendant le démarrage du container",
+			slog.String("container", mongoContainerName),
+			slog.Any("error", err),
+		)
+		panic(err)
 	}
 	// container stops after 60 seconds
 	if err = wekanDB.Expire(120); err != nil {
 		killContainer(wekanDB)
-		log.Fatal("erreur pendant la mise en expiration du container", mongoContainerName, err)
+		slog.Error(
+			"erreur pendant la mise en expiration du containe",
+			slog.String("container", mongoContainerName),
+			slog.Any("error", err),
+		)
+		panic(err)
 	}
 	return wekanDB
 }
@@ -200,9 +208,14 @@ func wait4PostgresIsReady(datapiDBUrl string) {
 		}
 		return pgConnexion.Ping(context.Background())
 	}); err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
+		slog.Error(
+			"erreur lors de la connexion au conteneur datapi",
+			slog.Any("error", err),
+			slog.String("url", datapiDBUrl),
+		)
+		panic(err)
 	}
-	log.Printf("la base de données à l'adresse %s est prête", datapiDBUrl)
+	slog.Info("la base de données est prête", slog.String("url", datapiDBUrl))
 }
 
 func getContainer(name containerName) (*dockertest.Resource, bool) {

@@ -12,7 +12,7 @@ import (
 func Test_copyFromCotisation(t *testing.T) {
 	// given
 	ass := assert.New(t)
-	tarPath := buildPath(t, "tests/urssafTest.tar.gz")
+	tarPath := "tests/urssafTest.tar.gz"
 	tarReader, err := tarFileReader(tarPath)
 	require.NoError(t, err)
 	for {

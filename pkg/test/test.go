@@ -2,18 +2,21 @@
 package test
 
 import (
-	"os"
-	"path"
+	"log/slog"
+	"path/filepath"
 	"runtime"
 )
 
-// cette fonction se lance dès que le package `test` est chargé
-// ainsi, dès qu'un test se lance, le répertoire de travail est `datapi`
+var projectPath string
+
 func init() {
-	_, filename, _, _ := runtime.Caller(0)
-	dir := path.Join(path.Dir(filename), "../..")
-	err := os.Chdir(dir)
-	if err != nil {
-		panic(err)
-	}
+	_, here, _, _ := runtime.Caller(0)
+	projectPath = filepath.Join(here, "..", "..", "..")
+	slog.Info("le chemin du projet est initialisé", slog.String("path", projectPath))
+}
+
+func ProjectPathOf(relativePath string) string {
+	ppath := filepath.Join(projectPath, relativePath)
+	slog.Debug("chemin de la resource de test", slog.String("path", ppath))
+	return ppath
 }

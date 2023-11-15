@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"sync/atomic"
@@ -402,11 +403,11 @@ type SearchVAF struct {
 
 // Viperize ajoute la map passée en paramètre dans la configuration Viper
 func Viperize(testConfig map[string]string) error {
-	log.Println("loading test config")
-	core.LoadConfig("test", "config", "migrations")
+	slog.Debug("loading test config")
+	core.LoadConfig(ProjectPathOf("test"), "config", ProjectPathOf("migrations"))
 
 	for k, v := range testConfig {
-		log.Printf("add to Viper %s : %s", k, v)
+		slog.Debug("add to Viper", slog.String("key", k), slog.String("value", v))
 		viper.Set(k, v)
 	}
 

@@ -5,12 +5,10 @@ package imports
 import (
 	"log/slog"
 	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"datapi/pkg/test"
 )
@@ -18,11 +16,11 @@ import (
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
 
 func TestMain(m *testing.M) {
-	testConfig := initTestConfig()
+	testConfig := map[string]string{}
 	url := test.GetDatapiDBURL()
 	testConfig["postgres"] = url
-	testConfig["sourceEntreprise"] = "test/emptyJSON.gz"
-	testConfig["sourceEtablissement"] = "test/emptyJSON.gz"
+	testConfig["sourceEntreprise"] = test.ProjectPathOf("test/emptyJSON.gz")
+	testConfig["sourceEtablissement"] = test.ProjectPathOf("test/emptyJSON.gz")
 	if err := test.Viperize(testConfig); err != nil {
 		slog.Error("erreur pendant le chargement de la configuration ", slog.Any("error", err))
 	}
@@ -38,16 +36,10 @@ func TestMain(m *testing.M) {
 
 func Test_importEntreprisesAndEtablissement(t *testing.T) {
 	test.FakeTime(t, tuTime)
-	ass := assert.New(t)
+	//ass := assert.New(t)
+	err := test.Viperize(nil)
+	require.NoError(t, err)
 	//net.ParseIP()
-	err := importEtablissement()
-	ass.Nil(err)
-}
-
-func initTestConfig() map[string]string {
-	root, _ := os.Getwd()
-	viper.AddConfigPath(filepath.Join(root, "test"))
-	testConfig := map[string]string{}
-	testConfig["migrationsDir"] = filepath.Join(root, "migrations")
-	return testConfig
+	err = importEtablissement()
+	require.NoError(t, err)
 }

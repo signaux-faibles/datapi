@@ -12,8 +12,7 @@ import (
 func Test_copyFromEffectif(t *testing.T) {
 	// given
 	ass := assert.New(t)
-	tarPath := buildPath(t, "tests/urssafTest.tar.gz")
-	tarReader, err := tarFileReader(tarPath)
+	tarReader, err := tarFileReader("tests/urssafTest.tar.gz")
 	require.NoError(t, err)
 	for {
 		header, err := tarReader.Next()
