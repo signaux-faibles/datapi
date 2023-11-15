@@ -262,7 +262,7 @@ func TestCopyFromGeoSirene(t *testing.T) {
 
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	cwd, _ := os.Getwd()
-	path := "test_StockEtablissement_utf8_geo.csv.gz"
+	path := "tests/test_StockEtablissement_utf8_geo.csv.gz"
 	if !strings.HasSuffix(cwd, "imports") {
 		path = "./pkg/ops/imports/" + path
 	}

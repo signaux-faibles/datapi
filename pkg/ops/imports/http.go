@@ -19,6 +19,7 @@ func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importListesHandler)
 	endpoint.GET("/bce", importBCEHandler)
 	endpoint.GET("/paydexhisto", importPaydexHistoHandler)
+	endpoint.GET("/urssaf", importUrssafHandler)
 }
 
 func importStockEtablissementsHandler(c *gin.Context) {

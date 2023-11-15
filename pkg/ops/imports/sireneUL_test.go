@@ -12,7 +12,7 @@ import (
 	"testing"
 )
 
-//go:embed test_expectedSireneUL.json
+//go:embed tests/test_expectedSireneUL.json
 var expectedSireneULJSON string
 
 func TestCopyFromSireneUL(t *testing.T) {
@@ -25,7 +25,7 @@ func TestCopyFromSireneUL(t *testing.T) {
 
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	cwd, _ := os.Getwd()
-	path := "test_StockUniteLegale_utf8.zip"
+	path := "tests/test_StockUniteLegale_utf8.zip"
 	if !strings.HasSuffix(cwd, "imports") {
 		path = "./pkg/ops/imports/" + path
 	}

@@ -54,7 +54,7 @@ var expected = []PaydexHisto{
 
 func getTestDataFilename() string {
 	cwd, _ := os.Getwd()
-	path := "test_histo_paydex.csv.zip"
+	path := "tests/test_histo_paydex.csv.zip"
 	if !strings.HasSuffix(cwd, "imports") {
 		path = "./pkg/ops/imports/" + path
 	}
