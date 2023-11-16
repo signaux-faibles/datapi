@@ -109,7 +109,7 @@ func startDatapiDB() *dockertest.Resource {
 
 	// pulls an image, creates a container based on it and runs it
 	datapiContainerName := d.containerNames[datapiDBName]
-	log.Println("démarre le container datapi-db avec le nom : ", datapiContainerName)
+	slog.Info("démarre le container datapi-db", slog.String("name", datapiContainerName))
 
 	datapiDB, err := currentPool().RunWithOptions(&dockertest.RunOptions{
 		Name:       datapiContainerName,

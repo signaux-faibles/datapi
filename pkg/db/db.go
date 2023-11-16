@@ -52,7 +52,7 @@ func Init() {
 		slog.Int("db", len(dbMigrations)),
 	)
 	if len(dbMigrations) < len(dirMigrations) {
-		slog.Info("démarre les nouvelles migrations", slog.Any("liste", updateMigrations))
+		slog.Info("démarre les nouvelles migrations", slog.Any("new", len(updateMigrations)))
 		runMigrations(updateMigrations, pool)
 	}
 
