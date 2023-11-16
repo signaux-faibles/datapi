@@ -3,11 +3,10 @@ package test
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"log"
-	"math/big"
-	"path/filepath"
+	"log/slog"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -31,12 +30,13 @@ var d *dockerContext
 var fake faker.Faker
 
 func init() {
-	fake = faker.New()
+	fake = NewFaker()
 	name := fake.Internet().User()
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.Panicf("Erreur lors de la connexion au pool Docker: %s", err)
+		slog.Error("Erreur lors de la connexion au pool Docker", slog.Any("error", err))
+		panic(err)
 	}
 	newContext := dockerContext{
 		pool: pool,
@@ -45,6 +45,10 @@ func init() {
 			wekanDBName:  "mongodb-ti-" + name,
 		},
 	}
+	slog.Info("crée un nouveau contexte Docker",
+		slog.String("datapiDBName", newContext.containerNames[datapiDBName]),
+		slog.String("wekanDBName", newContext.containerNames[wekanDBName]),
+	)
 	d = &newContext
 }
 
@@ -82,7 +86,7 @@ func GetDatapiLogDBURL() string {
 	if !found {
 		datapiLogDB = startDatapiDB()
 	} else {
-		log.Printf("le container %s a bien été retrouvé", datapiLogDB.Container.Name)
+		slog.Info("le container a bien été retrouvé", slog.String("name", datapiLogDB.Container.Name))
 	}
 	hostAndPort := datapiLogDB.GetHostPort("5432/tcp")
 	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiLogsDatabaseName)
@@ -103,15 +107,13 @@ func GetWekanDBURL() string {
 
 func startDatapiDB() *dockertest.Resource {
 	// configuration file for postgres
-	postgresConfig, err := filepath.Abs("test/postgresql.conf")
-	if err != nil {
-		log.Panicf("Could not get absolute path: %s", err)
-	}
+	postgresConfig := ProjectPathOf("test/postgresql.conf")
 	// sql dump to currentContext postgres data
-	sqlDump, _ := filepath.Abs("test/initDB")
+	sqlDump := ProjectPathOf("test/initDB")
+
 	// pulls an image, creates a container based on it and runs it
 	datapiContainerName := d.containerNames[datapiDBName]
-	log.Println("démarre le container datapi-db avec le nom : ", datapiContainerName)
+	slog.Info("démarre le container datapi-db", slog.String("name", datapiContainerName))
 
 	datapiDB, err := currentPool().RunWithOptions(&dockertest.RunOptions{
 		Name:       datapiContainerName,
@@ -135,12 +137,22 @@ func startDatapiDB() *dockertest.Resource {
 	})
 	if err != nil {
 		killContainer(datapiDB)
-		log.Fatal("Could not start datapi_db", err)
+		slog.Error(
+			"erreur pendant le démarrage du container",
+			slog.String("container", datapiContainerName),
+			slog.Any("error", err),
+		)
+		panic(err)
 	}
 	// container stops after 20'
 	if err = datapiDB.Expire(600); err != nil {
 		killContainer(datapiDB)
-		log.Fatal("Could not set expiration on container datapi_db", err)
+		slog.Error(
+			"erreur pendant la configuration de l'expiration du container",
+			slog.String("container", datapiContainerName),
+			slog.Any("error", err),
+		)
+		panic(err)
 	}
 	return datapiDB
 }
@@ -148,7 +160,7 @@ func startDatapiDB() *dockertest.Resource {
 func startWekanDB() *dockertest.Resource {
 	// pulls an image, creates a container based on it and runs it
 	mongoContainerName := d.containerNames[wekanDBName]
-	log.Println("démarre le container", mongoContainerName)
+	slog.Info("démarre le container wekan-db", slog.String("name", mongoContainerName))
 
 	wekanDB, err := currentPool().RunWithOptions(&dockertest.RunOptions{
 		Name:       mongoContainerName,
@@ -168,12 +180,22 @@ func startWekanDB() *dockertest.Resource {
 	})
 	if err != nil {
 		killContainer(wekanDB)
-		log.Fatal("erreur pendant le démarrage du container", mongoContainerName, err)
+		slog.Error(
+			"erreur pendant le démarrage du container",
+			slog.String("container", mongoContainerName),
+			slog.Any("error", err),
+		)
+		panic(err)
 	}
 	// container stops after 60 seconds
 	if err = wekanDB.Expire(120); err != nil {
 		killContainer(wekanDB)
-		log.Fatal("erreur pendant la mise en expiration du container", mongoContainerName, err)
+		slog.Error(
+			"erreur pendant la mise en expiration du containe",
+			slog.String("container", mongoContainerName),
+			slog.Any("error", err),
+		)
+		panic(err)
 	}
 	return wekanDB
 }
@@ -200,9 +222,14 @@ func wait4PostgresIsReady(datapiDBUrl string) {
 		}
 		return pgConnexion.Ping(context.Background())
 	}); err != nil {
-		log.Fatalf("Could not connect to docker: %s", err)
+		slog.Error(
+			"erreur lors de la connexion au conteneur datapi",
+			slog.Any("error", err),
+			slog.String("url", datapiDBUrl),
+		)
+		panic(err)
 	}
-	log.Printf("la base de données à l'adresse %s est prête", datapiDBUrl)
+	slog.Info("la base de données est prête", slog.String("url", datapiDBUrl))
 }
 
 func getContainer(name containerName) (*dockertest.Resource, bool) {
@@ -214,11 +241,7 @@ func currentPool() *dockertest.Pool {
 }
 
 func GenerateRandomAPIPort() string {
-	n, err := rand.Int(rand.Reader, big.NewInt(500))
-	n.Add(n, big.NewInt(30000))
-	if err != nil {
-		fmt.Println("erreur pendant la génération d'un nombre aléatoire : ", err)
-		return ""
-	}
-	return n.String()
+	port := fake.IntBetween(30000, 33000)
+	slog.Debug("nouveau port d'api", slog.Int("port", port))
+	return strconv.Itoa(port)
 }

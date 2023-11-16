@@ -19,7 +19,7 @@ import (
 
 func main() {
 	utils.InitLogger()
-	core.LoadConfig(".", "config", "./migrations")
+	utils.LoadConfig(".", "config", "./migrations")
 	if viper.GetBool("prod") {
 		gin.SetMode(gin.ReleaseMode)
 	}

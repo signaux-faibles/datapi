@@ -57,18 +57,6 @@ func PrepareDatapi(kanbanService KanbanService, saver AccessLogSaver) (*Datapi, 
 	return &datapi, nil
 }
 
-// LoadConfig charge la config toml
-func LoadConfig(confDirectory, confFile, migrationDir string) {
-	viper.SetDefault("migrationsDir", migrationDir)
-	viper.SetConfigName(confFile)
-	viper.SetConfigType("toml")
-	viper.AddConfigPath(confDirectory)
-	err := viper.ReadInConfig()
-	if err != nil {
-		panic(err)
-	}
-}
-
 // InitAPI initialise l'api
 func (datapi *Datapi) InitAPI(router *gin.Engine) {
 	config := cors.DefaultConfig()

@@ -1,9 +1,11 @@
 package utils
 
 import (
+	"math/rand"
 	"net"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/jaswdr/faker"
 )
@@ -14,7 +16,7 @@ const loopbackIPv6 = "::1"
 var fake faker.Faker
 
 func init() {
-	fake = faker.New()
+	fake = faker.NewWithSeed(rand.NewSource(time.Now().UnixMicro()))
 	ConfigureLogLevel("debug")
 }
 

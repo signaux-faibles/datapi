@@ -12,14 +12,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
 
 	"datapi/pkg/core"
 	"datapi/pkg/test"
 )
 
-var fake faker.Faker
+var fake = test.NewFaker()
 
 //go:embed resources/tests/token
 var realtoken string
@@ -27,10 +26,6 @@ var realtoken string
 var logSaver *PostgresLogSaver
 var statsDB StatsDB
 var api *API
-
-func init() {
-	fake = faker.New()
-}
 
 func TestMain(m *testing.M) {
 	var err error
