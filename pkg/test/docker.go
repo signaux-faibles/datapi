@@ -34,9 +34,11 @@ func init() {
 	fake = faker.New()
 	name := fake.Internet().User()
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
+	slog.Info("Démarre un nouveau pool Docker")
 	pool, err := dockertest.NewPool("")
 	if err != nil {
-		log.Panicf("Erreur lors de la connexion au pool Docker: %s", err)
+		slog.Error("Erreur lors de la connexion au pool Docker", slog.Any("error", err))
+		panic(err)
 	}
 	newContext := dockerContext{
 		pool: pool,
@@ -132,6 +134,13 @@ func startDatapiDB() *dockertest.Resource {
 		}
 	})
 	if err != nil {
+		if err.Error() == "container already exists" {
+			container, found := getContainer(datapiDBName)
+			slog.Warn("le conteneur existe déjà", slog.Bool("found", found))
+			if found {
+				return container
+			}
+		}
 		killContainer(datapiDB)
 		slog.Error(
 			"erreur pendant le démarrage du container",
@@ -156,7 +165,7 @@ func startDatapiDB() *dockertest.Resource {
 func startWekanDB() *dockertest.Resource {
 	// pulls an image, creates a container based on it and runs it
 	mongoContainerName := d.containerNames[wekanDBName]
-	log.Println("démarre le container", mongoContainerName)
+	slog.Info("démarre le container wekan-db", slog.String("name", mongoContainerName))
 
 	wekanDB, err := currentPool().RunWithOptions(&dockertest.RunOptions{
 		Name:       mongoContainerName,
