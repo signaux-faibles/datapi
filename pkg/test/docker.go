@@ -58,7 +58,7 @@ func GetDatapiDBURL() string {
 	if !found {
 		datapiDB = startDatapiDB()
 	} else {
-		log.Printf("le container %s a bien été retrouvé", datapiDB.Container.Name)
+		slog.Info("le container datapi-db a bien été retrouvé", slog.String("name", datapiDB.Container.Name))
 	}
 	hostAndPort := datapiDB.GetHostPort("5432/tcp")
 	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiDatabaseName)
@@ -68,25 +68,11 @@ func GetDatapiDBURL() string {
 
 // GetDatapiLogsDBURL démarre si nécessaire un container postgres et retourne l'URL pour y accéder
 func GetDatapiLogsDBURL() string {
-	datapiDB, found := getContainer(datapiDBName)
-	if !found {
-		datapiDB = startDatapiDB()
-	}
-	hostAndPort := datapiDB.GetHostPort("5432/tcp")
-	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiLogsDatabaseName)
-	if !found {
-		wait4PostgresIsReady(dbURL)
-	}
-	return dbURL
-}
-
-// GetDatapiLogDBURL démarre si nécessaire un container postgres et retourne l'URL pour y accéder
-func GetDatapiLogDBURL() string {
 	datapiLogDB, found := getContainer(datapiDBName)
 	if !found {
 		datapiLogDB = startDatapiDB()
 	} else {
-		slog.Info("le container a bien été retrouvé", slog.String("name", datapiLogDB.Container.Name))
+		slog.Info("le container datapilog-db a bien été retrouvé", slog.String("name", datapiLogDB.Container.Name))
 	}
 	hostAndPort := datapiLogDB.GetHostPort("5432/tcp")
 	dbURL := fmt.Sprintf("postgres://postgres:test@%s/%s?sslmode=disable", hostAndPort, DatapiLogsDatabaseName)
@@ -99,6 +85,8 @@ func GetWekanDBURL() string {
 	wekanDB, found := getContainer(wekanDBName)
 	if !found {
 		wekanDB = startWekanDB()
+	} else {
+		slog.Info("le container wekan-db a bien été retrouvé", slog.String("name", wekanDB.Container.Name))
 	}
 	hostAndPort := wekanDB.GetHostPort("27017/tcp")
 	url := fmt.Sprintf("mongodb://mgo:test@%s/", hostAndPort)

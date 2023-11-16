@@ -31,7 +31,7 @@ func TestMain(m *testing.M) {
 	var err error
 	testConfig := map[string]string{}
 	testConfig["postgres"] = test.GetDatapiDBURL()
-	testConfig["logs.db_url"] = test.GetDatapiLogDBURL()
+	testConfig["logs.db_url"] = test.GetDatapiLogsDBURL()
 
 	err = test.Viperize(testConfig)
 	if err != nil {
@@ -39,7 +39,7 @@ func TestMain(m *testing.M) {
 	}
 
 	background := context.Background()
-	pool, err := pgxpool.New(background, test.GetDatapiLogDBURL())
+	pool, err := pgxpool.New(background, test.GetDatapiLogsDBURL())
 	if err != nil {
 		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
 	}

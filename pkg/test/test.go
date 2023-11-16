@@ -32,7 +32,7 @@ func NewFaker() faker.Faker {
 	lock.Lock()
 	defer lock.Unlock()
 	seed := time.Now().UnixMicro()
-	slog.Info("crée un nouveau faker", slog.Any("seed", seed), slog.Int("pid", os.Getpid()))
+	slog.Debug("crée un nouveau faker", slog.Any("seed", seed), slog.Int("pid", os.Getpid()))
 	source := rand.NewSource(seed)
 	f := faker.NewWithSeed(source)
 	return f
