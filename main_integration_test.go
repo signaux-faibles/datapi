@@ -59,12 +59,12 @@ func TestMain(m *testing.M) {
 
 	// run datapi
 	kanbanService := kanban.InitService(ctx, wekanDBURL, "test", "mgo", "*")
-	logSaver, err := stats.NewPostgresLogSaverFromURL(ctx, test.GetDatapiLogDBURL())
+	logSaver, err := stats.NewPostgresLogSaverFromURL(ctx, test.GetDatapiLogsDBURL())
 	if err != nil {
 		log.Fatalf("erreur pendant la création du AccessLogSaver : %s", err)
 	}
 
-	statsAPI, err := stats.NewAPIFromConfiguration(ctx, test.GetDatapiLogDBURL())
+	statsAPI, err := stats.NewAPIFromConfiguration(ctx, test.GetDatapiLogsDBURL())
 
 	if err != nil {
 		log.Fatalf("erreur pendant la création de l'API Stats : %s", err)
