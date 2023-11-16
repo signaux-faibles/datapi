@@ -1,10 +1,14 @@
 package factory
 
 import (
-	"datapi/pkg/utils"
 	"github.com/gosimple/slug"
 	"github.com/signaux-faibles/libwekan"
+
+	"datapi/pkg/test"
+	"datapi/pkg/utils"
 )
+
+var fake = test.NewFaker()
 
 // OneWekanUser methode factory
 func OneWekanUser() libwekan.User {

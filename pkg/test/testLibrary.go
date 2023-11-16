@@ -21,8 +21,8 @@ import (
 	"github.com/pmezard/go-difflib/difflib"
 	"github.com/spf13/viper"
 
-	"datapi/pkg/core"
 	"datapi/pkg/db"
+	"datapi/pkg/utils"
 )
 
 var apiHostAndPort = atomic.Value{}
@@ -178,45 +178,17 @@ func HTTPGetAndFormatBody(t *testing.T, path string) (*http.Response, []byte, er
 	return resp, indented, err
 }
 
-// FollowEntreprise fonction qui suit un établissement de l'entreprise dont le siren est passé en argument
-func FollowEntreprise(t *testing.T, siren string) {
-	_, data, err := HTTPGetAndFormatBody(t, "/entreprise/get/"+siren)
-	if err != nil {
-		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
-	}
-	entreprise := JsonToEntreprise(t, data)
-	siret := entreprise.EtablissementsSummary[0].Siret
-	t.Logf("will follow etablissement with siret '%s for entreprise with siren '%s'", siret, siren)
-	FollowEtablissement(t, siret)
-}
-
-// FollowEtablissement fonction qui suit l'établissement dont le siret est passé en argument
-func FollowEtablissement(t *testing.T, siret string) {
-	params := map[string]interface{}{
-		"comment":  "test",
-		"category": "test",
-	}
-	resp := HTTPPost(t, "/follow/"+siret, params)
-	if resp.StatusCode != http.StatusCreated {
-		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
-	}
-	t.Logf("nouvel établissement suivi -> '%s'", siret)
-}
-
-// JsonToEntreprise fonction qui unmarshalle un json en Entreprise
-func JsonToEntreprise(t *testing.T, data []byte) core.Entreprise {
-	var entreprise core.Entreprise
-	err := json.Unmarshal(data, &entreprise)
+func FromJSON[A any](t *testing.T, data []byte, emptyItem A) A {
+	err := json.Unmarshal(data, &emptyItem)
 	if err != nil {
 		t.Fatalf("error when unmarshalling entreprise -> %s", err)
 	}
-	return entreprise
+	return emptyItem
 }
 
 func hostname() string {
 	val := apiHostAndPort.Load()
 	return fmt.Sprint(val)
-	//return os.Getenv("DATAPI_URL")
 }
 
 // SetHostAndPort pour renseigner l'url où sera déployée l'API
@@ -404,7 +376,7 @@ type SearchVAF struct {
 // Viperize ajoute la map passée en paramètre dans la configuration Viper
 func Viperize(testConfig map[string]string) error {
 	slog.Debug("loading test config")
-	core.LoadConfig(ProjectPathOf("test"), "config", ProjectPathOf("migrations"))
+	utils.LoadConfig(ProjectPathOf("test"), "config", ProjectPathOf("migrations"))
 
 	for k, v := range testConfig {
 		slog.Debug("add to Viper", slog.String("key", k), slog.String("value", v))

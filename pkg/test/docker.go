@@ -3,11 +3,10 @@ package test
 
 import (
 	"context"
-	"crypto/rand"
 	"fmt"
 	"log"
 	"log/slog"
-	"math/big"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -31,10 +30,9 @@ var d *dockerContext
 var fake faker.Faker
 
 func init() {
-	fake = faker.New()
+	fake = NewFaker()
 	name := fake.Internet().User()
 	// uses a sensible default on windows (tcp/http) and linux/osx (socket)
-	slog.Info("Démarre un nouveau pool Docker")
 	pool, err := dockertest.NewPool("")
 	if err != nil {
 		slog.Error("Erreur lors de la connexion au pool Docker", slog.Any("error", err))
@@ -47,6 +45,10 @@ func init() {
 			wekanDBName:  "mongodb-ti-" + name,
 		},
 	}
+	slog.Info("crée un nouveau contexte Docker",
+		slog.String("datapiDBName", newContext.containerNames[datapiDBName]),
+		slog.String("wekanDBName", newContext.containerNames[wekanDBName]),
+	)
 	d = &newContext
 }
 
@@ -134,13 +136,6 @@ func startDatapiDB() *dockertest.Resource {
 		}
 	})
 	if err != nil {
-		if err.Error() == "container already exists" {
-			container, found := getContainer(datapiDBName)
-			slog.Warn("le conteneur existe déjà", slog.Bool("found", found))
-			if found {
-				return container
-			}
-		}
 		killContainer(datapiDB)
 		slog.Error(
 			"erreur pendant le démarrage du container",
@@ -246,11 +241,7 @@ func currentPool() *dockertest.Pool {
 }
 
 func GenerateRandomAPIPort() string {
-	n, err := rand.Int(rand.Reader, big.NewInt(500))
-	n.Add(n, big.NewInt(30000))
-	if err != nil {
-		fmt.Println("erreur pendant la génération d'un nombre aléatoire : ", err)
-		return ""
-	}
-	return n.String()
+	port := fake.IntBetween(30000, 33000)
+	slog.Debug("nouveau port d'api", slog.Int("port", port))
+	return strconv.Itoa(port)
 }

@@ -3,19 +3,16 @@
 package main
 
 import (
-	"datapi/pkg/test"
-	"github.com/jaswdr/faker"
-	"github.com/spf13/viper"
-	"github.com/stretchr/testify/assert"
 	"net/http"
 	"testing"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/test"
 )
 
-var fake faker.Faker
-
-func init() {
-	fake = faker.New()
-}
+var fake = test.NewFaker()
 
 func TestApi_Wekan_endpoint(t *testing.T) {
 	someRoles := []string{fake.App().Name(), fake.App().Name(), fake.App().Name()}

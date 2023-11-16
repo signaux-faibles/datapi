@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -70,9 +69,4 @@ func extractAccessLogFrom(c *gin.Context) (AccessLog, error) {
 		Body:   body,
 		Token:  token[1],
 	}, nil
-}
-
-func PrintLogToStdout(message AccessLog) error {
-	log.Printf("%s", message)
-	return nil
 }

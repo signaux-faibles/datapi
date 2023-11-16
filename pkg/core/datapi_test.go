@@ -10,21 +10,17 @@ import (
 	"testing"
 
 	"github.com/gin-gonic/gin"
-	"github.com/jaswdr/faker"
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 
+	"datapi/pkg/test"
 	"datapi/pkg/utils"
 )
 
-var fake faker.Faker
+var fake = test.NewFaker()
 
 const loopbackIPv4 = "127.0.0.1"
 const loopbackIPv6 = "::1"
-
-func init() {
-	fake = faker.New()
-}
 
 func TestAdminAuthMiddleware_withoutWhitelist_acceptOnlyLoopback(t *testing.T) {
 	ass := assert.New(t)
