@@ -38,7 +38,7 @@ jobs:
       run: go test ./... -v
 
     - name: Integration Tests
-      run: go test -tags=integration ./... -parallel 1 -v
+      run: go test -tags=integration ./... -v
 
   container_datapi:
     name: Push Datapi container
