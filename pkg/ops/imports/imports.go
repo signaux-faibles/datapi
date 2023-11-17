@@ -603,7 +603,7 @@ type scoreFile struct {
 
 func importListes(algo string) error {
 
-	filename := viper.GetString("listPath")
+	filename := viper.GetString("source.listPath")
 	file, err := os.Open(filename)
 	if err != nil {
 		return errors.New("open file: " + err.Error())
@@ -710,7 +710,7 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 }
 
 func importUnitesLegales(ctx context.Context) error {
-	if viper.GetString("sireneULPath") == "" || viper.GetString("geoSirenePath") == "" {
+	if viper.GetString("source.sireneULPath") == "" || viper.GetString("source.geoSirenePath") == "" {
 		return utils.NewJSONerror(http.StatusConflict, "not supported, missing parameters in server configuration")
 	}
 	log.Println("Truncate entreprise table")
@@ -735,7 +735,7 @@ func importUnitesLegales(ctx context.Context) error {
 }
 
 func importStockEtablissement(ctx context.Context) error {
-	if viper.GetString("geoSirenePath") == "" {
+	if viper.GetString("source.geoSirenePath") == "" {
 		return utils.NewJSONerror(http.StatusConflict, "not supported, missing geoSirenePath parameters in server configuration")
 	}
 	log.Println("Truncate etablissement table")

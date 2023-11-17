@@ -452,7 +452,8 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
 		from etablissement_delai0 e
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and urssaf
-		where e.siret=any($3) or e.siren=any($4)
+		where (e.siret=any($3) or e.siren=any($4))
+        and stade != 'PRO PR'
 		order by e.siret, date_creation;`,
 		roles, username, e.Query.Sirets, e.Query.Sirens)
 
