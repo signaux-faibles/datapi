@@ -11,6 +11,7 @@ type CampaignEtablissementActionID int
 type Action struct {
 	action string
 	detail string
+	effect actionEffect
 }
 
 type CampaignID int
@@ -92,8 +93,14 @@ type TakenActions struct {
 }
 
 type actionParam struct {
-	Detail string  `json:"detail"`
-	Effect *string `json:"effect"`
+	Detail string        `json:"detail"`
+	Effect *actionEffect `json:"effect"`
+}
+
+type actionEffectType string
+type actionEffect struct {
+	Type   actionEffectType `json:"type"`
+	CardID libwekan.CardID  `json:"cardID"`
 }
 
 type Event struct {

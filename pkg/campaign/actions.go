@@ -6,6 +6,7 @@ import (
 	"datapi/pkg/db"
 	"errors"
 	"github.com/gin-gonic/gin"
+	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"strconv"
 )
@@ -41,7 +42,7 @@ func doAction(ctx context.Context,
 	return message, nil
 }
 
-func actionHandlerFunc(actionLabel string) func(ctx *gin.Context) {
+func actionHandlerFunc(actionLabel string, kanbanService core.KanbanService) func(ctx *gin.Context) {
 	return func(ctx *gin.Context) {
 		var s core.Session
 		s.Bind(ctx)
@@ -91,9 +92,14 @@ func actionHandlerFunc(actionLabel string) func(ctx *gin.Context) {
 			return
 		}
 
+		user, ok := kanbanService.GetUser(libwekan.Username(s.Username))
+		if !ok {
+			ctx.JSON(400, "nom d'utilisateur non présent dans la base")
+		}
+
 		if params.Effect != nil {
-			effect := buildEffect(*params.Effect, CampaignEtablissementID(campaignEtablissementID))
-			err := effect.Do(ctx)
+			effect := buildEffect(*params.Effect, user, kanbanService)
+			err = effect.Do(ctx)
 			if err != nil {
 				stream.Message <- message
 				ctx.JSON(http.StatusOK, "partial ok")

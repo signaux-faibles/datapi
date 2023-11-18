@@ -5,7 +5,6 @@ import (
 	"datapi/pkg/core"
 	"datapi/pkg/db"
 	"errors"
-	"fmt"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/signaux-faibles/libwekan"
@@ -45,8 +44,10 @@ func upsertCardHandler(kanbanService core.KanbanService) func(*gin.Context) {
 func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablissementID,
 	description string, kanbanService core.KanbanService, username libwekan.Username) (Message, error) {
 	pool := db.Get()
-	siret, wekanDomainRegexp, codeDepartement, campaignID := getCampaignEtablissement(ctx, campaignEtablissementID, pool)
-
+	siret, wekanDomainRegexp, codeDepartement, campaignID, err := getCampaignEtablissement(ctx, campaignEtablissementID, pool)
+	if err != nil {
+		return Message{}, err
+	}
 	config := kanbanService.LoadConfigForUser(username)
 	swimlane, err := selectSwimlane(config, wekanDomainRegexp, codeDepartement)
 	if err != nil {
@@ -85,21 +86,20 @@ func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablisseme
 	return message, err
 }
 
-func getCampaignEtablissement(ctx context.Context, campaignEtablissementID CampaignEtablissementID, pool *pgxpool.Pool) (core.Siret, *regexp.Regexp, core.CodeDepartement, CampaignID) {
+func getCampaignEtablissement(ctx context.Context, campaignEtablissementID CampaignEtablissementID, pool *pgxpool.Pool) (core.Siret, *regexp.Regexp, core.CodeDepartement, CampaignID, error) {
 	var siret core.Siret
 	var wekanDomainRegexpString string
 	var codeDepartement core.CodeDepartement
 	var campaignID CampaignID
 	err := pool.QueryRow(ctx, sqlSelectCampaignEtablissementID, campaignEtablissementID).Scan(&siret, &wekanDomainRegexpString, &codeDepartement, &campaignID)
 	if err != nil {
-		fmt.Println(err)
-		return "", nil, "", 0
+		return "", nil, "", 0, CampaignEtablissementNotFoundError{err}
 	}
 	wekanDomainRegexp, err := regexp.CompilePOSIX(wekanDomainRegexpString)
 	if err != nil {
-		return "", nil, "", 0
+		return "", nil, "", 0, CampaignEtablissementNotFoundError{err}
 	}
-	return siret, wekanDomainRegexp, codeDepartement, campaignID
+	return siret, wekanDomainRegexp, codeDepartement, campaignID, nil
 }
 
 func selectSwimlane(config core.KanbanConfig, wekanDomainRegexp *regexp.Regexp, codeDepartement core.CodeDepartement) (core.KanbanBoardSwimlane, error) {

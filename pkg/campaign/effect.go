@@ -2,22 +2,35 @@ package campaign
 
 import (
 	"context"
+	"datapi/pkg/core"
+	"github.com/signaux-faibles/libwekan"
 )
 
 type CampaignEffect interface {
 	Do(ctx context.Context) error
 }
 
-func buildEffect(effect string, id CampaignEtablissementID) CampaignEffect {
-	switch effect {
+func buildEffect(effect actionEffect, user libwekan.User, kanbanService core.KanbanService) CampaignEffect {
+	switch effect.Type {
 	case "follow":
-		{
-			return CampaignFollowEffect{
-				id: id,
-			}
+
+		return CampaignFollowEffect{
+			cardID:        effect.CardID,
+			user:          user,
+			kanbanService: kanbanService,
 		}
+
+	case "nofollow":
+
+		return CampaignNofollowEffect{
+			cardID:        effect.CardID,
+			user:          user,
+			kanbanService: kanbanService,
+		}
+
+	default:
+		return CampaignNilEffect{}
 	}
-	return CampaignNilEffect{}
 }
 
 type CampaignNilEffect struct{}
@@ -27,11 +40,47 @@ func (c CampaignNilEffect) Do(ctx context.Context) error {
 }
 
 type CampaignFollowEffect struct {
-	id CampaignEtablissementID
+	cardID        libwekan.CardID
+	user          libwekan.User
+	kanbanService core.KanbanService
 }
 
 func (c CampaignFollowEffect) Do(ctx context.Context) error {
-	// On ajoute le participant à la carte
-	// Il en découle un accompagnement en cours
+	if c.cardID != "" {
+		card, err := c.kanbanService.SelectCardFromCardID(ctx, c.cardID, c.user.Username)
+		if err != nil {
+			return err
+		}
+		err = c.kanbanService.JoinCard(ctx, card.ID, c.user)
+		if err != nil {
+			return err
+		}
+	}
 	return nil
+}
+
+type CampaignNofollowEffect struct {
+	cardID        libwekan.CardID
+	user          libwekan.User
+	kanbanService core.KanbanService
+}
+
+func (c CampaignNofollowEffect) Do(ctx context.Context) error {
+	card, err := c.kanbanService.SelectCardFromCardID(ctx, c.cardID, c.user.Username)
+	if err != nil {
+		return err
+	}
+	config := c.kanbanService.LoadConfigForUser(c.user.Username)
+	var listID libwekan.ListID
+	for id, list := range config.Boards[card.BoardID].Lists {
+		if list.Title == "Pas d'accompagnement" {
+			listID = id
+		}
+	}
+
+	if config.Boards[card.BoardID].Lists[card.ListID].Title == "Analyse en cours" && listID != "" {
+		return c.kanbanService.MoveCardList(ctx, card.ID, listID, c.user)
+	}
+
+	return libwekan.ListNotFoundError{}
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/signaux-faibles/libwekan"
 )
 
+// SelectCardFromCardID returns a KanbanCard object only if user is allowed to go on board
 func (service wekanService) SelectCardFromCardID(ctx context.Context, cardID libwekan.CardID, username libwekan.Username) (core.KanbanCard, error) {
 	config := service.LoadConfigForUser(username)
 	wekanCard, err := wekan.GetCardWithCommentsFromID(ctx, cardID)

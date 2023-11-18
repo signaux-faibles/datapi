@@ -5,7 +5,7 @@ import (
 	"github.com/signaux-faibles/libwekan"
 )
 
-func (ws wekanService) SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard {
+func (service wekanService) SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard {
 	return SelectBoardsForUser(username)
 }
 

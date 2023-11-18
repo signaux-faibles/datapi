@@ -80,3 +80,7 @@ func (service wekanService) PartCard(ctx context.Context, cardID libwekan.CardID
 	err = wekan.SetCardEndAt(ctx, cardID, &now)
 	return err
 }
+
+func (service wekanService) MoveCardList(ctx context.Context, cardID libwekan.CardID, listID libwekan.ListID, user libwekan.User) error {
+	return wekan.EnsureMoveCardList(ctx, cardID, listID, user.ID)
+}

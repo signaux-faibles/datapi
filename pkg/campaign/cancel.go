@@ -1,7 +1,10 @@
 package campaign
 
-import "github.com/gin-gonic/gin"
+import (
+	"datapi/pkg/core"
+	"github.com/gin-gonic/gin"
+)
 
-func cancelHandler(ctx *gin.Context) {
-	actionHandlerFunc("cancel")(ctx)
+func cancelHandler(ctx *gin.Context, kanbanService core.KanbanService) {
+	actionHandlerFunc("cancel", kanbanService)(ctx)
 }

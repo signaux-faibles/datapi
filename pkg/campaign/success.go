@@ -1,7 +1,10 @@
 package campaign
 
-import "github.com/gin-gonic/gin"
+import (
+	"datapi/pkg/core"
+	"github.com/gin-gonic/gin"
+)
 
-func successHandler(ctx *gin.Context) {
-	actionHandlerFunc("success")(ctx)
+func successHandler(ctx *gin.Context, kanbanService core.KanbanService) {
+	actionHandlerFunc("success", kanbanService)(ctx)
 }

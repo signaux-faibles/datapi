@@ -24,6 +24,18 @@ func (e CampaignNotFoundError) Unwrap() error {
 	return e.err
 }
 
+type CampaignEtablissementNotFoundError struct {
+	err error
+}
+
+func (e CampaignEtablissementNotFoundError) Error() string {
+	return "aucune campagne trouvée"
+}
+
+func (e CampaignEtablissementNotFoundError) Unwrap() error {
+	return e.err
+}
+
 type PendingNotFoundError struct {
 	err error
 }

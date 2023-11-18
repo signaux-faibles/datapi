@@ -7,9 +7,9 @@ import (
 	"github.com/signaux-faibles/libwekan"
 )
 
-func (s wekanService) UpdateCard(ctx context.Context, card core.KanbanCard,
+func (service wekanService) UpdateCard(ctx context.Context, card core.KanbanCard,
 	description string, username libwekan.Username) error {
-	boards := s.SelectBoardsForUsername(username)
+	boards := service.SelectBoardsForUsername(username)
 	boardIDs := utils.Convert(boards, func(board libwekan.ConfigBoard) libwekan.BoardID { return board.Board.ID })
 	if utils.Contains(boardIDs, card.BoardID) {
 		return wekan.UpdateCardDescription(ctx, card.ID, description)
