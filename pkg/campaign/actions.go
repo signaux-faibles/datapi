@@ -98,7 +98,7 @@ func actionHandlerFunc(actionLabel string, kanbanService core.KanbanService) fun
 		}
 
 		if params.Effect != nil {
-			effect := buildEffect(*params.Effect, user, kanbanService)
+			effect := buildEffect(*params.Effect, user, kanbanService, ids.CampaignEtablissementID)
 			err = effect.Do(ctx)
 			if err != nil {
 				stream.Message <- message

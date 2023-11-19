@@ -13,10 +13,10 @@ import (
 )
 
 // CreateCard permet la création d'une carte dans la base de données wekan
-func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username, assignees []libwekan.Username, db *pgxpool.Pool) error {
+func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username, assignees []libwekan.Username, db *pgxpool.Pool) (core.KanbanCard, error) {
 	user, ok := GetUser(username)
 	if !ok {
-		return core.ForbiddenError{Reason: "l'utilisateur n'est pas enregistré dans wekan"}
+		return core.KanbanCard{}, core.ForbiddenError{Reason: "l'utilisateur n'est pas enregistré dans wekan"}
 	}
 	assigneesUsers := utils.Convert(assignees, func(username libwekan.Username) libwekan.User {
 		user, _ := GetUser(username)
@@ -24,22 +24,23 @@ func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNe
 	})
 	board, swimlane, err := getBoardWithSwimlaneID(params.SwimlaneID)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
 	list, err := getListWithBoardID(board.Board.ID, 0)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
 	etablissement, err := getEtablissementDataFromDb(ctx, db, params.Siret)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
 
 	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, assigneesUsers, etablissement, params.Labels)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
-	return wekan.InsertCard(ctx, card)
+	kanbanCard := wekanCardToKanbanCard(username)(card)
+	return kanbanCard, wekan.InsertCard(ctx, card)
 }
 
 func buildCard(

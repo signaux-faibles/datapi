@@ -30,7 +30,7 @@ func upsertCardHandler(kanbanService core.KanbanService) func(*gin.Context) {
 			return
 		}
 
-		message, err := upsertCard(c, params.CampaignEtablissementID, params.Description, kanbanService, libwekan.Username(s.Username))
+		_, message, err := upsertCard(c, params.CampaignEtablissementID, params.Description, kanbanService, libwekan.Username(s.Username))
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, gin.H{"message": "une erreur est survenue", "detail": err.Error()})
 			return
@@ -42,16 +42,16 @@ func upsertCardHandler(kanbanService core.KanbanService) func(*gin.Context) {
 }
 
 func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablissementID,
-	description string, kanbanService core.KanbanService, username libwekan.Username) (Message, error) {
+	description string, kanbanService core.KanbanService, username libwekan.Username) (core.KanbanCard, Message, error) {
 	pool := db.Get()
 	siret, wekanDomainRegexp, codeDepartement, campaignID, err := getCampaignEtablissement(ctx, campaignEtablissementID, pool)
 	if err != nil {
-		return Message{}, err
+		return core.KanbanCard{}, Message{}, err
 	}
 	config := kanbanService.LoadConfigForUser(username)
 	swimlane, err := selectSwimlane(config, wekanDomainRegexp, codeDepartement)
 	if err != nil {
-		return Message{}, err
+		return core.KanbanCard{}, Message{}, err
 	}
 	cards, err := kanbanService.SelectCardsFromSiretsAndBoardIDs(ctx, []core.Siret{siret}, []libwekan.BoardID{swimlane.BoardID}, username)
 	if len(cards) == 0 {
@@ -61,7 +61,7 @@ func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablisseme
 			Labels:      []libwekan.BoardLabelName{},
 			Siret:       siret,
 		}
-		err := kanbanService.CreateCard(ctx, params, "signaux.faibles", nil, pool)
+		kanbanCard, err := kanbanService.CreateCard(ctx, params, "signaux.faibles", nil, pool)
 
 		message := Message{
 			CampaignEtablissementID: &campaignEtablissementID,
@@ -70,11 +70,11 @@ func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablisseme
 			Type:                    "edit-card",
 			Username:                string(username),
 		}
-		return message, err
+		return kanbanCard, message, err
 	}
 	err = kanbanService.UpdateCard(ctx, cards[0], description, username)
 	if err != nil {
-		return Message{}, err
+		return core.KanbanCard{}, Message{}, err
 	}
 	message := Message{
 		CampaignEtablissementID: &campaignEtablissementID,
@@ -83,7 +83,8 @@ func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablisseme
 		Type:                    "edit-card",
 		Username:                string(username),
 	}
-	return message, err
+
+	return cards[0], message, err
 }
 
 func getCampaignEtablissement(ctx context.Context, campaignEtablissementID CampaignEtablissementID, pool *pgxpool.Pool) (core.Siret, *regexp.Regexp, core.CodeDepartement, CampaignID, error) {
