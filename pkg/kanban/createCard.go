@@ -107,7 +107,7 @@ func getListWithBoardID(boardID libwekan.BoardID, rank int) (libwekan.List, erro
 	})
 
 	if rank >= len(lists) {
-		return libwekan.List{}, core.UnknownListError{ListIdentifier: fmt.Sprint("rank=%d", rank)}
+		return libwekan.List{}, core.UnknownListError{ListIdentifier: fmt.Sprintf("rank=%d", rank)}
 	}
 	return lists[rank], nil
 }
