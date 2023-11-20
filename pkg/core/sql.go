@@ -75,7 +75,7 @@ var sqlCurrentScore = `select
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
+  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, s.has_delai
 from v_summaries s
   left join v_naf n on n.code_n5 = s.code_activite
   left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $8
@@ -137,6 +137,7 @@ func (p summaryParams) toSQLScoreParams() []interface{} {
 		p.etatAdministratif,
 		p.firstAlert,
 		p.libelleListe,
+		p.hasDelai,
 	}
 }
 
@@ -180,7 +181,7 @@ var sqlScore = `select
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
+  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, s.has_delai
   from v_summaries s
   inner join score0 sc on sc.siret = s.siret and sc.libelle_liste = $23 and sc.alert != 'Pas d''alerte'
   left join v_naf n on n.code_n5 = s.code_activite
