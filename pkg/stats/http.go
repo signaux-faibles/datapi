@@ -87,19 +87,19 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 			Modified: time.Now(),
 		})
 		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, err.Error())
 			return false
 		}
 
 		c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
 		err = writeLinesToCSV(results, entry)
 		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, err.Error())
 			return false
 		}
 		err = archive.Close()
 		if err != nil {
-			c.Status(http.StatusInternalServerError)
+			c.JSON(http.StatusInternalServerError, err.Error())
 		}
 		return false
 	})
