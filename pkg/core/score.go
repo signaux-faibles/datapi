@@ -34,6 +34,7 @@ type paramsListeScores struct {
 	ExcludeSecteursCovid  []string `json:"excludeSecteursCovid"`
 	EtatAdministratif     *string  `json:"etatAdministratif"`
 	FirstAlert            *bool    `json:"firstAlert"`
+	HasntDelai            *bool    `json:"hasntDelai"`
 }
 
 // Liste de détection
@@ -216,7 +217,7 @@ func (liste *Liste) getScores(roles Scope, page int, limit *int, username string
 		liste.Query.IgnoreZone, username, liste.Query.SiegeUniquement, "score", &True, liste.Query.EtatsProcol,
 		liste.Query.Departements, suivi, liste.Query.EffectifMin, liste.Query.EffectifMax, nil, liste.Query.Activites,
 		liste.Query.EffectifMinEntreprise, liste.Query.EffectifMaxEntreprise, liste.Query.CaMin, liste.Query.CaMax,
-		liste.Query.ExcludeSecteursCovid, liste.Query.EtatAdministratif, liste.Query.FirstAlert, nil,
+		liste.Query.ExcludeSecteursCovid, liste.Query.EtatAdministratif, liste.Query.FirstAlert, liste.Query.HasntDelai,
 	}
 	summaries, err := getSummaries(params)
 	if err != nil {

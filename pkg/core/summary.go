@@ -155,7 +155,7 @@ type summaryParams struct {
 	excludeSecteursCovid  []string
 	etatAdministratif     *string
 	firstAlert            *bool
-	hasDelai              *bool
+	hasntDelai            *bool
 }
 
 func (p summaryParams) toSQLParams() []interface{} {
@@ -194,7 +194,7 @@ func (p summaryParams) toSQLParams() []interface{} {
 		p.caMax,
 		p.excludeSecteursCovid,
 		p.etatAdministratif,
-		p.hasDelai,
+		p.hasntDelai,
 	}
 }
 
@@ -214,7 +214,7 @@ func getSummaries(params summaryParams) (Summaries, error) {
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
 		sqlParams = append(p[0:10], p[13], p[15], p[18])
-		sqlParams = append(sqlParams, p[19:]...)
+		sqlParams = append(sqlParams, p[19:25]...)
 		sql = `select *, null::bool from get_search($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19) as raison_sociale;`
 	} else if params.orderBy == "follow" {
 		p := params.toSQLParams()

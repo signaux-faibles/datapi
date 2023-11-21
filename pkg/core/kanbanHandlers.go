@@ -81,7 +81,6 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
 	cards, err := Kanban.SelectFollowsForUser(c, params, db.Get(), s.Roles)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return

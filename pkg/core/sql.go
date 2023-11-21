@@ -33,6 +33,7 @@ func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 		p.excludeSecteursCovid,
 		p.etatAdministratif,
 		p.firstAlert,
+		p.hasntDelai,
 	}
 }
 
@@ -100,6 +101,7 @@ from v_summaries s
   and (n.code_n1 = any($15) or $15 is null)
   and (s.etat_administratif = $21 or $21 is null)
   and (s.first_alert = $22 or $22 is null)
+  and (not (s.has_delai = $23) or $23 is null)
 order by s.alert, s.valeur_score desc, s.siret
 limit $2 offset $3`
 
@@ -137,7 +139,7 @@ func (p summaryParams) toSQLScoreParams() []interface{} {
 		p.etatAdministratif,
 		p.firstAlert,
 		p.libelleListe,
-		p.hasDelai,
+		p.hasntDelai,
 	}
 }
 
@@ -206,5 +208,6 @@ var sqlScore = `select
   and (n.code_n1 = any($15) or $15 is null)
   and (s.etat_administratif = $21 or $21 is null)
   and ((s.first_list_etablissement = $23 or s.first_red_list_etablissement = $23) and $22 or $22 is null)
+  and (not (s.has_delai = $24) or $24 is null)
   order by sc.alert, sc.score desc, s.siret
   limit $2 offset $3`
