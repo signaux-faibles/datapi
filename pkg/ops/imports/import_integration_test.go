@@ -21,8 +21,8 @@ func TestMain(m *testing.M) {
 	testConfig := initTestConfig()
 	url := test.GetDatapiDBURL()
 	testConfig["postgres"] = url
-	testConfig["sourceEntreprise"] = "test/emptyJSON.gz"
-	testConfig["sourceEtablissement"] = "test/emptyJSON.gz"
+	testConfig["sourceEntreprise"] = test.ProjectPathOf("test/emptyJSON.gz")
+	testConfig["sourceEtablissement"] = test.ProjectPathOf("test/emptyJSON.gz")
 	if err := test.Viperize(testConfig); err != nil {
 		log.Fatalf("erreur pendant le chargement de la configuration ")
 	}
@@ -49,5 +49,6 @@ func initTestConfig() map[string]string {
 	viper.AddConfigPath(filepath.Join(root, "test"))
 	testConfig := map[string]string{}
 	testConfig["migrationsDir"] = filepath.Join(root, "migrations")
+	testConfig["migrationsDir"] = test.ProjectPathOf("migrations")
 	return testConfig
 }
