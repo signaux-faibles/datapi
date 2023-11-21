@@ -38,17 +38,6 @@ func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 }
 
 // sqlCurrentScore récupère les derniers scores connus
-// output: siret text, siren text, raison_sociale text, commune text, libelle_departement text,
-// code_departement text, valeur_score real, detail_score jsonb, first_alert boolean,
-// chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real,
-// resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text,
-// last_procol text, activite_partielle boolean, apconso_heure_consomme integer,
-// apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text,
-// nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean,
-// followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text,
-// territoire_industrie boolean, comment text, category text, since timestamp without time zone,
-// urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
-// etat_administratif text, etat_administratif_entreprise text
 var sqlCurrentScore = `select 
   s.siret, s.siren, s.raison_sociale, s.commune,
   s.libelle_departement, s.code_departement,
@@ -144,18 +133,6 @@ func (p summaryParams) toSQLScoreParams() []interface{} {
 }
 
 // sqlScore récupère les scores de la liste passée en paramètre
-// output: siret text, siren text, raison_sociale text, commune text, libelle_departement text,
-//
-//	code_departement text, valeur_score real, detail_score jsonb, first_alert boolean,
-//	chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real,
-//	resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text,
-//	last_procol text, activite_partielle boolean, apconso_heure_consomme integer,
-//	apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text,
-//	nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean,
-//	followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text,
-//	territoire_industrie boolean, comment text, category text, since timestamp without time zone,
-//	urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
-//	etat_administratif text, etat_administratif_entreprise text
 var sqlScore = `select 
   s.siret, s.siren, s.raison_sociale, s.commune,
   s.libelle_departement, s.code_departement,
