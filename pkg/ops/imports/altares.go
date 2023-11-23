@@ -17,28 +17,27 @@ import (
 	"datapi/pkg/db"
 )
 
-type PaydexHisto struct {
-	Siren               core.Siren
-	Paydex              *string
-	JoursRetard         *int
-	Fournisseurs        *int
-	Encours             *float64
-	ExperiencesPaiement *int
-	FPI30               *int
-	FPI90               *int
-	DateValeur          *time.Time
-	err                 error
+type Paydex struct {
+	Siren        core.Siren
+	Paydex       *string
+	JoursRetard  *int
+	Fournisseurs *int
+	Encours      *float64
+	FPI30        *int
+	FPI90        *int
+	DateValeur   *time.Time
+	err          error
 }
 
-func (p PaydexHisto) tuple() []interface{} {
+func (p Paydex) tuple() []interface{} {
 	return []interface{}{
-		p.Siren, p.Paydex, p.JoursRetard, p.Fournisseurs, p.Encours, p.ExperiencesPaiement, p.FPI30, p.FPI90, p.DateValeur,
+		p.Siren, p.Paydex, p.JoursRetard, p.Fournisseurs, p.Encours, p.FPI30, p.FPI90, p.DateValeur,
 	}
 }
 
-func PaydexHistoReader(ctx context.Context, filename string) (chan PaydexHisto, error) {
+func PaydexHistoReader(ctx context.Context, filename string) (chan Paydex, error) {
+	output := make(chan Paydex)
 	zipReader, err := zip.OpenReader(filename)
-	output := make(chan PaydexHisto)
 	if err != nil {
 		close(output)
 		return output, err
@@ -49,17 +48,17 @@ func PaydexHistoReader(ctx context.Context, filename string) (chan PaydexHisto, 
 		for _, zf := range zipReader.File {
 			file, errOpenZip := zf.Open()
 			if errOpenZip != nil {
-				output <- PaydexHisto{err: errOpenZip}
+				output <- Paydex{err: errOpenZip}
 				continue
 			}
 			reader := csv.NewReader(file)
-			reader.Comma = ';'
+			reader.Comma = ','
 			headers, errReadHeaders := reader.Read()
 			if errReadHeaders != nil {
-				output <- PaydexHisto{err: errReadHeaders}
+				output <- Paydex{err: errReadHeaders}
 				continue
 			}
-			if !checkHistoHeaders(headers) {
+			if !acceptPaydexHeaders(headers) {
 				continue
 			}
 			for {
@@ -67,7 +66,7 @@ func PaydexHistoReader(ctx context.Context, filename string) (chan PaydexHisto, 
 				if errCsvReader == io.EOF {
 					break
 				} else if errCsvReader != nil {
-					output <- PaydexHisto{err: errCsvReader}
+					output <- Paydex{err: errCsvReader}
 					break
 				}
 				select {
@@ -82,26 +81,26 @@ func PaydexHistoReader(ctx context.Context, filename string) (chan PaydexHisto, 
 	return output, nil
 }
 
-func parsePaydexHisto(line []string) PaydexHisto {
-	if len(line) != 11 {
-		return PaydexHisto{
+func parsePaydexHisto(line []string) Paydex {
+	if len(line) != 10 {
+		return Paydex{
 			err: csv.ErrFieldCount,
 		}
 	}
 
-	var paydexHisto PaydexHisto
+	var paydexHisto Paydex
 
 	if core.Siren(line[0]).IsValid() {
 		paydexHisto.Siren = core.Siren(line[0])
 	} else {
-		return PaydexHisto{
+		return Paydex{
 			err: fmt.Errorf("%s is not a valid Siren", line[0]),
 		}
 	}
 
-	dateValeur, err := time.Parse("02/01/2006", line[10])
+	dateValeur, err := time.Parse("2006-01-02", line[9])
 	if err != nil {
-		return PaydexHisto{
+		return Paydex{
 			err: fmt.Errorf("%s is not a valid DATE_VALEUR value: %s", line[2], err.Error()),
 		}
 	}
@@ -111,42 +110,35 @@ func parsePaydexHisto(line []string) PaydexHisto {
 
 	paydexHisto.JoursRetard, err = parsePint(line[4])
 	if err != nil {
-		return PaydexHisto{
+		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_JRS_RETARD value: %s", line[2], err.Error()),
 		}
 	}
 
 	paydexHisto.Fournisseurs, err = parsePint(line[5])
 	if err != nil {
-		return PaydexHisto{
+		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_FOURNISSEURS value: %s", line[2], err.Error()),
 		}
 	}
 
 	paydexHisto.Encours, err = parsePfloat(line[6])
 	if err != nil {
-		return PaydexHisto{
+		return Paydex{
 			err: fmt.Errorf("%s is not a valid ENCOURS_ETUDIES value: %s", line[2], err.Error()),
 		}
 	}
 
-	paydexHisto.ExperiencesPaiement, err = parsePint(line[7])
+	paydexHisto.FPI30, err = parsePint(line[7])
 	if err != nil {
-		return PaydexHisto{
+		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_EXPERIENCES_PAIEMENT value: %s", line[2], err.Error()),
 		}
 	}
 
-	paydexHisto.FPI30, err = parsePint(line[8])
+	paydexHisto.FPI90, err = parsePint(line[8])
 	if err != nil {
-		return PaydexHisto{
-			err: fmt.Errorf("%s is not a valid NBR_EXPERIENCES_PAIEMENT value: %s", line[2], err.Error()),
-		}
-	}
-
-	paydexHisto.FPI90, err = parsePint(line[9])
-	if err != nil {
-		return PaydexHisto{
+		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_EXPERIENCES_PAIEMENT value: %s", line[2], err.Error()),
 		}
 	}
@@ -177,14 +169,16 @@ func parsePint(value string) (*int, error) {
 	return &i, err
 }
 
-func checkHistoHeaders(fields []string) bool {
+func acceptPaydexHeaders(fields []string) bool {
 	bomUTF8 := string([]byte{0xEF, 0xBB, 0xBF})
-	headers := []string{bomUTF8 + "SIREN", "ETAT_ORGANISATION", "CODE_PAYDEX", "PAYDEX", "NBR_JRS_RETARD", "NBR_FOURNISSEURS", "ENCOURS_ETUDIES", "NBR_EXPERIENCES_PAIEMENT", "NOTE100_ALERTEUR_PLUS_30", "NOTE100_ALERTEUR_PLUS_90_JOURS", "DATE_VALEUR"}
+	headers := []string{bomUTF8 + "siren", "état_organisation", "code_paydex", "paydex", "nbr_jrs_retard", "nbr_fournisseurs", "encours_étudiés", "note_100_alerteur_plus_30", "note_100_alerteur_plus_90_jours", "date_valeur"}
 	if len(headers) != len(fields) {
+		slog.Info("Fichier rejeté, header non conforme", slog.Int("expected_length", len(headers)), slog.Int("actual_length", len(fields)))
 		return false
 	}
 	for index := range fields {
 		if fields[index] != headers[index] {
+			slog.Info("Fichier rejeté, header non conforme", slog.Int("index", index), slog.String("expected", headers[index]), slog.String("actual", fields[index]))
 			return false
 		}
 	}
@@ -192,14 +186,14 @@ func checkHistoHeaders(fields []string) bool {
 }
 
 func importPaydexHisto(ctx context.Context) error {
-	paydexHistoFilePath := viper.GetString("source.paydexHistoPath")
+	paydexHistoFilePath := viper.GetString("source.paydexpath")
 	paydexHistoReader, err := PaydexHistoReader(ctx, paydexHistoFilePath)
 	if err != nil {
 		return err
 	}
 	copyFromPaydexHisto := CopyFromPaydexHisto{
 		PaydexHistoParser: paydexHistoReader,
-		Current:           &PaydexHisto{},
+		Current:           &Paydex{},
 		Count:             new(int),
 	}
 	err = dropEntreprisePaydexIndex(ctx)
@@ -260,8 +254,8 @@ func copyPaydexHisto(ctx context.Context, copyFromSource pgx.CopyFromSource) err
 }
 
 type CopyFromPaydexHisto struct {
-	PaydexHistoParser chan PaydexHisto
-	Current           *PaydexHisto
+	PaydexHistoParser chan Paydex
+	Current           *Paydex
 	Count             *int
 }
 

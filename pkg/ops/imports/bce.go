@@ -19,6 +19,9 @@ import (
 	"datapi/pkg/utils"
 )
 
+// BCE = base commune entreprise (ministères sociaux)
+// TODO: encapsuler le traitement dans une transaction postgres
+
 type NullError struct{}
 
 type BCE struct {
