@@ -91,7 +91,7 @@ func (api *API) handleStatsInInterval(c *gin.Context, since time.Time, to time.T
 			return false
 		}
 
-		c.Header("Content-Disposition", "attachment; filename="+api.filename+".zip")
+		c.Header("Content-Disposition", "attachment; filename="+api.filename+".xlsx")
 		err = writeLinesToCSV(results, entry)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())

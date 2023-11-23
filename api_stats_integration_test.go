@@ -30,7 +30,7 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 	ass.Equal(StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	records, err := test.ReadZippedCSV(body)
-	defer test.WriteFile(t.Name()+".zip", body)
+	defer test.WriteFile(t.Name()+".xlsx", body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
 	// et le nombre de lignes insérés en base
@@ -93,7 +93,7 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 
 	ass.Equal(StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
-	defer test.WriteFile(t.Name()+".zip", body)
+	defer test.WriteFile(t.Name()+".xlsx", body)
 	records, err := test.ReadZippedCSV(body)
 	ass.NoError(err)
 	// on compare le nombre de lignes lues dans le fichier
