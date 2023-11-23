@@ -30,13 +30,14 @@ func InitLogger() {
 		Level: loglevel,
 	})
 
-	parentLogger := slog.New(
-		handler)
+	parentLogger := slog.New(handler)
 	buildInfo, _ := debug.ReadBuildInfo()
 	sha1 := findBuildSetting(buildInfo.Settings, "vcs.revision")
 	appLogger := parentLogger.With(
-		slog.Group("app", slog.String("sha1", sha1)),
-	)
+		slog.Group("app",
+			slog.String("sha1", sha1),
+			slog.Int("pid", os.Getpid()),
+		))
 	slog.SetDefault(appLogger)
 
 	slog.Info(

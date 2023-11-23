@@ -8,6 +8,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
 	"testing"
 	"time"
@@ -58,12 +59,12 @@ func TestMain(m *testing.M) {
 
 	// run datapi
 	kanbanService := kanban.InitService(ctx, wekanDBURL, "test", "mgo", "*")
-	logSaver, err := stats.NewPostgresLogSaverFromURL(ctx, test.GetDatapiLogDBURL())
+	logSaver, err := stats.NewPostgresLogSaverFromURL(ctx, test.GetDatapiLogsDBURL())
 	if err != nil {
 		log.Fatalf("erreur pendant la création du AccessLogSaver : %s", err)
 	}
 
-	statsAPI, err := stats.NewAPIFromConfiguration(ctx, test.GetDatapiLogDBURL())
+	statsAPI, err := stats.NewAPIFromConfiguration(ctx, test.GetDatapiLogsDBURL())
 
 	if err != nil {
 		log.Fatalf("erreur pendant la création de l'API Stats : %s", err)
@@ -257,12 +258,12 @@ func TestPGE(t *testing.T) {
 		siren := pgeTest.Siren
 
 		if pgeTest.MustFollow {
-			test.FollowEntreprise(t, siren)
+			followEntreprise(t, siren)
 		}
 
 		resp, data, _ := test.HTTPGetAndFormatBody(t, "/entreprise/get/"+siren)
 		assertions.Equal(200, resp.StatusCode)
-		actual := test.JsonToEntreprise(t, data)
+		actual := test.FromJSON(t, data, core.Entreprise{})
 		assertions.Equal(pgeTest.ExpectedPGE, actual.PGEActif)
 		for _, etab := range actual.Etablissements {
 			assertions.Equal(pgeTest.ExpectedPermPGE, etab.PermPGE)
@@ -553,7 +554,7 @@ func TestPermissions(t *testing.T) {
 
 func followEtablissementsThenCleanup(t *testing.T, sirets []string) {
 	for _, siret := range sirets {
-		test.FollowEtablissement(t, siret)
+		followEtablissement(t, siret)
 	}
 	// a la fin du test, tout le suivi des Etablissements est supprimé
 	t.Cleanup(func() { test.RazEtablissementFollowing(t) })
@@ -637,4 +638,29 @@ func insertPgeTests(t *testing.T, pgesData []test.PgeTest) {
 		}
 		test.InsertPGE(t, pgeTest.Siren, pgeTest.HasPGE)
 	}
+}
+
+// followEntreprise fonction qui suit un établissement de l'entreprise dont le siren est passé en argument
+func followEntreprise(t *testing.T, siren string) {
+	_, data, err := test.HTTPGetAndFormatBody(t, "/entreprise/get/"+siren)
+	if err != nil {
+		t.Fatalf("error when get entreprise with siren '%s' -> %s", siren, err)
+	}
+	entreprise := test.FromJSON(t, data, core.Entreprise{})
+	siret := entreprise.EtablissementsSummary[0].Siret
+	t.Logf("will follow etablissement with siret '%s for entreprise with siren '%s'", siret, siren)
+	followEtablissement(t, siret)
+}
+
+// followEtablissement fonction qui suit l'établissement dont le siret est passé en argument
+func followEtablissement(t *testing.T, siret string) {
+	params := map[string]interface{}{
+		"comment":  "test",
+		"category": "test",
+	}
+	resp := test.HTTPPost(t, "/follow/"+siret, params)
+	if resp.StatusCode != http.StatusCreated {
+		t.Errorf("le suivi a échoué: %d", resp.StatusCode)
+	}
+	t.Logf("nouvel établissement suivi -> '%s'", siret)
 }

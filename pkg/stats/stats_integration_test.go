@@ -12,14 +12,14 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/jaswdr/faker"
 	"github.com/stretchr/testify/assert"
 
 	"datapi/pkg/core"
 	"datapi/pkg/test"
+	"datapi/pkg/utils"
 )
 
-var fake faker.Faker
+var fake = test.NewFaker()
 
 //go:embed resources/tests/token
 var realtoken string
@@ -28,33 +28,29 @@ var logSaver *PostgresLogSaver
 var statsDB StatsDB
 var api *API
 
-func init() {
-	fake = faker.New()
-}
-
 func TestMain(m *testing.M) {
-	var err error
+	utils.ConfigureLogLevel("debug")
 	testConfig := map[string]string{}
 	testConfig["postgres"] = test.GetDatapiDBURL()
-	testConfig["logs.db_url"] = test.GetDatapiLogDBURL()
+	testConfig["logs.db_url"] = test.GetDatapiLogsDBURL()
 
-	err = test.Viperize(testConfig)
+	err := test.Viperize(testConfig)
 	if err != nil {
-		log.Printf("Erreur pendant la Viperation de la config : %s", err)
+		log.Panicf("Erreur pendant la Viperation de la config : %s", err)
 	}
 
 	background := context.Background()
-	pool, err := pgxpool.New(background, test.GetDatapiLogDBURL())
+	pool, err := pgxpool.New(background, test.GetDatapiLogsDBURL())
 	if err != nil {
-		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
+		log.Panicf("erreur pendant la connexion à la base de données : %s", err)
 	}
 	statsDB, err = createStatsDB(background, pool)
 	if err != nil {
-		log.Fatalf("erreur pendant la création de la base de données de Stats : %s", err)
+		log.Panicf("erreur pendant la création de la base de données de Stats : %s", err)
 	}
 	logSaver = NewPostgresLogSaver(statsDB)
 	if err != nil {
-		log.Fatalf("erreur pendant la connexion à la base de données : %s", err)
+		log.Panicf("erreur pendant la connexion à la base de données : %s", err)
 	}
 	api = NewAPI(statsDB)
 	// time to API be ready

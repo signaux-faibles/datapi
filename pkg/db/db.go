@@ -6,6 +6,7 @@ import (
 	"crypto/sha1"
 	"fmt"
 	"log"
+	"log/slog"
 	"os"
 	"path/filepath"
 	"sort"
@@ -37,16 +38,21 @@ func Init() {
 	pgConnStr := viper.GetString("postgres")
 	pool, err := pgxpool.New(context.Background(), pgConnStr)
 	if err != nil {
-		log.Fatal("database connexion:" + err.Error())
+		slog.Error("erreur lors de la connexion à la base", slog.Any("error", err))
+		panic(err)
 	}
 
-	log.Print("connected to postgresql database")
+	slog.Info("connected to postgresql database")
 	dbMigrations := listDatabaseMigrations(pool)
 	dirMigrations := listDirMigrations()
 	updateMigrations := compareMigrations(dbMigrations, dirMigrations)
-	log.Printf("%d embedded migrations, %d db migrations", len(dirMigrations), len(dbMigrations))
+	slog.Info(
+		"liste les migrations",
+		slog.Int("embedded", len(dirMigrations)),
+		slog.Int("db", len(dbMigrations)),
+	)
 	if len(dbMigrations) < len(dirMigrations) {
-		log.Printf("running %d new migrations", len(updateMigrations))
+		slog.Info("démarre les nouvelles migrations", slog.Any("new", len(updateMigrations)))
 		runMigrations(updateMigrations, pool)
 	}
 
@@ -119,12 +125,12 @@ func listDirMigrations() []migrationScript {
 	}
 	files, err := os.ReadDir(migrationsDir)
 	if err != nil {
-		log.Panicf(
-			"le répertoire des fichiers de migrations '%s' dans '%s' est introuvable : %s",
-			migrationsDir,
-			wd,
-			err.Error(),
+		slog.Error("le répertoire des fichiers de migration est introuvable",
+			slog.String("migrationsDir", migrationsDir),
+			slog.String("wd", wd),
+			slog.Any("error", err),
 		)
+		panic(err)
 	}
 	var dirMigrations []migrationScript
 	hasher := sha1.New()

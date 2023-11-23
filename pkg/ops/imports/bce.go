@@ -5,7 +5,7 @@ import (
 	"context"
 	"encoding/csv"
 	"io"
-	"log"
+	"log/slog"
 	"strconv"
 	"strings"
 	"time"
@@ -18,6 +18,9 @@ import (
 	"datapi/pkg/db"
 	"datapi/pkg/utils"
 )
+
+// BCE = base commune entreprise (ministères sociaux)
+// TODO: encapsuler le traitement dans une transaction postgres
 
 type NullError struct{}
 
@@ -319,7 +322,7 @@ func (c CopyFromBCE) Next() bool {
 		if ok {
 			c.Increment()
 			if *c.Count%100000 == 0 {
-				log.Printf("%d bce objects copied\n", *c.Count)
+				slog.Info("bce objects copied", slog.Int("counter", *c.Count))
 			}
 		}
 		return ok

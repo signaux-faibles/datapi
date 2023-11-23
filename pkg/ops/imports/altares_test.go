@@ -11,50 +11,48 @@ import (
 	"time"
 )
 
-var expected = []PaydexHisto{
+var expected = []Paydex{
 	{
 		Siren:        "000000000",
-		Paydex:       pointer("035"),
-		JoursRetard:  pointer(75),
-		Fournisseurs: pointer(16),
-		Encours:      pointer(float64(93131)),
-		DateValeur:   pointer(time.Date(2015, 02, 15, 0, 0, 0, 0, time.UTC)),
+		Paydex:       pointer("078"),
+		JoursRetard:  pointer(3),
+		Fournisseurs: pointer(20),
+		Encours:      pointer(float64(104593.746)),
+		DateValeur:   pointer(time.Date(2023, 01, 15, 0, 0, 0, 0, time.UTC)),
 	},
 	{
 		Siren:        "000000000",
-		Paydex:       pointer("034"),
-		JoursRetard:  pointer(78),
-		Fournisseurs: pointer(17),
-		Encours:      pointer(float64(109474)),
-		DateValeur:   pointer(time.Date(2015, 01, 15, 0, 0, 0, 0, time.UTC)),
+		Paydex:       pointer("078"),
+		JoursRetard:  pointer(3),
+		Fournisseurs: pointer(21),
+		Encours:      pointer(float64(139321.632)),
+		DateValeur:   pointer(time.Date(2022, 12, 15, 0, 0, 0, 0, time.UTC)),
 	},
 	{
-		Siren:               "111111111",
-		Paydex:              pointer("079"),
-		JoursRetard:         pointer(1),
-		Fournisseurs:        pointer(18),
-		Encours:             pointer(float64(885692.202)),
-		ExperiencesPaiement: pointer(32),
-		FPI30:               pointer(0),
-		FPI90:               pointer(0),
-		DateValeur:          pointer(time.Date(2023, 07, 06, 0, 0, 0, 0, time.UTC)),
+		Siren:        "111111111",
+		Paydex:       pointer("078"),
+		JoursRetard:  pointer(3),
+		Fournisseurs: pointer(22),
+		Encours:      pointer(float64(150023.553)),
+		FPI30:        pointer(11),
+		FPI90:        pointer(11),
+		DateValeur:   pointer(time.Date(2022, 11, 15, 0, 0, 0, 0, time.UTC)),
 	},
 	{
-		Siren:               "111111111",
-		Paydex:              pointer("079"),
-		JoursRetard:         pointer(1),
-		Fournisseurs:        pointer(18),
-		Encours:             pointer(float64(885930.023)),
-		ExperiencesPaiement: pointer(33),
-		FPI30:               pointer(0),
-		FPI90:               pointer(0),
-		DateValeur:          pointer(time.Date(2023, 06, 15, 0, 0, 0, 0, time.UTC)),
+		Siren:        "111111111",
+		Paydex:       pointer("078"),
+		JoursRetard:  pointer(3),
+		Fournisseurs: pointer(22),
+		Encours:      pointer(float64(150785.798)),
+		FPI30:        pointer(11),
+		FPI90:        pointer(11),
+		DateValeur:   pointer(time.Date(2022, 10, 15, 0, 0, 0, 0, time.UTC)),
 	},
 }
 
 func getTestDataFilename() string {
 	cwd, _ := os.Getwd()
-	path := "test_histo_paydex.csv.zip"
+	path := "tests/test_paydex.zip"
 	if !strings.HasSuffix(cwd, "imports") {
 		path = "./pkg/ops/imports/" + path
 	}
@@ -69,11 +67,13 @@ func Test_PaydexHistoReader(t *testing.T) {
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	path := getTestDataFilename()
 
-	paydexHistoChan, _ := PaydexHistoReader(context.Background(), path)
+	paydexHistoChan, err := PaydexHistoReader(context.Background(), path)
+	ass.NoError(err)
 
 	// WHEN
-	var paydexHistos []PaydexHisto
+	var paydexHistos []Paydex
 	for paydexHisto := range paydexHistoChan {
+		ass.NoError(paydexHisto.err)
 		paydexHistos = append(paydexHistos, paydexHisto)
 	}
 
@@ -94,7 +94,7 @@ func Test_PaydexHistoReader_cancelledContext(t *testing.T) {
 	ctx, cancelCtx := context.WithCancel(context.Background())
 	paydexHistoChan, _ := PaydexHistoReader(ctx, path)
 	cancelCtx()
-	var paydexHistos []PaydexHisto
+	var paydexHistos []Paydex
 	for paydexHisto := range paydexHistoChan {
 		paydexHistos = append(paydexHistos, paydexHisto)
 	}
@@ -112,7 +112,7 @@ func Test_PaydexHistoReader_missingFile(t *testing.T) {
 	paydexHistoChan, err := PaydexHistoReader(context.Background(), path)
 
 	// WHEN
-	var paydexHistos []PaydexHisto
+	var paydexHistos []Paydex
 	for paydexHisto := range paydexHistoChan {
 		paydexHistos = append(paydexHistos, paydexHisto)
 	}
@@ -131,7 +131,7 @@ func Test_CopyFromPaydexHisto_firstOccurence(t *testing.T) {
 	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
 	copyFromPaydexHisto := CopyFromPaydexHisto{
 		PaydexHistoParser: paydexHistoReader,
-		Current:           new(PaydexHisto),
+		Current:           new(Paydex),
 		Count:             new(int),
 	}
 
@@ -153,10 +153,10 @@ func Test_CopyFromPaydexHisto_allTuples(t *testing.T) {
 	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
 	copyFromPaydexHisto := CopyFromPaydexHisto{
 		PaydexHistoParser: paydexHistoReader,
-		Current:           new(PaydexHisto),
+		Current:           new(Paydex),
 		Count:             new(int),
 	}
-	expectedTuples := utils.Convert(expected, PaydexHisto.tuple)
+	expectedTuples := utils.Convert(expected, Paydex.tuple)
 
 	// WHEN
 	var actualTuples [][]interface{}
@@ -181,7 +181,7 @@ func Test_CopyFromPaydexHisto_missingFile(t *testing.T) {
 	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
 	copyFromPaydexHisto := CopyFromPaydexHisto{
 		PaydexHistoParser: paydexHistoReader,
-		Current:           new(PaydexHisto),
+		Current:           new(Paydex),
 		Count:             new(int),
 	}
 
