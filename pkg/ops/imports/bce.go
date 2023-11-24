@@ -77,7 +77,7 @@ func (bce BCE) tuple() []interface{} {
 }
 
 func importBCEHandler(c *gin.Context) {
-	sourcePath := viper.GetString("bceSourcePath")
+	sourcePath := viper.GetString("source.bcepath")
 	conn := db.Get()
 	err := importBCE(c, sourcePath, conn)
 	if err != nil {

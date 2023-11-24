@@ -175,28 +175,28 @@ type EtablissementDelai struct {
 
 // EtablissementAPDemande …
 type EtablissementAPDemande struct {
-	IDDemande          string    `json:"idDemande"`
-	EffectifEntreprise int       `json:"effectifEntreprise"`
-	Effectif           int       `json:"effectif"`
-	EffectifAutorise   int       `json:"effectifAutorise"`
-	DateStatut         time.Time `json:"dateStatut"`
-	PeriodeStart       time.Time `json:"debut"`
-	PeriodeEnd         time.Time `json:"fin"`
-	HTA                float64   `json:"hta"`
-	MTA                float64   `json:"mta"`
-	MotifRecoursSE     int       `json:"motifRecoursSE"`
-	HeureConsomme      float64   `json:"heureConsomme"`
-	MontantConsomme    float64   `json:"montantConsomme"`
-	EffectifConsomme   int       `json:"effectifConsomme"`
+	IDDemande          *string    `json:"idDemande"`
+	EffectifEntreprise *int       `json:"effectifEntreprise"`
+	Effectif           *int       `json:"effectif"`
+	EffectifAutorise   *int       `json:"effectifAutorise"`
+	DateStatut         *time.Time `json:"dateStatut"`
+	PeriodeStart       *time.Time `json:"debut"`
+	PeriodeEnd         *time.Time `json:"fin"`
+	HTA                *float64   `json:"hta"`
+	MTA                *float64   `json:"mta"`
+	MotifRecoursSE     *int       `json:"motifRecoursSE"`
+	HeureConsomme      *float64   `json:"heureConsomme"`
+	MontantConsomme    *float64   `json:"montantConsomme"`
+	EffectifConsomme   *int       `json:"effectifConsomme"`
 }
 
 // EtablissementAPConso …
 type EtablissementAPConso struct {
-	IDConso       string    `json:"idConso"`
-	HeureConsomme float64   `json:"heureConsomme"`
-	Montant       float64   `json:"montant"`
-	Effectif      int       `json:"effectif"`
-	Periode       time.Time `json:"date"`
+	IDConso       *string    `json:"idConso"`
+	HeureConsomme *float64   `json:"heureConsomme"`
+	Montant       *float64   `json:"montant"`
+	Effectif      *int       `json:"effectif"`
+	Periode       *time.Time `json:"date"`
 }
 
 // EtablissementProcol …

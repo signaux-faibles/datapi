@@ -35,7 +35,7 @@ func (p Paydex) tuple() []interface{} {
 	}
 }
 
-func PaydexHistoReader(ctx context.Context, filename string) (chan Paydex, error) {
+func PaydexReader(ctx context.Context, filename string) (chan Paydex, error) {
 	output := make(chan Paydex)
 	zipReader, err := zip.OpenReader(filename)
 	if err != nil {
@@ -72,7 +72,7 @@ func PaydexHistoReader(ctx context.Context, filename string) (chan Paydex, error
 				select {
 				case <-ctx.Done():
 					return
-				case output <- parsePaydexHisto(line):
+				case output <- parsePaydex(line):
 				}
 			}
 		}
@@ -81,17 +81,17 @@ func PaydexHistoReader(ctx context.Context, filename string) (chan Paydex, error
 	return output, nil
 }
 
-func parsePaydexHisto(line []string) Paydex {
+func parsePaydex(line []string) Paydex {
 	if len(line) != 10 {
 		return Paydex{
 			err: csv.ErrFieldCount,
 		}
 	}
 
-	var paydexHisto Paydex
+	var paydex Paydex
 
 	if core.Siren(line[0]).IsValid() {
-		paydexHisto.Siren = core.Siren(line[0])
+		paydex.Siren = core.Siren(line[0])
 	} else {
 		return Paydex{
 			err: fmt.Errorf("%s is not a valid Siren", line[0]),
@@ -104,46 +104,46 @@ func parsePaydexHisto(line []string) Paydex {
 			err: fmt.Errorf("%s is not a valid DATE_VALEUR value: %s", line[2], err.Error()),
 		}
 	}
-	paydexHisto.DateValeur = &dateValeur
+	paydex.DateValeur = &dateValeur
 
-	paydexHisto.Paydex = parsePstring(line[2])
+	paydex.Paydex = parsePstring(line[2])
 
-	paydexHisto.JoursRetard, err = parsePint(line[4])
+	paydex.JoursRetard, err = parsePint(line[4])
 	if err != nil {
 		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_JRS_RETARD value: %s", line[2], err.Error()),
 		}
 	}
 
-	paydexHisto.Fournisseurs, err = parsePint(line[5])
+	paydex.Fournisseurs, err = parsePint(line[5])
 	if err != nil {
 		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_FOURNISSEURS value: %s", line[2], err.Error()),
 		}
 	}
 
-	paydexHisto.Encours, err = parsePfloat(line[6])
+	paydex.Encours, err = parsePfloat(line[6])
 	if err != nil {
 		return Paydex{
 			err: fmt.Errorf("%s is not a valid ENCOURS_ETUDIES value: %s", line[2], err.Error()),
 		}
 	}
 
-	paydexHisto.FPI30, err = parsePint(line[7])
+	paydex.FPI30, err = parsePint(line[7])
 	if err != nil {
 		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_EXPERIENCES_PAIEMENT value: %s", line[2], err.Error()),
 		}
 	}
 
-	paydexHisto.FPI90, err = parsePint(line[8])
+	paydex.FPI90, err = parsePint(line[8])
 	if err != nil {
 		return Paydex{
 			err: fmt.Errorf("%s is not a valid NBR_EXPERIENCES_PAIEMENT value: %s", line[2], err.Error()),
 		}
 	}
 
-	return paydexHisto
+	return paydex
 }
 
 func parsePfloat(value string) (*float64, error) {
@@ -185,16 +185,16 @@ func acceptPaydexHeaders(fields []string) bool {
 	return true
 }
 
-func importPaydexHisto(ctx context.Context) error {
-	paydexHistoFilePath := viper.GetString("source.paydexpath")
-	paydexHistoReader, err := PaydexHistoReader(ctx, paydexHistoFilePath)
+func importPaydex(ctx context.Context) error {
+	paydexFilePath := viper.GetString("source.paydexpath")
+	paydexReader, err := PaydexReader(ctx, paydexFilePath)
 	if err != nil {
 		return err
 	}
-	copyFromPaydexHisto := CopyFromPaydexHisto{
-		PaydexHistoParser: paydexHistoReader,
-		Current:           &Paydex{},
-		Count:             new(int),
+	copyFromPaydex := CopyFromPaydex{
+		PaydexParser: paydexReader,
+		Current:      &Paydex{},
+		Count:        new(int),
 	}
 	err = dropEntreprisePaydexIndex(ctx)
 	if err != nil {
@@ -204,7 +204,7 @@ func importPaydexHisto(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	err = copyPaydexHisto(ctx, copyFromPaydexHisto)
+	err = copyPaydex(ctx, copyFromPaydex)
 	if err != nil {
 		return err
 	}
@@ -234,7 +234,7 @@ func createEntreprisePaydexIndex(ctx context.Context) error {
 	return err
 }
 
-func copyPaydexHisto(ctx context.Context, copyFromSource pgx.CopyFromSource) error {
+func copyPaydex(ctx context.Context, copyFromSource pgx.CopyFromSource) error {
 	conn := db.Get()
 	headers := []string{
 		"siren",
@@ -242,7 +242,6 @@ func copyPaydexHisto(ctx context.Context, copyFromSource pgx.CopyFromSource) err
 		"jours_retard",
 		"fournisseurs",
 		"en_cours",
-		"experiences_paiement",
 		"fpi_30",
 		"fpi_90",
 		"date_valeur",
@@ -253,34 +252,34 @@ func copyPaydexHisto(ctx context.Context, copyFromSource pgx.CopyFromSource) err
 	return err
 }
 
-type CopyFromPaydexHisto struct {
-	PaydexHistoParser chan Paydex
-	Current           *Paydex
-	Count             *int
+type CopyFromPaydex struct {
+	PaydexParser chan Paydex
+	Current      *Paydex
+	Count        *int
 }
 
-func (c CopyFromPaydexHisto) Increment() {
+func (c CopyFromPaydex) Increment() {
 	*c.Count = *c.Count + 1
 }
 
-func (c CopyFromPaydexHisto) Next() bool {
+func (c CopyFromPaydex) Next() bool {
 	var ok bool
 	select {
-	case *c.Current, ok = <-c.PaydexHistoParser:
+	case *c.Current, ok = <-c.PaydexParser:
 		if ok {
 			if c.Current.err != nil {
 				return c.Next()
 			}
 			c.Increment()
 			if *c.Count%100000 == 0 {
-				slog.Info("paydexHisto objects copied", slog.Int("counter", *c.Count))
+				slog.Info("paydex objects copied", slog.Int("counter", *c.Count))
 			}
 		}
 		return ok
 	}
 }
 
-func (c CopyFromPaydexHisto) Err() error { return nil }
-func (c CopyFromPaydexHisto) Values() ([]interface{}, error) {
+func (c CopyFromPaydex) Err() error { return nil }
+func (c CopyFromPaydex) Values() ([]interface{}, error) {
 	return (*c.Current).tuple(), nil
 }

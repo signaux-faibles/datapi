@@ -60,7 +60,7 @@ func importListesHandler(c *gin.Context) {
 }
 
 func importPaydexHistoHandler(c *gin.Context) {
-	err := importPaydexHisto(c)
+	err := importPaydex(c)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 	}
