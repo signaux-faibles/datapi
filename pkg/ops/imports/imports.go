@@ -403,7 +403,7 @@ func (e etablissement) intoBatch(batch *pgx.Batch) {
 	}
 }
 
-func (s scoreFile) toLibelle() string {
+func toLibelle(batchNumber string) string {
 	months := map[string]string{
 		"01": "Janvier",
 		"02": "Février",
@@ -418,8 +418,8 @@ func (s scoreFile) toLibelle() string {
 		"11": "Novembre",
 		"12": "Décembre",
 	}
-	year := "20" + s.Batch[0:2]
-	month := s.Batch[2:4]
+	year := "20" + batchNumber[0:2]
+	month := batchNumber[2:4]
 	return months[month] + " " + year
 }
 
@@ -605,8 +605,7 @@ type scoreFile struct {
 	AlertPreRedressements string             `json:"alertPreRedressements"`
 }
 
-func importListes(algo string) error {
-
+func importListe(batchNumber string, algo string) error {
 	filename := viper.GetString("source.listPath")
 	file, err := os.Open(filename)
 	if err != nil {
@@ -630,7 +629,8 @@ func importListes(algo string) error {
 		return utils.NewJSONerror(http.StatusBadRequest, "begin TX: "+err.Error())
 	}
 
-	_, err = tx.Exec(context.Background(), `create table tmp_score (
+	_, err = tx.Exec(context.Background(), `drop table if exists tmp_score;
+        create table tmp_score (
 		siren text,
 		score real,
 		libelle_liste text,
@@ -650,7 +650,7 @@ func importListes(algo string) error {
 
 	batch := &pgx.Batch{}
 	for _, s := range scores {
-		queueScoreToBatch(s, batch)
+		queueScoreToBatch(s, batchNumber, batch)
 	}
 	batch.Queue(`insert into score
 			(siret, siren, libelle_liste, batch, algo, periode,
@@ -665,6 +665,8 @@ func importListes(algo string) error {
 		from tmp_score t
 		inner join etablissement e on e.siren = t.siren and e.siege`, algo, now)
 
+	batch.Queue(`insert into liste (libelle, batch, algo) values ($1, $2, $3)`, toLibelle(batchNumber), batchNumber, algo)
+
 	results := tx.SendBatch(context.Background(), batch)
 	err = results.Close()
 
@@ -678,7 +680,7 @@ func importListes(algo string) error {
 	return nil
 }
 
-func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
+func queueScoreToBatch(s scoreFile, batchNumber string, batch *pgx.Batch) {
 	sqlScore := `insert into tmp_score (siren, libelle_liste, batch, algo, score, diff, alert,
  		expl_selection_concerning, expl_selection_reassuring, macro_radar, alert_pre_redressements, redressements)
    	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
@@ -699,8 +701,8 @@ func queueScoreToBatch(s scoreFile, batch *pgx.Batch) {
 
 	batch.Queue(sqlScore,
 		s.Siren,
-		s.toLibelle(),
-		s.Batch,
+		toLibelle(batchNumber),
+		batchNumber,
 		s.Algo,
 		s.Score,
 		s.Diff,
