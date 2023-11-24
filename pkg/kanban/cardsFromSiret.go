@@ -52,6 +52,14 @@ func selectCardsFromSiret(ctx context.Context, siret string, username libwekan.U
 	return utils.Convert(cards, wekanCardToKanbanCard(username)), nil
 }
 
+func wekanCardWithCommentsURL(wekanCard libwekan.CardWithComments) string {
+	return fmt.Sprintf("%sb/%s/%s/%s",
+		viper.GetString("wekanURL"),
+		string(wekanCard.Card.BoardID),
+		string(WekanConfig.Boards[wekanCard.Card.BoardID].Board.Slug),
+		wekanCard.Card.ID,
+	)
+}
 func wekanCardURL(wekanCard libwekan.Card) string {
 	return fmt.Sprintf("%sb/%s/%s/%s",
 		viper.GetString("wekanURL"),
@@ -59,6 +67,53 @@ func wekanCardURL(wekanCard libwekan.Card) string {
 		string(WekanConfig.Boards[wekanCard.BoardID].Board.Slug),
 		wekanCard.ID,
 	)
+}
+
+func wekanCardWithCommentsToKanbanCard(username libwekan.Username) func(libwekan.CardWithComments) core.KanbanCard {
+	return func(wekanCard libwekan.CardWithComments) core.KanbanCard {
+		user, _ := WekanConfig.GetUserByUsername(username)
+		boardConfig := WekanConfig.Boards[wekanCard.Card.BoardID]
+
+		siret := cardWithCommentsToSiret(WekanConfig)(wekanCard)
+
+		card := core.KanbanCard{
+			ListTitle:    boardConfig.Lists[wekanCard.Card.ListID].Title,
+			Archived:     wekanCard.Card.Archived,
+			BoardTitle:   boardConfig.Board.Title,
+			Creator:      WekanConfig.Users[wekanCard.Card.UserID].Username,
+			LastActivity: wekanCard.Card.DateLastActivity,
+			StartAt:      wekanCard.Card.StartAt,
+			EndAt:        wekanCard.Card.EndAt,
+			ID:           wekanCard.Card.ID,
+			Siret:        core.Siret(siret),
+		}
+
+		if boardConfig.Board.UserIsActiveMember(user) {
+			card.ListID = wekanCard.Card.ListID
+			card.BoardID = wekanCard.Card.BoardID
+			card.CreatorID = wekanCard.Card.UserID
+			card.AssigneeIDs = wekanCard.Card.Assignees
+			card.SwimlaneID = wekanCard.Card.SwimlaneID
+			card.LabelIDs = wekanCard.Card.LabelIDs
+			card.MemberIDs = wekanCard.Card.Members
+			card.Description = wekanCard.Card.Description
+			card.URL = wekanCardWithCommentsURL(wekanCard)
+			card.UserIsBoardMember = true
+			card.Comments = utils.Convert(wekanCard.Comments, wekanCommentToKanbanComment)
+		}
+
+		return card
+	}
+}
+
+func wekanCommentToKanbanComment(comment libwekan.Comment) core.KanbanComment {
+	var kanbanComment core.KanbanComment
+	kanbanComment.ID = string(comment.ID)
+	kanbanComment.Comment = comment.Text
+	kanbanComment.AuthorID = string(comment.UserID)
+	kanbanComment.CreatedAt = comment.CreatedAt
+	kanbanComment.ModifiedAt = comment.ModifiedAt
+	return kanbanComment
 }
 
 func wekanCardToKanbanCard(username libwekan.Username) func(libwekan.Card) core.KanbanCard {

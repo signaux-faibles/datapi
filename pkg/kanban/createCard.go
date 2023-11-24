@@ -2,38 +2,45 @@ package kanban
 
 import (
 	"context"
+	"fmt"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/signaux-faibles/libwekan"
 	"github.com/spf13/viper"
+	"slices"
 
 	"datapi/pkg/core"
 	"datapi/pkg/utils"
 )
 
 // CreateCard permet la création d'une carte dans la base de données wekan
-func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username, db *pgxpool.Pool) error {
+func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNewCardParams, username libwekan.Username, assignees []libwekan.Username, db *pgxpool.Pool) (core.KanbanCard, error) {
 	user, ok := GetUser(username)
 	if !ok {
-		return core.ForbiddenError{Reason: "l'utilisateur n'est pas enregistré dans wekan"}
+		return core.KanbanCard{}, core.ForbiddenError{Reason: "l'utilisateur n'est pas enregistré dans wekan"}
 	}
+	assigneesUsers := utils.Convert(assignees, func(username libwekan.Username) libwekan.User {
+		user, _ := GetUser(username)
+		return user
+	})
 	board, swimlane, err := getBoardWithSwimlaneID(params.SwimlaneID)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
-	list, err := getListWithBoardID(board.Board.ID, "A définir")
+	list, err := getListWithBoardID(board.Board.ID, 0)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
 	etablissement, err := getEtablissementDataFromDb(ctx, db, params.Siret)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
 
-	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, etablissement, params.Labels)
+	card, err := buildCard(board, list.ID, swimlane.ID, params.Description, params.Siret, user, assigneesUsers, etablissement, params.Labels)
 	if err != nil {
-		return err
+		return core.KanbanCard{}, err
 	}
-	return wekan.InsertCard(ctx, card)
+	kanbanCard := wekanCardToKanbanCard(username)(card)
+	return kanbanCard, wekan.InsertCard(ctx, card)
 }
 
 func buildCard(
@@ -43,13 +50,14 @@ func buildCard(
 	description string,
 	siret core.Siret,
 	user libwekan.User,
+	assignees []libwekan.User,
 	etablissement core.EtablissementData,
 	labels []libwekan.BoardLabelName,
 ) (libwekan.Card, error) {
 	card := libwekan.BuildCard(configBoard.Board.ID, listID, swimlaneID, etablissement.RaisonSociale, description, user.ID)
 
 	// le créateur de la carte est assigné automatiquement
-	card.Assignees = []libwekan.UserID{user.ID}
+	card.Assignees = utils.Convert(assignees, func(user libwekan.User) libwekan.UserID { return user.ID })
 
 	activiteField := buildActiviteField(configBoard, etablissement.CodeActivite, etablissement.LibelleActivite)
 	effectifField := buildEffectifField(configBoard, etablissement.Effectif)
@@ -76,7 +84,7 @@ func labelNameToIDConvertor(board libwekan.ConfigBoard) func(libwekan.BoardLabel
 	}
 }
 
-func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, error) {
+func getListWithBoardID(boardID libwekan.BoardID, rank int) (libwekan.List, error) {
 	wekanConfigMutex.Lock()
 	wc := WekanConfig.Copy()
 	wekanConfigMutex.Unlock()
@@ -85,12 +93,23 @@ func getListWithBoardID(boardID libwekan.BoardID, title string) (libwekan.List, 
 	if !ok {
 		return libwekan.List{}, core.UnknownBoardError{BoardIdentifier: "id=" + string(boardID)}
 	}
+
+	var lists []libwekan.List
 	for _, list := range configBoard.Lists {
-		if list.Title == title {
-			return list, nil
-		}
+		lists = append(lists, list)
 	}
-	return libwekan.List{}, core.UnknownListError{ListIdentifier: "titre=" + title}
+	slices.SortFunc(lists, func(listA libwekan.List, listB libwekan.List) int {
+		if listA.Sort-listB.Sort > 0 {
+			return 1
+		} else {
+			return -1
+		}
+	})
+
+	if rank >= len(lists) {
+		return libwekan.List{}, core.UnknownListError{ListIdentifier: fmt.Sprintf("rank=%d", rank)}
+	}
+	return lists[rank], nil
 }
 
 func getBoardWithSwimlaneID(swimlaneID libwekan.SwimlaneID) (libwekan.ConfigBoard, libwekan.Swimlane, error) {

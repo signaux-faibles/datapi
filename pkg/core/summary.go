@@ -55,6 +55,8 @@ type Summary struct {
 	SecteurCovid                *string            `json:"secteurCovid,omitempty"`
 	EtatAdministratif           *string            `json:"etatAdministratif,omitempty"`
 	EtatAdministratifEntreprise *string            `json:"etatAdministratifEntreprise,omitempty"`
+	HasDelai                    *bool              `json:"hasDelai,omitempty"`
+	Cards                       []KanbanCard       `json:"cards,omitempty"`
 }
 
 type Summaries struct {
@@ -121,6 +123,7 @@ func (summaries *Summaries) NewSummary() []interface{} {
 		&s.ExcedentBrutDExploitation,
 		&s.EtatAdministratif,
 		&s.EtatAdministratifEntreprise,
+		&s.HasDelai,
 	}
 	return t
 }
@@ -152,6 +155,7 @@ type summaryParams struct {
 	excludeSecteursCovid  []string
 	etatAdministratif     *string
 	firstAlert            *bool
+	hasntDelai            *bool
 }
 
 func (p summaryParams) toSQLParams() []interface{} {
@@ -190,9 +194,11 @@ func (p summaryParams) toSQLParams() []interface{} {
 		p.caMax,
 		p.excludeSecteursCovid,
 		p.etatAdministratif,
+		p.hasntDelai,
 	}
 }
 
+// TODO: réécrire cette fonction avec des endpoints séparés (à ne pas oublier pendant le refactor du modèle de donnée)
 func getSummaries(params summaryParams) (Summaries, error) {
 	var sql string
 	var sqlParams []interface{}
@@ -208,12 +214,12 @@ func getSummaries(params summaryParams) (Summaries, error) {
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
 		sqlParams = append(p[0:10], p[13], p[15], p[18])
-		sqlParams = append(sqlParams, p[19:]...)
-		sql = `select * from get_search($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19) as raison_sociale;`
+		sqlParams = append(sqlParams, p[19:25]...)
+		sql = `select *, null::bool from get_search($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19) as raison_sociale;`
 	} else if params.orderBy == "follow" {
 		p := params.toSQLParams()
 		sqlParams = append(sqlParams, p[0], p[3], p[8])
-		sql = "select * from get_follow($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null, null, null, null, null, null, null, null) as follow;"
+		sql = "select *, null::bool from get_follow($1, null, null, $2, null, null, true, true, $3, false, 'follow', false, null, null, true, null, null, null, null, null, null, null, null, null, null) as follow;"
 	} else {
 		// p := params.toSQLParams()
 		// sqlParams = p[0:17]

@@ -40,6 +40,12 @@ group by siret, periode;
 -- order by période, siret;
 
 
+drop table if exists tmp_effectif_agg;
+create table tmp_effectif_agg as
+select siret, période, sum(effectif) as effectif from tmp_effectif
+where période > (current_date - '2 years 2 month'::interval)
+group by siret, période;
+
 drop table if exists tmp_cotisation_agg;
 create table tmp_cotisation_agg as
 with calendar as (select date_trunc('month', current_date) - generate_series(1, 24) * '1 month'::interval as période)
@@ -68,13 +74,12 @@ select ca.période, s.siret, d.part_patronale, d.part_ouvrière, c.du_période a
 from calendar ca
          inner join sirets s on true
          inner join etablissement et on et.siret = s.siret
-         left join tmp_debit_agg d on d.période = ca.période and s.siret = d.siret
+         left join tmp_debit_agg d on d.periode = ca.période and s.siret = d.siret
          left join tmp_cotisation_agg c on s.siret = c.siret and ca.période = c.période
-         left join tmp_effectif e on s.siret = e.siret and ca.période = e.période;
+         left join tmp_effectif_agg e on s.siret = e.siret and ca.période = e.période;
 
 -- insertion des données
-delete
-from etablissement_periode_urssaf;
+truncate table etablissement_periode_urssaf;
 insert into etablissement_periode_urssaf (siret, siren, periode, cotisation, part_patronale, part_salariale, effectif)
 select siret, substring(siret from 1 for 9), période, cotisation, part_patronale, part_ouvrière, effectif
 from tmp_etablissement_periode_urssaf
@@ -113,86 +118,3 @@ from etablissement_apconso;
 insert into etablissement_apconso (siret, siren, id_conso, heure_consomme, montant, effectif, periode)
 select etab_siret, substring(etab_siret from 1 for 9), id_da, heures, montants, effectifs, mois::date
 from consommation_ap;
-
--- testing only
-delete
-from etablissement
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete from entreprise
-where siren not in (select distinct siren
-                    from score
-                    where batch = '2312' and alert != 'Pas d''alerte');
-delete
-from etablissement_periode_urssaf
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from entreprise_bce
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from entreprise_ellisphere
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from entreprise_diane
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from entreprise_paydex
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from etablissement_apconso
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from etablissement_apdemande
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from etablissement_delai
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from etablissement_procol
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-delete
-from etablissement_periode_urssaf
-where siren not in (select distinct siren
-                from score
-                where batch = '2312' and alert != 'Pas d''alerte');
-
-refresh materialized view v_alert_entreprise;
-refresh materialized view v_alert_etablissement;
-refresh materialized view v_apdemande;
-refresh materialized view v_diane_variation_ca;
-refresh materialized view v_etablissement_raison_sociale;
-refresh materialized view v_hausse_urssaf;
-refresh materialized view v_last_effectif;
-refresh materialized view v_last_procol;
-refresh materialized view v_naf;
-refresh materialized view v_roles;
-refresh materialized view v_summaries;

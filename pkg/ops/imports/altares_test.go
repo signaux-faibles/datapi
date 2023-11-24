@@ -67,7 +67,7 @@ func Test_PaydexHistoReader(t *testing.T) {
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	path := getTestDataFilename()
 
-	paydexHistoChan, err := PaydexHistoReader(context.Background(), path)
+	paydexHistoChan, err := PaydexReader(context.Background(), path)
 	ass.NoError(err)
 
 	// WHEN
@@ -92,7 +92,7 @@ func Test_PaydexHistoReader_cancelledContext(t *testing.T) {
 	path := getTestDataFilename()
 
 	ctx, cancelCtx := context.WithCancel(context.Background())
-	paydexHistoChan, _ := PaydexHistoReader(ctx, path)
+	paydexHistoChan, _ := PaydexReader(ctx, path)
 	cancelCtx()
 	var paydexHistos []Paydex
 	for paydexHisto := range paydexHistoChan {
@@ -109,7 +109,7 @@ func Test_PaydexHistoReader_missingFile(t *testing.T) {
 	// GIVEN
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	path := "bad" + getTestDataFilename()
-	paydexHistoChan, err := PaydexHistoReader(context.Background(), path)
+	paydexHistoChan, err := PaydexReader(context.Background(), path)
 
 	// WHEN
 	var paydexHistos []Paydex
@@ -128,11 +128,11 @@ func Test_CopyFromPaydexHisto_firstOccurence(t *testing.T) {
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	path := getTestDataFilename()
 
-	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
-	copyFromPaydexHisto := CopyFromPaydexHisto{
-		PaydexHistoParser: paydexHistoReader,
-		Current:           new(Paydex),
-		Count:             new(int),
+	paydexHistoReader, _ := PaydexReader(context.Background(), path)
+	copyFromPaydexHisto := CopyFromPaydex{
+		PaydexParser: paydexHistoReader,
+		Current:      new(Paydex),
+		Count:        new(int),
 	}
 
 	// WHEN
@@ -150,11 +150,11 @@ func Test_CopyFromPaydexHisto_allTuples(t *testing.T) {
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	path := getTestDataFilename()
 
-	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
-	copyFromPaydexHisto := CopyFromPaydexHisto{
-		PaydexHistoParser: paydexHistoReader,
-		Current:           new(Paydex),
-		Count:             new(int),
+	paydexHistoReader, _ := PaydexReader(context.Background(), path)
+	copyFromPaydexHisto := CopyFromPaydex{
+		PaydexParser: paydexHistoReader,
+		Current:      new(Paydex),
+		Count:        new(int),
 	}
 	expectedTuples := utils.Convert(expected, Paydex.tuple)
 
@@ -178,11 +178,11 @@ func Test_CopyFromPaydexHisto_missingFile(t *testing.T) {
 	// workaround: le répertoire de travail change lorsque le tags integration est sélectionné
 	path := "bad" + getTestDataFilename()
 
-	paydexHistoReader, _ := PaydexHistoReader(context.Background(), path)
-	copyFromPaydexHisto := CopyFromPaydexHisto{
-		PaydexHistoParser: paydexHistoReader,
-		Current:           new(Paydex),
-		Count:             new(int),
+	paydexHistoReader, _ := PaydexReader(context.Background(), path)
+	copyFromPaydexHisto := CopyFromPaydex{
+		PaydexParser: paydexHistoReader,
+		Current:      new(Paydex),
+		Count:        new(int),
 	}
 
 	// WHEN

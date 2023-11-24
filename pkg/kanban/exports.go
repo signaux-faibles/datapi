@@ -226,7 +226,7 @@ func buildCardToCardAndCommentsPipeline() libwekan.Pipeline {
 		},
 	}, bson.M{
 		"$lookup": bson.M{
-			"from":         "cards_comments",
+			"from":         "card_comments",
 			"as":           "comments",
 			"localField":   "card._id",
 			"foreignField": "cardId",

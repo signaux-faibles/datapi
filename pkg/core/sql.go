@@ -33,21 +33,11 @@ func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 		p.excludeSecteursCovid,
 		p.etatAdministratif,
 		p.firstAlert,
+		p.hasntDelai,
 	}
 }
 
 // sqlCurrentScore récupère les derniers scores connus
-// output: siret text, siren text, raison_sociale text, commune text, libelle_departement text,
-// code_departement text, valeur_score real, detail_score jsonb, first_alert boolean,
-// chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real,
-// resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text,
-// last_procol text, activite_partielle boolean, apconso_heure_consomme integer,
-// apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text,
-// nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean,
-// followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text,
-// territoire_industrie boolean, comment text, category text, since timestamp without time zone,
-// urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
-// etat_administratif text, etat_administratif_entreprise text
 var sqlCurrentScore = `select 
   s.siret, s.siren, s.raison_sociale, s.commune,
   s.libelle_departement, s.code_departement,
@@ -75,7 +65,7 @@ var sqlCurrentScore = `select
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
+  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, s.has_delai
 from v_summaries s
   left join v_naf n on n.code_n5 = s.code_activite
   left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $8
@@ -100,6 +90,7 @@ from v_summaries s
   and (n.code_n1 = any($15) or $15 is null)
   and (s.etat_administratif = $21 or $21 is null)
   and (s.first_alert = $22 or $22 is null)
+  and (not (s.has_delai = $23) or $23 is null)
 order by s.alert, s.valeur_score desc, s.siret
 limit $2 offset $3`
 
@@ -137,22 +128,11 @@ func (p summaryParams) toSQLScoreParams() []interface{} {
 		p.etatAdministratif,
 		p.firstAlert,
 		p.libelleListe,
+		p.hasntDelai,
 	}
 }
 
 // sqlScore récupère les scores de la liste passée en paramètre
-// output: siret text, siren text, raison_sociale text, commune text, libelle_departement text,
-//
-//	code_departement text, valeur_score real, detail_score jsonb, first_alert boolean,
-//	chiffre_affaire real, arrete_bilan date, exercice_diane integer, variation_ca real,
-//	resultat_expl real, effectif real, effectif_entreprise real, libelle_n5 text, libelle_n1 text, code_activite text,
-//	last_procol text, activite_partielle boolean, apconso_heure_consomme integer,
-//	apconso_montant integer, hausse_urssaf boolean, dette_urssaf real, alert text,
-//	nb_total bigint, nb_f1 bigint, nb_f2 bigint, visible boolean, in_zone boolean,
-//	followed boolean, followed_enterprise boolean, siege boolean, raison_sociale_groupe text,
-//	territoire_industrie boolean, comment text, category text, since timestamp without time zone,
-//	urssaf boolean, dgefp boolean, score boolean, bdf boolean, secteur_covid text, excedent_brut_d_exploitation real,
-//	etat_administratif text, etat_administratif_entreprise text
 var sqlScore = `select 
   s.siret, s.siren, s.raison_sociale, s.commune,
   s.libelle_departement, s.code_departement,
@@ -180,7 +160,7 @@ var sqlScore = `select
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
+  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, s.has_delai
   from v_summaries s
   inner join score0 sc on sc.siret = s.siret and sc.libelle_liste = $23 and sc.alert != 'Pas d''alerte'
   left join v_naf n on n.code_n5 = s.code_activite
@@ -205,5 +185,6 @@ var sqlScore = `select
   and (n.code_n1 = any($15) or $15 is null)
   and (s.etat_administratif = $21 or $21 is null)
   and ((s.first_list_etablissement = $23 or s.first_red_list_etablissement = $23) and $22 or $22 is null)
+  and (not (s.has_delai = $24) or $24 is null)
   order by sc.alert, sc.score desc, s.siret
   limit $2 offset $3`

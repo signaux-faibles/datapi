@@ -35,7 +35,7 @@ func DropEtablissementIndex(ctx context.Context) error {
 
 // InsertGeoSirene insère les informations géographiques des établissements dans la base
 func InsertGeoSirene(ctx context.Context) error {
-	file, err := os.Open(viper.GetString("geoSirenePath"))
+	file, err := os.Open(viper.GetString("source.geoSirenePath"))
 	if err != nil {
 		return err
 	}

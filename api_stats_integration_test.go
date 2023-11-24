@@ -3,16 +3,14 @@
 package main
 
 import (
+	stats "datapi/pkg/stats"
+	"datapi/pkg/test"
 	_ "embed"
-	"fmt"
-	"net/http"
+	fmt "fmt"
+	assert "github.com/stretchr/testify/assert"
+	. "net/http"
 	"testing"
 	"time"
-
-	"github.com/stretchr/testify/assert"
-
-	"datapi/pkg/stats"
-	"datapi/pkg/test"
 )
 
 func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
@@ -29,7 +27,7 @@ func TestAPI_get_stats_since_5_days_ago(t *testing.T) {
 	path := fmt.Sprintf("/stats/since/%d/days", numberOfDays)
 	response := test.HTTPGet(t, path)
 
-	ass.Equal(http.StatusOK, response.StatusCode)
+	ass.Equal(StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	records, err := test.ReadZippedCSV(body)
 	defer test.WriteFile(t.Name()+".xlsx", body)
@@ -65,7 +63,7 @@ func TestAPI_get_stats_with_heavy_load(t *testing.T) {
 	elapsed := time.Since(start)
 	t.Log(t.Name(), "fin de l'appel :", elapsed)
 
-	ass.Equal(http.StatusOK, response.StatusCode)
+	ass.Equal(StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	records, err := test.ReadZippedCSV(body)
 	//ass.NoError(err, "contenu de la réponse : %s", body)
@@ -93,7 +91,7 @@ func TestAPI_get_stats_on_2023_03_01(t *testing.T) {
 	path := fmt.Sprintf("/stats/from/%s/for/%d/days", search, nbDays)
 	response := test.HTTPGet(t, path)
 
-	ass.Equal(http.StatusOK, response.StatusCode)
+	ass.Equal(StatusOK, response.StatusCode)
 	body := test.GetBodyQuietly(response)
 	defer test.WriteFile(t.Name()+".xlsx", body)
 	records, err := test.ReadZippedCSV(body)
@@ -118,37 +116,37 @@ func TestAPI_get_stats_testing_params(t *testing.T) {
 		{
 			"mauvais format de date - 1",
 			"/stats/from/20/for/toto/days",
-			want{http.StatusBadRequest, "le paramètre 'start' n'est pas du bon type:"},
+			want{StatusBadRequest, "le paramètre 'start' n'est pas du bon type:"},
 		},
 		{
 			"mauvais format de date - 2",
 			"/stats/from/20/for/toto/months",
-			want{http.StatusBadRequest, "le paramètre 'start' n'est pas du bon type:"},
+			want{StatusBadRequest, "le paramètre 'start' n'est pas du bon type:"},
 		},
 		{
 			"mauvais format de date - 3",
 			"/stats/from/2012-03-21/for/any/days",
-			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+			want{StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
 		},
 		{
 			"mauvais format de date - 4",
 			"/stats/from/2012-03-21/for/any/months",
-			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+			want{StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
 		},
 		{
 			"mauvais format de date - 5",
 			"/stats/since/any/months",
-			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+			want{StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
 		},
 		{
 			"mauvais format de date - 6",
 			"/stats/since/any/days",
-			want{http.StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
+			want{StatusBadRequest, "le paramètre 'n' n'est pas du bon type:"},
 		},
 		{
 			"mauvais format de date - 7",
 			"/stats/from/2012-03-21/to/2012-03",
-			want{http.StatusBadRequest, "le paramètre 'end' n'est pas du bon type:"},
+			want{StatusBadRequest, "le paramètre 'end' n'est pas du bon type:"},
 		},
 	}
 	for _, tt := range tests {

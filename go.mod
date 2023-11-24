@@ -20,7 +20,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus/client_golang v1.17.0
 	github.com/signaux-faibles/goSirene v0.3.2
-	github.com/signaux-faibles/libwekan v0.4.1
+	github.com/signaux-faibles/libwekan v0.4.2-0.20231114115131-95272878afd7
 	github.com/spf13/viper v1.17.0
 	github.com/stretchr/testify v1.8.4
 	github.com/tealeg/xlsx v1.0.5

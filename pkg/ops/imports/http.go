@@ -14,7 +14,7 @@ func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/ee", importEtablissementHandler)
 	endpoint.GET("/sirene/stocketablissement", importStockEtablissementsHandler)
 	endpoint.GET("/sirene/unitelegale", importUnitesLegalesHandler)
-	endpoint.GET("/listes/:algo", importListesHandler)
+	endpoint.GET("/liste/:batchNumber/:algo", importListesHandler)
 	endpoint.GET("/full", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler)
 	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importListesHandler)
 	endpoint.GET("/bce", importBCEHandler)
@@ -48,11 +48,12 @@ func importEtablissementHandler(c *gin.Context) {
 
 func importListesHandler(c *gin.Context) {
 	algo := c.Params.ByName("algo")
+	batchNumber := c.Params.ByName("batchNumber")
 	if algo == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": "le paramètre `algo` est obligatoire"})
 		return
 	}
-	err := importListes(algo)
+	err := importListe(batchNumber, algo)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
@@ -60,7 +61,7 @@ func importListesHandler(c *gin.Context) {
 }
 
 func importPaydexHistoHandler(c *gin.Context) {
-	err := importPaydexHisto(c)
+	err := importPaydex(c)
 	if err != nil {
 		c.AbortWithError(http.StatusInternalServerError, err)
 	}

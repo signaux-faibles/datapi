@@ -14,7 +14,7 @@ import (
 
 // InsertSireneUL insère des trucs rapport aux sirene mais je sais pas trop quoi
 func InsertSireneUL(ctx context.Context) error {
-	sireneULParser := goSirene.SireneULParser(ctx, viper.GetString("sireneULPath"))
+	sireneULParser := goSirene.SireneULParser(ctx, viper.GetString("source.sireneULPath"))
 	initialCount := 0
 	copyFromSireneUL := CopyFromSireneUL{
 		SireneULParser: sireneULParser,

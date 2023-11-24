@@ -153,9 +153,12 @@ func configureKanbanEndpoint(path string, api *gin.Engine, handlers ...gin.Handl
 	kanban.GET("/config", CheckAnyRolesMiddleware("wekan"), kanbanConfigHandler)
 	kanban.GET("/cards/:siret", CheckAnyRolesMiddleware("wekan"), kanbanGetCardsHandler)
 	kanban.POST("/follow", kanbanGetCardsForCurrentUserHandler)
-	kanban.POST("/card", CheckAnyRolesMiddleware("wekan"), kanbanNewCardHandler)
 	kanban.GET("/unarchive/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanUnarchiveCardHandler)
 	kanban.POST("/updateCard", CheckAnyRolesMiddleware("wekan"), kanbanUpdateCardHandler)
+	kanban.POST("/card", CheckAnyRolesMiddleware("wekan"), kanbanNewCardHandler)
+	kanban.GET("/card/join/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanJoinCardHandler)
+	kanban.GET("/card/part/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanPartCardHandler)
+	kanban.GET("/card/get/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanGetCardHandler)
 }
 
 // True made global to ease pointers

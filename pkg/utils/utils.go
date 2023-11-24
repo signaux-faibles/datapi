@@ -62,6 +62,15 @@ func ContainsOnConditions[T interface{}](values []T, searched T, conditions ...f
 	return false
 }
 
+func MapFindTest[K comparable, V any](values map[K]V, test func(k K, v V) bool) (emptyk K, emptyV V, b bool) {
+	for k, v := range values {
+		if test(k, v) {
+			return k, v, true
+		}
+	}
+	return
+}
+
 func Filter[T any](input []T, test func(T) bool) (output []T) {
 	for _, element := range input {
 		if test(element) {

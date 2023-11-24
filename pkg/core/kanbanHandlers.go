@@ -34,6 +34,21 @@ func kanbanGetCardsHandler(c *gin.Context) {
 	}
 }
 
+func kanbanGetCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+	cardID := libwekan.CardID(c.Param("cardID"))
+
+	card, err := Kanban.SelectCardFromCardID(c, cardID, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	c.JSON(200, card)
+
+}
+
 func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	var s Session
 	s.Bind(c)
@@ -66,7 +81,6 @@ func kanbanGetCardsForCurrentUserHandler(c *gin.Context) {
 	params.BoardIDs = Kanban.ClearBoardIDs(params.BoardIDs, params.User)
 
 	cards, err := Kanban.SelectFollowsForUser(c, params, db.Get(), s.Roles)
-
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -86,11 +100,100 @@ func kanbanNewCardHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
-	err = Kanban.CreateCard(c, params, libwekan.Username(s.Username), db.Get())
+	_, err = Kanban.CreateCard(c, params, libwekan.Username(s.Username), []libwekan.Username{libwekan.Username(s.Username)}, db.Get())
 	if errors.As(err, &ForbiddenError{}) {
 		c.JSON(http.StatusForbidden, err.Error())
 	}
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 	}
+}
+
+func kanbanUpdateCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+	var params struct {
+		CardID      libwekan.CardID `json:"cardID"`
+		Description string          `json:"description"`
+	}
+	c.Bind(&params)
+
+	card, err := Kanban.SelectCardFromCardID(c, params.CardID, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur:" + err.Error()})
+	}
+	err = Kanban.UpdateCard(c, card, params.Description, libwekan.Username(s.Username))
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "erreur: " + err.Error()})
+	}
+}
+
+func kanbanUnarchiveCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+
+	cardID := libwekan.CardID(c.Param("cardID"))
+
+	err := Kanban.UnarchiveCard(c, cardID, libwekan.Username(s.Username))
+	if errors.Is(err, UnknownCardError{}) {
+		c.JSON(http.StatusNotFound, err.Error())
+	}
+	if errors.Is(err, ForbiddenError{}) {
+		c.JSON(http.StatusForbidden, err.Error())
+	}
+	if errors.Is(err, UnknownBoardError{}) {
+		c.JSON(http.StatusNotFound, err.Error())
+	}
+	if errors.Is(err, libwekan.NothingDoneError{}) {
+		c.JSON(http.StatusNoContent, err.Error())
+	}
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(200, "traitement effectué")
+}
+
+func kanbanPartCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+
+	cardID := libwekan.CardID(c.Param("cardID"))
+	if len(cardID) == 0 {
+		c.JSON(http.StatusBadRequest, "cardID est obligatoire")
+		return
+	}
+	user, ok := Kanban.GetUser(libwekan.Username(s.Username))
+
+	if !ok {
+		c.JSON(http.StatusInternalServerError, "nom d'utilisateur incohérent")
+	}
+
+	err := Kanban.PartCard(c, cardID, user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(http.StatusOK, "ok")
+}
+
+func kanbanJoinCardHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+
+	cardID := libwekan.CardID(c.Param("cardID"))
+	if len(cardID) == 0 {
+		c.JSON(http.StatusBadRequest, "cardID est obligatoire")
+		return
+	}
+
+	user, ok := Kanban.GetUser(libwekan.Username(s.Username))
+
+	if !ok {
+		c.JSON(http.StatusInternalServerError, "nom d'utilisateur incohérent")
+	}
+
+	err := Kanban.JoinCard(c, cardID, user)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+	}
+	c.JSON(http.StatusOK, "ok")
 }

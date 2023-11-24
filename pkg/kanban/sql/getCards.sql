@@ -25,7 +25,7 @@ select s.siret, s.siren, s.raison_sociale, s.commune,
        (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
        (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
        (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-       s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise
+       s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, null
 from v_summaries s
        left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $2
        left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $2
