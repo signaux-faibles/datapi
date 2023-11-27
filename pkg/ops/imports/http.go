@@ -2,6 +2,7 @@
 package imports
 
 import (
+	"log/slog"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
@@ -18,7 +19,7 @@ func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/full", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler)
 	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importListesHandler)
 	endpoint.GET("/bce", importBCEHandler)
-	endpoint.GET("/paydexhisto", importPaydexHistoHandler)
+	endpoint.GET("/paydex", importPaydexHandler)
 	endpoint.GET("/urssaf", importUrssafHandler)
 }
 
@@ -60,9 +61,12 @@ func importListesHandler(c *gin.Context) {
 	}
 }
 
-func importPaydexHistoHandler(c *gin.Context) {
+func importPaydexHandler(c *gin.Context) {
 	err := importPaydex(c)
 	if err != nil {
-		c.AbortWithError(http.StatusInternalServerError, err)
+		handlerError := c.AbortWithError(http.StatusInternalServerError, err)
+		if handlerError != nil {
+			slog.Error("erreur lors de l'arrêt du handler paydex", slog.Any("error", err))
+		}
 	}
 }
