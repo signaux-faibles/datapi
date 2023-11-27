@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"log/slog"
+	"regexp"
 	"strconv"
 	"time"
 
@@ -19,7 +20,7 @@ import (
 
 type Paydex struct {
 	Siren        core.Siren
-	Paydex       *string
+	Paydex       *CodePaydex
 	JoursRetard  *int
 	Fournisseurs *int
 	Encours      *float64
@@ -27,6 +28,25 @@ type Paydex struct {
 	FPI90        *int
 	DateValeur   *time.Time
 	err          error
+}
+
+type CodePaydex string
+
+var validCodePaydex = regexp.MustCompile("^\\d{3}$")
+
+func codePaydexFrom(value string) (*CodePaydex, error) {
+	if value == "" {
+		return nil, nil
+	}
+	if !isValidCodePaydex(value) {
+		return nil, fmt.Errorf("le code paydex est invalide : '%s'", value)
+	}
+	codePaydex := CodePaydex(value)
+	return &codePaydex, nil
+}
+
+func isValidCodePaydex(codePaydex string) bool {
+	return validCodePaydex.MatchString(codePaydex)
 }
 
 func (p Paydex) tuple() []interface{} {
@@ -82,7 +102,7 @@ func PaydexReader(ctx context.Context, filename string) (chan Paydex, error) {
 }
 
 func parsePaydex(line []string) Paydex {
-	if len(line) != 10 {
+	if len(line) != 9 {
 		return Paydex{
 			err: csv.ErrFieldCount,
 		}
@@ -98,48 +118,53 @@ func parsePaydex(line []string) Paydex {
 		}
 	}
 
-	dateValeur, err := time.Parse("2006-01-02", line[9])
+	dateValeur, err := time.Parse("2006-01-02", line[8])
 	if err != nil {
 		return Paydex{
-			err: fmt.Errorf("%s is not a valid DATE_VALEUR value: %s", line[2], err.Error()),
+			err: fmt.Errorf("%s is not a valid DATE_VALEUR value: %s", line[8], err.Error()),
 		}
 	}
 	paydex.DateValeur = &dateValeur
-
-	paydex.Paydex = parsePstring(line[2])
-
-	paydex.JoursRetard, err = parsePint(line[4])
+	codePaydex, err := codePaydexFrom(line[2])
 	if err != nil {
 		return Paydex{
-			err: fmt.Errorf("%s is not a valid NBR_JRS_RETARD value: %s", line[2], err.Error()),
+			err: err,
+		}
+	}
+	paydex.Paydex = codePaydex
+
+	paydex.JoursRetard, err = parsePint(line[3])
+	if err != nil {
+		return Paydex{
+			err: fmt.Errorf("%s is not a valid NBR_JRS_RETARD value: %s", line[3], err.Error()),
 		}
 	}
 
-	paydex.Fournisseurs, err = parsePint(line[5])
+	paydex.Fournisseurs, err = parsePint(line[4])
 	if err != nil {
 		return Paydex{
-			err: fmt.Errorf("%s is not a valid NBR_FOURNISSEURS value: %s", line[2], err.Error()),
+			err: fmt.Errorf("%s is not a valid NBR_FOURNISSEURS value: %s", line[4], err.Error()),
 		}
 	}
 
-	paydex.Encours, err = parsePfloat(line[6])
+	paydex.Encours, err = parsePfloat(line[5])
 	if err != nil {
 		return Paydex{
-			err: fmt.Errorf("%s is not a valid ENCOURS_ETUDIES value: %s", line[2], err.Error()),
+			err: fmt.Errorf("%s is not a valid ENCOURS_ETUDIES value: %s", line[5], err.Error()),
 		}
 	}
 
-	paydex.FPI30, err = parsePint(line[7])
+	paydex.FPI30, err = parsePint(line[6])
 	if err != nil {
 		return Paydex{
-			err: fmt.Errorf("%s is not a valid NBR_EXPERIENCES_PAIEMENT value: %s", line[2], err.Error()),
+			err: fmt.Errorf("%s is not a valid FPI30 value: %s", line[6], err.Error()),
 		}
 	}
 
-	paydex.FPI90, err = parsePint(line[8])
+	paydex.FPI90, err = parsePint(line[7])
 	if err != nil {
 		return Paydex{
-			err: fmt.Errorf("%s is not a valid NBR_EXPERIENCES_PAIEMENT value: %s", line[2], err.Error()),
+			err: fmt.Errorf("%s is not a valid FPI90 value: %s", line[7], err.Error()),
 		}
 	}
 
@@ -170,15 +195,14 @@ func parsePint(value string) (*int, error) {
 }
 
 func acceptPaydexHeaders(fields []string) bool {
-	bomUTF8 := string([]byte{0xEF, 0xBB, 0xBF})
-	headers := []string{bomUTF8 + "siren", "état_organisation", "code_paydex", "paydex", "nbr_jrs_retard", "nbr_fournisseurs", "encours_étudiés", "note_100_alerteur_plus_30", "note_100_alerteur_plus_90_jours", "date_valeur"}
+	headers := []string{"siren", "état_organisation", "code_paydex", "nbr_jrs_retard", "nbr_fournisseurs", "encours_étudiés", "note_100_alerteur_plus_30", "note_100_alerteur_plus_90_jours", "date_valeur"}
 	if len(headers) != len(fields) {
-		slog.Info("Fichier rejeté, header non conforme", slog.Int("expected_length", len(headers)), slog.Int("actual_length", len(fields)))
+		slog.Warn("Fichier Paydex rejeté, header non conforme", slog.Int("expected_length", len(headers)), slog.Int("actual_length", len(fields)))
 		return false
 	}
 	for index := range fields {
 		if fields[index] != headers[index] {
-			slog.Info("Fichier rejeté, header non conforme", slog.Int("index", index), slog.String("expected", headers[index]), slog.String("actual", fields[index]))
+			slog.Warn("Fichier Paydex rejeté, header non conforme", slog.Int("index", index), slog.String("expected", headers[index]), slog.String("actual", fields[index]))
 			return false
 		}
 	}
