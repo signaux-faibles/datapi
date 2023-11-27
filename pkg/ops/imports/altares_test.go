@@ -2,9 +2,12 @@ package imports
 
 import (
 	"context"
-	"datapi/pkg/utils"
 	"encoding/json"
+
 	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/utils"
+
 	"os"
 	"strings"
 	"testing"
@@ -14,7 +17,7 @@ import (
 var expected = []Paydex{
 	{
 		Siren:        "000000000",
-		Paydex:       pointer("078"),
+		Paydex:       codePaydexForTest("078"),
 		JoursRetard:  pointer(3),
 		Fournisseurs: pointer(20),
 		Encours:      pointer(float64(104593.746)),
@@ -22,7 +25,7 @@ var expected = []Paydex{
 	},
 	{
 		Siren:        "000000000",
-		Paydex:       pointer("078"),
+		Paydex:       codePaydexForTest("078"),
 		JoursRetard:  pointer(3),
 		Fournisseurs: pointer(21),
 		Encours:      pointer(float64(139321.632)),
@@ -30,7 +33,7 @@ var expected = []Paydex{
 	},
 	{
 		Siren:        "111111111",
-		Paydex:       pointer("078"),
+		Paydex:       codePaydexForTest("078"),
 		JoursRetard:  pointer(3),
 		Fournisseurs: pointer(22),
 		Encours:      pointer(float64(150023.553)),
@@ -40,7 +43,7 @@ var expected = []Paydex{
 	},
 	{
 		Siren:        "111111111",
-		Paydex:       pointer("078"),
+		Paydex:       codePaydexForTest("078"),
 		JoursRetard:  pointer(3),
 		Fournisseurs: pointer(22),
 		Encours:      pointer(float64(150785.798)),
@@ -190,4 +193,9 @@ func Test_CopyFromPaydexHisto_missingFile(t *testing.T) {
 
 	// THEN
 	ass.False(ok)
+}
+
+func codePaydexForTest(value string) *CodePaydex {
+	code, _ := codePaydexFrom(value)
+	return code
 }

@@ -2,14 +2,16 @@ package imports
 
 import (
 	"context"
-	"datapi/pkg/utils"
 	_ "embed"
 	"encoding/json"
-	"github.com/signaux-faibles/goSirene"
-	"github.com/stretchr/testify/assert"
 	"os"
 	"strings"
 	"testing"
+
+	"github.com/signaux-faibles/goSirene"
+	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/utils"
 )
 
 //go:embed tests/test_expectedSireneUL.json
