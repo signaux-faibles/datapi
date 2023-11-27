@@ -16,29 +16,19 @@ select siret, periode, sum(part_ouvrière) as part_ouvrière, sum(part_patronale
 from débits
 group by siret, periode;
 
--- drop table if exists tmp_debit_agg;
--- create table tmp_debit_agg as
--- with calendar as (select date_trunc('month', current_date) - generate_series(1, 24) * '1 month'::interval as période),
---      debits as (select substring(siret from 1 for 9),
---                        siret,
---                        numéro_compte,
---                        numéro_écart_négatif,
---                        période,
---                        période_start,
---                        période_end,
---                        date_traitement,
---                        first(part_ouvrière) over debit as part_ouvrière,
---                        first(part_patronale) over debit as part_patronale,
---                        numéro_historique_écart_négatif,
---                        first(numéro_historique_écart_négatif) over debit as last_numéro_historique_écart_négatif
---                 from tmp_debit
---                          inner join calendar c on date_traitement <= c.période + '20 days'::interval
---                 window debit as (partition by période, numéro_compte, numéro_écart_négatif, période_start, période_end ORDER BY numéro_historique_écart_négatif DESC))
--- select siret, période, sum(part_ouvrière) as part_ouvrière, sum(part_patronale) as part_patronale from debits
--- where last_numéro_historique_écart_négatif = numéro_historique_écart_négatif
--- group by  siret, période
--- order by période, siret;
+truncate table etablissement_delai;
+insert into etablissement_delai
+    (siret, siren, action, annee_creation, date_creation,
+     date_echeance, denomination, duree_delai, indic_6m, montant_echeancier,
+     numero_compte, numero_contentieux, stade)
+    select siret, substring(siret from 1 for 9), action, année_création, date_création,
+           date_échéance, dénomination, durée_délai, case when indic_6mois then 'SUP' else 'INF' end, montant_échéancier,
+           numéro_compte, numéro_contentieux, stade
+    from tmp_delai;
 
+select * from tmp_delai;
+
+select * from etablissement_delai limit 10;
 
 drop table if exists tmp_effectif_agg;
 create table tmp_effectif_agg as
