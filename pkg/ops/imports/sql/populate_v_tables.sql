@@ -285,5 +285,3 @@ FROM last_liste l
          LEFT JOIN categorie_juridique cj ON cj.code = en.statut_juridique
          LEFT JOIN categorie_juridique cj2 ON "substring"(cj.code, 0, 3) = cj2.code
          LEFT JOIN categorie_juridique cj1 ON "substring"(cj.code, 0, 2) = cj1.code;
-
-select count(*) from v_summaries
