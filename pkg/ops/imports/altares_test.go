@@ -3,15 +3,14 @@ package imports
 import (
 	"context"
 	"encoding/json"
-
-	"github.com/stretchr/testify/assert"
-
-	"datapi/pkg/utils"
-
 	"os"
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+
+	"datapi/pkg/utils"
 )
 
 var expected = []Paydex{
