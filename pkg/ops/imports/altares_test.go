@@ -81,10 +81,10 @@ func Test_PaydexReader(t *testing.T) {
 	}
 
 	expectedJSON, _ := json.MarshalIndent(expected, " ", " ")
-	paydexxJSON, _ := json.MarshalIndent(paydexes, " ", " ")
+	paydexesJSON, _ := json.MarshalIndent(paydexes, " ", " ")
 
 	// THEN
-	ass.Equal(string(expectedJSON), string(paydexxJSON))
+	ass.Equal(string(expectedJSON), string(paydexesJSON))
 }
 
 func Test_PaydexReader_cancelledContext(t *testing.T) {
