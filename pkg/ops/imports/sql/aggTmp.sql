@@ -26,10 +26,6 @@ insert into etablissement_delai
            numéro_compte, numéro_contentieux, stade
     from tmp_delai;
 
-select * from tmp_delai;
-
-select * from etablissement_delai limit 10;
-
 drop table if exists tmp_effectif_agg;
 create table tmp_effectif_agg as
 select siret, période, sum(effectif) as effectif from tmp_effectif
