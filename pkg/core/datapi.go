@@ -4,6 +4,7 @@ package core
 import (
 	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
 
 	"github.com/Nerzal/gocloak/v10"
@@ -143,7 +144,7 @@ const forbiddenIPMessage = "Erreur : Une tentative de connexion depuis `%s`, ce 
 func AdminAuthMiddleware(c *gin.Context) {
 	ok := utils.AcceptIP(c.ClientIP())
 	if !ok {
-		log.Printf(forbiddenIPMessage, c.ClientIP())
+		slog.Warn("Attention : tentative de connexion à l'administration non autorisée", slog.String("ip", c.ClientIP()))
 		c.AbortWithStatus(http.StatusForbidden)
 	}
 }
