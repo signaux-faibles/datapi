@@ -1,7 +1,7 @@
 package core
 
 import (
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -81,7 +81,7 @@ func buildGinContextWithIP(ip string) *gin.Context {
 func configureAdminWhitelist(ips ...string) {
 	whitelistProperty := strings.Join(ips, ", ")
 	viper.GetViper().SetDefault("adminWhitelist", whitelistProperty)
-	log.Println("la propriété `adminWhitelist` ->", whitelistProperty)
+	slog.Info("la liste des IP d'administration autorisées est configurée", slog.Any("ips", whitelistProperty))
 }
 
 func generateRandomIPs() []string {

@@ -9,29 +9,32 @@ import (
 )
 
 func AcceptIP(ip string) bool {
-	var whitelist = viper.GetString("adminWhitelist")
-	// parsing de la liste configurée
-	ips := parseWhitelist(whitelist)
-	return isIPWhitelisted(ips, ip)
-}
-
-func isIPWhitelisted(whitelist []net.IP, ip string) bool {
+	prop := viper.Get("adminWhitelist")
+	whiteList, ok := prop.([]string)
+	if !ok {
+		slog.Warn("erreur de récupération de la propriété", slog.Any("adminWhiteList", prop))
+		return false
+	}
 	clientIP := net.ParseIP(ip)
-	if len(whitelist) == 0 && clientIP.IsLoopback() {
-		slog.Warn("Appel loopback", slog.String("fromIp", ip))
+	if len(whiteList) == 0 && clientIP.IsLoopback() {
+		slog.Warn("pas de whitelist configurée mais appel loopback, appel accepté", slog.String("fromIp", ip))
 		return true
 	}
-	return Contains(whitelist, clientIP)
+	slog.Debug("admin white liste configurée", slog.Any("adminWhiteList", whiteList))
+	// parsing de la liste configurée
+	ips := parseWhitelist(whiteList)
+	return Contains(ips, clientIP)
 }
 
-func parseWhitelist(whitelist string) []net.IP {
-	if whitelist == "" {
-		return nil
-	}
+//func isIPWhitelisted(whitelist []net.IP, ip string) bool {
+//	clientIP := net.ParseIP(ip)
+//	return Contains(whitelist, clientIP)
+//}
+
+func parseWhitelist(whitelist []string) []net.IP {
 	var r []net.IP
 	var malformed []string
-	ips := strings.Split(whitelist, ",")
-	for _, current := range ips {
+	for _, current := range whitelist {
 		ip := net.ParseIP(strings.TrimSpace(current))
 		if ip == nil {
 			malformed = append(malformed, current)
@@ -40,7 +43,7 @@ func parseWhitelist(whitelist string) []net.IP {
 		}
 	}
 	if len(malformed) > 0 {
-		slog.Warn("IP whitelistées non prises en compte", slog.String("whitelist", whitelist))
+		slog.Warn("IP whitelistées non prises en compte", slog.Any("whitelist", whitelist))
 	}
 	return r
 }
