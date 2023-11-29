@@ -6,7 +6,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"strings"
 	"testing"
 
 	"github.com/gin-gonic/gin"
@@ -79,9 +78,9 @@ func buildGinContextWithIP(ip string) *gin.Context {
 }
 
 func configureAdminWhitelist(ips ...string) {
-	whitelistProperty := strings.Join(ips, ", ")
-	viper.GetViper().SetDefault("adminWhitelist", whitelistProperty)
-	slog.Info("la liste des IP d'administration autorisées est configurée", slog.Any("ips", whitelistProperty))
+	//whitelistProperty := strings.Join(ips, ", ")
+	viper.GetViper().Set("adminWhiteList", ips)
+	slog.Info("la liste des IP d'administration autorisées est configurée", slog.Any("ips", ips))
 }
 
 func generateRandomIPs() []string {
