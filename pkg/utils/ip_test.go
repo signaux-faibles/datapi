@@ -45,7 +45,9 @@ func Test_AcceptIP(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			viper.Set("adminWhiteList", tt.args.whitelist)
+			if tt.args.whitelist != nil {
+				viper.Set("adminWhiteList", tt.args.whitelist)
+			}
 			if got := AcceptIP(tt.args.ip); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("parseWhitelist() -> got %v, want %v", got, tt.want)
 			}
