@@ -11,7 +11,7 @@ import (
 func AcceptIP(ip string) bool {
 	prop := viper.Get("adminWhitelist")
 	whiteList, ok := prop.([]string)
-	if !ok {
+	if !ok && whiteList != nil {
 		slog.Warn("erreur de récupération de la propriété", slog.Any("adminWhiteList", prop))
 		return false
 	}
