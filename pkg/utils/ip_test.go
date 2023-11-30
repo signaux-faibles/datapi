@@ -1,14 +1,18 @@
 package utils
 
 import (
+	"log/slog"
 	"math/rand"
-	"net"
+	"os"
+	"path/filepath"
 	"reflect"
 	"testing"
 	"time"
 
 	"github.com/jaswdr/faker"
 	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const loopbackIPv4 = "127.0.0.1"
@@ -64,16 +68,34 @@ func generateRandomIPs() []string {
 	return r
 }
 
-func toIP(input []string) []net.IP {
-	if input == nil {
-		return nil
-	}
-	return Convert(input, net.ParseIP)
-}
-
 func generateRandomIP() string {
 	if fake.Bool() {
 		return fake.Internet().Ipv4()
 	}
 	return fake.Internet().Ipv6()
+}
+
+func Test_viperArrayConfig(t *testing.T) {
+	viper.Reset()
+	config, err := os.CreateTemp(t.TempDir(), "*.toml")
+	require.NoError(t, err)
+	_, err = config.WriteString("adminWhitelist = ['172.17.0.1', '10.0.2.100']\n")
+	require.NoError(t, err)
+	err = config.Close()
+	require.NoError(t, err)
+	file, err := os.ReadFile(config.Name())
+	require.NoError(t, err)
+	slog.Info("lecture du fichier de config", slog.String("content", string(file)))
+	configFilename := filepath.Base(config.Name())
+	configName := configFilename[:len(configFilename)-5]
+	configPath := filepath.Dir(config.Name())
+	slog.Info("config file", slog.String("name", configName), slog.String("path", configPath))
+	viper.SetConfigName(configName)
+	viper.SetConfigType("toml")
+	viper.AddConfigPath(configPath)
+	err = viper.ReadInConfig()
+	require.NoError(t, err)
+	get := viper.GetStringSlice("adminWhitelist")
+	slog.Info("lecture de la propriété", slog.Any("adminWhitelist", get))
+	assert.True(t, AcceptIP("172.17.0.1"))
 }
