@@ -101,3 +101,5 @@ where siren not in (select siren
                     from score
                     where batch = '2312'
                       and alert != 'Pas d''alerte');
+
+select count(*) from v_summaries

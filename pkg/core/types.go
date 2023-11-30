@@ -2,6 +2,8 @@
 package core
 
 import (
+	"context"
+	"datapi/pkg/db"
 	"regexp"
 	"time"
 )
@@ -13,6 +15,19 @@ type Siren string
 // Siren : interpole la valeur Siren depuis le Siret d'un établissement
 func (s Siret) Siren() Siren {
 	return Siren(s[0:9])
+}
+
+func (s Siret) IsValidSiretString() bool {
+	siretRegexp, _ := regexp.Compile("[0-9]{14}")
+	return siretRegexp.MatchString(string(s))
+}
+
+func (s Siret) Exists(ctx context.Context) (bool, error) {
+	conn := db.Get()
+	row := conn.QueryRow(ctx, "select distinct true from v_summaries union all select false limit 1")
+	var result bool
+	err := row.Scan(&result)
+	return result, err
 }
 
 var validSirenRegexp = regexp.MustCompile("^[0-9]{9}")
