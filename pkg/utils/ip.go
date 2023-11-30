@@ -9,31 +9,21 @@ import (
 )
 
 func AcceptIP(ip string) bool {
-	prop := viper.Get("adminWhitelist")
-	whiteList, ok := prop.([]string)
-	if !ok && whiteList != nil {
-		slog.Warn("erreur de récupération de la propriété", slog.Any("adminWhiteList", prop))
-		return false
-	}
+	whiteList := viper.GetStringSlice("adminWhitelist")
 	clientIP := net.ParseIP(ip)
 	if len(whiteList) == 0 && clientIP.IsLoopback() {
 		slog.Warn("pas de whitelist configurée mais appel loopback, appel accepté", slog.String("fromIp", ip))
 		return true
 	}
-	slog.Debug("admin white liste configurée", slog.Any("adminWhiteList", whiteList))
+	slog.Debug("admin white liste configurée", slog.Any("adminWhitelist", whiteList))
 	// parsing de la liste configurée
 	ips := parseWhitelist(whiteList)
 	return Contains(ips, clientIP)
 }
 
-//func isIPWhitelisted(whitelist []net.IP, ip string) bool {
-//	clientIP := net.ParseIP(ip)
-//	return Contains(whitelist, clientIP)
-//}
-
 func parseWhitelist(whitelist []string) []net.IP {
 	var r []net.IP
-	var malformed []string
+	var malformed []any
 	for _, current := range whitelist {
 		ip := net.ParseIP(strings.TrimSpace(current))
 		if ip == nil {
