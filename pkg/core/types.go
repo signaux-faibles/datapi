@@ -17,9 +17,10 @@ func (s Siret) Siren() Siren {
 	return Siren(s[0:9])
 }
 
-func (s Siret) IsValidSiretString() bool {
-	siretRegexp, _ := regexp.Compile("[0-9]{14}")
-	return siretRegexp.MatchString(string(s))
+var validSiretRegexp = regexp.MustCompile("^[0-9]{14}$")
+
+func (s Siret) IsValid() bool {
+	return validSiretRegexp.MatchString(string(s))
 }
 
 func (s Siret) Exists(ctx context.Context) (bool, error) {
