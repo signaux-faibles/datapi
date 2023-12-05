@@ -132,7 +132,11 @@ func kanbanUpdateCardHandler(c *gin.Context) {
 		CardID      libwekan.CardID `json:"cardID"`
 		Description string          `json:"description"`
 	}
-	c.Bind(&params)
+	err := c.Bind(&params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
 
 	card, err := Kanban.SelectCardFromCardID(c, params.CardID, libwekan.Username(s.Username))
 	if err != nil {
