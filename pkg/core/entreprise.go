@@ -448,7 +448,7 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		order by siret, periode;`,
 		roles, username, e.Query.Sirets, e.Query.Sirens)
 
-	batch.Queue(`select e.siret, action, annee_creation, date_creation, date_echeance, denomination,
+	batch.Queue(`select distinct e.siret, action, annee_creation, date_creation, date_echeance, denomination,
 		duree_delai, indic_6m, montant_echeancier, numero_compte, numero_contentieux, stade
 		from etablissement_delai0 e
 		inner join f_etablissement_permissions($1, $2) p on p.siret = e.siret and urssaf
