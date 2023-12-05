@@ -61,7 +61,7 @@ func upsertCard(ctx context.Context, campaignEtablissementID CampaignEtablisseme
 			Labels:      []libwekan.BoardLabelName{},
 			Siret:       siret,
 		}
-		kanbanCard, err := kanbanService.CreateCard(ctx, params, "signaux.faibles", nil, pool)
+		kanbanCard, err := kanbanService.CreateCard(ctx, params, username, nil, pool)
 
 		message := Message{
 			CampaignEtablissementID: &campaignEtablissementID,

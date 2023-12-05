@@ -20,3 +20,7 @@ func (service wekanService) SelectCardFromCardID(ctx context.Context, cardID lib
 
 	return core.KanbanCard{}, core.ForbiddenError{}
 }
+
+func (service wekanService) GetCardMembers(c context.Context, id libwekan.CardID, username string) ([]libwekan.Activity, error) {
+	return nil, nil
+}
