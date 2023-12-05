@@ -28,6 +28,7 @@ type KanbanService interface {
 	JoinCard(ctx context.Context, cardID libwekan.CardID, username libwekan.User) error
 	PartCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error
 	MoveCardList(ctx context.Context, cardID libwekan.CardID, listID libwekan.ListID, user libwekan.User) error
+	GetCardMembers(ctx context.Context, cardID libwekan.CardID, username string) ([]libwekan.Activity, error)
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser

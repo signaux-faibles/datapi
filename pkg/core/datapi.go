@@ -159,6 +159,7 @@ func configureKanbanEndpoint(path string, api *gin.Engine, handlers ...gin.Handl
 	kanban.GET("/card/join/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanJoinCardHandler)
 	kanban.GET("/card/part/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanPartCardHandler)
 	kanban.GET("/card/get/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanGetCardHandler)
+	kanban.GET("/card/members/:cardID", CheckAnyRolesMiddleware("wekan"), kanbanGetCardMembersHandler)
 }
 
 // True made global to ease pointers

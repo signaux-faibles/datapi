@@ -213,3 +213,15 @@ func kanbanJoinCardHandler(c *gin.Context) {
 	}
 	c.JSON(http.StatusOK, "ok")
 }
+
+func kanbanGetCardMembersHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+
+	cardID := libwekan.CardID(c.Param("cardID"))
+	members, err := Kanban.GetCardMembers(c, cardID, s.Username)
+	if errors.As(err, libwekan.CardNotFoundError{}) {
+		c.JSON(http.StatusNotFound, "aucune carte avec l'ID "+cardID)
+	}
+	c.JSON(http.StatusOK, members)
+}
