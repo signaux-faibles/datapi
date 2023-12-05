@@ -220,7 +220,7 @@ func kanbanGetCardMembersHandler(c *gin.Context) {
 
 	cardID := libwekan.CardID(c.Param("cardID"))
 	members, err := Kanban.GetCardMembers(c, cardID, s.Username)
-	if errors.As(err, libwekan.CardNotFoundError{}) {
+	if errors.As(err, &libwekan.CardNotFoundError{}) {
 		c.JSON(http.StatusNotFound, "aucune carte avec l'ID "+cardID)
 	}
 	c.JSON(http.StatusOK, members)
