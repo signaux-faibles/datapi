@@ -100,6 +100,22 @@ func kanbanNewCardHandler(c *gin.Context) {
 	if err != nil {
 		c.JSON(http.StatusBadRequest, err.Error())
 	}
+
+	if !params.Siret.IsValid() {
+		c.JSON(http.StatusBadRequest, "Le siret n'est pas de la bonne forme")
+	}
+
+	siretExists, err := params.Siret.Exists(c)
+	if !siretExists {
+		c.JSON(http.StatusBadRequest, "Le siret fourni n'existe pas")
+		return
+	}
+
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, err.Error())
+		return
+	}
+
 	_, err = Kanban.CreateCard(c, params, libwekan.Username(s.Username), []libwekan.Username{libwekan.Username(s.Username)}, db.Get())
 	if errors.As(err, &ForbiddenError{}) {
 		c.JSON(http.StatusForbidden, err.Error())

@@ -22,11 +22,18 @@ func (service wekanService) CreateCard(ctx context.Context, params core.KanbanNe
 		user, _ := GetUser(username)
 		return user
 	})
+	var list libwekan.List
+
 	board, swimlane, err := getBoardWithSwimlaneID(params.SwimlaneID)
 	if err != nil {
 		return core.KanbanCard{}, err
 	}
-	list, err := getListWithBoardID(board.Board.ID, 0)
+	if params.ListID != "" {
+		list, err = wekan.GetListFromID(ctx, params.ListID)
+	} else {
+		list, err = getListWithBoardID(board.Board.ID, 0)
+	}
+
 	if err != nil {
 		return core.KanbanCard{}, err
 	}
@@ -82,6 +89,24 @@ func labelNameToIDConvertor(board libwekan.ConfigBoard) func(libwekan.BoardLabel
 		}
 		return ""
 	}
+}
+
+func getListWithListID(boardID libwekan.BoardID, listID libwekan.ListID) (libwekan.List, error) {
+	wekanConfigMutex.Lock()
+	wc := WekanConfig.Copy()
+	wekanConfigMutex.Unlock()
+
+	configBoard, ok := wc.Boards[boardID]
+	if !ok {
+		return libwekan.List{}, core.UnknownBoardError{BoardIdentifier: "id=" + string(boardID)}
+	}
+
+	list, ok := configBoard.Lists[listID]
+	if !ok {
+		return libwekan.List{}, core.UnknownListError{ListIdentifier: "id=" + string(listID)}
+	}
+
+	return list, nil
 }
 
 func getListWithBoardID(boardID libwekan.BoardID, rank int) (libwekan.List, error) {
