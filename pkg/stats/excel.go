@@ -11,7 +11,7 @@ import (
 	"github.com/xuri/excelize/v2"
 )
 
-var headerStyle = excelize.Style{
+var styleHeader = excelize.Style{
 	Border: []excelize.Border{{Type: "bottom",
 		Color: "000000",
 		Style: 2}},
@@ -33,11 +33,11 @@ var headerStyle = excelize.Style{
 var xlsFormatDateOnly = "yyyy-mm-dd"
 var xlsFormatDateTime = "yyyy-mm-dd hh:mm:ss"
 
-var dateOnlyStyle = excelize.Style{
+var styleDateOnly = excelize.Style{
 	CustomNumFmt: &xlsFormatDateOnly,
 }
 
-var dateTimeStyle = excelize.Style{
+var styleDateTime = excelize.Style{
 	CustomNumFmt: &xlsFormatDateTime,
 }
 
@@ -124,7 +124,7 @@ func writeOneSheetToExcel[A any](
 	}
 
 	// ajoute les styles
-	headerStyleID, err := addStyle(xls, headerStyle)
+	headerStyleID, err := addStyle(xls, styleHeader)
 	if err != nil {
 		return err
 	}

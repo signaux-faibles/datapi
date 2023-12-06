@@ -88,7 +88,7 @@ func dummySheetConfig(label string) sheetConfig[testline] {
 		item:      testline{},
 		sheetName: label,
 		asRow:     toRow,
-		mapStyles: map[int]excelize.Style{1: dateOnlyStyle, 2: dateTimeStyle},
+		mapStyles: map[int]excelize.Style{1: styleDateOnly, 2: styleDateTime},
 	}
 }
 
