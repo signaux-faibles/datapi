@@ -46,7 +46,7 @@ func Test_write_statsAccessLogsSheet(t *testing.T) {
 
 	//
 	expected := sheetConf.toRow(first)
-	expected[0] = (expected[0].(time.Time)).Format(time.DateTime)
+	expected[0] = first.date.Format(time.DateTime)
 	assert.ElementsMatch(t, expected, firstRowDataValues)
 }
 
