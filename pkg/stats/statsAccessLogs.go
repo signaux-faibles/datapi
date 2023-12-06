@@ -53,7 +53,7 @@ func accessLogSheetConfig() sheetConfig[accessLog] {
 		item:      accessLog{},
 		sheetName: "access logs",
 		asRow:     toRow,
-		mapStyles: map[int]excelize.Style{0: dateTimeStyle},
+		mapStyles: map[int]excelize.Style{0: styleDateTime},
 	}
 }
 

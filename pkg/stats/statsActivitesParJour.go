@@ -51,7 +51,7 @@ func activitesJourSheetConfig() sheetConfig[activiteParJour] {
 		item:      activiteParJour{},
 		sheetName: "activités par jour",
 		asRow:     activiteParJoursToRow,
-		mapStyles: map[int]excelize.Style{0: dateOnlyStyle},
+		mapStyles: map[int]excelize.Style{0: styleDateOnly},
 	}
 }
 
