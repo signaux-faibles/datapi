@@ -6,6 +6,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
+	"github.com/xuri/excelize/v2"
 )
 
 //go:embed resources/sql/select_activite_par_jour.sql
@@ -50,12 +51,13 @@ func activitesJourSheetConfig() sheetConfig[activiteParJour] {
 		item:      activiteParJour{},
 		sheetName: "activités par jour",
 		asRow:     activiteParJoursToRow,
+		mapStyles: map[int]excelize.Style{0: dateOnlyStyle},
 	}
 }
 
 func activiteParJoursToRow(ligne activiteParJour) []any {
 	return []any{
-		ligne.jour.Format(time.DateOnly),
+		ligne.jour,
 		ligne.username,
 		ligne.actions,
 		ligne.recherches,

@@ -7,6 +7,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
+	"github.com/xuri/excelize/v2"
 )
 
 //go:embed resources/sql/select_logs.sql
@@ -52,6 +53,7 @@ func accessLogSheetConfig() sheetConfig[accessLog] {
 		item:      accessLog{},
 		sheetName: "access logs",
 		asRow:     toRow,
+		mapStyles: map[int]excelize.Style{0: dateTimeStyle},
 	}
 }
 

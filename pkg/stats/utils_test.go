@@ -42,8 +42,8 @@ func createFakeActivitesChan[A any](activitiesNumber int, newActivite func() A) 
 
 type testline struct {
 	valString  string    `col:"chaîne de caractères" size:"25"`
-	valDay     time.Time `col:"jour" size:"12"`
-	valInstant time.Time `col:"instant" size:"16"`
+	valDay     time.Time `col:"jour" size:"36"`
+	valInstant time.Time `col:"instant" size:"42"`
 	valInt     int       `col:"entier" size:"16"`
 }
 
@@ -72,8 +72,7 @@ func createFakeActiviteUtilisateur() activiteParUtilisateur {
 
 func createTestLine() testline {
 	now := time.Now()
-	t := fakeTU.Time().TimeBetween(now.AddDate(1, 0, 0), now)
-
+	t := fakeTU.Time().TimeBetween(now.AddDate(-1, 0, 0), now)
 	return testline{
 		valString:  fakeTU.Lorem().Word(),
 		valDay:     truncateToDay(t),

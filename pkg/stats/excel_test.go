@@ -1,7 +1,9 @@
 package stats
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -51,9 +53,9 @@ func Test_writeOneSheetToExcel(t *testing.T) {
 
 	// value 1
 	assertCellValue(t, xls, sheetName, 1, 2, item1.valString)
-	assertCellValue(t, xls, sheetName, 2, 2, item1.valDay)
-	assertCellValue(t, xls, sheetName, 3, 2, item1.valInstant)
-	assertCellValue(t, xls, sheetName, 4, 2, item1.valInt)
+	assertCellValue(t, xls, sheetName, 2, 2, item1.valDay.Format(time.DateOnly))
+	assertCellValue(t, xls, sheetName, 3, 2, item1.valInstant.Format(time.DateTime))
+	assertCellValue(t, xls, sheetName, 4, 2, fmt.Sprint(item1.valInt))
 
 	// value 2
 	// assertCellValue(t, xls, sheetName, 1, 3, item2)
@@ -86,6 +88,7 @@ func dummySheetConfig(label string) sheetConfig[testline] {
 		item:      testline{},
 		sheetName: label,
 		asRow:     toRow,
+		mapStyles: map[int]excelize.Style{1: dateOnlyStyle, 2: dateTimeStyle},
 	}
 }
 

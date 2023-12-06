@@ -30,12 +30,15 @@ var headerStyle = excelize.Style{
 	NegRed:        false,
 }
 
+var xlsFormatDateOnly = "yyyy-mm-dd"
+var xlsFormatDateTime = "yyyy-mm-dd hh:mm:ss"
+
 var dateOnlyStyle = excelize.Style{
-	NumFmt: 15,
+	CustomNumFmt: &xlsFormatDateOnly,
 }
 
 var dateTimeStyle = excelize.Style{
-	NumFmt: 22,
+	CustomNumFmt: &xlsFormatDateTime,
 }
 
 func newExcel() *excelize.File {
@@ -59,12 +62,14 @@ type sheetConfig[A any] interface {
 	headers() ([]any, error)
 	sizes() []float64
 	toRow(a A) []any
+	styles() map[int]excelize.Style
 }
 
 type anySheetConfig[A any] struct {
 	item      A
 	sheetName string
 	asRow     func(a A) []any
+	mapStyles map[int]excelize.Style
 }
 
 func (c anySheetConfig[A]) label() string {
@@ -103,6 +108,10 @@ func (c anySheetConfig[A]) toRow(a A) []any {
 	return c.asRow(a)
 }
 
+func (c anySheetConfig[A]) styles() map[int]excelize.Style {
+	return c.mapStyles
+}
+
 func writeOneSheetToExcel[A any](
 	xls *excelize.File,
 	config sheetConfig[A],
@@ -119,14 +128,10 @@ func writeOneSheetToExcel[A any](
 	if err != nil {
 		return err
 	}
-	//dateOnlyStyleID, err := addStyle(xls, dateOnlyStyle)
-	//if err != nil {
-	//  return err
-	//}
-	//dateTimeStyleID, err := addStyle(xls, dateTimeStyle)
-	//if err != nil {
-	//  return err
-	//}
+	xlsStyleIDS, err := addStyles(xls, config.styles())
+	if err != nil {
+		return err
+	}
 
 	// ajoute les auto filters
 	err = setAutoFilter(xls, sheetName, config)
@@ -160,7 +165,7 @@ func writeOneSheetToExcel[A any](
 	}
 
 	// write rows
-	err = writeRows(writer, config, itemsToWrite)
+	err = writeRows(writer, config, itemsToWrite, xlsStyleIDS)
 	if err != nil {
 		return fmt.Errorf("erreur pendant l'écriture des lignes pour la page `%s`: %w", sheetName, err)
 	}
@@ -184,6 +189,18 @@ func setAutoFilter[A any](xls *excelize.File, sheetName string, cf sheetConfig[A
 	return nil
 }
 
+func addStyles(xls *excelize.File, stylesMap map[int]excelize.Style) (map[int]int, error) {
+	xlsStyleIDS := make(map[int]int)
+	for idx, style := range stylesMap {
+		styleID, err := addStyle(xls, style)
+		if err != nil {
+			return nil, err
+		}
+		xlsStyleIDS[idx] = styleID
+	}
+	return xlsStyleIDS, nil
+}
+
 func addStyle(xls *excelize.File, style excelize.Style) (int, error) {
 	styleID, err := xls.NewStyle(&style)
 	if err != nil {
@@ -193,7 +210,7 @@ func addStyle(xls *excelize.File, style excelize.Style) (int, error) {
 }
 
 func writeHeaders(writer *excelize.StreamWriter, headers []any, style int) error {
-	headersRow := []interface{}{}
+	headersRow := []any{}
 	for _, header := range headers {
 		cell := excelize.Cell{
 			StyleID: style,
@@ -208,7 +225,12 @@ func writeHeaders(writer *excelize.StreamWriter, headers []any, style int) error
 	return nil
 }
 
-func writeRows[A any](writer *excelize.StreamWriter, config sheetConfig[A], itemsToWrite chan row[A]) error {
+func writeRows[A any](
+	writer *excelize.StreamWriter,
+	config sheetConfig[A],
+	itemsToWrite chan row[A],
+	styles map[int]int,
+) error {
 	// write rows
 	var rowIdx = 2 // le header est déjà écrit
 	if itemsToWrite != nil {
@@ -216,7 +238,7 @@ func writeRows[A any](writer *excelize.StreamWriter, config sheetConfig[A], item
 			if ligne.err != nil {
 				return errors.Wrap(ligne.err, fmt.Sprint("erreur dans la ligne", rowIdx))
 			}
-			err := writeRow(writer, config.toRow(ligne.value), rowIdx)
+			err := writeRow(writer, config.toRow(ligne.value), rowIdx, styles)
 			if err != nil {
 				return err
 			}
@@ -237,12 +259,24 @@ func configureColumns(writer *excelize.StreamWriter, widths []float64) error {
 	return nil
 }
 
-func writeRow(f *excelize.StreamWriter, values []any, row int) error {
+func writeRow(f *excelize.StreamWriter, values []any, row int, styles map[int]int) error {
 	cell, err := excelize.CoordinatesToCellName(1, row)
 	if err != nil {
 		return errors.Wrap(err, "erreur pendant la récupération des coordonnées")
 	}
-	err = f.SetRow(cell, values)
+	cells := []any{}
+	for idx, v := range values {
+		cellValue := v
+		styleID, ok := styles[idx]
+		if ok {
+			cellValue = excelize.Cell{
+				StyleID: styleID,
+				Value:   v,
+			}
+		}
+		cells = append(cells, cellValue)
+	}
+	err = f.SetRow(cell, cells)
 	if err != nil {
 		return fmt.Errorf("erreur pendant l'écriture de la ligne : %w", err)
 	}
