@@ -30,17 +30,6 @@ var styleHeader = excelize.Style{
 	NegRed:        false,
 }
 
-var xlsFormatDateOnly = "yyyy-mm-dd"
-var xlsFormatDateTime = "yyyy-mm-dd hh:mm:ss"
-
-var styleDateOnly = excelize.Style{
-	CustomNumFmt: &xlsFormatDateOnly,
-}
-
-var styleDateTime = excelize.Style{
-	CustomNumFmt: &xlsFormatDateTime,
-}
-
 func newExcel() *excelize.File {
 	return excelize.NewFile()
 }
@@ -62,14 +51,13 @@ type sheetConfig[A any] interface {
 	headers() ([]any, error)
 	sizes() []float64
 	toRow(a A) []any
-	styles() map[int]excelize.Style
+	formatters() map[int]excelize.Style
 }
 
 type anySheetConfig[A any] struct {
 	item      A
 	sheetName string
 	asRow     func(a A) []any
-	mapStyles map[int]excelize.Style
 }
 
 func (c anySheetConfig[A]) label() string {
@@ -108,8 +96,16 @@ func (c anySheetConfig[A]) toRow(a A) []any {
 	return c.asRow(a)
 }
 
-func (c anySheetConfig[A]) styles() map[int]excelize.Style {
-	return c.mapStyles
+func (c anySheetConfig[A]) formatters() map[int]excelize.Style {
+	structure := reflect.TypeOf(c.item)
+	formatters := make(map[int]excelize.Style)
+	for i := 0; i < structure.NumField(); i++ {
+		dateFormat := structure.Field(i).Tag.Get("dateFormat")
+		if dateFormat != "" {
+			formatters[i] = excelize.Style{CustomNumFmt: &dateFormat}
+		}
+	}
+	return formatters
 }
 
 func writeOneSheetToExcel[A any](
@@ -123,12 +119,12 @@ func writeOneSheetToExcel[A any](
 		return fmt.Errorf("erreur lors de l'ajout de la page `%s`: %w", sheetName, err)
 	}
 
-	// ajoute les styles
+	// ajoute les formatters
 	headerStyleID, err := addStyle(xls, styleHeader)
 	if err != nil {
 		return err
 	}
-	xlsStyleIDS, err := addStyles(xls, config.styles())
+	xlsStyleIDS, err := addStyles(xls, config.formatters())
 	if err != nil {
 		return err
 	}

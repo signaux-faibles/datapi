@@ -7,14 +7,13 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
-	"github.com/xuri/excelize/v2"
 )
 
 //go:embed resources/sql/select_logs.sql
 var selectLogsSQL string
 
 type accessLog struct {
-	date     time.Time `col:"date" size:"36"`
+	date     time.Time `col:"date" size:"36" dateFormat:"yyyy-mm-dd hh:mm:ss"`
 	path     string    `col:"chemin" size:"36"`
 	method   string    `col:"méthode" size:"10"`
 	username string    `col:"utilisateur" size:"36"`
@@ -53,13 +52,11 @@ func accessLogSheetConfig() sheetConfig[accessLog] {
 		item:      accessLog{},
 		sheetName: "access logs",
 		asRow:     toRow,
-		mapStyles: map[int]excelize.Style{0: styleDateTime},
 	}
 }
 
 func toRow(ligne accessLog) []any {
 	return []any{
-		//ligne.date.Format(time.DateTime),
 		ligne.date,
 		ligne.path,
 		ligne.method,

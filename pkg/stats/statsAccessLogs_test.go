@@ -51,8 +51,9 @@ func Test_write_statsAccessLogsSheet(t *testing.T) {
 }
 
 func createFakeAccessLog() accessLog {
+	fakeTime := fakeTU.Time().TimeBetween(time.Now().AddDate(-3, 0, 0), time.Now())
 	return accessLog{
-		date:     fakeTU.Time().TimeBetween(time.Now().AddDate(-3, 0, 0), time.Now()),
+		date:     fakeTime.Round(time.Second), // on arrondit à la seconde pour éviter les problèmes avec le formatage excel qui arrondit
 		path:     fakeTU.Directory().Directory(fakeTU.IntBetween(1, 3)),
 		method:   fakeTU.Internet().HTTPMethod(),
 		username: fakeTU.Internet().User(),
