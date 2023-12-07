@@ -25,10 +25,10 @@ type KanbanService interface {
 	SelectBoardsForUsername(username libwekan.Username) []libwekan.ConfigBoard
 	ClearBoardIDs(boardIDs []libwekan.BoardID, user libwekan.User) []libwekan.BoardID
 	UpdateCard(ctx context.Context, cardID KanbanCard, description string, username libwekan.Username) error
-	JoinCard(ctx context.Context, cardID libwekan.CardID, username libwekan.User) error
+	JoinCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error
 	PartCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error
 	MoveCardList(ctx context.Context, cardID libwekan.CardID, listID libwekan.ListID, user libwekan.User) error
-	GetCardMembers(ctx context.Context, cardID libwekan.CardID, username string) ([]libwekan.Activity, error)
+	GetCardMembersHistory(ctx context.Context, cardID libwekan.CardID, username string) ([]KanbanActivity, error)
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
@@ -182,6 +182,12 @@ type KanbanExport struct {
 	Board                      string    `json:"-"`
 	LastActivity               time.Time `json:"lastActivity"`
 	Archived                   bool      `json:"-"`
+}
+
+type KanbanActivity struct {
+	MemberID libwekan.UserID `json:"memberID"`
+	From     *time.Time      `json:"from"`
+	To       *time.Time      `json:"to,omitempty"`
 }
 
 func (k KanbanDBExport) GetSiret() string {
