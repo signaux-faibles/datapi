@@ -2,6 +2,7 @@ package stats
 
 import (
 	"fmt"
+	"log/slog"
 	"testing"
 	"time"
 
@@ -88,7 +89,7 @@ func dummySheetConfig(label string) sheetConfig[testline] {
 		item:      testline{},
 		sheetName: label,
 		asRow:     toRow,
-		mapStyles: map[int]excelize.Style{1: styleDateOnly, 2: styleDateTime},
+		//mapStyles: map[int]excelize.Style{1: styleDateOnly, 2: styleDateTime},
 	}
 }
 
@@ -98,4 +99,13 @@ func randomSheetName() string {
 		return sentence
 	}
 	return sentence[:31]
+}
+
+func Test_get_formatters(t *testing.T) {
+	config := dummySheetConfig(randomSheetName())
+	formatters := config.formatters()
+	for k, v := range formatters {
+		slog.Info("formatter", slog.Int("index", k), slog.Any("formatter", *v.CustomNumFmt))
+	}
+	assert.Len(t, formatters, 2)
 }

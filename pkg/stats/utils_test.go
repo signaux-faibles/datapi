@@ -29,21 +29,21 @@ func init() {
 
 func createFakeActivitesChan[A any](activitiesNumber int, newActivite func() A) (A, chan row[A]) {
 	r := make(chan row[A])
-	activite := newActivite()
+	first := newActivite()
 	go func() {
 		defer close(r)
-		r <- newRow(activite)
+		r <- newRow(first)
 		for i := 1; i < activitiesNumber; i++ {
 			r <- newRow(newActivite())
 		}
 	}()
-	return activite, r
+	return first, r
 }
 
 type testline struct {
 	valString  string    `col:"chaîne de caractères" size:"25"`
-	valDay     time.Time `col:"jour" size:"36"`
-	valInstant time.Time `col:"instant" size:"42"`
+	valDay     time.Time `col:"jour" size:"36" dateFormat:"yyyy-mm-dd"`
+	valInstant time.Time `col:"instant" size:"42" dateFormat:"yyyy-mm-dd hh:MM:ss"`
 	valInt     int       `col:"entier" size:"16"`
 }
 
@@ -73,6 +73,7 @@ func createFakeActiviteUtilisateur() activiteParUtilisateur {
 func createTestLine() testline {
 	now := time.Now()
 	t := fakeTU.Time().TimeBetween(now.AddDate(-1, 0, 0), now)
+	t = t.Round(time.Second) // on arrondi à la seconde sinon il y a des problèmes avec le formatage d'excel qui lui arrondit par défaut
 	return testline{
 		valString:  fakeTU.Lorem().Word(),
 		valDay:     truncateToDay(t),
