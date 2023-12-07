@@ -132,7 +132,11 @@ func kanbanUpdateCardHandler(c *gin.Context) {
 		CardID      libwekan.CardID `json:"cardID"`
 		Description string          `json:"description"`
 	}
-	c.Bind(&params)
+	err := c.Bind(&params)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, err.Error())
+		return
+	}
 
 	card, err := Kanban.SelectCardFromCardID(c, params.CardID, libwekan.Username(s.Username))
 	if err != nil {
@@ -212,4 +216,16 @@ func kanbanJoinCardHandler(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, err.Error())
 	}
 	c.JSON(http.StatusOK, "ok")
+}
+
+func kanbanGetCardMembersHistoryHandler(c *gin.Context) {
+	var s Session
+	s.Bind(c)
+
+	cardID := libwekan.CardID(c.Param("cardID"))
+	members, err := Kanban.GetCardMembersHistory(c, cardID, s.Username)
+	if errors.As(err, &libwekan.CardNotFoundError{}) {
+		c.JSON(http.StatusNotFound, "aucune carte avec l'ID "+cardID)
+	}
+	c.JSON(http.StatusOK, members)
 }

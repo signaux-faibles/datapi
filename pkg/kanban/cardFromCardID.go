@@ -4,6 +4,7 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/utils"
+	"fmt"
 	"github.com/signaux-faibles/libwekan"
 )
 
@@ -19,4 +20,35 @@ func (service wekanService) SelectCardFromCardID(ctx context.Context, cardID lib
 	}
 
 	return core.KanbanCard{}, core.ForbiddenError{}
+}
+
+func wekanToKanbanJoinActivities(wekanActivities []libwekan.Activity) []core.KanbanActivity {
+	var kanbanActivities []core.KanbanActivity
+	var mapActivity = make(map[libwekan.UserID]core.KanbanActivity)
+	for _, wekanActivity := range wekanActivities {
+		if wekanActivity.ActivityType == "joinMember" {
+			from := wekanActivity.ModifiedAt
+			mapActivity[wekanActivity.MemberID] = core.KanbanActivity{
+				MemberID: wekanActivity.MemberID,
+				From:     &from,
+			}
+		} else if wekanActivity.ActivityType == "unjoinMember" {
+			activity := mapActivity[wekanActivity.MemberID]
+			to := wekanActivity.ModifiedAt
+			activity.To = &to
+			kanbanActivities = append(kanbanActivities, activity)
+			delete(mapActivity, wekanActivity.MemberID)
+		} else {
+			fmt.Println(wekanActivity, "ignoré")
+		}
+	}
+	for _, activity := range mapActivity {
+		kanbanActivities = append(kanbanActivities, activity)
+	}
+	return kanbanActivities
+}
+
+func (service wekanService) GetCardMembersHistory(c context.Context, cardID libwekan.CardID, username string) ([]core.KanbanActivity, error) {
+	wekanActivities, err := wekan.SelectActivitiesFromCardID(c, cardID)
+	return wekanToKanbanJoinActivities(wekanActivities), err
 }
