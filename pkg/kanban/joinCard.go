@@ -9,15 +9,15 @@ import (
 )
 
 func (service wekanService) JoinCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error {
-	_, err := wekan.EnsureMemberInCard(ctx, cardID, user.ID)
+	card, err := cardID.GetDocument(ctx, &wekan)
 	if err != nil {
 		return err
 	}
-	// Si la board comporte une liste `Accompagnement en cours`, on déplace la carte dans cette colonne
-	card, err := wekan.GetCardFromID(ctx, cardID)
+	_, err = wekan.EnsureMemberInCard(ctx, card, user, user)
 	if err != nil {
 		return err
 	}
+
 	config := kanbanConfigForUser(user.Username)
 
 	// vérification que la board contient une liste «Accompagnement en cours»
@@ -44,15 +44,15 @@ func (service wekanService) JoinCard(ctx context.Context, cardID libwekan.CardID
 }
 
 func (service wekanService) PartCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error {
-	_, err := wekan.EnsureMemberOutOfCard(ctx, cardID, user.ID)
+	card, err := cardID.GetDocument(ctx, &wekan)
 	if err != nil {
 		return err
 	}
-	// Si la board comporte une liste `Accompagnement en cours`, on déplace la carte dans cette colonne
-	card, err := wekan.GetCardFromID(ctx, cardID)
+	_, err = wekan.EnsureMemberOutOfCard(ctx, card, user, user)
 	if err != nil {
 		return err
 	}
+
 	config := kanbanConfigForUser(user.Username)
 
 	// vérification qu'il n'y a plus d'accompagnant sur la carte
