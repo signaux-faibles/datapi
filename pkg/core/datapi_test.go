@@ -22,6 +22,7 @@ const loopbackIPv4 = "127.0.0.1"
 const loopbackIPv6 = "::1"
 
 func TestAdminAuthMiddleware_withoutWhitelist_acceptOnlyLoopback(t *testing.T) {
+	viper.Set("adminWhitelist", nil)
 	ass := assert.New(t)
 	for _, ip := range generateRandomIPs() {
 		ginContext := buildGinContextWithIP(ip)
@@ -78,8 +79,7 @@ func buildGinContextWithIP(ip string) *gin.Context {
 }
 
 func configureAdminWhitelist(ips ...string) {
-	//whitelistProperty := strings.Join(ips, ", ")
-	viper.GetViper().Set("adminWhiteList", ips)
+	viper.Set("adminWhiteList", ips)
 	slog.Info("la liste des IP d'administration autorisées est configurée", slog.Any("ips", ips))
 }
 

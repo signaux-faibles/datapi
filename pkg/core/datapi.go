@@ -138,8 +138,6 @@ func AuthMiddleware() gin.HandlerFunc {
 	return fakeCloakMiddleware
 }
 
-const forbiddenIPMessage = "Erreur : Une tentative de connexion depuis `%s`, ce qui n'est pas autorisé dans `adminWhitelist`, voir config.toml\n"
-
 // AdminAuthMiddleware stoppe la requête si l'ip client n'est pas contenue dans la whitelist
 func AdminAuthMiddleware(c *gin.Context) {
 	ok := utils.AcceptIP(c.ClientIP())
