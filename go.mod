@@ -121,5 +121,4 @@ require (
 )
 
 // replace github.com/signaux-faibles/libwekan => ../libwekan
-
 //replace github.com/signaux-faibles/goSirene => ../goSirene
