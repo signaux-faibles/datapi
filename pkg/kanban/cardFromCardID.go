@@ -4,7 +4,6 @@ import (
 	"context"
 	"datapi/pkg/core"
 	"datapi/pkg/utils"
-	"fmt"
 	"github.com/signaux-faibles/libwekan"
 )
 
@@ -26,20 +25,18 @@ func wekanToKanbanJoinActivities(wekanActivities []libwekan.Activity) []core.Kan
 	var kanbanActivities []core.KanbanActivity
 	var mapActivity = make(map[libwekan.UserID]core.KanbanActivity)
 	for _, wekanActivity := range wekanActivities {
-		if wekanActivity.ActivityType == "joinMember" {
+		if wekanActivity.ActivityType == "joinMember" || wekanActivity.ActivityType == "joinAssignee" {
 			from := wekanActivity.ModifiedAt
 			mapActivity[wekanActivity.MemberID] = core.KanbanActivity{
 				MemberID: wekanActivity.MemberID,
 				From:     &from,
 			}
-		} else if wekanActivity.ActivityType == "unjoinMember" {
+		} else if wekanActivity.ActivityType == "unjoinMember" || wekanActivity.ActivityType == "unjoinAssignee" {
 			activity := mapActivity[wekanActivity.MemberID]
 			to := wekanActivity.ModifiedAt
 			activity.To = &to
 			kanbanActivities = append(kanbanActivities, activity)
 			delete(mapActivity, wekanActivity.MemberID)
-		} else {
-			fmt.Println(wekanActivity, "ignoré")
 		}
 	}
 	for _, activity := range mapActivity {
