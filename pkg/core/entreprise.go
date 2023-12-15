@@ -481,11 +481,19 @@ func (e *Etablissements) intoBatch(roles Scope, username string) *pgx.Batch {
 		 order by siren, min(date_effet)`,
 		e.sirensFromQuery())
 
-	batch.Queue(`select e.siren, e.paydex, e.jours_retard, e.fournisseurs,
-       e.en_cours, e.experiences_paiement, e.fpi_30, e.fpi_90, e.date_valeur
-	from entreprise_paydex e
-	where e.siren=any($1) and date_valeur + '24 month'::interval >= $2
-	order by e.siren, date_valeur;`,
+	batch.Queue(`select e.siren,
+               last(e.paydex order by date_valeur) as paydex,
+               last(e.jours_retard order by date_valeur) as jours_retard,
+               last(e.fournisseurs order by date_valeur) as fournisseurs,
+               last(e.en_cours order by date_valeur) as en_cours,
+               last(e.experiences_paiement order by date_valeur) as experiences_paiement,
+               last(e.fpi_30 order by date_valeur) as fpi_30,
+               last(e.fpi_90 order by date_valeur) as fpi_90,
+               date_trunc('month', e.date_valeur) + '15 days'::interval as date_valeur
+        from entreprise_paydex e
+        where e.siren=any($1) and date_valeur + '24 month'::interval >= $2
+        group by siren, date_trunc('month', e.date_valeur)
+        order by e.siren, date_trunc('month', e.date_valeur);`,
 		e.sirensFromQuery(), now)
 
 	batch.Queue(`select * from get_brother($1, null, null, $2, null, null, true, true, $3, false, 'effectif_desc', false, null, null, null, null, null, $4, null, null, null, null, null, null, null) as brothers;`,
