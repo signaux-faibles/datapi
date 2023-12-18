@@ -52,7 +52,12 @@ func (service wekanService) PartCard(ctx context.Context, cardID libwekan.CardID
 	if err != nil {
 		return err
 	}
-
+	_, err = wekan.EnsureAssigneeOutOfCard(ctx, card, user, user)
+	if err != nil {
+		return err
+	}
+	card.Members = utils.Filter(card.Members, func(userID libwekan.UserID) bool { return userID != user.ID })
+	card.Assignees = utils.Filter(card.Assignees, func(userID libwekan.UserID) bool { return userID != user.ID })
 	config := kanbanConfigForUser(user.Username)
 
 	// vérification qu'il n'y a plus d'accompagnant sur la carte
