@@ -77,6 +77,9 @@ func joinCardAndKanbanDBExport(cardAndComments libwekan.CardWithComments, kanban
 
 	we.DateDebutSuivi = dateUrssaf(card.StartAt)
 	commentTexts := utils.Convert(comments, textFromComment)
+	commentTexts = utils.Filter(commentTexts, func(comment string) bool {
+		return strings.Contains(comment, "#export")
+	})
 
 	we.DescriptionWekan = strings.TrimSuffix(card.Description+"\n\n"+strings.ReplaceAll(strings.Join(commentTexts, "\n\n"), "#export", ""), "\n")
 
