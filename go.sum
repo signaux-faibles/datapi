@@ -214,8 +214,6 @@ github.com/segmentio/ksuid v1.0.4/go.mod h1:/XUiZBD3kVx5SmUOl55voK5yeAbBNNIed+2O
 github.com/shurcooL/sanitized_anchor_name v1.0.0/go.mod h1:1NzhyTcUVG4SuEtjjoZeVRXNmyL/1OwPU0+IJeTBvfc=
 github.com/signaux-faibles/goSirene v0.3.2 h1:wyyVmgg/1wD+iLE3F/oDlJ3onYldMn3IkP0E7xcp8Cg=
 github.com/signaux-faibles/goSirene v0.3.2/go.mod h1:YdHQWRCIiyAmPievzBtFwsvA61MXrPkuPkJuGUu9kmU=
-github.com/signaux-faibles/libwekan v0.5.0 h1:nyctCp5Ud4GimtM0zFhRIMSaIODNH55I2ACXcW6XG1E=
-github.com/signaux-faibles/libwekan v0.5.0/go.mod h1:vc3421qZK06Y8eF4OPwOHR7QO7KHadMr8np60KWBRHM=
 github.com/signaux-faibles/libwekan v0.6.0 h1:5eZl4whVIg6tmgG28ixa/OnMYNNCy8PH25xDyFE2Hu0=
 github.com/signaux-faibles/libwekan v0.6.0/go.mod h1:vc3421qZK06Y8eF4OPwOHR7QO7KHadMr8np60KWBRHM=
 github.com/sirupsen/logrus v1.8.1 h1:dJKuHgqk1NNQlqoA6BTlM1Wf9DOH3NBjQyu0h9+AZZE=
@@ -294,8 +292,8 @@ golang.org/x/crypto v0.0.0-20210921155107-089bfa567519/go.mod h1:GvvjBRRGRdwPK5y
 golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d/go.mod h1:IxCIyHEi3zRg3s0A5j5BB6A9Jmi73HwBIUl50j+osU4=
 golang.org/x/crypto v0.12.0/go.mod h1:NF0Gs7EO5K4qLn+Ylc+fih8BSTeIjAP05siRnAh98yw=
 golang.org/x/crypto v0.14.0/go.mod h1:MVFd36DqK4CsrnJYDkBA3VC4m2GkXAM0PvzMCn4JQf4=
-golang.org/x/crypto v0.16.0 h1:mMMrFzRSCF0GvB7Ne27XVtVAaXLrPmgPC7/v0tkwHaY=
-golang.org/x/crypto v0.16.0/go.mod h1:gCAAfMLgwOJRpTjQ2zCCt2OcSfYMTeZVSRtQlPC7Nq4=
+golang.org/x/crypto v0.17.0 h1:r8bRNjWL3GshPW3gkd+RpvzWrZAwPS49OmTGZ/uhM4k=
+golang.org/x/crypto v0.17.0/go.mod h1:gCAAfMLgwOJRpTjQ2zCCt2OcSfYMTeZVSRtQlPC7Nq4=
 golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb h1:c0vyKkb6yr3KR7jEfJaOSv4lG7xPkbN6r52aJz1d8a8=
 golang.org/x/exp v0.0.0-20231206192017-f3f8817b8deb/go.mod h1:iRJReGqOEeBhDZGkGbynYwcHlctCvnjTYIamk7uXpHI=
 golang.org/x/image v0.11.0 h1:ds2RoQvBvYTiJkwpSFDwCcDFNX7DqjL2WsUgTNk0Ooo=
