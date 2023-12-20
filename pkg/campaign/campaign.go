@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
 	"regexp"
+	"time"
 )
 
 func (cs *Campaigns) Tuple() []interface{} {
@@ -71,4 +72,18 @@ func GetCampaignWekanDomainRegexp(ctx context.Context, campaignID CampaignID) (w
 	}
 	_, err = regexp.Compile(wekanDomainRegexp)
 	return wekanDomainRegexp, err
+}
+
+func Create(ctx context.Context, title string, wekanDomainRegexp string, dateEnd time.Time) (CampaignID, error) {
+	conn := db.Get()
+	var id CampaignID
+	err := conn.QueryRow(
+		ctx,
+		"insert into campaign (libelle, wekan_domain_regexp, date_end) values ($1, $2, $3) returning id",
+		title,
+		wekanDomainRegexp,
+		dateEnd,
+	).Scan(&id)
+
+	return id, err
 }

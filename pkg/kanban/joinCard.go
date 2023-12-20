@@ -89,3 +89,16 @@ func (service wekanService) PartCard(ctx context.Context, cardID libwekan.CardID
 func (service wekanService) MoveCardList(ctx context.Context, cardID libwekan.CardID, listID libwekan.ListID, user libwekan.User) error {
 	return wekan.EnsureMoveCardList(ctx, cardID, listID, user.ID)
 }
+
+func (service wekanService) MoveCardListWithTitle(ctx context.Context, card libwekan.Card, listeTitle string, user libwekan.User) error {
+	var listID libwekan.ListID
+	for id, list := range WekanConfig.Boards[card.BoardID].Lists {
+		if list.Title == listeTitle {
+			listID = id
+		}
+	}
+	if listID == "" {
+		return libwekan.ListNotFoundError{}
+	}
+	return wekan.EnsureMoveCardList(ctx, card.ID, listID, user.ID)
+}
