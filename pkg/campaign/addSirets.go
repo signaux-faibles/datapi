@@ -48,7 +48,7 @@ func addSiretsHandler(c *gin.Context) {
 	if err != nil {
 		return
 	}
-	message, err := addSirets(c, CampaignID(campaignID), params.Sirets, s.Username)
+	message, err := AddSirets(c, CampaignID(campaignID), params.Sirets, s.Username)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
 		return
@@ -57,7 +57,7 @@ func addSiretsHandler(c *gin.Context) {
 	c.JSON(http.StatusOK, message)
 }
 
-func addSirets(ctx context.Context, campaignID CampaignID, sirets []core.Siret, username string) (Message, error) {
+func AddSirets(ctx context.Context, campaignID CampaignID, sirets []core.Siret, username string) (Message, error) {
 	var addedSirets AddedSirets
 	addedSirets.Sirets = make([]*AddedSiret, 0)
 	boards := core.Kanban.SelectBoardsForUsername(libwekan.Username(username))

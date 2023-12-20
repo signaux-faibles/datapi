@@ -3,11 +3,11 @@ package kanban
 import (
 	"context"
 	"datapi/pkg/core"
-	"fmt"
 	"github.com/signaux-faibles/libwekan"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
+	"log/slog"
 	"strings"
 	"sync"
 	"time"
@@ -183,26 +183,14 @@ func fromWekanBoardLabels(labels []libwekan.BoardLabel) core.KanbanBoardLabels {
 func parseSwimlaneTitle(swimlane core.KanbanSwimlane) string {
 	titleSplitted := strings.Split(swimlane.Title, " (")
 	if len(titleSplitted) > 2 {
-		log.Println("Erreur : le titre de la swimlane est mal configuré : ", swimlane.Title)
+		slog.Error("Erreur, le titre de la swimlane est mal configuré", slog.String("swimlane", swimlane.Title))
 	}
 	return strings.TrimSpace(titleSplitted[0])
 }
 
-func (service wekanService) SelectSiretsFromListeAndDomainRegexp(ctx context.Context, wekanDomainRegexp string, liste string) ([]core.Siret, error) {
+func (service wekanService) SelectCardsFromListeAndDomainRegexp(ctx context.Context, wekanDomainRegexp string, liste string) ([]libwekan.Card, error) {
 	pipeline := buildCardsFromListeAndDomainRegexpPipeline(wekanDomainRegexp, liste)
-	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", pipeline)
-	if err != nil {
-		return nil, err
-	}
-	var sirets []core.Siret
-	for _, card := range cards {
-		fmt.Println("coucou card")
-		if siret, ok := WekanConfig.GetCardCustomFieldByName(card, "SIRET"); ok {
-			fmt.Println("coucou")
-			sirets = append(sirets, core.Siret(siret))
-		}
-	}
-	return sirets, nil
+	return wekan.SelectCardsFromPipeline(ctx, "boards", pipeline)
 }
 
 func buildCardsFromListeAndDomainRegexpPipeline(wekanDomainRegexp string, liste string) libwekan.Pipeline {
@@ -225,14 +213,14 @@ func buildCardsFromListeAndDomainRegexpPipeline(wekanDomainRegexp string, liste 
 			"from":         "lists",
 			"localField":   "card.listId",
 			"foreignField": "_id",
-			"as":           "card.list",
+			"as":           "list",
 		}})
 	pipeline.AppendStage(bson.M{
-		"$unwind": "$card.list",
+		"$unwind": "$list",
 	})
 	pipeline.AppendStage(bson.M{
 		"$match": bson.M{
-			"card.list.title": "Accompagnement en cours",
+			"list.title": liste,
 		}})
 	pipeline.AppendStage(bson.M{
 		"$replaceRoot": bson.M{
@@ -242,26 +230,6 @@ func buildCardsFromListeAndDomainRegexpPipeline(wekanDomainRegexp string, liste 
 	return pipeline
 }
 
-// [
-
-//    {$unwind: '$card.list'},
-//    {$match: {
-//        'card.list.title': 'Accompagnement en cours',
-//    }},
-//    {$lookup: {
-//        from: 'customFields',
-//        localField: 'card.listId',
-//        foreignField: '_id',
-//        as: 'card.list'
-//    }},
-//    {$unwind:
-//        '$card.customFields'
-//    },
-//    {$match: {
-//        'card.customFields.value': /^[0-9]{14}/
-//    }},
-//    {$project: {
-//        _id: 0,
-//        siret: '$card.customFields.value'
-//    }}
-//]
+func (service wekanService) GetWekanConfig() libwekan.Config {
+	return WekanConfig
+}

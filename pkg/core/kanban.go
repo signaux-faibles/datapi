@@ -28,8 +28,10 @@ type KanbanService interface {
 	JoinCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error
 	PartCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error
 	MoveCardList(ctx context.Context, cardID libwekan.CardID, listID libwekan.ListID, user libwekan.User) error
+	MoveCardListWithTitle(ctx context.Context, card libwekan.Card, listTitle string, user libwekan.User) error
 	GetCardMembersHistory(ctx context.Context, cardID libwekan.CardID, username string) ([]KanbanActivity, error)
-	SelectSiretsFromListeAndDomainRegexp(ctx context.Context, wekanDomainRegexp string, liste string) ([]Siret, error)
+	SelectCardsFromListeAndDomainRegexp(ctx context.Context, wekanDomainRegexp string, liste string) ([]libwekan.Card, error)
+	GetWekanConfig() libwekan.Config
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser
