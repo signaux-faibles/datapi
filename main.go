@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"datapi/pkg/ops/campaignops"
 	"log"
 
 	"github.com/gin-gonic/gin"
@@ -51,6 +52,7 @@ func initAndStartAPI(datapi *core.Datapi, statsAPI *stats.API) {
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/refresh", refresh.ConfigureEndpoint, core.AdminAuthMiddleware)
+	core.AddEndpoint(router, "/ops/campaign", campaignops.ConfigureEndpoint(datapi.KanbanService), core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint(datapi.KanbanService), core.AuthMiddleware(), datapi.LogMiddleware)
 	core.AddEndpoint(router, "/stats", statsAPI.ConfigureEndpoint, core.AuthMiddleware(), datapi.LogMiddleware, needRoleStats)
 	core.StartAPI(router)
