@@ -10,7 +10,6 @@ import (
 	"github.com/gin-gonic/gin"
 	"log/slog"
 	"net/http"
-	"regexp"
 	"time"
 )
 
@@ -23,7 +22,6 @@ func ConfigureEndpoint(kanbanService core.KanbanService) func(endpoint *gin.Rout
 
 type NewCampaignParams struct {
 	DateFin            time.Time           `json:"dateFin"`
-	WekanDomainRegexp  string              `json:"wekanDomainRegexp"`
 	FromCampaignID     campaign.CampaignID `json:"fromCampaignID"`
 	FromListeDetection string              `json:"fromListeDetection"`
 }
@@ -31,6 +29,7 @@ type NewCampaignParams struct {
 func newCampaignHandler(kanbanService core.KanbanService) func(c *gin.Context) {
 	return func(c *gin.Context) {
 		var params NewCampaignParams
+
 		err := c.Bind(&params)
 		fmt.Println(params)
 		if err != nil {
@@ -38,6 +37,11 @@ func newCampaignHandler(kanbanService core.KanbanService) func(c *gin.Context) {
 		}
 
 		err = checkParams(c, params)
+		if err != nil {
+			c.JSON(http.StatusBadRequest, err.Error())
+		}
+
+		wekanDomainRegexp, err := campaign.GetCampaignWekanDomainRegexp(c, params.FromCampaignID)
 		if err != nil {
 			c.JSON(http.StatusBadRequest, err.Error())
 		}
@@ -60,7 +64,7 @@ func newCampaignHandler(kanbanService core.KanbanService) func(c *gin.Context) {
 		}
 		slog.Info("sirets provenant des en cours", slog.Int("siretsFromEncours", len(siretsFromEncours)))
 
-		siretsFromAccompagnement, err := selectSiretsFromAccompagnement(c, params, kanbanService)
+		siretsFromAccompagnement, err := selectSiretsFromAccompagnement(c, wekanDomainRegexp, kanbanService)
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 		}
@@ -79,8 +83,8 @@ func newCampaignHandler(kanbanService core.KanbanService) func(c *gin.Context) {
 	}
 }
 
-func selectSiretsFromAccompagnement(ctx context.Context, params NewCampaignParams, kanbanService core.KanbanService) ([]core.Siret, error) {
-	return kanbanService.SelectSiretsFromListeAndDomainRegexp(ctx, params.WekanDomainRegexp, "Accompagnement en cours")
+func selectSiretsFromAccompagnement(ctx context.Context, wekanDomainRegexp string, kanbanService core.KanbanService) ([]core.Siret, error) {
+	return kanbanService.SelectSiretsFromListeAndDomainRegexp(ctx, wekanDomainRegexp, "Accompagnement en cours")
 }
 
 //go:embed sql/siretsFromAction.sql
@@ -132,10 +136,6 @@ func selectSiretsFromListe(ctx context.Context, params NewCampaignParams) ([]cor
 }
 
 func checkParams(ctx context.Context, params NewCampaignParams) error {
-	_, err := regexp.Compile(params.WekanDomainRegexp)
-	if err != nil {
-		return err
-	}
 	if params.DateFin.Before(time.Now()) {
 		return fmt.Errorf("dateFin doit être dans le futur : %s", params.DateFin.Format(time.DateOnly))
 	}

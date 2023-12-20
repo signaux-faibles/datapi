@@ -6,6 +6,7 @@ import (
 	"datapi/pkg/db"
 	"github.com/gin-gonic/gin"
 	"github.com/signaux-faibles/libwekan"
+	"regexp"
 )
 
 func (cs *Campaigns) Tuple() []interface{} {
@@ -60,4 +61,14 @@ func CampaignExists(ctx context.Context, campaignID CampaignID) bool {
 	conn := db.Get()
 	err := conn.QueryRow(ctx, "select from campaign where id=$1", campaignID).Scan()
 	return err == nil
+}
+
+func GetCampaignWekanDomainRegexp(ctx context.Context, campaignID CampaignID) (wekanDomainRegexp string, err error) {
+	conn := db.Get()
+	err = conn.QueryRow(ctx, "select wekan_domain_regexp from campaign where id=$1", campaignID).Scan(&wekanDomainRegexp)
+	if err != nil {
+		return "", err
+	}
+	_, err = regexp.Compile(wekanDomainRegexp)
+	return wekanDomainRegexp, err
 }
