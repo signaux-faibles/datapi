@@ -247,6 +247,12 @@ func (liste *Liste) getScores(roles Scope, page int, limit *int, username string
 	return nil
 }
 
+func ListeExists(ctx context.Context, libelle string) bool {
+	conn := db.Get()
+	err := conn.QueryRow(ctx, "select from liste where libelle=$1", libelle).Scan()
+	return err == nil
+}
+
 func findAllListes() ([]Liste, error) {
 	var listes []Liste
 	rows, err := db.Get().Query(context.Background(), `

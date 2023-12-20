@@ -29,6 +29,7 @@ type KanbanService interface {
 	PartCard(ctx context.Context, cardID libwekan.CardID, user libwekan.User) error
 	MoveCardList(ctx context.Context, cardID libwekan.CardID, listID libwekan.ListID, user libwekan.User) error
 	GetCardMembersHistory(ctx context.Context, cardID libwekan.CardID, username string) ([]KanbanActivity, error)
+	SelectSiretsFromListeAndDomainRegexp(ctx context.Context, wekanDomainRegexp string, liste string) ([]Siret, error)
 }
 
 type KanbanUsers map[libwekan.UserID]KanbanUser

@@ -55,3 +55,9 @@ func listCampaignsHandler(c *gin.Context) {
 	}
 	c.JSON(200, campaigns)
 }
+
+func CampaignExists(ctx context.Context, campaignID CampaignID) bool {
+	conn := db.Get()
+	err := conn.QueryRow(ctx, "select from campaign where id=$1", campaignID).Scan()
+	return err == nil
+}

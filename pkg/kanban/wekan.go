@@ -3,7 +3,10 @@ package kanban
 import (
 	"context"
 	"datapi/pkg/core"
+	"fmt"
 	"github.com/signaux-faibles/libwekan"
+	"go.mongodb.org/mongo-driver/bson"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"log"
 	"strings"
 	"sync"
@@ -184,3 +187,81 @@ func parseSwimlaneTitle(swimlane core.KanbanSwimlane) string {
 	}
 	return strings.TrimSpace(titleSplitted[0])
 }
+
+func (service wekanService) SelectSiretsFromListeAndDomainRegexp(ctx context.Context, wekanDomainRegexp string, liste string) ([]core.Siret, error) {
+	pipeline := buildCardsFromListeAndDomainRegexpPipeline(wekanDomainRegexp, liste)
+	cards, err := wekan.SelectCardsFromPipeline(ctx, "boards", pipeline)
+	if err != nil {
+		return nil, err
+	}
+	var sirets []core.Siret
+	for _, card := range cards {
+		fmt.Println("coucou card")
+		if siret, ok := WekanConfig.GetCardCustomFieldByName(card, "SIRET"); ok {
+			fmt.Println("coucou")
+			sirets = append(sirets, core.Siret(siret))
+		}
+	}
+	return sirets, nil
+}
+
+func buildCardsFromListeAndDomainRegexpPipeline(wekanDomainRegexp string, liste string) libwekan.Pipeline {
+	var pipeline libwekan.Pipeline
+	pipeline.AppendStage(bson.M{
+		"$match": bson.M{"slug": primitive.Regex{Pattern: wekanDomainRegexp, Options: "i"}},
+	})
+	pipeline.AppendStage(bson.M{
+		"$lookup": bson.M{
+			"from":         "cards",
+			"localField":   "_id",
+			"foreignField": "boardId",
+			"as":           "card",
+		}})
+	pipeline.AppendStage(bson.M{
+		"$unwind": "$card",
+	})
+	pipeline.AppendStage(bson.M{
+		"$lookup": bson.M{
+			"from":         "lists",
+			"localField":   "card.listId",
+			"foreignField": "_id",
+			"as":           "card.list",
+		}})
+	pipeline.AppendStage(bson.M{
+		"$unwind": "$card.list",
+	})
+	pipeline.AppendStage(bson.M{
+		"$match": bson.M{
+			"card.list.title": "Accompagnement en cours",
+		}})
+	pipeline.AppendStage(bson.M{
+		"$replaceRoot": bson.M{
+			"newRoot": "$card",
+		},
+	})
+	return pipeline
+}
+
+// [
+
+//    {$unwind: '$card.list'},
+//    {$match: {
+//        'card.list.title': 'Accompagnement en cours',
+//    }},
+//    {$lookup: {
+//        from: 'customFields',
+//        localField: 'card.listId',
+//        foreignField: '_id',
+//        as: 'card.list'
+//    }},
+//    {$unwind:
+//        '$card.customFields'
+//    },
+//    {$match: {
+//        'card.customFields.value': /^[0-9]{14}/
+//    }},
+//    {$project: {
+//        _id: 0,
+//        siret: '$card.customFields.value'
+//    }}
+//]
