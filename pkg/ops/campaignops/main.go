@@ -169,7 +169,7 @@ func newCampaignHandler(kanbanService core.KanbanService) func(c *gin.Context) {
 		}
 
 		// - insertion des sirets (sauf ceux qui sont accompagnement en cours) ->
-		_, err = campaign.AddSirets(c, campaignID, sirets.siretsToInsert(), "")
+		_, err = campaign.AddSirets(c, campaignID, sirets.siretsToInsert(), "signaux.faibles")
 		if err != nil {
 			c.JSON(http.StatusInternalServerError, err.Error())
 			return
@@ -207,7 +207,7 @@ func mutatePasDAccompagnement(ctx context.Context, sirets newCampaignSirets, kan
 	if !found {
 		return errors.New("L'utilisateur 'signaux.faibles' n'a pas été trouvé ?!")
 	}
-	cardsToMutate := slices.DeleteFunc(sirets.fromWekanAccompagnementEnCours, func(card libwekan.Card) bool {
+	cardsToMutate := slices.DeleteFunc(sirets.fromWekanAnalyseEnCours, func(card libwekan.Card) bool {
 		return slices.Contains(sirets.siretsToInsert(), siretWithNameFunc(sirets.config)(card))
 	})
 	for _, card := range cardsToMutate {
