@@ -108,9 +108,6 @@ func (datapi *Datapi) InitAPI(router *gin.Engine) {
 	reference.GET("/departements", departementsHandler)
 	reference.GET("/regions", regionsHandler)
 
-	fce := router.Group("/fce", AuthMiddleware(), datapi.LogMiddleware)
-	fce.GET("/:siret", checkSiretFormat, getFceURL)
-
 	configureKanbanEndpoint("/kanban", router, AuthMiddleware(), datapi.LogMiddleware)
 }
 
