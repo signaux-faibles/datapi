@@ -2,7 +2,9 @@ package imports
 
 import (
 	"context"
+	"datapi/pkg/utils"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -11,6 +13,31 @@ import (
 
 	"datapi/pkg/db"
 )
+
+func importUnitesLegales(ctx context.Context) error {
+	if viper.GetString("source.sireneULPath") == "" || viper.GetString("source.geoSirenePath") == "" {
+		return utils.NewJSONerror(http.StatusConflict, "not supported, missing parameters in server configuration")
+	}
+	slog.Info("Truncate entreprise table", slog.String("status", "start"))
+
+	err := TruncateEntreprise(ctx)
+	if err != nil {
+		return err
+	}
+	slog.Info("Truncate entreprise table", slog.String("status", "end"))
+
+	err = DropEntrepriseIndex(ctx)
+	if err != nil {
+		return err
+	}
+
+	err = InsertSireneUL(ctx)
+	if err != nil {
+		return err
+	}
+
+	return CreateEntrepriseIndex(ctx)
+}
 
 // InsertSireneUL insère des trucs rapport aux sirene mais je sais pas trop quoi
 func InsertSireneUL(ctx context.Context) error {

@@ -2,7 +2,9 @@ package imports
 
 import (
 	"context"
+	"datapi/pkg/utils"
 	"log/slog"
+	"net/http"
 	"os"
 	"strings"
 
@@ -12,6 +14,29 @@ import (
 
 	"datapi/pkg/db"
 )
+
+func importStockEtablissement(ctx context.Context) error {
+	if viper.GetString("source.geoSirenePath") == "" {
+		return utils.NewJSONerror(http.StatusConflict, "not supported, missing geoSirenePath parameters in server configuration")
+	}
+	slog.Info("Truncate etablissement table")
+	err := TruncateEtablissement()
+	if err != nil {
+		return err
+	}
+
+	slog.Info("Drop etablissement table indexes")
+	err = DropEtablissementIndex(ctx)
+	if err != nil {
+		return err
+	}
+	err = InsertGeoSirene(ctx)
+	if err != nil {
+		return err
+	}
+	slog.Info("Create etablissement table indexes")
+	return CreateEtablissementIndex(ctx)
+}
 
 func CreateEtablissementIndex(ctx context.Context) error {
 	conn := db.Get()
