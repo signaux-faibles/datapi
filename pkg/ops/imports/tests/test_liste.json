@@ -1,0 +1,35 @@
+[
+  {
+    "siren": "424214776",
+    "probability": 0.62,
+    "alert": "Alerte seuil F1",
+    "macroExpl": {
+      "group1": 0.24,
+      "group2": 0.38
+    },
+    "microExpl": {
+      "group1_feature1": 0.12,
+      "group1_feature2": 0.8,
+      "group1_feature3": 0.4,
+      "group2_feature1": 0.20,
+      "group2_feature2": 0.18
+    }
+  },
+  {
+    "siren": "038893516",
+    "probability": 0.46,
+    "alert": "Alerte seuil F2",
+    "macroExpl": {
+      "group1": 0.30,
+      "group2": 0.16
+    },
+    "microExpl": {
+      "group1_feature1": 0.10,
+      "group1_feature2": 0.15,
+      "group1_feature3": 0.5,
+      "group2_feature1": 0.8,
+      "group2_feature2": 0.8
+    }
+  }
+]
+

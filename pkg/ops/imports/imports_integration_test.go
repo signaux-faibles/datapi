@@ -8,8 +8,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/stretchr/testify/require"
-
 	"datapi/pkg/test"
 )
 
@@ -19,8 +17,7 @@ func TestMain(m *testing.M) {
 	testConfig := map[string]string{}
 	url := test.GetDatapiDBURL()
 	testConfig["postgres"] = url
-	testConfig["sourceEntreprise"] = test.ProjectPathOf("test/emptyJSON.gz")
-	testConfig["sourceEtablissement"] = test.ProjectPathOf("test/emptyJSON.gz")
+	testConfig["source.listPath"] = test.ProjectPathOf("test/test_liste.json")
 	if err := test.Viperize(testConfig); err != nil {
 		slog.Error("erreur pendant le chargement de la configuration ", slog.Any("error", err))
 	}
@@ -32,14 +29,4 @@ func TestMain(m *testing.M) {
 	// on peut placer ici du code de nettoyage si nécessaire
 
 	os.Exit(code)
-}
-
-func Test_importEntreprisesAndEtablissement(t *testing.T) {
-	test.FakeTime(t, tuTime)
-	//ass := assert.New(t)
-	err := test.Viperize(nil)
-	require.NoError(t, err)
-	//net.ParseIP()
-	err = importEtablissement()
-	require.NoError(t, err)
 }
