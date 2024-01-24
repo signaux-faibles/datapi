@@ -217,16 +217,16 @@ type EtablissementScore struct {
 	IDListe               string                           `json:"idListe"`
 	Batch                 string                           `json:"batch"`
 	Algo                  string                           `json:"algo"`
-	Periode               time.Time                        `json:"periode"`
+	Periode               time.Time                        `json:"-"`
 	Score                 float64                          `json:"score"`
-	Diff                  float64                          `json:"diff"`
+	Diff                  float64                          `json:"-"`
 	Alert                 string                           `json:"alert"`
-	MacroRadar            map[string]float64               `json:"macroRadar,omitempty"`
-	ExplSelection         *EtablissementScoreExplSelection `json:"explSelection,omitempty"`
-	MacroExpl             map[string]float64               `json:"-"`
-	MicroExpl             map[string]float64               `json:"-"`
-	AlertPreRedressements string                           `json:"alertPreRedressements"`
-	Redressements         []string                         `json:"redressements"`
+	MacroRadar            map[string]float64               `json:"-"`
+	ExplSelection         *EtablissementScoreExplSelection `json:"-"`
+	MacroExpl             map[string]float64               `json:"macroExpl"`
+	MicroExpl             map[string]float64               `json:"microExpl"`
+	AlertPreRedressements string                           `json:"-"`
+	Redressements         []string                         `json:"-"`
 }
 
 func fixConfidentialiteRedressements(redressements []string, confidentiels []string) []string {
