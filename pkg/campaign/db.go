@@ -33,3 +33,6 @@ var sqlCheckSirets string
 
 //go:embed sql/addSirets.sql
 var sqlAddSirets string
+
+//go:embed sql/selectExports.sql
+var sqlSelectExports string
