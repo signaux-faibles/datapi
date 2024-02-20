@@ -21,10 +21,12 @@ func importUrssafHandler(c *gin.Context) {
 	reader, err := tarFileReader(path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
+		return
 	}
 	err = runHandlers(c, reader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
+		return
 	}
 	c.JSON(http.StatusOK, "ok")
 }
