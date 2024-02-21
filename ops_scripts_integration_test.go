@@ -98,7 +98,7 @@ func TestApi_Ops_ListStatus(t *testing.T) {
 	actual := &scripts.Refresh{}
 	// Boucle while avec timeout
 	for actual.Status != scripts.Finished {
-		time.Sleep(1 * time.Second)
+		time.Sleep(333 * time.Millisecond)
 		select {
 		case <-timeout:
 			t.Error("time out !!!")

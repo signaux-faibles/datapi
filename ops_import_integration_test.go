@@ -15,6 +15,7 @@ import (
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/scripts"
 	"datapi/pkg/test"
+	"datapi/pkg/utils"
 )
 
 func TestApi_OpsImports_UrssafAggregate(t *testing.T) {
@@ -53,7 +54,7 @@ func TestApi_OpsImports_PredictionsRefresh(t *testing.T) {
 }
 
 func Test_PredictionsRefresh(t *testing.T) {
-	//utils.ConfigureLogLevel("warn")
+	utils.ConfigureLogLevel("warn")
 	ass := assert.New(t)
 	ctx := context.Background()
 
