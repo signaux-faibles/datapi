@@ -1,4 +1,4 @@
-package refresh
+package scripts
 
 import (
 	"testing"

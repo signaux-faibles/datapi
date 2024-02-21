@@ -1,6 +1,6 @@
 // Package refresh : contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
 // c'est-à-dire l'exécution du script sql configuré
-package refresh
+package scripts
 
 import (
 	"errors"

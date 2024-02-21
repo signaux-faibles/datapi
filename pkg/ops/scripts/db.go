@@ -1,6 +1,6 @@
 // Package refresh : contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
 // c'est-à-dire l'exécution du script sql configuré
-package refresh
+package scripts
 
 import (
 	"context"
@@ -13,32 +13,33 @@ import (
 )
 
 // StartRefreshScript : crée un évènement de refresh, le démarre dans une routine et retourne son UUID
-func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, sql string) *Refresh {
+func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, exec Execution) *Refresh {
 	current := New()
-	go executeRefresh(ctx, db, sql, current)
+	go executeRefresh(ctx, db, exec, current)
 	return current
 }
 
-func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, sql string, refresh *Refresh) {
+func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, exec Execution, refresh *Refresh) {
 	allSeparators := regexp.MustCompile(`\s+`)
+	logger := slog.Default().With(slog.String("label", exec.label))
 	tx, err := dbase.Begin(ctx)
 	if err != nil {
 		refresh.fail(err.Error())
-		slog.Error("Erreur à l'ouverture de la transaction pour mise à jour des v tables", slog.Any("error", err))
+		logger.Error("Erreur à l'ouverture de la transaction", slog.Any("error", err))
 		return
 	}
 	// Defer a rollback in case anything fails.
 	defer tx.Rollback(ctx)
 
-	for _, current := range strings.Split(sql, ";\n") {
+	for _, current := range strings.Split(exec.sql, ";\n") {
 		current = allSeparators.ReplaceAllString(current, " ")
-		slog.Info("mise à jour des v tables", slog.Any("uuid", refresh.UUID), slog.String("sql", sqlAsLog(current)))
+		logger.Info("démarre l'exécution", slog.Any("uuid", refresh.UUID), slog.String("sql", sqlAsLog(current)))
 		refresh.run(current)
 		_, err = tx.Exec(ctx, current)
 		if err != nil {
 			refresh.fail(err.Error())
-			slog.Error(
-				"Erreur à l'ouverture de l'exécution de la requête de mise à jour des v tables",
+			logger.Error(
+				"Erreur à l'exécution de la requête ",
 				slog.Any("error", err),
 				slog.String("sql", current),
 			)
@@ -48,7 +49,7 @@ func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, sql string, refres
 	err = tx.Commit(ctx)
 	if err != nil {
 		refresh.fail(err.Error())
-		slog.Error("Erreur à l'ouverture du commit de transaction de mise à jour des v tables", slog.Any("error", err))
+		logger.Error("Erreur au commit de transaction", slog.Any("error", err))
 		return
 	}
 	refresh.finish()

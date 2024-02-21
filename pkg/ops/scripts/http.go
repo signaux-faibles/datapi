@@ -1,6 +1,6 @@
 // Package refresh : contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
 // c'est-à-dire l'exécution du script sql configuré
-package refresh
+package scripts
 
 import (
 	"context"
@@ -23,12 +23,12 @@ func ConfigureEndpoint(refreshRoute *gin.RouterGroup) {
 }
 
 func vtablesHandler(c *gin.Context) {
-	refresh := StartRefreshScript(context.Background(), db.Get(), SQLPopulateVTables)
+	refresh := StartRefreshScript(context.Background(), db.Get(), ExecuteRefreshVTables)
 	c.JSON(http.StatusOK, refresh)
 }
 
 func urssafHandler(c *gin.Context) {
-	refresh := StartRefreshScript(context.Background(), db.Get(), SQLAggregationUrssaf)
+	refresh := StartRefreshScript(context.Background(), db.Get(), ExecuteAggregationURSSAF)
 	c.JSON(http.StatusOK, refresh)
 }
 

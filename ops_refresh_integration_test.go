@@ -15,44 +15,44 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"datapi/pkg/db"
-	"datapi/pkg/ops/refresh"
+	"datapi/pkg/ops/scripts"
 	"datapi/pkg/test"
 	"datapi/pkg/utils"
 )
 
-func TestFetchNonExistentRefresh(t *testing.T) {
+func TestFetchNonExistentScript(t *testing.T) {
 	ass := assert.New(t)
-	result, err := refresh.Fetch(uuid.New())
-	ass.Equal(refresh.Empty, result)
+	result, err := scripts.Fetch(uuid.New())
+	ass.Equal(scripts.Empty, result)
 	ass.NotNil(err)
 }
 
-func TestRunRefreshScript(t *testing.T) {
+func TestRunScript(t *testing.T) {
 	ass := assert.New(t)
-	current := refresh.StartRefreshScript(context.Background(), db.Get(), refresh.SQLPopulateVTables)
+	current := scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Wait5Seconds)
 	t.Logf("refreshID is running with id : %s", current.UUID)
-	result, err := refresh.Fetch(current.UUID)
+	result, err := scripts.Fetch(current.UUID)
 	ass.Nil(err)
 	ass.NotNil(result)
 }
 
-func TestLastRefreshState(t *testing.T) {
+func TestLastScriptState(t *testing.T) {
 	ass := assert.New(t)
-	lastRefreshState, err := refresh.FetchLast()
+	lastRefreshState, err := scripts.FetchLast()
 	require.NoError(t, err)
-	if lastRefreshState == refresh.Empty {
-		refresh.StartRefreshScript(context.Background(), db.Get(), refresh.SQLPopulateVTables)
+	if lastRefreshState == scripts.Empty {
+		scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Wait5Seconds)
 	}
 	time.Sleep(100 * time.Millisecond)
-	lastRefreshState, err = refresh.FetchLast()
+	lastRefreshState, err = scripts.FetchLast()
 	require.NoError(t, err)
 	ass.NotEmpty(lastRefreshState)
 	t.Logf("Description du dernier refresh : %s", lastRefreshState)
 }
 
-func TestApi_OpsRefresh_StartHandler(t *testing.T) {
+func TestApi_OpsScripts_StartHandler(t *testing.T) {
 	ass := assert.New(t)
-	path := "/ops/refresh/vtables"
+	path := "/ops/scripts/vtables"
 	response := test.HTTPGet(t, path)
 
 	ass.Equalf(http.StatusOK, response.StatusCode, "body de la réponse : %s", test.GetBodyQuietly(response))
@@ -60,38 +60,37 @@ func TestApi_OpsRefresh_StartHandler(t *testing.T) {
 
 func TestFetchRefreshWithState(t *testing.T) {
 	ass := assert.New(t)
-	failed1 := refresh.StartRefreshScript(context.Background(), db.Get(), "sql incorrect")
-	failed2 := refresh.StartRefreshScript(context.Background(), db.Get(), "sql incorrect")
+	failed1 := scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Fail)
+	failed2 := scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Fail)
 
-	running := refresh.StartRefreshScript(context.Background(), db.Get(), "SELECT pg_sleep(5);")
+	running := scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Wait5Seconds)
 	time.Sleep(1 * time.Second)
 
-	failedRefresh := refresh.FetchRefreshsWithState(refresh.Failed)
+	failedRefresh := scripts.FetchRefreshsWithState(scripts.Failed)
 	ass.Contains(failedRefresh, *failed1)
 	ass.Contains(failedRefresh, *failed2)
 
-	runningRefresh := refresh.FetchRefreshsWithState(refresh.Running)
-	getUUID := func(r refresh.Refresh) uuid.UUID { return r.UUID }
+	runningRefresh := scripts.FetchRefreshsWithState(scripts.Running)
+	getUUID := func(r scripts.Refresh) uuid.UUID { return r.UUID }
 	ass.Contains(utils.Convert(runningRefresh, getUUID), running.UUID)
 }
 
-func TestApi_OpsRefresh_StatusHandler(t *testing.T) {
+func TestApi_OpsScripts_StatusHandler(t *testing.T) {
 	ass := assert.New(t)
-	rollbackCtx, rollback := context.WithCancel(context.Background())
-	current := refresh.StartRefreshScript(rollbackCtx, db.Get(), "SELECT CURRENT_DATE")
-	path := "/ops/refresh/status/" + current.UUID.String()
+	current := scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Wait5Seconds)
+	time.Sleep(100 * time.Millisecond)
+	path := "/ops/scripts/status/" + current.UUID.String()
 	response := test.HTTPGet(t, path)
-	rollback()
 
 	body := test.GetBodyQuietly(response)
 	ass.Equalf(http.StatusOK, response.StatusCode, "body de la réponse : %s", body)
 
-	retour := &refresh.Refresh{}
+	retour := &scripts.Refresh{}
 	err := json.Unmarshal(body, &retour)
 	require.NoError(t, err)
 	t.Log(retour)
 	ass.Equal(current.UUID, retour.UUID)
-	ass.Equal(current.Status, refresh.Failed)
+	ass.Equal(scripts.Running, retour.Status)
 }
 
 func TestApi_Ops_RefreshVTables(t *testing.T) {
@@ -99,14 +98,14 @@ func TestApi_Ops_RefreshVTables(t *testing.T) {
 	ass := assert.New(t)
 	ctx := context.Background()
 
-	current := refresh.StartRefreshScript(ctx, db.Get(), refresh.SQLPopulateVTables)
-	path := "/ops/refresh/status/" + current.UUID.String()
+	current := scripts.StartRefreshScript(ctx, db.Get(), scripts.ExecuteRefreshVTables)
+	path := "/ops/scripts/status/" + current.UUID.String()
 
 	// Création d'un canal pour gérer le timeout
 	timeout := time.After(10 * time.Second) // Timeout de 5 secondes
-	actual := &refresh.Refresh{}
+	actual := &scripts.Refresh{}
 	// Boucle while avec timeout
-	for actual.Status != refresh.Finished && actual.Status != refresh.Failed {
+	for actual.Status != scripts.Finished && actual.Status != scripts.Failed {
 		time.Sleep(1 * time.Second)
 		select {
 		case <-timeout:
@@ -125,16 +124,16 @@ func TestApi_Ops_RefreshVTables(t *testing.T) {
 	}
 
 	ass.Equal(current.UUID, actual.UUID)
-	ass.Equal(refresh.Finished, actual.Status)
+	ass.Equal(scripts.Finished, actual.Status)
 }
 
-func TestApi_OpsRefresh_ListHandler(t *testing.T) {
+func TestApi_OpsScripts_ListHandler(t *testing.T) {
 	ass := assert.New(t)
 	test.FakeTime(t, tuTime)
 
-	current := refresh.StartRefreshScript(context.Background(), db.Get(), "SELECT CURRENT_DATE")
-	expectedStatus := refresh.Prepare
-	rPath := "/ops/refresh/list/" + string(expectedStatus)
+	current := scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Wait5Seconds)
+	expectedStatus := scripts.Prepare
+	rPath := "/ops/scripts/list/" + string(expectedStatus)
 
 	response := test.HTTPGet(t, rPath)
 	body := test.GetBodyQuietly(response)
@@ -153,8 +152,8 @@ func TestApi_OpsRefresh_ListHandler(t *testing.T) {
 	}, "Un des refresh n'a pas le status `failed`")
 }
 
-func decodeRefreshArray(body []byte) ([]refresh.Refresh, error) {
-	var actual []refresh.Refresh
+func decodeRefreshArray(body []byte) ([]scripts.Refresh, error) {
+	var actual []scripts.Refresh
 	err := json.Unmarshal(body, &actual)
 	if err != nil {
 		return nil, errors.Wrap(err, "erreur pendant l'unmarshalling de la réponse")
