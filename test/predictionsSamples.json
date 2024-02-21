@@ -1,0 +1,84 @@
+[
+  {
+    "siren": "AZ3365BU1",
+    "probability": 0.0,
+    "alertPreRedressements": "Pas d'alerte",
+    "alert": "Pas d'alerte",
+    "idListe": "D\u00e9cembre 2023",
+    "batch": "2310",
+    "algo": "'mock'",
+    "periode": "2023-12-01T00:00:00Z"
+  },
+  {
+    "siren": "AY3365BU2",
+    "probability": 0.233059099953904,
+    "alertPreRedressements": "Alerte seuil F2",
+    "alert": "Pas d'alerte",
+    "idListe": "D\u00e9cembre 2023",
+    "batch": "2310",
+    "algo": "'paydex'",
+    "periode": "2023-12-01T00:00:00Z",
+    "macroRadar": {
+      "sante_financiere": 0.4937923204822526,
+      "activite_partielle": 0.4999593976261616,
+      "dette_urssaf": 0.4898741141436337,
+      "retards_paiement": 0.58780183958974
+    },
+    "explSelection": {
+      "selectConcerning": [
+        [
+          "retards_paiement",
+          "paydex_bin"
+        ],
+        [
+          "retards_paiement",
+          "paydex_nb_jours_diff12m"
+        ],
+        [
+          "dette_urssaf",
+          "dette"
+        ]
+      ]
+    }
+  },
+  {
+    "siren": "AY3365BU3",
+    "probability": 0.1752869515737344,
+    "alertPreRedressements": "Pas d'alerte",
+    "alert": "Pas d'alerte",
+    "idListe": "D\u00e9cembre 2023",
+    "batch": "2310",
+    "algo": "'standard'",
+    "periode": "2023-12-01T00:00:00Z"
+  },
+  {
+    "siren": "AY3365BU4",
+    "probability": 0.0,
+    "alertPreRedressements": "Pas d'alerte",
+    "alert": "Pas d'alerte",
+    "idListe": "D\u00e9cembre 2023",
+    "batch": "2310",
+    "algo": "'mock'",
+    "periode": "2023-12-01T00:00:00Z"
+  },
+  {
+    "siren": "AY3365BU5",
+    "probability": 0.16991272749244152,
+    "alertPreRedressements": "Pas d'alerte",
+    "alert": "Pas d'alerte",
+    "idListe": "D\u00e9cembre 2023",
+    "batch": "2310",
+    "algo": "'standard'",
+    "periode": "2023-12-01T00:00:00Z"
+  },
+  {
+    "siren": "413367228",
+    "probability": 0.1320649590450634,
+    "alertPreRedressements": "Pas d'alerte",
+    "alert": "Pas d'alerte",
+    "idListe": "D\u00e9cembre 2023",
+    "batch": "2310",
+    "algo": "'paydex'",
+    "periode": "2023-12-01T00:00:00Z"
+  }
+]

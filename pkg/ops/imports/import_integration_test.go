@@ -3,13 +3,16 @@
 package imports
 
 import (
+	"context"
 	"log/slog"
 	"os"
 	"testing"
 	"time"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"datapi/pkg/db"
 	"datapi/pkg/test"
 )
 
@@ -24,7 +27,7 @@ func TestMain(m *testing.M) {
 	if err := test.Viperize(testConfig); err != nil {
 		slog.Error("erreur pendant le chargement de la configuration ", slog.Any("error", err))
 	}
-
+	insertEtablissement4Predictions()
 	// Run tests
 	code := m.Run()
 
@@ -42,4 +45,45 @@ func Test_importEntreprisesAndEtablissement(t *testing.T) {
 	//net.ParseIP()
 	err = importEtablissement()
 	require.NoError(t, err)
+}
+
+func Test_importPredictions_then_deletePredictions(t *testing.T) {
+	// GIVEN
+	batchNumber1 := "2304"
+	batchNumber2 := "2305"
+	algo1 := "tu1"
+	algo2 := "tu2"
+	listPath := test.ProjectPathOf("test/predictionsSamples.json")
+	config := map[string]string{}
+	config["source.listPath"] = listPath
+	err := test.Viperize(config)
+	require.NoError(t, err)
+
+	// WHEN
+	err = importPredictions(batchNumber1, algo1)
+	require.NoError(t, err)
+	err = importPredictions(batchNumber1, algo2)
+	require.NoError(t, err)
+	err = importPredictions(batchNumber2, algo1)
+	require.NoError(t, err)
+	err = importPredictions(batchNumber2, algo2)
+	require.NoError(t, err)
+
+	lignesSupprimees, err := deletePredictions(batchNumber1, algo1)
+	require.NoError(t, err)
+
+	// THEN (seules les scores des entreprises insérées avec batchNumber1 et algo1 doivent être supprimées
+	assert.Equal(t, int64(5), lignesSupprimees)
+}
+
+func insertEtablissement4Predictions() {
+	filePath := test.ProjectPathOf("test/insertEtablissementForPredictions.sql")
+	content, err := os.ReadFile(filePath)
+	if err != nil {
+		panic(err)
+	}
+	_, err = db.Get().Exec(context.Background(), string(content))
+	if err != nil {
+		panic(err)
+	}
 }

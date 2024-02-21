@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
 	"time"
@@ -56,7 +57,7 @@ type scoreFile struct {
 	AlertPreRedressements string             `json:"alertPreRedressements"`
 }
 
-func importListe(batchNumber string, algo string) error {
+func importPredictions(batchNumber string, algo string) error {
 	filename := viper.GetString("source.listPath")
 	file, err := os.Open(filename)
 	if err != nil {
@@ -117,7 +118,7 @@ func importListe(batchNumber string, algo string) error {
 		inner join etablissement e on e.siren = t.siren and e.siege`, algo, now)
 
 	batch.Queue(`insert into liste (libelle, batch, algo) values ($1, $2, $3)`, toLibelle(batchNumber), batchNumber, algo)
-
+	batch.Queue("drop table if exists tmp_score;")
 	results := tx.SendBatch(context.Background(), batch)
 	err = results.Close()
 
@@ -129,6 +130,48 @@ func importListe(batchNumber string, algo string) error {
 		return errors.New("commit: " + err.Error())
 	}
 	return nil
+}
+
+func deletePredictions(batchNumber string, algo string) (int64, error) {
+	ctx := context.Background()
+	tx, err := db.Get().Begin(ctx)
+	if err != nil {
+		return 0, utils.ErrorToJSON(http.StatusBadRequest, errors.Wrap(err, "erreur au démarrage de la trasaction"))
+	}
+	// par défaut on annule la transaction
+	defer func() {
+		if tx.Conn().IsClosed() {
+			if err := tx.Rollback(ctx); err != nil {
+				slog.Error("erreur à l'annulation de la transaction", slog.Any("error", err))
+			}
+		}
+	}()
+	lignesSupprimees, err := sqlDeletePredictions(ctx, tx, batchNumber, algo)
+	if err != nil {
+		return lignesSupprimees, utils.ErrorToJSON(http.StatusBadRequest, errors.Wrap(err, "erreur pendant la suppression des prédictions"))
+	}
+	err = tx.Commit(ctx)
+	if err != nil {
+		return lignesSupprimees, utils.NewJSONerror(http.StatusBadRequest, "commit TX: "+err.Error())
+	}
+	return lignesSupprimees, nil
+}
+
+func sqlDeletePredictions(ctx context.Context, tx pgx.Tx, batchNumber string, algo string) (int64, error) {
+	_, err := tx.Exec(ctx, "drop table if exists tmp_score;")
+	if err != nil {
+		return -1, errors.Wrap(err, "erreur à la suppression de la table tmp_score")
+	}
+	_, err = tx.Exec(ctx, "delete from liste where batch = $1 and algo = $2", batchNumber, algo)
+	if err != nil {
+		return -1, errors.Wrap(err, "erreur à la suppression de la liste")
+	}
+	lignesModifiees, err := tx.Exec(ctx, "delete from score where batch = $1 and algo = $2", batchNumber, algo)
+	if err != nil {
+		return -1, errors.Wrap(err, "erreur à la suppression des scores")
+	}
+	slog.Info("resultat", slog.Any("sql", lignesModifiees.RowsAffected()))
+	return lignesModifiees.RowsAffected(), nil
 }
 
 func queueScoreToBatch(s scoreFile, batchNumber string, batch *pgx.Batch) {

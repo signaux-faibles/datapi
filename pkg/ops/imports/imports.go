@@ -416,16 +416,6 @@ func importEtablissement() error {
 		}
 		return err
 	}
-	//enterpriseFileConfigKey := "sourceEntreprise"
-	//sourceEntreprise := viper.GetString(enterpriseFileConfigKey)
-	//log.Printf("integration du fichier entreprise '%s' (clé de configuration : '%s')", sourceEntreprise, enterpriseFileConfigKey)
-	//err = processEntreprise(sourceEntreprise, &tx)
-	//if err != nil {
-	//	if txErr := tx.Rollback(contexte); txErr != nil {
-	//		return txErr
-	//	}
-	//	return err
-	//}
 
 	etablissementFileConfigKey := "sourceEtablissement"
 	sourceEtablissement := viper.GetString(etablissementFileConfigKey)
@@ -452,49 +442,6 @@ func importEtablissement() error {
 	}
 	return nil
 }
-
-//func processEntreprise(fileName string, tx *pgx.Tx) error {
-//	file, err := os.Open(fileName)
-//	if err != nil {
-//		log.Printf("erreur pendant l'ouverture du fichier '%s' : %s", fileName, err.Error())
-//		return err
-//	}
-//	defer file.Close()
-//	batches, wg := db.NewBatchRunner(tx)
-//	unzip, err := gzip.NewReader(file)
-//	if err != nil {
-//		return err
-//	}
-//	decoder := json.NewDecoder(unzip)
-//	i := 0
-//	var batch pgx.Batch
-//
-//	for {
-//		var e entreprise
-//		err := decoder.Decode(&e)
-//		if err != nil {
-//			batches <- batch
-//			close(batches)
-//			wg.Wait()
-//			fmt.Printf("\033[2K\r%s terminated: %d objects inserted\n", fileName, i)
-//			if err == io.EOF {
-//				return nil
-//			}
-//			return err
-//		}
-//
-//		if e.Value.SireneUL.Siren != "" {
-//			e.intoBatch(&batch)
-//
-//			i++
-//			if math.Mod(float64(i), 1000) == 0 {
-//				batches <- batch
-//				batch = pgx.Batch{}
-//				fmt.Printf("\033[2K\r%s: %d objects inserted", fileName, i)
-//			}
-//		}
-//	}
-//}
 
 func processEtablissement(fileName string, tx *pgx.Tx) error {
 	file, err := os.Open(fileName)
