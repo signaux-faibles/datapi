@@ -2,6 +2,7 @@ package imports
 
 import (
 	"context"
+	_ "embed"
 	"encoding/json"
 	"io"
 	"log/slog"
@@ -9,14 +10,24 @@ import (
 	"os"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/globalsign/mgo/bson"
 	"github.com/jackc/pgx/v5"
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 
 	"datapi/pkg/db"
+	"datapi/pkg/ops/scripts"
 	"datapi/pkg/utils"
 )
+
+//go:embed sql/populate_v_tables.sql
+var sqlPopulateVTables string
+
+var ExecuteRefreshVTables = scripts.Execution{
+	Label: "rafraîchit les vtables",
+	SQL:   sqlPopulateVTables,
+}
 
 type score struct {
 	Siret         string        `json:"-"`
@@ -55,6 +66,11 @@ type scoreFile struct {
 	MacroRadar            map[string]float64 `json:"macroRadar"`
 	Redressements         []string           `json:"redressements"`
 	AlertPreRedressements string             `json:"alertPreRedressements"`
+}
+
+func refreshVtablesHandler(c *gin.Context) {
+	refresh := scripts.StartRefreshScript(context.Background(), db.Get(), ExecuteRefreshVTables)
+	c.JSON(http.StatusOK, refresh)
 }
 
 func importPredictions(batchNumber string, algo string) error {

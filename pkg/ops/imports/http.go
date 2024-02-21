@@ -17,11 +17,13 @@ func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/sirene/unitelegale", importUnitesLegalesHandler)
 	endpoint.GET("/liste/:batchNumber/:algo", importPredictionsHandler)
 	endpoint.DELETE("/liste/:batchNumber/:algo", deletePredictionsHandler)
+	endpoint.GET("/liste/refresh", refreshVtablesHandler)
 	endpoint.GET("/full", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler)
 	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importPredictionsHandler)
 	endpoint.GET("/bce", importBCEHandler)
 	endpoint.GET("/paydex", importPaydexHandler)
 	endpoint.GET("/urssaf", importUrssafHandler)
+	endpoint.GET("/urssaf/aggregate", aggregateUrssafTempDataHandler)
 }
 
 func importStockEtablissementsHandler(c *gin.Context) {

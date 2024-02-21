@@ -50,14 +50,6 @@ func TestLastScriptState(t *testing.T) {
 	t.Logf("Description du dernier refresh : %s", lastRefreshState)
 }
 
-func TestApi_OpsScripts_StartHandler(t *testing.T) {
-	ass := assert.New(t)
-	path := "/ops/scripts/vtables"
-	response := test.HTTPGet(t, path)
-
-	ass.Equalf(http.StatusOK, response.StatusCode, "body de la réponse : %s", test.GetBodyQuietly(response))
-}
-
 func TestFetchRefreshWithState(t *testing.T) {
 	ass := assert.New(t)
 	failed1 := scripts.StartRefreshScript(context.Background(), db.Get(), scripts.Fail)
@@ -93,19 +85,19 @@ func TestApi_OpsScripts_StatusHandler(t *testing.T) {
 	ass.Equal(scripts.Running, retour.Status)
 }
 
-func TestApi_Ops_RefreshVTables(t *testing.T) {
+func TestApi_Ops_ListStatus(t *testing.T) {
 	utils.ConfigureLogLevel("warn")
 	ass := assert.New(t)
 	ctx := context.Background()
 
-	current := scripts.StartRefreshScript(ctx, db.Get(), scripts.ExecuteRefreshVTables)
+	current := scripts.StartRefreshScript(ctx, db.Get(), scripts.Wait5Seconds)
 	path := "/ops/scripts/status/" + current.UUID.String()
 
 	// Création d'un canal pour gérer le timeout
-	timeout := time.After(10 * time.Second) // Timeout de 5 secondes
+	timeout := time.After(6 * time.Second) // Timeout de 5 secondes
 	actual := &scripts.Refresh{}
 	// Boucle while avec timeout
-	for actual.Status != scripts.Finished && actual.Status != scripts.Failed {
+	for actual.Status != scripts.Finished {
 		time.Sleep(1 * time.Second)
 		select {
 		case <-timeout:
@@ -122,7 +114,6 @@ func TestApi_Ops_RefreshVTables(t *testing.T) {
 			require.NoError(t, err)
 		}
 	}
-
 	ass.Equal(current.UUID, actual.UUID)
 	ass.Equal(scripts.Finished, actual.Status)
 }

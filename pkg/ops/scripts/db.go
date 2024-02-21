@@ -21,7 +21,7 @@ func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, exec Execution) *
 
 func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, exec Execution, refresh *Refresh) {
 	allSeparators := regexp.MustCompile(`\s+`)
-	logger := slog.Default().With(slog.String("label", exec.label))
+	logger := slog.Default().With(slog.String("label", exec.Label))
 	tx, err := dbase.Begin(ctx)
 	if err != nil {
 		refresh.fail(err.Error())
@@ -31,7 +31,7 @@ func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, exec Execution, re
 	// Defer a rollback in case anything fails.
 	defer tx.Rollback(ctx)
 
-	for _, current := range strings.Split(exec.sql, ";\n") {
+	for _, current := range strings.Split(exec.SQL, ";\n") {
 		current = allSeparators.ReplaceAllString(current, " ")
 		logger.Info("démarre l'exécution", slog.Any("uuid", refresh.UUID), slog.String("sql", sqlAsLog(current)))
 		refresh.run(current)

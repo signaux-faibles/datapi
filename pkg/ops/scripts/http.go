@@ -3,33 +3,19 @@
 package scripts
 
 import (
-	"context"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
 
-	"datapi/pkg/db"
 	"datapi/pkg/utils"
 )
 
 // ConfigureEndpoint configure le endpoint du package `refresh`
 func ConfigureEndpoint(refreshRoute *gin.RouterGroup) {
-	refreshRoute.GET("/vtables", vtablesHandler)
-	refreshRoute.GET("/urssaf", urssafHandler)
 	refreshRoute.GET("/status/:uuid", statusHandler)
 	refreshRoute.GET("/last", lastHandler)
 	refreshRoute.GET("/list/:status", listHandler)
-}
-
-func vtablesHandler(c *gin.Context) {
-	refresh := StartRefreshScript(context.Background(), db.Get(), ExecuteRefreshVTables)
-	c.JSON(http.StatusOK, refresh)
-}
-
-func urssafHandler(c *gin.Context) {
-	refresh := StartRefreshScript(context.Background(), db.Get(), ExecuteAggregationURSSAF)
-	c.JSON(http.StatusOK, refresh)
 }
 
 // statusHandler : point d'entrée de l'API qui retourne les infos d'un `Refresh` depuis son `UUID`
