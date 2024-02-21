@@ -5,11 +5,12 @@ package refresh
 import (
 	"errors"
 	"fmt"
-	"github.com/google/martian/log"
-	"github.com/google/uuid"
 	"sync"
 	"sync/atomic"
 	"time"
+
+	"github.com/google/martian/log"
+	"github.com/google/uuid"
 )
 
 var list = sync.Map{}
@@ -99,7 +100,7 @@ func (r *Refresh) save(status Status, message string) {
 	list.Store(r.UUID, r)
 }
 
-func (r Refresh) String() string {
+func (r *Refresh) String() string {
 	return fmt.Sprintf(
 		"Refresh{%s, date: %s, état: '%s', message: '%s'}",
 		r.UUID.String(),

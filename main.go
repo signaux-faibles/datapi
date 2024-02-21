@@ -2,8 +2,9 @@ package main
 
 import (
 	"context"
-	"datapi/pkg/ops/campaignops"
 	"log"
+
+	"datapi/pkg/ops/campaignops"
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"

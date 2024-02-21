@@ -8,7 +8,6 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
-	"github.com/spf13/viper"
 
 	"datapi/pkg/db"
 	"datapi/pkg/utils"
@@ -24,8 +23,7 @@ func ConfigureEndpoint(refreshRoute *gin.RouterGroup) {
 
 // startHandler : point d'entrée de l'API qui démarre un nouveau `Refresh` et retourne son `UUID`
 func startHandler(c *gin.Context) {
-	refreshScriptPath := viper.GetString("refreshScript")
-	refresh := StartRefreshScript(context.Background(), db.Get(), refreshScriptPath)
+	refresh := StartRefreshScript(context.Background(), db.Get())
 	c.JSON(http.StatusOK, refresh)
 }
 
