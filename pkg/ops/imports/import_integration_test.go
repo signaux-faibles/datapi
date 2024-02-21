@@ -6,6 +6,7 @@ import (
 	"context"
 	"log/slog"
 	"os"
+	"strconv"
 	"testing"
 	"time"
 
@@ -17,6 +18,7 @@ import (
 )
 
 var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.UTC)
+var fake = test.NewFaker()
 
 func TestMain(m *testing.M) {
 	testConfig := map[string]string{}
@@ -49,35 +51,33 @@ func Test_importEntreprisesAndEtablissement(t *testing.T) {
 
 func Test_importPredictions_then_deletePredictions(t *testing.T) {
 	// GIVEN
-	batchNumber1 := "2304"
-	batchNumber2 := "2305"
-	algo1 := "tu1"
-	algo2 := "tu2"
-	listPath := test.ProjectPathOf("test/predictionsSamples.json")
+	batchNumber := "2304"
+	algo := "tu"
+	listPath := test.ProjectPathOf("test/samplede5Predictions.json")
 	config := map[string]string{}
 	config["source.listPath"] = listPath
 	err := test.Viperize(config)
 	require.NoError(t, err)
 
 	// WHEN
-	err = importPredictions(batchNumber1, algo1)
+	err = importPredictions(batchNumber, algo)
 	require.NoError(t, err)
-	err = importPredictions(batchNumber1, algo2)
+	err = importPredictions(batchNumber, fake.Lorem().Word())
 	require.NoError(t, err)
-	err = importPredictions(batchNumber2, algo1)
+	err = importPredictions(strconv.Itoa(fake.IntBetween(1000, 9999)), algo)
 	require.NoError(t, err)
-	err = importPredictions(batchNumber2, algo2)
-	require.NoError(t, err)
-
-	lignesSupprimees, err := deletePredictions(batchNumber1, algo1)
+	err = importPredictions(strconv.Itoa(fake.IntBetween(1000, 9999)), fake.Lorem().Word())
 	require.NoError(t, err)
 
-	// THEN (seules les scores des entreprises insérées avec batchNumber1 et algo1 doivent être supprimées
+	lignesSupprimees, err := deletePredictions(batchNumber, algo)
+	require.NoError(t, err)
+
+	// THEN (seules les scores des entreprises insérées avec batchNumber et algo doivent être supprimées
 	assert.Equal(t, int64(5), lignesSupprimees)
 }
 
 func insertEtablissement4Predictions() {
-	filePath := test.ProjectPathOf("test/insertEtablissementForPredictions.sql")
+	filePath := test.ProjectPathOf("test/insere5EtablissementsPourLesPredictions.sql")
 	content, err := os.ReadFile(filePath)
 	if err != nil {
 		panic(err)
