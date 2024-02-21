@@ -17,7 +17,7 @@ import (
 	"datapi/pkg/test"
 )
 
-func TestApi_OpsScripts_StartHandler(t *testing.T) {
+func TestApi_OpsImports_PredictionsRefresh(t *testing.T) {
 	ass := assert.New(t)
 	path := "/ops/imports/liste/refresh"
 	response := test.HTTPGet(t, path)
@@ -25,7 +25,7 @@ func TestApi_OpsScripts_StartHandler(t *testing.T) {
 	ass.Equalf(http.StatusOK, response.StatusCode, "body de la réponse : %s", test.GetBodyQuietly(response))
 }
 
-func TestApi_Ops_RefreshVTables(t *testing.T) {
+func Test_PredictionsRefresh(t *testing.T) {
 	//utils.ConfigureLogLevel("warn")
 	ass := assert.New(t)
 	ctx := context.Background()
