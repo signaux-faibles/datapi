@@ -53,7 +53,7 @@ func Test_importPredictions_then_deletePredictions(t *testing.T) {
 	// GIVEN
 	batchNumber := "2304"
 	algo := "tu"
-	listPath := test.ProjectPathOf("test/samplede5Predictions.json")
+	listPath := test.ProjectPathOf("test/sampleAvec5Predictions.json")
 	config := map[string]string{}
 	config["source.listPath"] = listPath
 	err := test.Viperize(config)
