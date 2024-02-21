@@ -49,7 +49,11 @@ func statusHandler(c *gin.Context) {
 
 // lastHandler : point d'entrée de l'API qui retourne le dernier `Refresh` démarré
 func lastHandler(c *gin.Context) {
-	last := FetchLast()
+	last, err := FetchLast()
+	if err != nil {
+		utils.AbortWithError(c, err) // nolint: errcheck
+		return
+	}
 	c.JSON(http.StatusOK, last)
 }
 

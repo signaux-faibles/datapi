@@ -45,7 +45,7 @@ var Empty = Refresh{}
 func New() *Refresh {
 	r := Refresh{UUID: uuid.New()}
 	r.save(Prepare, "🙏")
-	last.Store(r)
+	last.Store(r.UUID)
 	return &r
 }
 
@@ -59,12 +59,13 @@ func Fetch(id uuid.UUID) (Refresh, error) {
 }
 
 // FetchLast : récupère le dernier `Refresh`
-func FetchLast() Refresh {
+func FetchLast() (Refresh, error) {
 	val := last.Load()
 	if val == nil {
-		return Empty
+		return Empty, nil
 	}
-	return val.(Refresh)
+	id := val.(uuid.UUID)
+	return Fetch(id)
 }
 
 // FetchRefreshsWithState : récupère la liste des `Refresh` selon le `Status` passé en paramètre

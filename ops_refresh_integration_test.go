@@ -12,6 +12,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"datapi/pkg/db"
 	"datapi/pkg/ops/refresh"
@@ -37,12 +38,14 @@ func TestRunRefreshScript(t *testing.T) {
 
 func TestLastRefreshState(t *testing.T) {
 	ass := assert.New(t)
-	lastRefreshState := refresh.FetchLast()
+	lastRefreshState, err := refresh.FetchLast()
+	require.NoError(t, err)
 	if lastRefreshState == refresh.Empty {
 		refresh.StartRefreshScript(context.Background(), db.Get())
 	}
 	time.Sleep(100 * time.Millisecond)
-	lastRefreshState = refresh.FetchLast()
+	lastRefreshState, err = refresh.FetchLast()
+	require.NoError(t, err)
 	ass.NotEmpty(lastRefreshState)
 	t.Logf("Description du dernier refresh : %s", lastRefreshState)
 }

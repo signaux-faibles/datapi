@@ -19,7 +19,7 @@ func Test_NewRefresh(t *testing.T) {
 	ass.NotNil(current.Message)
 	ass.Equal(tuTime, current.Date)
 	ass.NotNil(current.Date)
-	ass.Exactly(*current, last.Load())
+	ass.Exactly(current.UUID, last.Load())
 	value, found := list.Load(current.UUID)
 	ass.True(found)
 	ass.Exactly(current, value)
