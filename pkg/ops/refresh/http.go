@@ -15,15 +15,20 @@ import (
 
 // ConfigureEndpoint configure le endpoint du package `refresh`
 func ConfigureEndpoint(refreshRoute *gin.RouterGroup) {
-	refreshRoute.GET("/start", startHandler)
+	refreshRoute.GET("/vtables", vtablesHandler)
+	refreshRoute.GET("/urssaf", urssafHandler)
 	refreshRoute.GET("/status/:uuid", statusHandler)
 	refreshRoute.GET("/last", lastHandler)
 	refreshRoute.GET("/list/:status", listHandler)
 }
 
-// startHandler : point d'entrée de l'API qui démarre un nouveau `Refresh` et retourne son `UUID`
-func startHandler(c *gin.Context) {
-	refresh := StartRefreshScript(context.Background(), db.Get())
+func vtablesHandler(c *gin.Context) {
+	refresh := StartRefreshScript(context.Background(), db.Get(), SQLPopulateVTables)
+	c.JSON(http.StatusOK, refresh)
+}
+
+func urssafHandler(c *gin.Context) {
+	refresh := StartRefreshScript(context.Background(), db.Get(), SQLAggregationUrssaf)
 	c.JSON(http.StatusOK, refresh)
 }
 

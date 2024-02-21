@@ -12,13 +12,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-//go:embed sql/populate_v_tables.sql
-var sqlPopulateVTables string
-
 // StartRefreshScript : crée un évènement de refresh, le démarre dans une routine et retourne son UUID
-func StartRefreshScript(ctx context.Context, db *pgxpool.Pool) *Refresh {
+func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, sql string) *Refresh {
 	current := New()
-	go executeRefresh(ctx, db, sqlPopulateVTables, current)
+	go executeRefresh(ctx, db, sql, current)
 	return current
 }
 
@@ -26,6 +23,7 @@ func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, sql string, refres
 	allSeparators := regexp.MustCompile(`\s+`)
 	tx, err := dbase.Begin(ctx)
 	if err != nil {
+		refresh.fail(err.Error())
 		slog.Error("Erreur à l'ouverture de la transaction pour mise à jour des v tables", slog.Any("error", err))
 		return
 	}

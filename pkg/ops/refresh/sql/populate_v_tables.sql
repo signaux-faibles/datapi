@@ -25,32 +25,32 @@ SELECT n1.id      AS id_n1,
        n4.libelle AS libelle_n4,
        n5.libelle AS libelle_n5
 FROM naf n5
-         JOIN naf n4 ON n5.id_parent = n4.id
-         JOIN naf n3 ON n4.id_parent = n3.id
-         JOIN naf n2 ON n3.id_parent = n2.id
-         JOIN naf n1 ON n2.id_parent = n1.id;
+       JOIN naf n4 ON n5.id_parent = n4.id
+       JOIN naf n3 ON n4.id_parent = n3.id
+       JOIN naf n2 ON n3.id_parent = n2.id
+       JOIN naf n1 ON n2.id_parent = n1.id;
 
 truncate table v_last_procol;
 insert into v_last_procol
 SELECT etablissement_procol0.siren,
        CASE
-           WHEN 'liquidation'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN 'liquidation'::text
-           WHEN 'redressement'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN
-               CASE
-                   WHEN 'redressement_plan_continuation'::text = ANY
-                        (array_agg((etablissement_procol0.action_procol || '_'::text) ||
-                                   etablissement_procol0.stade_procol)) THEN 'plan_continuation'::text
-                   ELSE 'redressement'::text
-                   END
-           WHEN 'sauvegarde'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN
-               CASE
-                   WHEN 'sauvegarde_plan_continuation'::text = ANY
-                        (array_agg((etablissement_procol0.action_procol || '_'::text) ||
-                                   etablissement_procol0.stade_procol)) THEN 'plan_sauvegarde'::text
-                   ELSE 'sauvegarde'::text
-                   END
-           ELSE NULL::text
-           END                               AS last_procol,
+         WHEN 'liquidation'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN 'liquidation'::text
+         WHEN 'redressement'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN
+           CASE
+             WHEN 'redressement_plan_continuation'::text = ANY
+                  (array_agg((etablissement_procol0.action_procol || '_'::text) ||
+                             etablissement_procol0.stade_procol)) THEN 'plan_continuation'::text
+             ELSE 'redressement'::text
+             END
+         WHEN 'sauvegarde'::text = ANY (array_agg(etablissement_procol0.action_procol)) THEN
+           CASE
+             WHEN 'sauvegarde_plan_continuation'::text = ANY
+                  (array_agg((etablissement_procol0.action_procol || '_'::text) ||
+                             etablissement_procol0.stade_procol)) THEN 'plan_sauvegarde'::text
+             ELSE 'sauvegarde'::text
+             END
+         ELSE NULL::text
+         END                                 AS last_procol,
        max(etablissement_procol0.date_effet) AS date_effet
 FROM etablissement_procol0
 GROUP BY etablissement_procol0.siren;
@@ -68,7 +68,7 @@ SELECT e.siret,
        e.effectif,
        e.periode
 FROM etablissement_periode_urssaf0 e
-         JOIN last_effectif_entreprise l ON e.siren::text = l.siren::text AND e.periode = l.periode;
+       JOIN last_effectif_entreprise l ON e.siren::text = l.siren::text AND e.periode = l.periode;
 
 truncate table v_hausse_urssaf;
 insert into v_hausse_urssaf
@@ -76,16 +76,16 @@ SELECT etablissement_periode_urssaf0.siret,
        (array_agg(etablissement_periode_urssaf0.part_patronale + etablissement_periode_urssaf0.part_salariale
                   ORDER BY etablissement_periode_urssaf0.periode DESC))[0:3] AS dette,
        CASE
-           WHEN first(etablissement_periode_urssaf0.part_salariale
-                      ORDER BY etablissement_periode_urssaf0.periode DESC) > 100::double precision THEN true
-           ELSE false
-           END                                                               AS presence_part_salariale,
+         WHEN first(etablissement_periode_urssaf0.part_salariale
+                    ORDER BY etablissement_periode_urssaf0.periode DESC) > 100::double precision THEN true
+         ELSE false
+         END                                                                 AS presence_part_salariale,
        max(etablissement_periode_urssaf0.periode)                            AS periode_urssaf
 FROM etablissement_periode_urssaf0
 GROUP BY etablissement_periode_urssaf0.siret;
 
 create unique index if not exists idx_v_hausse_urssaf_siret
-    on v_hausse_urssaf (siret);
+  on v_hausse_urssaf (siret);
 
 truncate table v_etablissement_raison_sociale;
 insert into v_etablissement_raison_sociale
@@ -94,7 +94,7 @@ SELECT et.id AS id_etablissement,
        en.raison_sociale,
        et.siret
 FROM entreprise0 en
-         JOIN etablissement0 et ON en.siren::text = et.siren::text;
+       JOIN etablissement0 et ON en.siren::text = et.siren::text;
 
 truncate table v_diane_variation_ca;
 insert into v_diane_variation_ca
@@ -115,39 +115,39 @@ WITH diane AS (SELECT entreprise_diane0.siren,
                FROM entreprise_diane0
                ORDER BY entreprise_diane0.siren, entreprise_diane0.arrete_bilan_diane DESC)
 SELECT diane.siren,
-       first(diane.arrete_bilan_diane ORDER BY diane.arrete_bilan_diane DESC)                AS arrete_bilan,
-       first(diane.exercice_diane ORDER BY diane.arrete_bilan_diane DESC)                    AS exercice_diane,
-       first(diane.prev_chiffre_affaire ORDER BY diane.arrete_bilan_diane DESC)              AS prev_chiffre_affaire,
-       first(diane.chiffre_affaire ORDER BY diane.arrete_bilan_diane DESC)                   AS chiffre_affaire,
+       first(diane.arrete_bilan_diane ORDER BY diane.arrete_bilan_diane DESC)   AS arrete_bilan,
+       first(diane.exercice_diane ORDER BY diane.arrete_bilan_diane DESC)       AS exercice_diane,
+       first(diane.prev_chiffre_affaire ORDER BY diane.arrete_bilan_diane DESC) AS prev_chiffre_affaire,
+       first(diane.chiffre_affaire ORDER BY diane.arrete_bilan_diane DESC)      AS chiffre_affaire,
        first(
-               CASE
-                   WHEN diane.prev_chiffre_affaire <> 0::double precision
-                       THEN diane.chiffre_affaire / diane.prev_chiffre_affaire
-                   ELSE NULL::real
-                   END ORDER BY diane.arrete_bilan_diane DESC)                               AS variation_ca,
-       first(diane.resultat_expl ORDER BY diane.arrete_bilan_diane DESC)                     AS resultat_expl,
-       first(diane.prev_resultat_expl ORDER BY diane.arrete_bilan_diane DESC)                AS prev_resultat_expl,
+         CASE
+           WHEN diane.prev_chiffre_affaire <> 0::double precision
+             THEN diane.chiffre_affaire / diane.prev_chiffre_affaire
+           ELSE NULL::real
+           END ORDER BY diane.arrete_bilan_diane DESC)                          AS variation_ca,
+       first(diane.resultat_expl ORDER BY diane.arrete_bilan_diane DESC)        AS resultat_expl,
+       first(diane.prev_resultat_expl ORDER BY diane.arrete_bilan_diane DESC)   AS prev_resultat_expl,
        first(diane.excedent_brut_d_exploitation
-             ORDER BY diane.arrete_bilan_diane DESC)                                         AS excedent_brut_d_exploitation,
+             ORDER BY diane.arrete_bilan_diane DESC)                            AS excedent_brut_d_exploitation,
        first(diane.prev_excedent_brut_d_exploitation
-             ORDER BY diane.arrete_bilan_diane DESC)                                         AS prev_excedent_brut_d_exploitation
+             ORDER BY diane.arrete_bilan_diane DESC)                            AS prev_excedent_brut_d_exploitation
 FROM diane
 GROUP BY diane.siren;
 
-        truncate table v_apdemande;
-        insert into v_apdemande
-        SELECT e.siret,
-               COALESCE((SELECT DISTINCT true AS bool
-                         FROM etablissement_apdemande0
-                         WHERE etablissement_apdemande0.siret::text = e.siret::text
-                           AND (etablissement_apdemande0.periode_end + '1 year'::interval) >=
-                               date_trunc('month'::text, CURRENT_TIMESTAMP)), false)      AS ap,
-               (sum(c.heure_consomme ORDER BY c.periode) / 12::double precision)::integer AS heure_consomme,
-               (sum(c.montant ORDER BY c.periode) / 12::double precision)::integer        AS montant
-        FROM etablissement0 e
-                 LEFT JOIN etablissement_apconso0 c ON c.siret::text = e.siret::text AND (c.periode + '1 year'::interval) >=
-                                                                                         date_trunc('month'::text, CURRENT_TIMESTAMP)
-        GROUP BY e.siret;
+truncate table v_apdemande;
+insert into v_apdemande
+SELECT e.siret,
+       COALESCE((SELECT DISTINCT true AS bool
+                 FROM etablissement_apdemande0
+                 WHERE etablissement_apdemande0.siret::text = e.siret::text
+                   AND (etablissement_apdemande0.periode_end + '1 year'::interval) >=
+                       date_trunc('month'::text, CURRENT_TIMESTAMP)), false)      AS ap,
+       (sum(c.heure_consomme ORDER BY c.periode) / 12::double precision)::integer AS heure_consomme,
+       (sum(c.montant ORDER BY c.periode) / 12::double precision)::integer        AS montant
+FROM etablissement0 e
+       LEFT JOIN etablissement_apconso0 c ON c.siret::text = e.siret::text AND (c.periode + '1 year'::interval) >=
+                                                                               date_trunc('month'::text, CURRENT_TIMESTAMP)
+GROUP BY e.siret;
 
 truncate table v_alert_etablissement;
 insert into v_alert_etablissement
@@ -169,7 +169,7 @@ SELECT l.siret,
        l.last_alert,
        rl.first_red_list
 FROM lists l
-         LEFT JOIN red_lists rl ON rl.siret = l.siret;
+       LEFT JOIN red_lists rl ON rl.siret = l.siret;
 
 truncate table v_alert_entreprise;
 insert into v_alert_entreprise
@@ -192,14 +192,13 @@ insert into v_summaries
 WITH last_liste AS (SELECT first(liste.libelle ORDER BY liste.batch DESC, liste.algo DESC) AS last_liste,
                            first('20' || substring(batch from 1 for 2) || '-' || substring(batch from 3 for 2) || '-01'
                                  ORDER BY liste.batch DESC, liste.algo DESC
-                           )::date as date_last_liste
+                           )::date                                                         as date_last_liste
                     FROM liste),
-     entreprises_avec_delai as (
-         select distinct siren from etablissement_delai
-                                        join last_liste l on true
-         where stade in ('APPROB', 'PR')
-           and date_echeance > l.date_last_liste
-     )
+     entreprises_avec_delai as (select distinct siren
+                                from etablissement_delai
+                                       join last_liste l on true
+                                where stade in ('APPROB', 'PR')
+                                  and date_echeance > l.date_last_liste)
 SELECT r.roles,
        et.siret,
        et.siren,
@@ -258,32 +257,33 @@ SELECT r.roles,
        en.creation                                                                                         AS date_creation_entreprise,
        COALESCE(sco.secteur_covid, 'nonSecteurCovid'::text)                                                AS secteur_covid,
        CASE
-           WHEN COALESCE(en.etat_administratif, 'A'::text) = 'C'::text THEN 'F'::text
-           ELSE COALESCE(et.etat_administratif, 'A'::text)
-           END                                                                                             AS etat_administratif,
+         WHEN COALESCE(en.etat_administratif, 'A'::text) = 'C'::text THEN 'F'::text
+         ELSE COALESCE(et.etat_administratif, 'A'::text)
+         END                                                                                               AS etat_administratif,
        en.etat_administratif                                                                               AS etat_administratif_entreprise,
-       ed.siren is not null as has_delai
+       ed.siren is not null                                                                                as has_delai
 FROM last_liste l
-         JOIN etablissement0 et ON true
-         JOIN entreprise0 en ON en.siren::text = et.siren::text
-         left JOIN entreprises_avec_delai ed on en.siren = ed.siren
-         JOIN v_etablissement_raison_sociale etrs ON etrs.id_etablissement = et.id
-         JOIN v_roles r ON et.siren::text = r.siren::text
-         JOIN departements d ON d.code = et.departement
-         LEFT JOIN v_naf n ON n.code_n5 = et.code_activite
-         LEFT JOIN secteurs_covid sco ON sco.code_activite = et.code_activite
-         LEFT JOIN score0 s ON et.siret::text = s.siret AND s.libelle_liste = l.last_liste
-         LEFT JOIN v_alert_etablissement aet ON aet.siret = et.siret::text
-         LEFT JOIN v_alert_entreprise aen ON aen.siren = et.siren::text
-         LEFT JOIN v_last_effectif ef ON ef.siret::text = et.siret::text
-         LEFT JOIN v_hausse_urssaf u ON u.siret::text = et.siret::text
-         LEFT JOIN v_apdemande ap ON ap.siret::text = et.siret::text
-         LEFT JOIN v_last_procol ep ON ep.siren::text = et.siren::text
-         LEFT JOIN v_diane_variation_ca di ON di.siren::text = et.siren::text
-         LEFT JOIN entreprise_ellisphere0 g ON g.siren::text = et.siren::text
-         LEFT JOIN terrind ti ON ti.code_commune = et.code_commune
-         LEFT JOIN categorie_juridique cj ON cj.code = en.statut_juridique
-         LEFT JOIN categorie_juridique cj2 ON "substring"(cj.code, 0, 3) = cj2.code
-         LEFT JOIN categorie_juridique cj1 ON "substring"(cj.code, 0, 2) = cj1.code;
+       JOIN etablissement0 et ON true
+       JOIN entreprise0 en ON en.siren::text = et.siren::text
+       left JOIN entreprises_avec_delai ed on en.siren = ed.siren
+       JOIN v_etablissement_raison_sociale etrs ON etrs.id_etablissement = et.id
+       JOIN v_roles r ON et.siren::text = r.siren::text
+       JOIN departements d ON d.code = et.departement
+       LEFT JOIN v_naf n ON n.code_n5 = et.code_activite
+       LEFT JOIN secteurs_covid sco ON sco.code_activite = et.code_activite
+       LEFT JOIN score0 s ON et.siret::text = s.siret AND s.libelle_liste = l.last_liste
+       LEFT JOIN v_alert_etablissement aet ON aet.siret = et.siret::text
+       LEFT JOIN v_alert_entreprise aen ON aen.siren = et.siren::text
+       LEFT JOIN v_last_effectif ef ON ef.siret::text = et.siret::text
+       LEFT JOIN v_hausse_urssaf u ON u.siret::text = et.siret::text
+       LEFT JOIN v_apdemande ap ON ap.siret::text = et.siret::text
+       LEFT JOIN v_last_procol ep ON ep.siren::text = et.siren::text
+       LEFT JOIN v_diane_variation_ca di ON di.siren::text = et.siren::text
+       LEFT JOIN entreprise_ellisphere0 g ON g.siren::text = et.siren::text
+       LEFT JOIN terrind ti ON ti.code_commune = et.code_commune
+       LEFT JOIN categorie_juridique cj ON cj.code = en.statut_juridique
+       LEFT JOIN categorie_juridique cj2 ON "substring"(cj.code, 0, 3) = cj2.code
+       LEFT JOIN categorie_juridique cj1 ON "substring"(cj.code, 0, 2) = cj1.code;
 
-select count(*) from v_summaries
+select count(*)
+from v_summaries
