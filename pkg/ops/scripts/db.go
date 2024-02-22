@@ -1,10 +1,7 @@
-// Package refresh : contient tout le code qui concerne l'exécution d'un `Refresh` Datapi,
-// c'est-à-dire l'exécution du script sql configuré
 package scripts
 
 import (
 	"context"
-	_ "embed"
 	"log/slog"
 	"regexp"
 	"strings"
@@ -35,7 +32,6 @@ func runScript(ctx context.Context, dbase *pgxpool.Pool, exec Script, refresh *R
 	defer tx.Rollback(ctx)
 
 	for _, current := range parseSQL(exec.SQL) {
-		current = allSeparators.ReplaceAllString(current, " ")
 		logger.Info("démarre l'exécution", slog.Any("uuid", refresh.UUID), slog.String("sql", sqlAsLog(current)))
 		refresh.run(current)
 		_, err = tx.Exec(ctx, current)
@@ -67,6 +63,6 @@ func sqlAsLog(sql string) string {
 
 func parseSQL(sql string) []string {
 	sql = sqlComment.ReplaceAllString(sql, "")
-	sql = sqlComment.ReplaceAllString(sql, "")
-	return strings.Split(sql, ";\n")
+	sql = allSeparators.ReplaceAllString(sql, " ")
+	return strings.Split(sql, "; ")
 }

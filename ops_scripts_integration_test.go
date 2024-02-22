@@ -39,8 +39,12 @@ func TestRunScript(t *testing.T) {
 func TestRunScriptWithComments(t *testing.T) {
 	utils.ConfigureLogLevel("info")
 	sql := `-- un commentaire pour fausser la création de table
-            CREATE TABLE example_table (    id SERIAL PRIMARY KEY,    name VARCHAR(50),    age INT);
-            INSERT INTO example_table (name, age) VALUES ('Alice', 30), ('Bob', 35), ('Charlie', 40);`
+            CREATE TABLE example_table (    id SERIAL PRIMARY KEY,    name VARCHAR(50),    age INT); CREATE
+            TABLE example_table2 (    id SERIAL PRIMARY KEY,    name VARCHAR(50),    age INT);
+            INSERT INTO example_table (name, age) VALUES ('Alice', 30), ('Bob', 35), ('Charlie', 40); SELECT
+            *
+            FROM example_table2;
+            `
 	ass := assert.New(t)
 	scriptWithComment := scripts.NewScriptFrom("script with comment", sql)
 	current := scripts.StartRefreshScript(context.Background(), db.Get(), scriptWithComment)
