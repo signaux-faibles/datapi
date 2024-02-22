@@ -33,7 +33,7 @@ func Test_UrssafAgregate(t *testing.T) {
 
 	current := scripts.StartRefreshScript(ctx, db.Get(), imports.ExecuteAggregationURSSAF)
 
-	actual := scripts.Refresh{}
+	actual := scripts.Run{}
 	var err error
 	for actual.Status != scripts.Failed {
 		actual, err = scripts.Fetch(current.UUID)
@@ -62,7 +62,7 @@ func Test_PredictionsRefresh(t *testing.T) {
 
 	// Création d'un canal pour gérer le timeout
 	timeout := time.After(10 * time.Second) // Timeout de 5 secondes
-	actual := scripts.Refresh{}
+	actual := scripts.Run{}
 	var err error
 	// Boucle while avec timeout
 	for actual.Status != scripts.Finished {

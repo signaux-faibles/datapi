@@ -63,7 +63,7 @@ func TestFetchRefreshWithState(t *testing.T) {
 	ass.Contains(failedRefresh, *failed2)
 
 	runningRefresh := scripts.FetchRefreshsWithState(scripts.Running)
-	getUUID := func(r scripts.Refresh) uuid.UUID { return r.UUID }
+	getUUID := func(r scripts.Run) uuid.UUID { return r.UUID }
 	ass.Contains(utils.Convert(runningRefresh, getUUID), running.UUID)
 }
 
@@ -77,7 +77,7 @@ func TestApi_OpsScripts_StatusHandler(t *testing.T) {
 	body := test.GetBodyQuietly(response)
 	ass.Equalf(http.StatusOK, response.StatusCode, "body de la réponse : %s", body)
 
-	retour := &scripts.Refresh{}
+	retour := &scripts.Run{}
 	err := json.Unmarshal(body, &retour)
 	require.NoError(t, err)
 	t.Log(retour)
@@ -95,7 +95,7 @@ func TestApi_Ops_ListStatus(t *testing.T) {
 
 	// Création d'un canal pour gérer le timeout
 	timeout := time.After(6 * time.Second) // Timeout de 5 secondes
-	actual := &scripts.Refresh{}
+	actual := &scripts.Run{}
 	// Boucle while avec timeout
 	for actual.Status != scripts.Finished {
 		time.Sleep(333 * time.Millisecond)
@@ -143,8 +143,8 @@ func TestApi_OpsScripts_ListHandler(t *testing.T) {
 	}, "Un des refresh n'a pas le status `failed`")
 }
 
-func decodeRefreshArray(body []byte) ([]scripts.Refresh, error) {
-	var actual []scripts.Refresh
+func decodeRefreshArray(body []byte) ([]scripts.Run, error) {
+	var actual []scripts.Run
 	err := json.Unmarshal(body, &actual)
 	if err != nil {
 		return nil, errors.Wrap(err, "erreur pendant l'unmarshalling de la réponse")

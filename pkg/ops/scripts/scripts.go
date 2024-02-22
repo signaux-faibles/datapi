@@ -13,11 +13,28 @@ import (
 	"github.com/google/uuid"
 )
 
+type Script struct {
+	Label string
+	SQL   string
+}
+
+// pour les tests
+var Wait5Seconds = Script{
+	Label: "attends 5",
+	SQL:   "SELECT pg_sleep(5);",
+}
+
+// pour les tests
+var Fail = Script{
+	Label: "sql invalide",
+	SQL:   "sql invalide",
+}
+
 var list = sync.Map{}
 var last = atomic.Value{}
 
-// Refresh : représente une exécution du script de `refresh` configuré dans l'application
-type Refresh struct {
+// Run représente une exécution du script de `refresh` configuré dans l'application
+type Run struct {
 	UUID    uuid.UUID `json:"UUID,omitempty"`
 	Status  Status    `json:"Status,omitempty"`
 	Date    time.Time `json:"Date,omitempty"`
@@ -39,27 +56,34 @@ const (
 )
 
 // Empty : représente un `Refresh` nul
-var Empty = Refresh{}
+var Empty = Run{}
 
-// New : crée un `Refresh`
-func New() *Refresh {
-	r := Refresh{UUID: uuid.New()}
+// NewRun crée un `Refresh`
+func NewRun() *Run {
+	r := Run{UUID: uuid.New()}
 	r.save(Prepare, "🙏")
 	last.Store(r.UUID)
 	return &r
 }
 
+func NewScriptFrom(label, sql string) Script {
+	return Script{
+		Label: label,
+		SQL:   sql,
+	}
+}
+
 // Fetch : récupère un `Refresh`
-func Fetch(id uuid.UUID) (Refresh, error) {
+func Fetch(id uuid.UUID) (Run, error) {
 	value, found := list.Load(id)
 	if found {
-		return *value.(*Refresh), nil
+		return *value.(*Run), nil
 	}
-	return Refresh{}, errors.New("No refresh started with ID : " + id.String())
+	return Run{}, errors.New("No refresh started with ID : " + id.String())
 }
 
 // FetchLast : récupère le dernier `Refresh`
-func FetchLast() (Refresh, error) {
+func FetchLast() (Run, error) {
 	val := last.Load()
 	if val == nil {
 		return Empty, nil
@@ -69,10 +93,10 @@ func FetchLast() (Refresh, error) {
 }
 
 // FetchRefreshsWithState : récupère la liste des `Refresh` selon le `Status` passé en paramètre
-func FetchRefreshsWithState(status Status) []Refresh {
-	var retour []Refresh
+func FetchRefreshsWithState(status Status) []Run {
+	var retour []Run
 	list.Range(func(k, v any) bool {
-		other := *v.(*Refresh)
+		other := *v.(*Run)
 		if status == other.Status {
 			retour = append(retour, other)
 		}
@@ -81,19 +105,19 @@ func FetchRefreshsWithState(status Status) []Refresh {
 	return retour
 }
 
-func (r *Refresh) run(run string) {
+func (r *Run) run(run string) {
 	r.save(Running, run)
 }
 
-func (r *Refresh) fail(error string) {
+func (r *Run) fail(error string) {
 	r.save(Failed, error)
 }
 
-func (r *Refresh) finish() {
+func (r *Run) finish() {
 	r.save(Finished, "👍")
 }
 
-func (r *Refresh) save(status Status, message string) {
+func (r *Run) save(status Status, message string) {
 	r.Status = status
 	r.Message = message
 	r.Date = time.Now()
@@ -101,7 +125,7 @@ func (r *Refresh) save(status Status, message string) {
 	list.Store(r.UUID, r)
 }
 
-func (r *Refresh) String() string {
+func (r *Run) String() string {
 	return fmt.Sprintf(
 		"Refresh{%s, date: %s, état: '%s', message: '%s'}",
 		r.UUID.String(),

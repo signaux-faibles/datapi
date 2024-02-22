@@ -24,7 +24,7 @@ import (
 //go:embed sql/populate_v_tables.sql
 var sqlPopulateVTables string
 
-var ExecuteRefreshVTables = scripts.Execution{
+var ExecuteRefreshVTables = scripts.Script{
 	Label: "rafraîchit les vtables",
 	SQL:   sqlPopulateVTables,
 }

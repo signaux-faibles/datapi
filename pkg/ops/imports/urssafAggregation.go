@@ -9,7 +9,7 @@ import (
 //go:embed sql/aggUrssaf.sql
 var sqlAggregationUrssaf string
 
-var ExecuteAggregationURSSAF = scripts.Execution{
+var ExecuteAggregationURSSAF = scripts.Script{
 	Label: "aggrège les données temporaires URSSAF",
 	SQL:   sqlAggregationUrssaf,
 }
