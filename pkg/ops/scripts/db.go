@@ -12,15 +12,18 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+var allSeparators = regexp.MustCompile(`\s+`)
+var sqlComment = regexp.MustCompile(`\s*--.*\n`)
+
 // StartRefreshScript : crée un évènement de refresh, le démarre dans une routine et retourne son UUID
 func StartRefreshScript(ctx context.Context, db *pgxpool.Pool, exec Script) *Run {
 	current := NewRun()
-	go executeRefresh(ctx, db, exec, current)
+	go runScript(ctx, db, exec, current)
 	return current
 }
 
-func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, exec Script, refresh *Run) {
-	allSeparators := regexp.MustCompile(`\s+`)
+func runScript(ctx context.Context, dbase *pgxpool.Pool, exec Script, refresh *Run) {
+
 	logger := slog.Default().With(slog.String("label", exec.Label))
 	tx, err := dbase.Begin(ctx)
 	if err != nil {
@@ -31,16 +34,7 @@ func executeRefresh(ctx context.Context, dbase *pgxpool.Pool, exec Script, refre
 	// Defer a rollback in case anything fails.
 	defer tx.Rollback(ctx)
 
-	//reader := strings.NewReader(exec.SQL)
-	//tokens := sqlparser.Parse(reader)
-	//for {
-	//	stmt, err := sqlparser.ParseNext(tokens)
-	//	if err == io.EOF {
-	//		break
-	//	}
-	//	// Do something with stmt or err.
-	//}
-	for _, current := range strings.Split(exec.SQL, ";\n") {
+	for _, current := range parseSQL(exec.SQL) {
 		current = allSeparators.ReplaceAllString(current, " ")
 		logger.Info("démarre l'exécution", slog.Any("uuid", refresh.UUID), slog.String("sql", sqlAsLog(current)))
 		refresh.run(current)
@@ -69,4 +63,10 @@ func sqlAsLog(sql string) string {
 		return sql
 	}
 	return sql[:47] + "..."
+}
+
+func parseSQL(sql string) []string {
+	sql = sqlComment.ReplaceAllString(sql, "")
+	sql = sqlComment.ReplaceAllString(sql, "")
+	return strings.Split(sql, ";\n")
 }
