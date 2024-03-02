@@ -12,6 +12,6 @@ WORKDIR /app
 EXPOSE 3000
 
 # emplacement des fichiers à intégrer pendant la phase d'intégration
-VOLUME /app/data
+VOLUME /data
 
 CMD ["/app/datapi"]
