@@ -71,14 +71,12 @@ select siret, substring(siret from 1 for 9), période, cotisation, part_patronal
 from tmp_etablissement_periode_urssaf
 where coalesce(part_patronale, part_ouvrière, cotisation, effectif) is not null;
 
-delete
-from etablissement_procol;
+truncate table etablissement_procol;
 insert into etablissement_procol (siret, siren, date_effet, action_procol, stade_procol)
 select siret, substring(siret from 1 for 9), date_effet, action_procol, stade_procol
 from tmp_procol;
 
-delete
-from etablissement_apdemande;
+truncate table etablissement_apdemande;
 insert into etablissement_apdemande (siret, siren, id_demande, effectif_entreprise, effectif, date_statut,
                                      periode_start, periode_end, hta, mta, effectif_autorise, motif_recours_se,
                                      heure_consomme, montant_consomme, effectif_consomme)
@@ -99,8 +97,7 @@ select etab_siret,
        s_eff_consom_tot
 from demande_ap;
 
-delete
-from etablissement_apconso;
+truncate table etablissement_apconso;
 insert into etablissement_apconso (siret, siren, id_conso, heure_consomme, montant, effectif, periode)
 select etab_siret, substring(etab_siret from 1 for 9), id_da, heures, montants, effectifs, mois::date
 from consommation_ap;
