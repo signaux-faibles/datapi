@@ -12,7 +12,6 @@ import (
 
 // ConfigureEndpoint configure l'endpoint du package `ops`
 func ConfigureEndpoint(endpoint *gin.RouterGroup) {
-	endpoint.GET("/ee", importEtablissementHandler)
 	endpoint.GET("/sirene/stocketablissement", importStockEtablissementsHandler)
 	endpoint.GET("/sirene/unitelegale", importUnitesLegalesHandler)
 	endpoint.GET("/liste/:batchNumber/:algo", importPredictionsHandler)
