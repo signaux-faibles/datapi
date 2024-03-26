@@ -22,10 +22,9 @@ require (
 	github.com/signaux-faibles/goSirene v0.3.2
 	github.com/signaux-faibles/libwekan v0.6.0
 	github.com/spf13/viper v1.18.2
-	github.com/stretchr/testify v1.8.4
+	github.com/stretchr/testify v1.9.0
 	github.com/tealeg/xlsx v1.0.5
 	github.com/xuri/excelize/v2 v2.8.0
-	github.com/xwb1989/sqlparser v0.0.0-20180606152119-120387863bf2
 	go.mongodb.org/mongo-driver v1.14.0
 )
 
