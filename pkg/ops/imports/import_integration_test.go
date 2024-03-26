@@ -39,16 +39,6 @@ func TestMain(m *testing.M) {
 	os.Exit(code)
 }
 
-func Test_importEntreprisesAndEtablissement(t *testing.T) {
-	test.FakeTime(t, tuTime)
-	//ass := assert.New(t)
-	err := test.Viperize(nil)
-	require.NoError(t, err)
-	//net.ParseIP()
-	err = importEtablissement()
-	require.NoError(t, err)
-}
-
 func Test_importPredictions_then_deletePredictions(t *testing.T) {
 	// GIVEN
 	batchNumber := "2304"

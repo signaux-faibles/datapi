@@ -17,8 +17,8 @@ func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/liste/:batchNumber/:algo", importPredictionsHandler)
 	endpoint.DELETE("/liste/:batchNumber/:algo", deletePredictionsHandler)
 	endpoint.GET("/liste/refresh", refreshVtablesHandler)
-	endpoint.GET("/full", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler)
-	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importPredictionsHandler)
+	endpoint.GET("/full", importStockEtablissementsHandler, importUnitesLegalesHandler)
+	endpoint.GET("/full/:algo", importStockEtablissementsHandler, importUnitesLegalesHandler, importPredictionsHandler)
 	endpoint.GET("/bce", importBCEHandler)
 	endpoint.GET("/paydex", importPaydexHandler)
 	endpoint.GET("/urssaf", importUrssafHandler)
@@ -35,14 +35,6 @@ func importStockEtablissementsHandler(c *gin.Context) {
 
 func importUnitesLegalesHandler(c *gin.Context) {
 	err := importUnitesLegales(c)
-	if err != nil {
-		utils.AbortWithError(c, err)
-		return
-	}
-}
-
-func importEtablissementHandler(c *gin.Context) {
-	err := importEtablissement()
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
