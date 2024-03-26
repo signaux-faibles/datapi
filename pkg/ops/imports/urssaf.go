@@ -14,6 +14,9 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
+
+	"datapi/pkg/db"
+	"datapi/pkg/ops/scripts"
 )
 
 func importUrssafHandler(c *gin.Context) {
@@ -21,12 +24,20 @@ func importUrssafHandler(c *gin.Context) {
 	reader, err := tarFileReader(path)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
+		return
 	}
 	err = runHandlers(c, reader)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, err.Error())
+		return
 	}
 	c.JSON(http.StatusOK, "ok")
+}
+
+func aggregateUrssafTempDataHandler(c *gin.Context) {
+	slog.Warn("ATTENTION ce handler ne fonctionne que si l'import des données URSSAF a été fait au préalable")
+	refresh := scripts.StartRefreshScript(context.Background(), db.Get(), ExecuteAggregationURSSAF)
+	c.JSON(http.StatusOK, refresh)
 }
 
 func runHandlers(ctx context.Context, reader *tar.Reader) error {

@@ -15,12 +15,15 @@ func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/ee", importEtablissementHandler)
 	endpoint.GET("/sirene/stocketablissement", importStockEtablissementsHandler)
 	endpoint.GET("/sirene/unitelegale", importUnitesLegalesHandler)
-	endpoint.GET("/liste/:batchNumber/:algo", importListesHandler)
+	endpoint.GET("/liste/:batchNumber/:algo", importPredictionsHandler)
+	endpoint.DELETE("/liste/:batchNumber/:algo", deletePredictionsHandler)
+	endpoint.GET("/liste/refresh", refreshVtablesHandler)
 	endpoint.GET("/full", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler)
-	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importListesHandler)
+	endpoint.GET("/full/:algo", importEtablissementHandler, importStockEtablissementsHandler, importUnitesLegalesHandler, importPredictionsHandler)
 	endpoint.GET("/bce", importBCEHandler)
 	endpoint.GET("/paydex", importPaydexHandler)
 	endpoint.GET("/urssaf", importUrssafHandler)
+	endpoint.GET("/urssaf/aggregate", aggregateUrssafTempDataHandler)
 }
 
 func importStockEtablissementsHandler(c *gin.Context) {
@@ -47,18 +50,36 @@ func importEtablissementHandler(c *gin.Context) {
 	}
 }
 
-func importListesHandler(c *gin.Context) {
+func importPredictionsHandler(c *gin.Context) {
 	algo := c.Params.ByName("algo")
 	batchNumber := c.Params.ByName("batchNumber")
 	if algo == "" {
 		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": "le paramètre `algo` est obligatoire"})
 		return
 	}
-	err := importListe(batchNumber, algo)
+	err := importPredictions(batchNumber, algo)
 	if err != nil {
 		utils.AbortWithError(c, err)
 		return
 	}
+}
+
+func deletePredictionsHandler(c *gin.Context) {
+	algo := c.Params.ByName("algo")
+	batchNumber := c.Params.ByName("batchNumber")
+	if algo == "" {
+		c.AbortWithStatusJSON(http.StatusBadRequest, gin.H{"erreur": "le paramètre `algo` est obligatoire"})
+		return
+	}
+	deletePredictionLogger := slog.Default().With(slog.String("algo", algo), slog.String("batch", batchNumber))
+	deletePredictionLogger.Info("supprime les prédictions", slog.String("status", "START"))
+	_, err := deletePredictions(batchNumber, algo)
+	if err != nil {
+		slog.Error("erreur pendant la suppression des prédictions", slog.Any("error", err))
+		utils.AbortWithError(c, err)
+		return
+	}
+	deletePredictionLogger.Info("supprime les prédictions", slog.String("status", "END"))
 }
 
 func importPaydexHandler(c *gin.Context) {

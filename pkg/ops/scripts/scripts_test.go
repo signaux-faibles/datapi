@@ -1,4 +1,4 @@
-package refresh
+package scripts
 
 import (
 	"testing"
@@ -14,12 +14,12 @@ var tuTime = time.Date(2023, 03, 10, 17, 41, 58, 651387237, time.Local)
 func Test_NewRefresh(t *testing.T) {
 	test.FakeTime(t, tuTime)
 	ass := assert.New(t)
-	current := New()
+	current := NewRun()
 	ass.Equal(Prepare, current.Status)
 	ass.NotNil(current.Message)
 	ass.Equal(tuTime, current.Date)
 	ass.NotNil(current.Date)
-	ass.Exactly(*current, last.Load())
+	ass.Exactly(current.UUID, last.Load())
 	value, found := list.Load(current.UUID)
 	ass.True(found)
 	ass.Exactly(current, value)
@@ -27,7 +27,7 @@ func Test_NewRefresh(t *testing.T) {
 
 func Test_changeRefreshStateToRun(t *testing.T) {
 	ass := assert.New(t)
-	current := New()
+	current := NewRun()
 	expectedMessage := "mega test"
 
 	// wait 5"
