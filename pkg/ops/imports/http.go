@@ -23,6 +23,7 @@ func ConfigureEndpoint(endpoint *gin.RouterGroup) {
 	endpoint.GET("/bce", importBCEHandler)
 	endpoint.GET("/paydex", importPaydexHandler)
 	endpoint.GET("/urssaf", importUrssafHandler)
+	endpoint.GET("/ap/refresh", refreshActivitePartielleHandler)
 	endpoint.GET("/urssaf/aggregate", aggregateUrssafTempDataHandler)
 }
 
