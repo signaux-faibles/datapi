@@ -6,6 +6,7 @@ services:
       - "5432:5432"
     volumes:
       - "./testData.sql:/docker-entrypoint-initdb.d/init.sql"
+      - "./createLogsDatabase.sql:/docker-entrypoint-initdb.d/initLogs.sql"
     environment:
       - POSTGRES_PASSWORD=toto
       - POSTGRES_HOST_AUTH_METHOD=trust
@@ -50,6 +51,7 @@ services:
       - wekan-files:/data:rw
 volumes:
   testData.sql:
+  createLogsDatabase.sql:
   wekan-files:
     driver: local
   wekan-db:
