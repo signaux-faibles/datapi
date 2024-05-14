@@ -6,7 +6,15 @@
 -   Cloner le repository: `git clone git@github.com:signaux-faibles/datapi.git`  
 -   Compiler: `go build`  
 -   Préparer une base de données vierge
--   Copier `config.toml.example` en `config.toml` et configurer les valeurs qu'il contient
+-   Copier `config.toml.example` en `config.toml` et configurer les valeurs qu'il contient, notamment :
+  
+```toml
+postgres = "host=localhost port=5432 user=postgres password=toto dbname=postgres"
+
+[stats]
+db_url = "postgres://postgres:toto@localhost:5432/datapilogs"
+```
+
 -   Exécuter le binaire
 
 ## Conteneur

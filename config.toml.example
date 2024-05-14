@@ -1,10 +1,10 @@
 # Configuration générale
 bind = ":3000"
 prod = true # limite les logs
-corsAllowOrigins = ["http://192.168.1.20:8081", "http://127.0.0.1:8081"]
+corsAllowOrigins = ["http://192.168.1.20:8080", "http://127.0.0.1:8080"]
 
 # Base de données
-postgres = "host=localhost port=5432 user=postgres password=toto dbname=postgres"
+postgres = "host=localhost port=5432 user=postgres password=<password> dbname=postgres"
 
 # Paramètres de l'API
 searchPageLength = 20
@@ -45,7 +45,7 @@ wekanTokenDays = 60
 wekanConfigFile = "wekan_config.json"
 wekanImportFile = "wekan_import.csv"
 webBaseURL = "webBaseURL"
-wekanMgoURL = "mongodb://mongo:password@localhost/test"
+wekanMgoURL = "mongodb://mongo:<password>@localhost/test"
 wekanMgoDB = "test"
 
 docxifyPath = "./docxify3.py"
@@ -54,7 +54,6 @@ docxifyPython = "/usr/bin/python3"
 
 [stats]
 db_url = postgres://<username>:<password>@<hostname>:<port>/<database_name>
-# (e.g. : db_url = "postgres://postgres:toto@localhost:5432/datapilogs")
 
 [log]
 level = "INFO"
