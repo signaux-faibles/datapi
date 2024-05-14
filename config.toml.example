@@ -4,7 +4,7 @@ prod = true # limite les logs
 corsAllowOrigins = ["http://192.168.1.20:8081", "http://127.0.0.1:8081"]
 
 # Base de données
-postgres = "user=postgres dbname=datapi"
+postgres = "host=localhost port=5432 user=postgres password=toto dbname=postgres"
 
 # Paramètres de l'API
 searchPageLength = 20
@@ -52,4 +52,8 @@ docxifyWorkingDir = "/foo/bar"
 docxifyPython = "/usr/bin/python3"
 
 [stats]
-  db_url = postgres://<username>:<password>@<hostname>:<port>/<database_name>
+db_url = postgres://<username>:<password>@<hostname>:<port>/<database_name>
+# (e.g. : db_url = "postgres://postgres:toto@localhost:5432/datapilogs")
+
+[log]
+level = "INFO"
