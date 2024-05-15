@@ -5,10 +5,13 @@ services:
     ports:
       - "5432:5432"
     volumes:
+      - ./postgresql.conf:/etc/postgresql/postgresql.conf
       - "./testData.sql:/docker-entrypoint-initdb.d/init.sql"
+      - "./createLogsDatabase.sql:/docker-entrypoint-initdb.d/initLogs.sql"
     environment:
       - POSTGRES_PASSWORD=toto
       - POSTGRES_HOST_AUTH_METHOD=trust
+    command: ["postgres", "-c", "config_file=/etc/postgresql/postgresql.conf"]
   wekandb:
     image: mongo:5
     #-------------------------------------------------------------------------------------
@@ -49,7 +52,9 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - wekan-files:/data:rw
 volumes:
+  postgresql.conf: 
   testData.sql:
+  createLogsDatabase.sql:
   wekan-files:
     driver: local
   wekan-db:
