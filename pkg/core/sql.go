@@ -127,8 +127,10 @@ func (p summaryParams) toSQLScoreParams() []interface{} {
 		p.excludeSecteursCovid,
 		p.etatAdministratif,
 		p.firstAlert,
-		p.libelleListe,
 		p.hasntDelai,
+
+		// insert new argument before and manually update index of libelleListe
+		p.libelleListe,
 	}
 }
 
@@ -184,7 +186,7 @@ var sqlScore = `select
   and (not (s.secteur_covid = any($20)) or $20 is null)
   and (n.code_n1 = any($15) or $15 is null)
   and (s.etat_administratif = $21 or $21 is null)
-  and ((s.first_list_etablissement = $23 or s.first_red_list_etablissement = $23) and $22 or $22 is null)
-  and (not (s.has_delai = $24) or $24 is null)
+  and (not (s.has_delai = $23) or $23 is null)
+  and ((s.first_list_etablissement = $24 or s.first_red_list_etablissement = $24) and $22 or $22 is null)
   order by sc.alert, sc.score desc, s.siret
   limit $2 offset $3`
