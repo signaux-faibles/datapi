@@ -4,9 +4,10 @@ import (
 	"context"
 	"datapi/pkg/db"
 	"datapi/pkg/utils"
-	"github.com/signaux-faibles/libwekan"
 	"net/http"
 	"time"
+
+	"github.com/signaux-faibles/libwekan"
 
 	"github.com/gin-gonic/gin"
 )
@@ -196,7 +197,7 @@ func (f *Follow) list(roles Scope) (Follows, utils.Jerror) {
 
 	params := summaryParams{roles, nil, nil, &liste[0].ID, false, nil,
 		&True, &True, *f.Username, false, "follow", &False, nil,
-		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
+		nil, &True, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil, nil}
 
 	sms, err := getSummaries(params)
 	if err != nil {
