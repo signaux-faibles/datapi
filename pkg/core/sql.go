@@ -34,6 +34,7 @@ func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 		p.etatAdministratif,
 		p.firstAlert,
 		p.hasntDelai,
+		p.creationDateThreshold,
 	}
 }
 
@@ -128,9 +129,9 @@ func (p summaryParams) toSQLScoreParams() []interface{} {
 		p.etatAdministratif,
 		p.firstAlert,
 		p.hasntDelai,
-
 		// insert new argument before and manually update index of libelleListe
 		p.libelleListe,
+		p.creationDateThreshold,
 	}
 }
 
@@ -188,5 +189,6 @@ var sqlScore = `select
   and (s.etat_administratif = $21 or $21 is null)
   and (not (s.has_delai = $23) or $23 is null)
   and ((s.first_list_etablissement = $24 or s.first_red_list_etablissement = $24) and $22 or $22 is null)
+  and (s.create_date >= $25 or $25 is null)
   order by sc.alert, sc.score desc, s.siret
   limit $2 offset $3`
