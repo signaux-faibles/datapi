@@ -154,6 +154,7 @@ type summaryParams struct {
 	caMax                 *int
 	excludeSecteursCovid  []string
 	etatAdministratif     *string
+	creationDateThreshold *string
 	firstAlert            *bool
 	hasntDelai            *bool
 }
