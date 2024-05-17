@@ -1,5 +1,14 @@
 package core
 
+// Liste de codes NAF à exclure pour réduire la taille des listes.
+const ExcludedNafCodes = `AND s.code_activite NOT IN (
+  '8411Z', '8412Z', '8421Z', '8422Z', '8423Z', '8424Z', '8425Z', '8413Z', '8430A', '8430B', '8430C',
+  '9491Z', '9492Z', '9420Z', '9411Z', '9412Z',
+  '6411Z', '6419Z', '6430Z', '6491Z', '6492Z', '6499Z', '6511Z', '6512Z', '6520Z', '6530Z', '6611Z', '6612Z', '6619A', '6619B', '6621Z', '6622Z', '6629Z', '6630Z',
+  '8510Z', '8520Z', '8531Z', '8532Z', '8541Z', '8542Z',
+  '8810A', '8810B', '8810C', '8891A', '8891B', '8899B'
+)`
+
 func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 	var expressionSiret *string
 	var expressionRaisonSociale *string
@@ -93,6 +102,7 @@ from v_summaries s
   and (s.first_alert = $22 or $22 is null)
   and (not (s.has_delai = $23) or $23 is null)
   and (s.date_creation_entreprise <= $24 or $24 is null)
+  ` + ExcludedNafCodes + `
 order by s.alert, s.valeur_score desc, s.siret
 limit $2 offset $3`
 
@@ -191,5 +201,6 @@ var sqlScore = `select
   and (not (s.has_delai = $23) or $23 is null)
   and (s.date_creation_entreprise <= $24 or $24 is null)
   and ((s.first_list_etablissement = $25 or s.first_red_list_etablissement = $25) and $22 or $22 is null)
+  ` + ExcludedNafCodes + `
   order by sc.alert, sc.score desc, s.siret
   limit $2 offset $3`
