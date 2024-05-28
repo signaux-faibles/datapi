@@ -140,9 +140,9 @@ func (p summaryParams) toSQLScoreParams() []interface{} {
 		p.etatAdministratif,
 		p.firstAlert,
 		p.hasntDelai,
-		p.creationDateThreshold,
+		p.creationDateThreshold, // $24
 		// insert new argument before and manually update index of libelleListe
-		p.libelleListe,
+		p.libelleListe, // $25
 	}
 }
 
@@ -152,7 +152,7 @@ var sqlScore = `select
   s.libelle_departement, s.code_departement,
   case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then sc.score end as valeur_score,
   case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then sc.detail end as detail_score,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then coalesce(s.first_list_etablissement = $23 or s.first_red_list_etablissement = $23, false) end as first_alert,
+  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then coalesce(s.first_list_etablissement = $25 or s.first_red_list_etablissement = $25, false) end as first_alert,
   s.chiffre_affaire, s.arrete_bilan, s.exercice_diane, s.variation_ca, s.resultat_expl, s.effectif, s.effectif_entreprise,
   s.libelle_n5, s.libelle_n1, s.code_activite, s.last_procol,
   case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.activite_partielle end as activite_partielle,
@@ -176,7 +176,7 @@ var sqlScore = `select
   (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
   s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, s.has_delai
   from v_summaries s
-  inner join score0 sc on sc.siret = s.siret and sc.libelle_liste = $23 and sc.alert != 'Pas d''alerte'
+  inner join score0 sc on sc.siret = s.siret and sc.libelle_liste = $25 and sc.alert != 'Pas d''alerte'
   left join v_naf n on n.code_n5 = s.code_activite
   left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $8
   left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $8
