@@ -4,13 +4,16 @@ updates:
     directory: /
     schedule:
       interval: daily
+    target-branch: preprod
 
   - package-ecosystem: gomod
     directory: /
     schedule:
       interval: daily
+    target-branch: preprod
 
   - package-ecosystem: docker
     directory: /build-container
     schedule:
       interval: daily
+    target-branch: preprod
