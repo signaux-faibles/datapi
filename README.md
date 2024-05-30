@@ -14,8 +14,13 @@ postgres = "host=localhost port=5432 user=postgres password=toto dbname=postgres
 [stats]
 db_url = "postgres://postgres:toto@localhost:5432/datapilogs"
 ```
-
 -   Exécuter le binaire
+
+
+  Il est possible de lister les routes en exécutant la commande suivante (Il faut avoir buildé le binaire avec `go build`):
+  ```bash
+  ./datapi --list-routes=true
+  ```
 
 ## Conteneur
 -  `cd build-container`
