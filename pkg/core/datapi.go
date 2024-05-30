@@ -2,6 +2,7 @@
 package core
 
 import (
+	"flag"
 	"fmt"
 	"log"
 	"log/slog"
@@ -121,9 +122,18 @@ func AddEndpoint(router *gin.Engine, path string, endpoint Endpoint, handlers ..
 func StartAPI(router *gin.Engine) {
 	addr := viper.GetString("bind")
 	log.Print("Running API on " + addr)
-	err := router.Run(addr)
-	if err != nil {
-		fmt.Println(err.Error())
+
+	listOnly := flag.Bool("list-routes", false, "List all registered routes and exit")
+	flag.Parse()
+
+	if *listOnly {
+		utils.ListRoutes(router)
+	} else {
+		err := router.Run(addr)
+
+		if err != nil {
+			fmt.Println(err.Error())
+		}
 	}
 }
 
