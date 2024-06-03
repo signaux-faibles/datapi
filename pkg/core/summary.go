@@ -154,9 +154,9 @@ type summaryParams struct {
 	caMax                 *int
 	excludeSecteursCovid  []string
 	etatAdministratif     *string
-	creationDateThreshold *string
 	firstAlert            *bool
 	hasntDelai            *bool
+	creationDateThreshold *string
 }
 
 func (p summaryParams) toSQLParams() []interface{} {
