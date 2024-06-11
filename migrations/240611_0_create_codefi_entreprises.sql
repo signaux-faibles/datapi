@@ -7,6 +7,4 @@ create table codefi_entreprises (
   date_add timestamp default current_timestamp
 );
 
-create index idx_codefi_entreprises_siren on codefi_entreprises (siren);
-
 create index idx_codefi_entreprises_siren_libelle on codefi_entreprises (siren, libelle);

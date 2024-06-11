@@ -157,6 +157,7 @@ type summaryParams struct {
 	creationDateThreshold *string
 	firstAlert            *bool
 	hasntDelai            *bool
+	codefiListOnly        *bool
 }
 
 func (p summaryParams) toSQLParams() []interface{} {
@@ -207,7 +208,7 @@ func getSummaries(params summaryParams) (Summaries, error) {
 	if params.orderBy == "score" {
 		if params.currentListe {
 			sqlParams = params.toSQLCurrentScoreParams()
-			sql = sqlCurrentScore
+			sql = buildSQLCurrentScoreQuery(params.codefiListOnly != nil && *params.codefiListOnly)
 		} else {
 			sqlParams = params.toSQLScoreParams()
 			sql = sqlScore
