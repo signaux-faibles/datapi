@@ -89,7 +89,7 @@ func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 		zoneGeo, &limit, &offset, &liste[0].ID, false, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
 		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil,
 		params.EffectifMin, nil, nil, params.Activites, params.EffectifMinEntreprise, params.EffectifMaxEntreprise,
-		params.CaMin, params.CaMax, params.ExcludeSecteursCovid, params.EtatAdministratif, nil, nil, nil,
+		params.CaMin, params.CaMax, params.ExcludeSecteursCovid, params.EtatAdministratif, nil, nil, nil, nil,
 	}
 	summaries, err := getSummaries(summaryparams)
 	if err != nil {

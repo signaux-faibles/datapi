@@ -9,6 +9,75 @@ const ExcludedNafCodes = `AND s.code_activite NOT IN (
   '8810A', '8810B', '8810C', '8891A', '8891B', '8899B'
 )`
 
+func buildSQLCurrentScoreQuery(codefiListOnly bool) string {
+	baseQuery := `select
+    s.siret, s.siren, s.raison_sociale, s.commune,
+    s.libelle_departement, s.code_departement,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.valeur_score end as valeur_score,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.detail_score end as detail_score,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.first_alert end as first_alert,
+    s.chiffre_affaire, s.arrete_bilan, s.exercice_diane, s.variation_ca, s.resultat_expl, s.effectif, s.effectif_entreprise,
+    s.libelle_n5, s.libelle_n1, s.code_activite, s.last_procol,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.activite_partielle end as activite_partielle,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_heure_consomme end as apconso_heure_consomme,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_montant end as apconso_montant,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.hausse_urssaf end as hausse_urssaf,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.dette_urssaf end as dette_urssaf,
+    case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.alert end,
+    count(*) over () as nb_total,
+    count(case when s.alert='Alerte seuil F1' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f1,
+    count(case when s.alert='Alerte seuil F2' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f2,
+    (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible, 
+    (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone, 
+    f.id is not null as followed_etablissement,
+    fe.siren is not null as followed_entreprise,
+    s.siege, s.raison_sociale_groupe, territoire_industrie,
+    f.comment, f.category, f.since,
+    (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf,
+    (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
+    (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
+    (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
+    s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, s.has_delai
+	from v_summaries s`
+
+	if codefiListOnly {
+		baseQuery += `
+	inner join codefi_entreprises ce on ce.siren = s.siren`
+	}
+
+	baseQuery += `
+	left join v_naf n on n.code_n5 = s.code_activite
+	left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $8
+	left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $8
+	where 
+		(s.roles && $1 or $6)
+		and s.alert != 'Pas d''alerte'
+		and (s.code_departement=any($1) or $7)
+		and (s.siege or not $9)
+		and (s.last_procol = any($10) or $10 is null)
+		and (s.code_departement=any($11) or $11 is null)
+		and (s.effectif >= $13 or $13 is null)
+		and (s.effectif <= $14 or $14 is null)
+		and (s.effectif_entreprise >= $16 or $16 is null)
+		and (s.effectif_entreprise <= $17 or $17 is null)
+		and (s.chiffre_affaire >= $18 or $18 is null)
+		and (s.chiffre_affaire <= $19 or $19 is null)
+		and (fe.siren is not null = $12 or $12 is null)
+		and (s.raison_sociale ilike $5 or s.siret ilike $4 or coalesce($4, $5) is null)
+		and 'score' = any($1)
+		and (not (s.secteur_covid = any($20)) or $20 is null)
+		and (n.code_n1 = any($15) or $15 is null)
+		and (s.etat_administratif = $21 or $21 is null)
+		and (s.first_alert = $22 or $22 is null)
+		and (not (s.has_delai = $23) or $23 is null)
+		and (s.date_creation_entreprise <= $24 or $24 is null)
+		` + ExcludedNafCodes + `
+	order by s.alert, s.valeur_score desc, s.siret
+	limit $2 offset $3`
+
+	return baseQuery
+}
+
 func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 	var expressionSiret *string
 	var expressionRaisonSociale *string
@@ -43,68 +112,9 @@ func (p summaryParams) toSQLCurrentScoreParams() []interface{} {
 		p.etatAdministratif,
 		p.firstAlert,
 		p.hasntDelai,
-		p.creationDateThreshold,
+		p.creationDateThreshold, // $24
 	}
 }
-
-// sqlCurrentScore récupère les derniers scores connus
-var sqlCurrentScore = `select 
-  s.siret, s.siren, s.raison_sociale, s.commune,
-  s.libelle_departement, s.code_departement,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.valeur_score end as valeur_score,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.detail_score end as detail_score,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.first_alert end as first_alert,
-  s.chiffre_affaire, s.arrete_bilan, s.exercice_diane, s.variation_ca, s.resultat_expl, s.effectif, s.effectif_entreprise,
-  s.libelle_n5, s.libelle_n1, s.code_activite, s.last_procol,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.activite_partielle end as activite_partielle,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_heure_consomme end as apconso_heure_consomme,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp then s.apconso_montant end as apconso_montant,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.hausse_urssaf end as hausse_urssaf,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf then s.dette_urssaf end as dette_urssaf,
-  case when (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then s.alert end,
-  count(*) over () as nb_total,
-  count(case when s.alert='Alerte seuil F1' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f1,
-  count(case when s.alert='Alerte seuil F2' and (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score then 1 end) over () as nb_f2,
-  (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).visible, 
-  (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).in_zone, 
-  f.id is not null as followed_etablissement,
-  fe.siren is not null as followed_entreprise,
-  s.siege, s.raison_sociale_groupe, territoire_industrie,
-  f.comment, f.category, f.since,
-  (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).urssaf,
-  (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).dgefp,
-  (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).score,
-  (permissions($1, s.roles, s.first_list_entreprise, s.code_departement, fe.siren is not null)).bdf,
-  s.secteur_covid, s.excedent_brut_d_exploitation, s.etat_administratif, s.etat_administratif_entreprise, s.has_delai
-from v_summaries s
-  left join v_naf n on n.code_n5 = s.code_activite
-  left join etablissement_follow f on f.active and f.siret = s.siret and f.username = $8
-  left join v_entreprise_follow fe on fe.siren = s.siren and fe.username = $8
-  where 
-  (s.roles && $1 or $6)
-  and s.alert != 'Pas d''alerte'
-  and (s.code_departement=any($1) or $7)
-  and (s.siege or not $9)
-  and (s.last_procol = any($10) or $10 is null)
-  and (s.code_departement=any($11) or $11 is null)
-  and (s.effectif >= $13 or $13 is null)
-  and (s.effectif <= $14 or $14 is null)
-  and (s.effectif_entreprise >= $16 or $16 is null)
-  and (s.effectif_entreprise <= $17 or $17 is null)
-  and (s.chiffre_affaire >= $18 or $18 is null)
-  and (s.chiffre_affaire <= $19 or $19 is null)
-  and (fe.siren is not null = $12 or $12 is null)
-  and (s.raison_sociale ilike $5 or s.siret ilike $4 or coalesce($4, $5) is null)
-  and 'score' = any($1)
-  and (not (s.secteur_covid = any($20)) or $20 is null)
-  and (n.code_n1 = any($15) or $15 is null)
-  and (s.etat_administratif = $21 or $21 is null)
-  and (s.first_alert = $22 or $22 is null)
-  and (not (s.has_delai = $23) or $23 is null)
-  and (s.date_creation_entreprise <= $24 or $24 is null)
-  ` + ExcludedNafCodes + `
-order by s.alert, s.valeur_score desc, s.siret
-limit $2 offset $3`
 
 func (p summaryParams) toSQLScoreParams() []interface{} {
 	var expressionSiret *string
