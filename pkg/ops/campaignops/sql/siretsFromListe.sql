@@ -1,6 +1,8 @@
-select siret
-from v_summaries
-where last_list=$1 and alert != 'Pas d''alerte'
-  and last_procol in ('in_bonis', 'continuation', 'sauvegarde', 'plan_sauvegarde')
-  and etat_administratif != 'F'
-  and first_alert;
+SELECT vs.siret
+FROM v_summaries vs
+INNER JOIN codefi_entreprises ce ON vs.siren = ce.siren
+WHERE vs.liste = $1
+  AND vs.alert != 'Pas d''alerte'
+  AND vs.last_procol IN ('in_bonis', 'continuation', 'sauvegarde', 'plan_sauvegarde')
+  AND vs.etat_administratif != 'F'
+  AND vs.first_alert;
