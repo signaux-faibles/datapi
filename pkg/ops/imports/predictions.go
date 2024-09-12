@@ -21,7 +21,7 @@ import (
 	"datapi/pkg/utils"
 )
 
-//go:embed sql/populate_v_tables.sql
+//go:embed sql/populate_v_summaries.sql
 var sqlPopulateVTables string
 
 var ExecuteRefreshVTables = scripts.Script{
