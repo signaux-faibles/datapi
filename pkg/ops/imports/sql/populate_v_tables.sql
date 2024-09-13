@@ -87,15 +87,6 @@ GROUP BY etablissement_periode_urssaf0.siret;
 create unique index if not exists idx_v_hausse_urssaf_siret
   on v_hausse_urssaf (siret);
 
-truncate table v_etablissement_raison_sociale;
-insert into v_etablissement_raison_sociale
-SELECT et.id AS id_etablissement,
-       en.id AS id_entreprise,
-       en.raison_sociale,
-       et.siret
-FROM entreprise0 en
-       JOIN etablissement0 et ON en.siren::text = et.siren::text;
-
 truncate table v_diane_variation_ca;
 insert into v_diane_variation_ca
 WITH diane AS (SELECT entreprise_diane0.siren,
@@ -266,7 +257,6 @@ FROM last_liste l
        JOIN etablissement0 et ON true
        JOIN entreprise0 en ON en.siren::text = et.siren::text
        left JOIN entreprises_avec_delai ed on en.siren = ed.siren
-       JOIN v_etablissement_raison_sociale etrs ON etrs.id_etablissement = et.id
        JOIN v_roles r ON et.siren::text = r.siren::text
        JOIN departements d ON d.code = et.departement
        LEFT JOIN v_naf n ON n.code_n5 = et.code_activite
