@@ -50,7 +50,7 @@ WHERE logs.token <> 'fakeKeycloak'::text;
 --
 -- Name: v_log; Type: MATERIALIZED VIEW
 --
-
+drop materialized view if exists v_stats;
 create materialized view if not exists v_stats as
 WITH stat_users AS (SELECT count(DISTINCT v_log.tokencontent ->> 'email'::text) AS users,
                            date_trunc('month'::text, v_log.date_add)            AS mois
@@ -77,15 +77,22 @@ WITH stat_users AS (SELECT count(DISTINCT v_log.tokencontent ->> 'email'::text) 
                              date_trunc('month'::text, v_log.date_add)              AS mois
                       FROM v_log
                       GROUP BY (date_trunc('month'::text, v_log.date_add))
-                      LIMIT 100)
+                      LIMIT 100),
+     stat_export AS (SELECT count(v_log.path)                         AS export,
+                            date_trunc('month'::text, v_log.date_add) AS mois
+                     FROM v_log
+                     WHERE v_log.path ~~ '/scores/xls/%'::text
+                     GROUP BY (date_trunc('month'::text, v_log.date_add)))
 SELECT u.mois,
        u.users,
        r.recherches,
        f.fiches,
-       v.visites
+       v.visites,
+       e.export
 FROM stat_users u
        JOIN stat_recherches r ON r.mois = u.mois
        JOIN stat_fiches f ON f.mois = u.mois
-       JOIN stat_visites v ON v.mois = u.mois;
+       JOIN stat_visites v ON v.mois = u.mois
+       JOIN stat_export e ON e.mois = u.mois;
 
 alter materialized view v_stats owner to postgres;
