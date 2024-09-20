@@ -50,7 +50,6 @@ WHERE logs.token <> 'fakeKeycloak'::text;
 --
 -- Name: v_log; Type: MATERIALIZED VIEW
 --
-drop materialized view if exists v_stats;
 create materialized view if not exists v_stats as
 WITH stat_users AS (SELECT count(DISTINCT v_log.tokencontent ->> 'email'::text) AS users,
                            date_trunc('month'::text, v_log.date_add)            AS mois
