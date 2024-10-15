@@ -207,11 +207,11 @@ func getSummaries(params summaryParams) (Summaries, error) {
 
 	if params.orderBy == "score" {
 		if params.currentListe {
-			sqlParams = params.toSQLCurrentScoreParams()
+			sqlParams = params.toSQLCurrentScoreParams(params.codefiListOnly != nil && *params.codefiListOnly)
 			sql = buildSQLCurrentScoreQuery(params.codefiListOnly != nil && *params.codefiListOnly)
 		} else {
 			sqlParams = params.toSQLScoreParams()
-			sql = sqlScore
+			sql = buildSQLScoreQuery(params.codefiListOnly != nil && *params.codefiListOnly)
 		}
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
