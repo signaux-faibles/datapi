@@ -34,6 +34,13 @@ db_url = "postgres://postgres:toto@localhost:5432/datapilogs"
   par l'exécution des tests. C'est pratique dans le cas où de nouvelles features nécessitent de modifier les golden sources.
   __ATTENTION : __Ce cas de figure est rare. Il ne faut pas utiliser ce flag si l'on est pas sûr que le code est correct. 
 
+  ### Configuration des tests sur macOS
+  Si vous développez en local sur macOS avec architecture arm64, il est possible que les tests ne fonctionnent pas.
+  Pour résoudre ce problème, il faut ajouter la variable d'environnement `GOARCH=amd64` avant de lancer les tests. Et il faut également s'assurer que la version de go utilisée est la version 1.21.13 sans quoi certaines librairies utilisées dans les tests ne fonctionneront pas.
+  ```bash
+    go1.21.13 env -w GOARCH=amd64
+  ```
+
 
 ## Gestion des droits
 ### zone d'attribution

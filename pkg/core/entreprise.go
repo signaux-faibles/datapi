@@ -223,8 +223,8 @@ type EtablissementScore struct {
 	Alert                 string                           `json:"alert"`
 	MacroRadar            map[string]float64               `json:"macroRadar,omitempty"`
 	ExplSelection         *EtablissementScoreExplSelection `json:"explSelection,omitempty"`
-	MacroExpl             map[string]float64               `json:"-"`
-	MicroExpl             map[string]float64               `json:"-"`
+	MacroExpl             map[string]float64               `json:"macroExpl,omitempty"`
+	MicroExpl             map[string]interface{}           `json:"microExpl,omitempty"`
 	AlertPreRedressements string                           `json:"alertPreRedressements"`
 	Redressements         []string                         `json:"redressements"`
 }

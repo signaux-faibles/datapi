@@ -45,10 +45,9 @@ type score struct {
 		SelectConcerning [][]string `json:"select_concerning"`
 		SelectReassuring [][]string `json:"select_reassuring"`
 	} `json:"expl_selection"`
-	MacroExpl             map[string]float64 `json:"macro_expl"`
-	MicroExpl             map[string]float64 `json:"micro_expl"`
-	MacroRadar            map[string]float64 `json:"macro_radar"`
-	AlertPreRedressements string             `json:"alert_pre_redressements"`
+	MacroExpl             map[string]float64     `json:"macro_expl"`
+	MicroExpl             map[string]interface{} `json:"micro_expl"`
+	AlertPreRedressements string                 `json:"alert_pre_redressements"`
 }
 
 type scoreFile struct {
@@ -63,9 +62,10 @@ type scoreFile struct {
 		SelectConcerning [][]string `json:"selectConcerning"`
 		SelectReassuring [][]string `json:"selectReassuring"`
 	} `json:"explSelection"`
-	MacroRadar            map[string]float64 `json:"macroRadar"`
-	Redressements         []string           `json:"redressements"`
-	AlertPreRedressements string             `json:"alertPreRedressements"`
+	MacroExpl             map[string]float64     `json:"macroExpl"`
+	MicroExpl             map[string]interface{} `json:"microExpl"`
+	Redressements         []string               `json:"redressements"`
+	AlertPreRedressements string                 `json:"alertPreRedressements"`
 }
 
 func refreshVtablesHandler(c *gin.Context) {
@@ -75,6 +75,7 @@ func refreshVtablesHandler(c *gin.Context) {
 
 func importPredictions(batchNumber string, algo string) error {
 	filename := viper.GetString("source.listPath")
+
 	file, err := os.Open(filename)
 	if err != nil {
 		return errors.New("open file: " + err.Error())
@@ -108,7 +109,8 @@ func importPredictions(batchNumber string, algo string) error {
 		algo text,
 		expl_selection_concerning jsonb default '{}',
 		expl_selection_reassuring jsonb default '{}',
-		macro_radar jsonb default '{}',
+		macro_expl jsonb default '{}',
+        micro_expl jsonb default '{}',
 		alert_pre_redressements text,
 		redressements text[] default '{}'
 	);`)
@@ -123,12 +125,12 @@ func importPredictions(batchNumber string, algo string) error {
 	batch.Queue(`insert into score
 			(siret, siren, libelle_liste, batch, algo, periode,
 			score, diff, alert, expl_selection_concerning,
-			expl_selection_reassuring, macro_radar,
+			expl_selection_reassuring, macro_expl, micro_expl,
 			redressements, alert_pre_redressements)
 		select
 			e.siret, t.siren, t.libelle_liste, batch, $1,
 			$2, score, diff, alert, expl_selection_concerning,
-			expl_selection_reassuring, macro_radar,
+			expl_selection_reassuring, macro_expl, micro_expl,
 			redressements, alert_pre_redressements
 		from tmp_score t
 		inner join etablissement e on e.siren = t.siren and e.siege`, algo, now)
@@ -145,6 +147,7 @@ func importPredictions(batchNumber string, algo string) error {
 	if err != nil {
 		return errors.New("commit: " + err.Error())
 	}
+
 	return nil
 }
 
@@ -192,8 +195,8 @@ func sqlDeletePredictions(ctx context.Context, tx pgx.Tx, batchNumber string, al
 
 func queueScoreToBatch(s scoreFile, batchNumber string, batch *pgx.Batch) {
 	sqlScore := `insert into tmp_score (siren, libelle_liste, batch, algo, score, diff, alert,
- 		expl_selection_concerning, expl_selection_reassuring, macro_radar, alert_pre_redressements, redressements)
-   	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)`
+ 		expl_selection_concerning, expl_selection_reassuring, macro_expl, micro_expl, alert_pre_redressements, redressements)
+   	values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)`
 
 	if s.ExplSelection.SelectConcerning == nil {
 		s.ExplSelection.SelectConcerning = make([][]string, 0)
@@ -202,9 +205,13 @@ func queueScoreToBatch(s scoreFile, batchNumber string, batch *pgx.Batch) {
 		s.ExplSelection.SelectReassuring = make([][]string, 0)
 	}
 
-	if s.MacroRadar == nil {
-		s.MacroRadar = make(map[string]float64)
+	if s.MacroExpl == nil {
+		s.MacroExpl = make(map[string]float64)
 	}
+	if s.MicroExpl == nil {
+		s.MicroExpl = make(map[string]interface{})
+	}
+
 	if s.Redressements == nil {
 		s.Redressements = make([]string, 0)
 	}
@@ -219,7 +226,8 @@ func queueScoreToBatch(s scoreFile, batchNumber string, batch *pgx.Batch) {
 		s.Alert,
 		s.ExplSelection.SelectConcerning,
 		s.ExplSelection.SelectReassuring,
-		s.MacroRadar,
+		s.MacroExpl,
+		s.MicroExpl,
 		s.AlertPreRedressements,
 		s.Redressements,
 	)
