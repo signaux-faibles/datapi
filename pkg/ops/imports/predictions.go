@@ -118,10 +118,13 @@ func importPredictions(batchNumber string, algo string) error {
 		return errors.New("create tmp_score: " + err.Error())
 	}
 
+	slog.Info("Inserting into tmp_score", slog.String("status", "start"))
 	batch := &pgx.Batch{}
 	for _, s := range scores {
 		queueScoreToBatch(s, batchNumber, batch)
 	}
+	slog.Info("Inserting into tmp_score", slog.String("status", "end"))
+	slog.Info("Inserting into score", slog.String("status", "start"))
 	batch.Queue(`insert into score
 			(siret, siren, libelle_liste, batch, algo, periode,
 			score, diff, alert, expl_selection_concerning,
@@ -134,9 +137,12 @@ func importPredictions(batchNumber string, algo string) error {
 			redressements, alert_pre_redressements
 		from tmp_score t
 		inner join etablissement e on e.siren = t.siren and e.siege`, algo, now)
+	slog.Info("Inserting into score", slog.String("status", "end"))
 
+	slog.Info("Inserting into liste", slog.String("status", "start"))
 	batch.Queue(`insert into liste (libelle, batch, algo) values ($1, $2, $3)`, toLibelle(batchNumber), batchNumber, algo)
 	batch.Queue("drop table if exists tmp_score;")
+	slog.Info("Inserting into liste", slog.String("status", "end"))
 	results := tx.SendBatch(context.Background(), batch)
 	err = results.Close()
 
