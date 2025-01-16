@@ -515,25 +515,29 @@ func importUnitesLegales(ctx context.Context) error {
 	if viper.GetString("source.sireneULPath") == "" || viper.GetString("source.geoSirenePath") == "" {
 		return utils.NewJSONerror(http.StatusConflict, "not supported, missing parameters in server configuration")
 	}
-	slog.Info("Truncate entreprise table", slog.String("status", "start"))
-
+	slog.Info("Truncate entreprise table and drop index", slog.String("status", "start"))
 	err := TruncateEntreprise(ctx)
 	if err != nil {
 		return err
 	}
-	slog.Info("Truncate entreprise table", slog.String("status", "end"))
 
 	err = DropEntrepriseIndex(ctx)
 	if err != nil {
 		return err
 	}
+	slog.Info("Truncate entreprise table and drop index", slog.String("status", "end"))
 
+	slog.Info("Insert sireneUL", slog.String("status", "start"))
 	err = InsertSireneUL(ctx)
 	if err != nil {
 		return err
 	}
+	slog.Info("Insert sireneUL", slog.String("status", "end"))
 
-	return CreateEntrepriseIndex(ctx)
+	slog.Info("Create entreprise index", slog.String("status", "start"))
+	err = CreateEntrepriseIndex(ctx)
+	slog.Info("Create entreprise index", slog.String("status", "end"))
+	return err
 }
 
 func importStockEtablissement(ctx context.Context) error {
