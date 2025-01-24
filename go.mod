@@ -19,7 +19,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2
 	github.com/prometheus/client_golang v1.18.0
-	github.com/signaux-faibles/goSirene v0.3.2
+	github.com/signaux-faibles/goSirene v0.4.1
 	github.com/signaux-faibles/libwekan v0.6.0
 	github.com/spf13/viper v1.18.2
 	github.com/stretchr/testify v1.8.4
