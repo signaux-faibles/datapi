@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"github.com/gin-contrib/cors"
 	"log"
 
 	"datapi/pkg/ops/campaignops"
@@ -48,13 +49,20 @@ func initWekanService(ctx context.Context) core.KanbanService {
 
 func initAndStartAPI(datapi *core.Datapi, statsAPI *stats.API) {
 	router := gin.Default()
+	config := cors.DefaultConfig()
+	config.AllowOrigins = viper.GetStringSlice("corsAllowOrigins")
+	config.AddExposeHeaders("Content-Disposition", "responseType", "Content-Type", "Cache-Control", "Connection", "Transfer-Encoding", "X-Accel-Buffering")
+	config.AddAllowHeaders("Authorization", "responseType")
+	config.AddAllowMethods("GET", "POST", "DELETE")
+	router.Use(cors.New(config))
 	datapi.InitAPI(router)
-	needRoleStats := core.CheckAllRolesMiddleware("stats")
+
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/imports", imports.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/scripts", scripts.ConfigureEndpoint, core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/ops/campaign", campaignops.ConfigureEndpoint(datapi.KanbanService), core.AdminAuthMiddleware)
 	core.AddEndpoint(router, "/campaign", campaign.ConfigureEndpoint(datapi.KanbanService), core.AuthMiddleware(), datapi.LogMiddleware)
+	needRoleStats := core.CheckAllRolesMiddleware("stats")
 	core.AddEndpoint(router, "/stats", statsAPI.ConfigureEndpoint, core.AuthMiddleware(), datapi.LogMiddleware, needRoleStats)
 	core.StartAPI(router)
 }
