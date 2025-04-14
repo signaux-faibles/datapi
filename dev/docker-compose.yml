@@ -1,5 +1,19 @@
 version: "3.3"
 services:
+  keycloak:
+    image: jboss/keycloak:latest
+    volumes:
+      - ./realm-config.json:/tmp/realm-config.json
+    environment:
+      - KEYCLOAK_USER=admin
+      - KEYCLOAK_PASSWORD=keycloakpassword
+      - DB_VENDOR=h2
+      - KEYCLOAK_IMPORT=/tmp/realm-config.json
+    ports:
+      - 8080:8080
+    command:
+      - "-b"
+      - "0.0.0.0"
   postgres:
     image: postgres:15
     ports:
@@ -52,7 +66,7 @@ services:
       - /etc/localtime:/etc/localtime:ro
       - wekan-files:/data:rw
 volumes:
-  postgresql.conf: 
+  postgresql.conf:
   testData.sql:
   createLogsDatabase.sql:
   wekan-files:
