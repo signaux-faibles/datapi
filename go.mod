@@ -12,7 +12,7 @@ require (
 	github.com/google/go-cmp v0.6.0
 	github.com/google/martian v2.1.0+incompatible
 	github.com/google/uuid v1.6.0
-	github.com/gosimple/slug v1.13.1
+	github.com/gosimple/slug v1.14.0
 	github.com/jackc/pgx/v5 v5.5.3
 	github.com/jaswdr/faker v1.19.1
 	github.com/ory/dockertest/v3 v3.10.0
