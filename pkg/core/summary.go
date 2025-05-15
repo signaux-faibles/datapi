@@ -204,6 +204,7 @@ func (p summaryParams) toSQLParams() []interface{} {
 func getSummaries(params summaryParams) (Summaries, error) {
 	var sql string
 	var sqlParams []interface{}
+	var separatelyFetchedTotalCount *int // To store count from a separate query for specific cases
 
 	if params.orderBy == "score" {
 		if params.currentListe {
@@ -215,9 +216,29 @@ func getSummaries(params summaryParams) (Summaries, error) {
 		}
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
-		sqlParams = append(p[0:10], p[13], p[15], p[18])
-		sqlParams = append(sqlParams, p[19:25]...)
-		sql = `select *, null::bool from get_search($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19) as raison_sociale;`
+		// These are the 19 parameters for get_search_slim and get_search_total_count
+		currentSqlParams := append(p[0:10], p[13], p[15], p[18])
+		currentSqlParams = append(currentSqlParams, p[19:25]...)
+
+		// Query to get the total count using the new SQL function get_search_total_count
+		// This function is assumed to take the same 19 arguments as get_search/get_search_slim,
+		// ignoring pagination ($2, $3) and ordering info ('raison_sociale') internally for the count.
+		countQuerySql := `SELECT total_count FROM get_search_total_count($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19);`
+		var tempTotalCount int
+		countErr := db.Get().QueryRow(context.Background(), countQuerySql, currentSqlParams...).Scan(&tempTotalCount)
+
+		if countErr != nil {
+			// Log the error. sms.Global.Count will remain nil if this fails.
+			fmt.Printf("Error fetching total count for raison_sociale search: %v\n", countErr)
+		} else {
+			separatelyFetchedTotalCount = &tempTotalCount
+		}
+
+		// Main data query using the new SQL function get_search_slim
+		// This function must return NULL for the columns corresponding to Global.Count, Global.CountF1, Global.CountF2
+		// The 'null::bool' is appended as in the original query.
+		sql = `SELECT *, null::bool FROM get_search_slim($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19) as raison_sociale_slim;`
+		sqlParams = currentSqlParams
 	} else if params.orderBy == "follow" {
 		p := params.toSQLParams()
 		sqlParams = append(sqlParams, p[0], p[3], p[8])
@@ -237,12 +258,28 @@ func getSummaries(params summaryParams) (Summaries, error) {
 	}
 
 	sms := Summaries{}
+	var loopError error
 	for rows.Next() {
-		s := sms.NewSummary()
-		err := rows.Scan(s...)
-		if err != nil {
-			return Summaries{}, err
+		s := sms.NewSummary() // Prepares scan targets, including for Global.Count, F1, F2
+		loopError = rows.Scan(s...)
+		if loopError != nil {
+			// If scan fails, return immediately
+			return Summaries{}, loopError
 		}
+		// If get_search_slim returned NULL for Global.Count, F1, F2, they will be nil here.
 	}
-	return sms, err
+
+	// Check for errors encountered during iteration (e.g., connection issue after Next() returned true)
+	if loopError = rows.Err(); loopError != nil {
+		return Summaries{}, loopError
+	}
+
+	// If total count was fetched separately (i.e., for raison_sociale and query succeeded),
+	// override sms.Global.Count (which would be nil from get_search_slim).
+	// sms.Global.CountF1 and sms.Global.CountF2 will remain nil as intended.
+	if separatelyFetchedTotalCount != nil {
+		sms.Global.Count = separatelyFetchedTotalCount
+	}
+
+	return sms, nil // If all scans successful and no iteration error
 }
