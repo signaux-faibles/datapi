@@ -216,23 +216,9 @@ func getSummaries(params summaryParams) (Summaries, error) {
 		}
 	} else if params.orderBy == "raison_sociale" {
 		p := params.toSQLParams()
-		// These are the 19 parameters for get_search_slim and get_search_total_count
+		// These are the 19 parameters for get_search_slim
 		currentSqlParams := append(p[0:10], p[13], p[15], p[18])
 		currentSqlParams = append(currentSqlParams, p[19:25]...)
-
-		// Query to get the total count using the new SQL function get_search_total_count
-		// This function is assumed to take the same 19 arguments as get_search/get_search_slim,
-		// ignoring pagination ($2, $3) and ordering info ('raison_sociale') internally for the count.
-		countQuerySql := `SELECT total_count FROM get_search_total_count($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19);`
-		var tempTotalCount int
-		countErr := db.Get().QueryRow(context.Background(), countQuerySql, currentSqlParams...).Scan(&tempTotalCount)
-
-		if countErr != nil {
-			// Log the error. sms.Global.Count will remain nil if this fails.
-			fmt.Printf("Error fetching total count for raison_sociale search: %v\n", countErr)
-		} else {
-			separatelyFetchedTotalCount = &tempTotalCount
-		}
 
 		// Main data query using the new SQL function get_search_slim
 		// This function must return NULL for the columns corresponding to Global.Count, Global.CountF1, Global.CountF2
@@ -282,4 +268,20 @@ func getSummaries(params summaryParams) (Summaries, error) {
 	}
 
 	return sms, nil // If all scans successful and no iteration error
+}
+
+func getSearchTotalCount(params summaryParams) (int, error) {
+	p := params.toSQLParams()
+	// These are the 19 parameters for get_search_total_count
+	currentSqlParams := append(p[0:10], p[13], p[15], p[18])
+	currentSqlParams = append(currentSqlParams, p[19:25]...)
+
+	sql := `SELECT total_count FROM get_search_total_count($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'raison_sociale', null, null, $11, null, $12, null, null, $13, $14, $15, $16, $17, $18, $19);`
+
+	var total int
+	err := db.Get().QueryRow(context.Background(), sql, currentSqlParams...).Scan(&total)
+	if err != nil {
+		return 0, fmt.Errorf("error fetching total count: %v", err)
+	}
+	return total, nil
 }

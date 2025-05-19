@@ -2,7 +2,7 @@ package core
 
 import (
 	"datapi/pkg/utils"
-
+	
 	"github.com/gin-gonic/gin"
 	"github.com/spf13/viper"
 )
@@ -75,6 +75,25 @@ func searchEtablissementHandler(c *gin.Context) {
 
 }
 
+func searchEtablissementTotalHandler(c *gin.Context) {
+	var params searchParams
+
+	if err := c.Bind(&params); err != nil {
+		c.AbortWithStatusJSON(400, "bad request")
+		return
+	}
+	params.username = c.GetString("username")
+	params.roles = scopeFromContext(c)
+
+	total, jerr := searchEtablissementTotal(params)
+	if jerr != nil {
+		c.JSON(jerr.Code(), jerr.Error())
+		return
+	}
+	c.JSON(200, gin.H{"total": total})
+}
+
+
 func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 	liste, err := findAllListes()
 	if err != nil {
@@ -126,4 +145,25 @@ func searchEtablissement(params searchParams) (searchResult, utils.Jerror) {
 	}
 
 	return search, nil
+}
+
+func searchEtablissementTotal(params searchParams) (int, utils.Jerror) {
+	liste, err := findAllListes()
+	if err != nil {
+		return 0, utils.ErrorToJSON(500, err)
+	}
+	zoneGeo := params.roles
+
+	summaryparams := summaryParams{
+		zoneGeo, nil, nil, &liste[0].ID, false, &params.Search, &params.IgnoreRoles, &params.IgnoreZone,
+		params.username, params.SiegeUniquement, "raison_sociale", &False, nil, params.Departements, nil,
+		params.EffectifMin, nil, nil, params.Activites, params.EffectifMinEntreprise, params.EffectifMaxEntreprise,
+		params.CaMin, params.CaMax, params.ExcludeSecteursCovid, params.EtatAdministratif, nil, nil, nil, nil,
+	}
+
+	total, err := getSearchTotalCount(summaryparams)
+	if err != nil {
+		return 0, utils.ErrorToJSON(500, err)
+	}
+	return total, nil
 }

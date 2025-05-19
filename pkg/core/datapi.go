@@ -85,6 +85,7 @@ func (datapi *Datapi) InitAPI(router *gin.Engine) {
 	etablissement.POST("/comments/:siret", checkSiretFormat, addEntrepriseComment)
 	etablissement.PUT("/comments/:id", updateEntrepriseComment)
 	etablissement.POST("/search", searchEtablissementHandler)
+	etablissement.POST("/search/total", searchEtablissementTotalHandler)
 
 	follow := router.Group("/follow", AuthMiddleware(), datapi.LogMiddleware)
 	follow.GET("", getEtablissementsFollowedByCurrentUser)
