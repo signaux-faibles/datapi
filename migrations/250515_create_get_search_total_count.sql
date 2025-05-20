@@ -16,25 +16,33 @@ RETURNS TABLE(total_count bigint)
 LANGUAGE sql
 IMMUTABLE
 AS $function$
-SELECT
-    COUNT(*)
-FROM v_summaries s
-    LEFT JOIN etablissement_follow f ON f.active AND f.siret = s.siret AND f.username = $9
-    LEFT JOIN v_entreprise_follow fe ON fe.siren = s.siren AND fe.username = $9
-    LEFT JOIN v_naf n ON n.code_n5 = s.code_activite
-WHERE
-    (s.raison_sociale ILIKE $6 OR s.siret ILIKE $5)
-    AND (s.roles && $1 OR $7)
-    AND (s.code_departement = ANY($1) OR $8)
-    AND (s.code_departement = ANY($14) OR $14 IS NULL)
-    AND (s.effectif >= $16 OR $16 IS NULL)
-    AND (s.effectif_entreprise >= $20 OR $20 IS NULL)
-    AND (s.effectif_entreprise <= $21 OR $21 IS NULL)
-    AND (s.chiffre_affaire >= $22 OR $22 IS NULL)
-    AND (s.chiffre_affaire <= $23 OR $23 IS NULL)
-    AND (n.code_n1 = ANY($19) OR $19 IS NULL)
-    AND (s.siege OR NOT $10)
-    AND (NOT (s.secteur_covid = ANY($24)) OR $24 IS NULL)
-    AND (s.etat_administratif = $25 OR $25 IS NULL)
+WITH limited_count AS (
+    SELECT 1
+    FROM v_summaries s
+        LEFT JOIN etablissement_follow f ON f.active AND f.siret = s.siret AND f.username = $9
+        LEFT JOIN v_entreprise_follow fe ON fe.siren = s.siren AND fe.username = $9
+        LEFT JOIN v_naf n ON n.code_n5 = s.code_activite
+    WHERE
+        (s.raison_sociale ILIKE $6 OR s.siret ILIKE $5)
+        AND (s.roles && $1 OR $7)
+        AND (s.code_departement = ANY($1) OR $8)
+        AND (s.code_departement = ANY($14) OR $14 IS NULL)
+        AND (s.effectif >= $16 OR $16 IS NULL)
+        AND (s.effectif_entreprise >= $20 OR $20 IS NULL)
+        AND (s.effectif_entreprise <= $21 OR $21 IS NULL)
+        AND (s.chiffre_affaire >= $22 OR $22 IS NULL)
+        AND (s.chiffre_affaire <= $23 OR $23 IS NULL)
+        AND (n.code_n1 = ANY($19) OR $19 IS NULL)
+        AND (s.siege OR NOT $10)
+        AND (NOT (s.secteur_covid = ANY($24)) OR $24 IS NULL)
+        AND (s.etat_administratif = $25 OR $25 IS NULL)
+    LIMIT 1001
+)
+SELECT 
+    CASE 
+        WHEN COUNT(*) > 1000 THEN 1000
+        ELSE COUNT(*)
+    END as total_count
+FROM limited_count
 ;
 $function$;
