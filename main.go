@@ -11,13 +11,13 @@ import (
 
 	"datapi/pkg/campaign"
 	"datapi/pkg/core"
+	"datapi/pkg/health"
 	"datapi/pkg/kanban"
 	"datapi/pkg/ops/imports"
 	"datapi/pkg/ops/misc"
 	"datapi/pkg/ops/scripts"
 	"datapi/pkg/stats"
 	"datapi/pkg/utils"
-	"datapi/pkg/health"
 )
 
 func main() {
@@ -48,7 +48,7 @@ func initWekanService(ctx context.Context) core.KanbanService {
 }
 
 func initAndStartAPI(datapi *core.Datapi, statsAPI *stats.API) {
-	router := gin.Default()
+	router := gin.New()
 	datapi.InitAPI(router)
 	needRoleStats := core.CheckAllRolesMiddleware("stats")
 	core.AddEndpoint(router, "/ops/utils", misc.ConfigureEndpoint, core.AdminAuthMiddleware)
