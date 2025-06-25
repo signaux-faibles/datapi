@@ -1,0 +1,15 @@
+{
+  "realm": "master",
+  "clients": [
+    {
+      "clientId": "signauxfaibles",
+      "rootUrl": "http://localhost:8081/auth",
+      "adminUrl": "http://localhost:8081/auth",
+      "surrogateAuthRequired": true,
+      "enabled": true,
+      "redirectUris": [
+        "http://localhost:3000/*"
+      ]
+    }
+  ]
+}
